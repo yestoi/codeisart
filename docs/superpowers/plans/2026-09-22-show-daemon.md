@@ -10,6 +10,66 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-code-is-art-design.md`
 
+## Amendments from the 2026-09-22 review (apply while executing)
+
+The spec was revised after an adversarial review (`docs/superpowers/reviews/2026-09-22-adversarial-review.md`,
+spec revision 2). The task bodies below still show the revision 1 code. Apply these changes in the
+named tasks before or while implementing them; each is small and the tests named must be added.
+
+- **Task 1, config.** Add `volume: float = 0.6`, `quiet_hours: str = ""` (e.g. `"02:00-08:00"`),
+  `crowd_run_seconds: float = 10.0`, `idle_run_seconds: float = 40.0`, `attract_autoplay_minutes: float = 5.0`,
+  `min_build_seconds: float = 1.5`, `pump_bytes: int = 4096`, `pump_ms: float = 8.0`. Default `fps = 20`
+  and `glow = False` stays. Remove `matrix_multiplexing`.
+- **Task 3, renderer.** Row 24 (the last row) is a permanent strip: `render(screen, cursor_on, strip: str)`
+  always draws `strip` in reverse video on the last row; the terminal is created with `rows - 1` lines.
+  Add an `full_screen` mode where the strip is drawn only when `strip_visible` is true (the state
+  machine flashes it 2 s every 10 s). `apply_glow` must use padded slices, not `np.roll`. Test: the
+  strip row is always lit and program rows never exceed `rows - 1`.
+- **Task 4, terminal.** `pump(max_bytes=4096, budget_ms=8.0)` stops on either limit; test with the
+  flood entry that a default pump returns within 20 ms. `reset()` calls `screen.resize(rows, columns)`
+  before `set_mode`; test with `ESC[?3h`. `run()` closes both pty fds if `Popen` raises; test with a
+  missing binary and an fd count. `kill()` always calls `os.killpg` in `try/except ProcessLookupError`.
+  Add `finished_or_orphaned(grace=0.5)`: process exited and no EOF within `grace` seconds counts as
+  finished and triggers `kill()`; test with `sh -c "sleep 30 & exit 0"`.
+- **Task 5, fake display.** Keep only the last frame and a `count`; tests use `d.last` and `d.count`.
+  Brightness: backends set brightness on the device (Falcon Player output brightness for DDP, the
+  Colorlight brightness packet for raw); never scale pixels in software.
+- **Task 9, sandbox.** Wrap run commands as `["unshare", "-rn", "sh", "-c", cmd]` when `unshare` exists
+  and user namespaces work (probe once at startup, fall back to plain `sh -c` with a logged warning).
+  Test that the probe result is cached and that a run inside the sandbox cannot open a TCP socket.
+- **Task 10, pipeline.** `signal_of` returns a signal only for `rc < 0`; prepend `exec ` to the run
+  command when it contains no shell operators. BUILD lasts at least `cfg.min_build_seconds`. Run
+  timeout is `crowd_run_seconds` when `queue_nonempty` was passed at start, else `entry.run_seconds`
+  capped by `idle_run_seconds`; dwell is skipped in crowd mode. Test `exit 200` is not a crash.
+- **Task 11, attract.** Re-insert the banner every 40 lines. Expose `idle_seconds` so the state
+  machine can autoplay a random entry after `attract_autoplay_minutes`.
+- **Task 12, state.** Every press calls `audio.play("keypress")` and `lights.flash(station)`; pressing
+  the playing or queued station sets a 2-second `notice` ("PLAYING" / "QUEUED #n") shown on the strip.
+  `strip()` replaces `status_line()` and always returns text: NOW/NEXT during play, the banner in
+  attract. Idle autoplay. Tests for all three behaviours.
+- **Task 13, lights and audio.** Lights gain `flash(station)` and drive the lightbox (12 V via MOSFET)
+  as well as the ring. `AudioCues(dir, volume, quiet_hours)`; cues are muted inside quiet hours
+  (test with an injected clock). The error cue is a soft two-tone, not a square wave. Add `lgpio` to
+  the `pi` extra; construct GPIO classes in `try/except` and fall back to fakes with a logged error.
+- **Task 14, main.** Startup never exits: wrap entries, font, display and GPIO setup so a failure logs,
+  pushes a static error frame when a display exists, keeps the watchdog alive and rescans every 30 s.
+  `press`, `render` and `push` are inside the try. After 10 s of push failures, `lights.all_off()`.
+  Unit: `StartLimitIntervalSec=0` in `[Unit]`, `ProtectSystem=strict`, `ReadWritePaths=` for the
+  entries directory. Deploy notes: read-only overlay filesystem, USB gigabit adapter for the card,
+  Falcon Player output brightness, LEDVision settings record.
+- **Task 15, DDP.** Data type byte `0x0B`. No pixel scaling.
+- **Task 16, Colorlight.** Send the `0x0107` frame packet before the rows (matches Falcon Player), verify
+  all constants on the prototype, and prebuild a `(rows, 2, 789)` uint8 packet array with fixed
+  headers filled by one strided assignment per frame. This backend is secondary and is descope step 1.
+- **Task 17, matrix backend.** Removed. Delete the task; `make_display` raises for `matrix`.
+- **Task 18, test pattern.** Use `Path(__file__)` for the tools import in the test. Bring-up steps 6
+  and 7 (raw Colorlight, matrix) become: verify raw Colorlight only if time allows; no matrix step.
+- **Task 19, curation.** Build with `-Wall` (never `-w`). Reject entries that read stdin, need raw
+  terminal modes or X11, or animate at character scale; prefer large motion. `entries/hello` gets
+  `station = 6`. Add `full_screen` to `entry.toml` where an entry truly needs the last row.
+- **Tests generally.** `skipif(shutil.which("cc") is None)` on pipeline, sandbox and main tests.
+- **Hardware milestones.** Superseded by spec section 6, revision 2.
+
 ## Global Constraints
 
 - Python >= 3.11 (tomllib is stdlib). Target hardware is a Raspberry Pi 4; Raspberry Pi 5 is not supported by the matrix backup library.
