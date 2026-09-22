@@ -1,0 +1,9 @@
+Code is Art, A.I. is not.
+
+Since the 80's there has been a contest called the The International Obfuscated C Code Contest (https://www.ioccc.org/years.html) where programmers push the limits of what a machine can do. They craft beautiful looking code that looks like art while still being functional. It's mind boggling to read and even more so to see compiled and running which is the experience I want to bring to others. 
+
+I'm curating a list still, but this is an example of what I'm talking about: https://www.youtube.com/watch?v=DEqXNfs_HhY
+
+Each portrait will showcase the code literally as art. Each with a plaque saying "Created by <author>, Not A.I."
+
+Portraits will have a button to press and a shared viewing experience showing the code being compiled and ran. I may add more interactive elements (like stepping controls to play games, etc), but the vision above is the MVP. 
