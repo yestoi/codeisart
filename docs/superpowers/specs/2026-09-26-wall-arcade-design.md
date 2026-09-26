@@ -87,8 +87,11 @@ arcade/scores.py                 best-of-the-night persistence
 arcade/main.py                   CLI
 arcade/games/__init__.py         registry, menu order
 arcade/games/<name>.py           one file per game (section 8)
-tools/arcade_shot.py             headless run -> PNG contact sheet
+arcade/look.py                   render modes for previews: plain, led (round dots, gap, glow, gamma), distance
+tools/arcade_shot.py             headless run -> PNG contact sheet, any render mode
+tools/arcade_play.py             step-verb REPL for agents: step N <actor>, state, shot
 tools/fetch_models.py            downloads the MediaPipe model file (gitignored)
+.claude/skills/                  project skills: arcade-verify, wall-look, arcade-game-authoring
 tests/arcade/                    one test module per module and per game, helpers, conftest
 ```
 
@@ -100,6 +103,13 @@ tests/arcade/                    one test module per module and per game, helper
 - `pi` extra: picamera2.
 - Tests need none of the hardware extras. Modules that import mediapipe or picamera2 do so
   inside the source class, never at package import time.
+
+Agent tooling, installed on the dev machine, not code dependencies: the MediaPipe skill from
+`damionrashford/media-os`; `game-feel`, `procedural-gen` and `performance-optimization` from
+`gamedev-skills/awesome-gamedev-agent-skills`; `pixel-art-sprites` from
+`absolutelyskilled/absolutelyskilled`; and the official `skill-creator` and `pyright-lsp`
+plugins. Not `pygame-core`, which teaches variable timestep and sprite groups this project does
+not use.
 
 ### 4.3 Config
 
@@ -117,6 +127,8 @@ tests/arcade/                    one test module per module and per game, helper
 | `scenario` | `""` | scenario file for the replay sources |
 | `mirror` | true | flip x so the player's right is screen right |
 | `brightness` | 0.4 | cap applied before push, never exceeded by a game |
+| `gamma` | 2.2 | curve the previews model; set to 1.0 if the card applies gamma itself |
+| `look` | `led` | preview render mode: `plain`, `led`, `distance` |
 | `dwell_seconds` | 1.0 | menu hover time to select |
 | `idle_seconds` | 60 | no presence before attract |
 | `exit_seconds` | 1.5 | both wrists above head to leave a game |
@@ -219,7 +231,13 @@ class Game(Protocol):
     def update(self, sensed: Sensed, dt: float) -> None: ...
     def draw(self, canvas: Canvas) -> None: ...
     def done(self) -> bool: ...
+    def debug_state(self) -> dict: ...
 ```
+
+`debug_state` returns a small flat dictionary of the game's own truth (for Frogger: lane,
+column, lives, crossings; for the menu: hovered tile, dwell fraction). Tests and the agent
+tools assert on it before they look at pixels. Keys are stable per game and listed in the
+game's docstring.
 
 A fresh instance per launch. Games hold no state across plays except through `scores.py`.
 Games never touch the display, the config, or the frame array directly.
@@ -303,9 +321,21 @@ entries, which with the title tile fills the twelve-tile menu exactly. No paging
   raise nothing and produce at least one non-black frame.
 - **Budget**: every game's `update` plus `draw` averages under 8 ms per tick at 64 by 64 on the
   dev machine, measured over 300 ticks, marked as a `perf` test.
-- **Contact sheets**: `tools/arcade_shot.py --game frogger --actors "walk(0.1,0.9,3);raise_hand(2,0.5)" --ticks 90 --every 10 --out shots/frogger.png`
-  writes a labeled grid of frames upscaled by nearest-neighbor. Agents read the PNG to judge the
-  look. Also accepts `--scenario file.jsonl` and `--size 128x32`.
+- **State first, pixels second**: every game test asserts on `debug_state()` for behaviour
+  and on pixels only for what state cannot express (a trail fading, a tile ring filling).
+- **Contact sheets**: `tools/arcade_shot.py --game frogger --actors "walk(0.1,0.9,3);raise_hand(2,0.5)" --ticks 90 --every 10 --look led --out shots/frogger.png`
+  writes a labeled grid of frames. Agents read the PNG to judge the look. Also accepts
+  `--scenario file.jsonl`, `--size 128x32`, and `--look plain|led|distance`.
+- **Render modes** (`arcade/look.py`), shared by the SDL preview and the contact sheets:
+  `plain` is nearest-neighbour upscale; `led` draws each pixel as a round dot on black with a
+  gap and a soft halo, after the configured gamma curve, so a preview looks like a P5 module
+  and not a bitmap; `distance` applies the gamma, blurs and downsamples to what the wall
+  resolves from about 15 feet, for legibility checks. Where gamma is really applied, on the
+  card or in the DDP sender, is measured in prototype week and the config default follows it.
+- **Agent REPL**: `tools/arcade_play.py --game frogger` reads verbs on stdin: `step N <actor>`
+  holds an actor for N ticks, `state` prints `debug_state()`, `shot path.png` writes the
+  current frame, `reset`. One verb per line, deterministic, no window. This is how an agent
+  probes a game interactively rather than only through canned scenarios.
 - **Live smoke** (manual): `python -m arcade --backend sdl --camera mediapipe` on the Mac, one
   minute per game. On the Pi: `--backend ddp --camera imx500`.
 - **Foundation tests**: the daemon plan's tests for Tasks 1, 2, 5 and DDP run unchanged.
@@ -319,7 +349,22 @@ entries, which with the title tile fills the twelve-tile menu exactly. No paging
 - Display push fails (DDP socket error): logged, retried next tick, never raised into a game.
 - Brightness cap in config is the hard ceiling; a game cannot raise it.
 
-## 11. Open items
+## 11. Project skills
+
+Written with the official `skill-creator` plugin after the foundation tasks and the first two
+games exist, so they describe real commands and real files. They live in `.claude/skills/` and
+are committed.
+
+- **arcade-verify**: how to run a scenario, produce a contact sheet, use the REPL, and a
+  per-game checklist of what a correct run looks like. Each check names one specific behaviour;
+  the skill never asks the agent to "find bugs".
+- **wall-look**: what a 64 by 32 P5 module can show. Minimum feature sizes (two-pixel lines
+  for anything that must read at distance), no thin dark greys, the gamma curve, the 5 by 7
+  font, colour choices that survive the brightness cap, and how to use the `distance` mode.
+- **arcade-game-authoring**: the Game protocol, `debug_state` conventions, actor recipes, the
+  test template, and the registry, so a new game is one file plus one test.
+
+## 12. Open items
 
 - The exact MediaPipe landmark to COCO index map and the IMX500 model choice (PoseNet versus
   HigherHRNet) are decided during implementation and recorded in `arcade/sources/README.md`.
