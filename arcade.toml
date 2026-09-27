@@ -1,0 +1,36 @@
+# Flat config. Every key is a field of arcade.config.ArcadeConfig, shown with its default (spec 4.3).
+# Calibration results live in data_dir/calibration.json, not here.
+width = 128              # 128x32 side by side (default), 64x64 stacked
+height = 32
+backend = "sdl"          # sdl | fake | colorlight | ddp
+sdl_scale = 8
+iface = "eth0"           # wired interface for the colorlight backend
+ddp_host = "127.0.0.1"   # Falcon Player, if that path is ever used
+ddp_port = 4048
+camera = "mediapipe"     # mediapipe | imx500 | replay | none
+camera_index = 0
+camera_fps = 10
+audio = "sounddevice"    # sounddevice | replay | none
+audio_device = ""        # input device matched by name; empty means default
+scenario = ""            # scenario file for the replay sources
+mirror = true
+brightness = 0.4         # hard ceiling: the card's brightness packet on colorlight, modelled by previews
+apl_cap_day = 0.12
+apl_cap_night = 0.06
+night_start = "01:00"
+night_end = "06:00"
+night_lux = 5.0
+gamma = 2.2              # what the previews and the governor model; 1.0 if the card applies gamma
+look = "led"             # plain | led | distance
+dwell_seconds = 1.2
+present_on_seconds = 1.0
+present_off_seconds = 3.0
+player_lost_seconds = 0.5
+leave_seconds = 8.0
+inactive_seconds = 30.0
+max_session_seconds = 180.0
+exit_seconds = 3.0
+allow_record = false     # must be true on colorlight before `arcade record` runs
+data_dir = "data"
+font_path = "fonts/5x7.bin"
+fps = 30
