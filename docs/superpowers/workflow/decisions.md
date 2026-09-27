@@ -64,5 +64,5 @@ status: answered
 asked: it2
 default: apply R2-B1 and R2-N1 to N4 as the reviewer specified, confirm-only third review round, then implement
 deadline: it2
-answer:
-status: open
+answer: "Apply fix, confirm." The plan writer applies R2-B1 and R2-N1 to N4 exactly as the reviewer specified; the reviewer does a confirm-only third round; then commit and implement. The step 2a rule (gate after two blocked rounds) stays as is. (2026-09-27)
+status: answered
