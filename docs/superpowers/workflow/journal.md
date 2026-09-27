@@ -15,3 +15,17 @@
 - Status: done
 
 Owner intervention, 2026-09-27, during iteration 2's plan phase: the owner asked whether iteration plans get adversarial reviews (they did not; iteration 1's 12 plan defects surfaced only after implementation) and approved adding one (decisions.md Q6, operator design step 2a, config "Plan review: required"). Applies from iteration 2's plan.
+
+## Iteration 2 — 2026-09-27
+- Plan: docs/superpowers/plans/2026-09-27-it02-carried-sensed-actors.md
+- Shipped: carried fixes C1-C3, C5-C9 (Colorlight safe start and 0.1 s brightness resend, NaN fails dark, uint8/shape checks, clear iface errors, config range checks, per-key calibration validation, anchored ignores, doctor fixes); core Task 3 Sensed with raise line, reach box, place() and mirroring; core Task 4 actors, poses, degrade, REAL_NOISE, festival scenes. 6 commits 26f684f..3017693.
+- Plan review (new step 2a, owner decision Q6): BLOCKED round 1 on B1-B4 (brightness resend every 30 pushes on a false premise; NaN brightness drove the wall at full; degrade gave zero latency to streams not starting at t=0; one-shoulder centre jump moved zone_x by a door-third on 31% of noisy captures); BLOCKED round 2 on R2-B1 (single-hip residue of B4); gated as Q7, owner said apply the verified fix; APPROVED round 3 (confirm). All caught before any code was written.
+- Review: APPROVED after 1 round (0 blocking; plan defects carried)
+- Deploy: none (phase 1)
+- Verify: 6/6 applicable items passed (freshness: evidence sha 3017693 = HEAD). Evidence: docs/superpowers/workflow/evidence/it02/
+- Tests: 183 collected, 183 passed, 0 skipped (it01: 66/66/0); 5 removed test lines since 7697d01, none an assert
+- Verdict: the Sensed record and actors are in and deterministic; the wall path now fails dark on bad brightness input. No success criterion is scorable yet; none regressed.
+- Owner changes seen: `iterations-per-run` raised from 2 to 6 in config.md (uncommitted edit found during the plan phase, honoured, committed in 71c5762). Next check-in gate after iteration 6.
+- Operator tooling finding, still open: stop.py spent all six of this run's blocks on turns waiting for agents. Proposed fix unchanged (skip blocking and counting while state.md `in_flight` names an agent).
+- Carried forward: C12-C16 (see roadmap); C10 extended with the exit-hold grace finding.
+- Status: done

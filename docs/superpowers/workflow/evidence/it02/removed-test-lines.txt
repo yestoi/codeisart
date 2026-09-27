@@ -1,0 +1,5 @@
+-from arcade.main import doctor, main
+-from show.display.colorlight import (DST_MAC, SRC_MAC, ColorlightDisplay, brightness_packet,
+-                                     frame_packet, row_packets)
+-@pytest.mark.parametrize("width,height", [(128, 32), (64, 64), (512, 4)])
+-    def __init__(self, width, height, iface, sock=None):

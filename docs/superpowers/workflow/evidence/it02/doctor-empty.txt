@@ -1,0 +1,2 @@
+doctor: --require names no source; choose from camera, mic, pose
+exit 2
