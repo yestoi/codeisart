@@ -421,3 +421,66 @@ must pick it up when those plans are written.
 None for this plan. The two GATE B items from round 1 stand unchanged: whether the card honours brightness on this
 firmware, and every-frame resend with doubled packets on firmware 13 and later. R2-B1's fix is what keeps a later
 `REAL_NOISE` refit from becoming an owner decision.
+
+## Round 3 (confirm)
+
+Confirm-only pass on 2026-09-27, after the owner approved applying the R2-B1 fix (decisions.md Q7). I made a fresh
+scratch clone of HEAD `07c96b1` (`advrev/r3`) and applied the plan's code blocks from its text, task by task; the
+working tree is untouched apart from this file.
+
+### Verdict: APPROVED
+
+Every round-2 item is applied correctly. Both deviations from R2-N2 are right, and I found no regression.
+
+### What I ran
+
+- **Per-task replay.** Every count the plan states was observed:
+  - Task 1: collection error, then `4 failed, 8 passed`, then `41` and `85`.
+  - Task 2: `36 failed, 29 passed`, then `65` and `123`.
+  - Task 3: ImportError and `3 failed, 3 passed`, then `16` and `134`.
+  - Task 4: 2 collection errors, then `19` and `153`.
+  - Task 5: collection error, then `16` and `169`.
+  - Task 6: collection error, then `30` and `183`.
+  - Whole suite: `183 passed`, 0 skipped, 1.7 s.
+- **Round-2 against round-3 replay diff.** Only the files these items name changed: `arcade/sensed.py`,
+  `tests/arcade/test_sensed.py`, `tests/arcade/test_festival.py` and `tests/test_colorlight.py`.
+- **Mutations** (`advrev/mut4.py`). 19 of 19 are caught, including the one that survived round 2 ("no reset on
+  `set_brightness`") and two new ones: freezing the caller's array, and `None` not mapping to the empty grid.
+- **B4 regression mutations** (`advrev/mut3.py`). 4 of 4 are caught: the old centre, the round-2 order (a single hip
+  first), a half-way centre and a 75%-of-the-way centre.
+- **Still player at spec 6.4 noise.** 0.0% cursor outliers and 0.0% `zone_x` outliers, and still 0.0% at dropout
+  0.25.
+
+### Items
+
+- **R2-B1: applied as written.**
+  - `shoulder_mid` follows the order: both hips, else the nose, else one hip, else the shoulder. The docstring and
+    loop decision 2 match.
+  - `one_hip` gives `Keypoint(0.5, 0.4)`.
+  - The still-player test runs on the spec 6.4 literals, is renamed `..._under_spec_noise`, and allows at most 0.02
+    for both measures.
+  - Loop decision 11 and the Environment facts are updated.
+- **R2-N1: applied.** `test_set_brightness_restarts_the_resend_count` is the scenario I proposed, and it catches the
+  mutation.
+- **R2-N2: applied, and both deviations are accepted.**
+  - `motion=None` becomes the empty `(0, 0)` grid. That is correct: my suggested `np.asarray(None, bool)` gives a 0-d
+    `array(False)`, so the writer's version is the right one.
+  - `... .motion is given` became `with_motion(...) is held and np.shares_memory(held.motion, given)`. A record that
+    holds a read-only view can no longer satisfy `is given`. The new assert still pins "no copy, no resample" and
+    adds that `with_motion` returns the same record, so it is not weaker. The test is this plan's own and not
+    committed.
+  - `assert grid.flags.writeable` pins that the caller's array stays writeable.
+  - A non-bool input (for example uint8) is converted to a bool copy. That is harmless, and spec 5's motion is bool.
+- **R2-N3: applied.** Loop decisions run 1-11 in order.
+- **R2-N4: applied.** "Forwarded to later amendments" carries the cursor hysteresis (Tasks 8 and 9) and the
+  scenario `decode` empty-grid rule (Task 7). The roadmap carries C10 and C11 (`07c96b1`).
+
+### Blocking findings
+
+None.
+
+### Notes
+
+- **R3-N1 (cosmetic, optional).** The `Body.cursor` docstring (plan line 2167) still says "15 percent of captures
+  under REAL_NOISE", while loop decision 5 now says "at the spec 6.4 dropout". Align the wording if the file is
+  touched again; no test depends on it.
