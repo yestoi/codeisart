@@ -531,6 +531,15 @@ governor, Copy Me and Pong, session log, systemd unit and status file.
   once, opt-in three-door menu, end by leaving.
 - **2026-09-26, operator.** The operator design (`2026-09-26-arcade-operator-design.md`) is approved as
   written. Bootstrap follows spec revision 3.
+- **2026-09-26, hardware.** The arcade runs on its own Raspberry Pi 5 (ordered) with the spare Colorlight
+  5A-75E and its own power, and the show Pi 4 stays untouched. The arcade drives the card with the raw
+  Colorlight backend from the show daemon plan, not DDP through Falcon Player: 8,192 pixels is about six
+  Ethernet frames per tick, latency is one tick plus the wire, and the protocol's own brightness command
+  resolves item 6 of section 8 for the arcade. The Pi's wired port is dedicated to the card; SSH is over
+  Wi-Fi. The Pi 5's built-in real-time clock connector replaces the DS3231 item. Spec revision 3 changes
+  section 2 (hardware), section 3 (foundation: the Colorlight backend task instead of the DDP task, or
+  both), and the `backend` config default for the Pi; the operator's Gate B and `pi_perf` budget target
+  the Pi 5. Still pending: the cardioid mic and USB interface.
 
 ## 11. Checked and found OK
 
