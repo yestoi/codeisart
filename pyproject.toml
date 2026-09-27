@@ -1,0 +1,26 @@
+[project]
+name = "codeisart-show"
+version = "0.1.0"
+requires-python = ">=3.11"   # Mac: 3.12 from uv; Pi 5: its system Python
+dependencies = [
+    "pyte>=0.8.2,<0.9", "numpy>=1.26,<3", "pygame>=2.5,<3", "sdnotify>=0.3,<0.4",
+    "opencv-contrib-python>=4.9,<6",   # the only OpenCV: mediapipe requires the contrib build
+    "sounddevice>=0.4.6,<0.6", "Pillow>=10,<13",
+]
+
+[project.optional-dependencies]
+pi = ["gpiozero>=2.0,<3", "lgpio"]
+mac = ["mediapipe>=1.0,!=1.0.1,<2"]   # 1.0.1 aborts opening a PoseLandmarker on macOS arm64
+dev = ["pytest>=8,<10"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["show*", "arcade*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["perf: timing budget tests", "feel: feel budget tests", "hardware: needs a real device or model"]

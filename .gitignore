@@ -8,3 +8,8 @@ __pycache__/
 
 # arcade operator: per-run Stop-hook block counter (reset by the loop)
 docs/superpowers/workflow/.blocks
+
+# arcade: pose model, runtime data, contact sheets
+models/
+data/
+shots/
