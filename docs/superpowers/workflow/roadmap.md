@@ -26,3 +26,5 @@ From iteration 1's review (evidence/it01/reviewer-verdict.md). C1-C4 must land b
 - C7 (it01) `test_sdl_display_pushes_headless` asserts nothing; add asserts (tightening a plan-literal test is the loop's call).
 - C8 (it01) `row_packets` uses fixed 256-pixel chunks while `push` splits rows equally; make `row_packets` split equally and add width 384 to the reference test.
 - C9 (it01) Small tooling: anchor `.gitignore`'s `/models/`, `/data/`, `/shots/`; `arcade doctor --require ""` should exit 2; `probe_pose` should honour its timeout or document why not.
+- C10 (it02 plan review N5) The body cursor is stateless and flips hands when the raised wrist drops out (about 15% of noisy captures). The M3 runner and director (core Tasks 8 and 9) must give cursor consumers a grace period or hysteresis. Fold into the M3 iteration plan.
+- C11 (it02 plan review N11, spec gap) `Blob` has no id or velocity, which M3's presence and NEAR logic and Paint need. Resolve in the M3 plan: add them per the spec's intent, or raise a spec question if the intent is unclear.
