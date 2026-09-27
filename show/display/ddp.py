@@ -46,6 +46,8 @@ class DDPDisplay:
             log.info("DDP sends pixels unscaled; brightness %.2f is Falcon Player's setting", level)
 
     def push(self, frame: np.ndarray) -> None:
+        if frame.dtype != np.uint8 or frame.shape != (self.height, self.width, 3):
+            raise ValueError(f"frame {frame.shape} {frame.dtype} is not ({self.height}, {self.width}, 3) uint8")
         for packet in packets(np.ascontiguousarray(frame).tobytes(), self._seq):
             self.sock.sendto(packet, self.addr)
         self._seq = self._seq % 15 + 1

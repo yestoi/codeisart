@@ -35,8 +35,15 @@ def make_display(cfg: DisplayConfig, on_key: Callable[[int], None] | None = None
         from show.display.sdl import SDLDisplay
         return SDLDisplay(cfg.width, cfg.height, cfg.sdl_scale, on_key)
     if cfg.backend == "colorlight":
-        from show.display.colorlight import ColorlightDisplay
-        return ColorlightDisplay(cfg.width, cfg.height, getattr(cfg, "iface", None) or cfg.colorlight_iface)
+        from show.display.colorlight import SAFE_BRIGHTNESS, ColorlightDisplay
+        iface = getattr(cfg, "iface", None) or getattr(cfg, "colorlight_iface", None)
+        if not iface:
+            raise ValueError("the colorlight backend needs a wired interface: set iface in arcade.toml "
+                             "(colorlight_iface in show.toml)")
+        # Start at the configured level (the daemon's capped one), so the wall is never brighter than
+        # asked for before the first set_brightness.
+        start = getattr(cfg, "effective_brightness", getattr(cfg, "brightness", SAFE_BRIGHTNESS))
+        return ColorlightDisplay(cfg.width, cfg.height, iface, brightness=start)
     if cfg.backend == "ddp":
         from show.display.ddp import DDPDisplay
         return DDPDisplay(cfg.width, cfg.height, cfg.ddp_host, cfg.ddp_port)

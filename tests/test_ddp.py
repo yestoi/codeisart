@@ -2,6 +2,7 @@ import logging
 import struct
 
 import numpy as np
+import pytest
 
 from show.config import Config
 from show.display import make_display
@@ -44,6 +45,17 @@ def test_push_does_not_scale_and_cycles_sequence():
         d.push(frame)
         seqs.append(sock.sent[-1][0][1])
     assert seqs[0] == 2 and 15 in seqs and 0 not in seqs and seqs[-1] == 2
+
+
+@pytest.mark.parametrize("frame", [np.zeros((1, 4, 3)), np.full((1, 4, 3), 300, np.int64),
+                                   np.zeros((2, 8, 3), np.uint8), np.zeros((1, 4), np.uint8)],
+                         ids=["float64", "int64", "wrong-size", "grey"])
+def test_push_rejects_a_frame_that_is_not_uint8_rgb(frame):
+    sock = FakeSocket()
+    d = DDPDisplay(4, 1, "10.0.0.2", 4048, sock=sock)
+    with pytest.raises(ValueError, match="frame"):
+        d.push(frame)
+    assert sock.sent == []
 
 
 def test_make_display_ddp():
