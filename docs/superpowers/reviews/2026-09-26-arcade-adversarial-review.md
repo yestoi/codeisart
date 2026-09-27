@@ -523,6 +523,14 @@ governor, Copy Me and Pong, session log, systemd unit and status file.
   run-and-legible constraint applies on the rest; the owner's live smoke covers both layouts. A game
   designed for both is the goal where it costs little (Copy Me single-player on 64x64, head-to-head on
   128x32), never a requirement.
+- **2026-09-26, games.** The section 7 verdicts are accepted: cut frogger; life and beat move to the
+  attract catalog; jump and scream merge into Strongman; flappy becomes arm flapping; puppet becomes the
+  attract's mirror layer; holewall is the hero as Copy Me; pong and paint stay with their fixes. The
+  additions Quick Draw, Dodge, Tug, Flap, Swat and Freeze are accepted, in the ship order of section 7.
+- **2026-09-26, walk-up flow.** Blocker 4's flow replaces spec 7.3: mirror, hand-up pictogram, play at
+  once, opt-in three-door menu, end by leaving.
+- **2026-09-26, operator.** The operator design (`2026-09-26-arcade-operator-design.md`) is approved as
+  written. Bootstrap follows spec revision 3.
 
 ## 11. Checked and found OK
 
