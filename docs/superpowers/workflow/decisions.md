@@ -66,3 +66,17 @@ default: apply R2-B1 and R2-N1 to N4 as the reviewer specified, confirm-only thi
 deadline: it2
 answer: "Apply fix, confirm." The plan writer applies R2-B1 and R2-N1 to N4 exactly as the reviewer specified; the reviewer does a confirm-only third round; then commit and implement. The step 2a rule (gate after two blocked rounds) stays as is. (2026-09-27)
 status: answered
+
+### Q8: Should Blob gain an id and velocity (carried fix C11, a spec gap)?
+asked: it3
+default: yes, `Blob.id = -1` (untracked) plus `vx`, `vy`, set by the blob source when core Task 15 is planned; nothing before then needs them
+deadline: the iteration that plans core Task 15 (M5)
+answer: "Yes, at Task 15." Add `Blob.id` (-1 = untracked), `vx`, `vy`; the blob source sets them when core Task 15 is planned. (2026-09-27)
+status: answered
+
+### Q9: shake() silently falls back to the default calibration, and committed test_festival.py:180 pins that. Change the test to expect ValueError (as degrade now does)?
+asked: it3
+default: yes, change it in the next iteration that touches actors; the change makes a silent wrong-zone result an error
+deadline: it4
+answer: "Yes, raise." shake raises ValueError like degrade; test_festival.py:180 changes to pytest.raises(ValueError). Applied in iteration 3, which already touches actors. (2026-09-27)
+status: answered
