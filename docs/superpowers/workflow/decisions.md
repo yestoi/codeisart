@@ -59,3 +59,10 @@ default: none (owner asked)
 deadline: it2
 answer: Yes. "Lets make that happen to ensure quality as we go along." One opus plan reviewer between Plan and Implement, blocking findings back to the plan writer, re-review once, gate after two blocked rounds (operator design step 2a). Applies from iteration 2's plan onward. (2026-09-27)
 status: answered
+
+### Q7: The it02 plan review is blocked after two rounds on one finding with a verified fix (R2-B1). Apply it and continue?
+asked: it2
+default: apply R2-B1 and R2-N1 to N4 as the reviewer specified, confirm-only third review round, then implement
+deadline: it2
+answer:
+status: open

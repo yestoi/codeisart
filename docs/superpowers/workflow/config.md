@@ -8,7 +8,7 @@
 - Freshness check: every PNG in evidence/itNN/ carries the git sha in its header and it must equal HEAD. Before M4, the evidence README records HEAD by hand (`git rev-parse --short HEAD`). A mismatch is a tooling defect, fixed before anything is judged.
 - Gates: gate-deploys: false, gate-iteration-plans: false
 - Plan review: required. Every iteration plan gets an adversarial opus review before it is committed (operator design step 2a, decision Q6); verdict in evidence/itNN/plan-review.md.
-- iterations-per-run: 2
+- iterations-per-run: 6
   (first run; raise after it proves out. Keep it below 8, Claude Code's consecutive Stop-hook block cap, so the loop's own gate fires first. The Stop hook reads this line.)
 
 ## Verify checklist
