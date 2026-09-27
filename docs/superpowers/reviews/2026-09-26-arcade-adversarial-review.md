@@ -511,6 +511,19 @@ governor, Copy Me and Pong, session log, systemd unit and status file.
   presence and player fields, flash governor, timestamps, budget, seeds, sheet provenance,
   counterfactual test, `MENU_ORDER`, munkres) before the operator starts.
 
+## 10a. Owner decisions so far
+
+- **2026-09-26, layouts.** 128x32 is the design layout, chosen for two-player side-by-side play. 64x64 is
+  not a mere constraint: the two panels will often sit stacked on a bar where a 128x32 banner takes too
+  much room, so 64x64 is a first-class configuration for single-player games and for visuals that suit a
+  square. Consequences for spec revision 3: `GameInfo` declares which layouts a game is designed for
+  (`layouts: frozenset[str]`, both by default); the menu and the attract director show only entries
+  designed for the current layout; per-layout tuning tables where a game needs them (lane counts, paddle
+  travel, figure scale); feel budgets apply in full on every layout a game declares and the
+  run-and-legible constraint applies on the rest; the owner's live smoke covers both layouts. A game
+  designed for both is the goal where it costs little (Copy Me single-player on 64x64, head-to-head on
+  128x32), never a requirement.
+
 ## 11. Checked and found OK
 
 - Fixed 30 Hz tick with clamped `dt`, injected clock and injected rng; the counterfactual test depends
