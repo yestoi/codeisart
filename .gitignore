@@ -5,3 +5,6 @@ __pycache__/
 *.swp
 *.swo
 .DS_Store
+
+# arcade operator: per-run Stop-hook block counter (reset by the loop)
+docs/superpowers/workflow/.blocks
