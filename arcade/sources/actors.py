@@ -1,7 +1,9 @@
 """Scripted synthetic input for tests and tools (spec 6.4). Deterministic: no randomness, no wall clock."""
 from __future__ import annotations
 
+import dataclasses
 import math
+import zlib
 from typing import Callable, Iterable, Iterator
 
 import numpy as np
@@ -272,3 +274,121 @@ def scene(persons: Iterable[Person] = (), blobs: Iterable[BlobScript] = (), moti
                 grid |= cells
         yield Sensed(t=t, camera_t=t, camera_fresh=True, camera_seq=i + 1, bodies=tuple(bodies),
                      blobs=lights, motion=grid, audio=audio(t))
+
+
+# Festival scenes (spec 6.4, 9.3): what a burn puts in front of the camera and microphone.
+
+def crowd(n: int, start: float = 0.0) -> list[Person]:
+    """n small people behind the player: 0.3 tall, so under the zone's min_height, drifting and waving."""
+    people = []
+    for i in range(n):
+        x = (i + 0.5) / n
+        p = Person(x, y=0.35, height=0.3, id=100 + i)
+        p.walk(min(1.0, x + 0.04), 3.0, at=start + 0.4 * i).walk(x, 3.0)
+        p.raise_hand(at=start + 1.0 + 0.7 * i, seconds=0.8, hand="left" if i % 2 else "right")
+        people.append(p)
+    return people
+
+
+def headlamps(period: float = 20.0, cross_seconds: float = 6.0) -> tuple[BlobScript, BlobScript]:
+    """A headlamp parked at the top left, and one crossing the top of the frame every period seconds.
+
+    Both stay above the default zone (y under 0.2), so games never see them."""
+    parked = lambda t: Blob(0.05, 0.15, 0.02, (255, 244, 214))
+
+    def crossing(t: float) -> Blob | None:
+        u = (t % period) / cross_seconds
+        return Blob(-0.05 + 1.1 * u, 0.1, 0.02, (255, 250, 235)) if u < 1.0 else None
+    return parked, crossing
+
+
+def camp_kick(bpm: float = 125.0, start: float = 0.0) -> AudioScript:
+    """A neighbouring camp's kick drum: broadband onsets on the beat, no claps, voice at the floor."""
+    beat = tempo(bpm, start)
+
+    def script(t: float) -> Audio:
+        hit = beat(t).beat
+        level = 0.7 if hit else 0.45
+        return Audio(level=level, level_smooth=0.55, peak=0.95 if hit else 0.5, voice_db=-42.0,
+                     floor_db=-42.0, voice=0.0, clap=False, onset=hit, beat=hit, bpm=bpm)
+    return script
+
+
+def wind(gust_every: float = 2.7) -> AudioScript:
+    """Wind on the microphone: a slow swell with an onset at each gust peak, never a clap or a voice."""
+    def script(t: float) -> Audio:
+        level = 0.3 + 0.2 * math.sin(2 * math.pi * t / 7.0) ** 2
+        gust = _fires(t, gust_every * math.floor(t / gust_every + 1e-9))
+        return Audio(level=level, level_smooth=level, peak=min(1.0, level + (0.3 if gust else 0.05)),
+                     voice_db=-58.0, floor_db=-60.0, voice=2.0 / 30, onset=gust)
+    return script
+
+
+def _unit(tag: str, tick: int, body_id: int, joint: int) -> float:
+    """A fixed pseudo-random number in [0, 1) for this tag, tick, body and joint (never hash() or random)."""
+    return zlib.crc32(f"{tag}:{tick}:{body_id}:{joint}".encode()) / 2**32
+
+
+def _noisy(body: Body, tick: int, tag: str, dropout: float, jitter: float) -> Body:
+    pts = []
+    for j, k in enumerate(body.keypoints):
+        x = k.x + (2 * _unit(tag + "x", tick, body.id, j) - 1) * jitter
+        y = k.y + (2 * _unit(tag + "y", tick, body.id, j) - 1) * jitter
+        conf = 0.0 if _unit(tag + "drop", tick, body.id, j) < dropout else k.conf
+        pts.append(Keypoint(x, y, conf))
+    return dataclasses.replace(body, keypoints=tuple(pts))
+
+
+def shake(start: float, seconds: float, jitter: float = 0.03,
+          calibration: Calibration | None = None) -> Callable[[Iterable[Sensed]], Iterator[Sensed]]:
+    """What the gated camera source yields while the wall or pole shakes: an empty motion grid and
+    keypoints jittered by up to 0.03, during [start, start + seconds). Wraps a scene; pass the
+    scene's calibration so jittered bodies are placed against the same zone."""
+    def wrap(frames: Iterable[Sensed]) -> Iterator[Sensed]:
+        cal = calibration or Calibration()
+        for i, s in enumerate(frames):
+            if start - 1e-9 <= s.t < start + seconds - 1e-9:
+                bodies = tuple(place(_noisy(b, i, "shake", 0.0, jitter), cal) for b in s.bodies)
+                s = dataclasses.replace(s, bodies=bodies, motion=np.zeros((0, 0), bool))
+            yield s
+    return wrap
+
+
+def degrade(frames: Iterable[Sensed], fps: float = 10, latency: float = 0.15, keypoint_dropout: float = 0.15,
+            jitter: float = 0.01, calibration: Calibration | None = None) -> Iterator[Sensed]:
+    """Perfect 30 Hz input turned into what the Pi camera gives (spec 6.4).
+
+    The camera captures at fps; capture k is taken at k / fps from the scene's frame at or before that
+    time and becomes visible latency seconds later, then holds until the next one. Each keypoint of a
+    capture is dropped (confidence 0) with probability keypoint_dropout and moved by up to jitter,
+    keyed by zlib.crc32 of (tick, body id, joint). Audio and t stay on the current tick.
+    """
+    if not fps > 0 or not latency >= 0 or not 0 <= keypoint_dropout <= 1 or not jitter >= 0:
+        raise ValueError(f"degrade needs fps > 0, latency >= 0, dropout in [0, 1], jitter >= 0; got "
+                         f"{fps}, {latency}, {keypoint_dropout}, {jitter}")
+    cal = calibration or Calibration()
+    seen: dict[int, Sensed] = {}             # scene frames not yet captured, by tick
+    held: tuple[int, Sensed] | None = None
+    for i, s in enumerate(frames):
+        if abs(s.t - i * TICK) > 1e-6:   # a sliced or offset stream would silently lose its latency
+            raise ValueError(f"degrade needs a 30 Hz scene that starts at t=0; frame {i} has t={s.t}")
+        seen[i] = s
+        k = math.floor((s.t - latency) * fps + 1e-9)
+        if k < 0:
+            yield dataclasses.replace(s, camera_t=0.0, camera_fresh=False, camera_seq=0, bodies=(), blobs=(),
+                                      motion=np.zeros((0, 0), bool))
+            continue
+        fresh = held is None or held[0] != k
+        if fresh:
+            src = min(math.floor(k / fps / TICK + 1e-9), i)
+            shot = seen[src]
+            for old in [j for j in seen if j < src]:
+                del seen[old]
+            bodies = tuple(place(_noisy(b, src, "degrade", keypoint_dropout, jitter), cal) for b in shot.bodies)
+            held = (k, dataclasses.replace(shot, bodies=bodies))
+        shot = held[1]
+        yield dataclasses.replace(s, camera_t=shot.t, camera_fresh=fresh, camera_seq=k + 1, bodies=shot.bodies,
+                                  blobs=shot.blobs, motion=shot.motion)
+
+
+REAL_NOISE = {"fps": 10, "latency": 0.15, "keypoint_dropout": 0.15, "jitter": 0.01}   # refit from the real fixtures (spec 9.5)
