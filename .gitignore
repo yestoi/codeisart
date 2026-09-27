@@ -13,3 +13,9 @@ docs/superpowers/workflow/.blocks
 models/
 data/
 shots/
+
+# show daemon: entry build products stay local; sources, entry.toml and fallback casts are tracked
+entries/*/*
+!entries/*/*.c
+!entries/*/entry.toml
+!entries/*/fallback.cast
