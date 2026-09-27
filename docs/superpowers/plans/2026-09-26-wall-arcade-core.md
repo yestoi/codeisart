@@ -755,6 +755,15 @@ Owner-verified:
 - The second plan (nine games, nine more attract modes, project skills) can be written against the real `Game`,
   actors, director and tools.
 
+- **Task 24, service, status and thermal (new, Pi phase, GATE B).** Interface level only, from spec 10: a systemd
+  unit (`Restart=always`, `StartLimitIntervalSec=0`, `WatchdogSec=10` pinged only while ticks advance and a push
+  succeeded in the last 5 s, `AmbientCapabilities=CAP_NET_RAW`, `ProtectSystem=strict` with `ReadWritePaths=` for
+  `data_dir`), a dusk restart timer, `/run/arcade/status.json` every 10 s with the fields spec 10 lists, SoC
+  temperature and `vcgencmd get_throttled` polling with the 15 fps and static-frame thresholds, the GPIO3 shutdown
+  overlay, and the read-only root notes. Tests: the status writer runs against a fake clock and produces the schema;
+  the thermal policy is a pure function tested at 70, 76 and 83 degrees; the unit file is validated with
+  `systemd-analyze verify` on the Pi. Not runnable on the Mac beyond the pure functions.
+
 ## Review Focus
 
 1. A pose model returns a keypoint outside 0..1 or NaN. `Body` must clamp coordinates and set that keypoint's confidence to 0, never raise or draw off-canvas. Test in Task 3.

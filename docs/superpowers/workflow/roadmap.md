@@ -4,7 +4,7 @@
 Source documents: the arcade spec as amended by spec revision 3, the core plan with its amendments, and docs/superpowers/reviews/2026-09-26-arcade-adversarial-review.md (sections 6, 7, 10a).
 
 ## Milestones
-- [ ] M0 (owner, before launch): spec revision 3 and plan amendments from the review; pre-flight checklist (operator design section 10). The main session checks this box when spec revision 3 lands.
+- [x] M0 (owner, before launch): spec revision 3 (44d860a) and plan amendments (0c0bd8e) landed 2026-09-26; pre-flight checklist (operator design section 10) is the owner's remaining part.
 - [ ] M1: Task 0 environment spike (uv, Python 3.12, pins, one OpenCV, `doctor`); foundation Tasks 1 and 2 as renumbered by spec revision 3 (the raw Colorlight backend task per the hardware decision).
 - [ ] M2: Sensed with timestamps, velocity, `player`, `present`, zone; actors with `degrade` and festival scenes; canvas with text scale; look with the metre-aware `distance`.
 - [ ] M3: game protocol with `SCENARIOS`, `_xy`, `MENU_ORDER`, and `GameInfo.layouts`; runner with session rules, flash governor, brightness limiter; attract director with four modes and the mirror.
@@ -13,7 +13,7 @@ Source documents: the arcade spec as amended by spec revision 3, the core plan w
 - [ ] GATE A (human): record the real-input fixture set, first live smoke on both layouts (live-smoke.md), confirm dwell and presence thresholds, approve game order for the second plan.
 - [ ] M6: project skills (`arcade-verify`, `wall-look`, `arcade-game-authoring`) and the vendored `cv-mediapipe` and `game-feel` skills.
 - [ ] M7: second plan, games in the approved order (default: Copy Me, Pong, Quick Draw, Dodge, Tug, Flap, Swat, Strongman, Freeze), two per iteration; an iteration's evidence is a gate only when a keep-or-cut question arises.
-- [ ] GATE B (human): Pi 5 in hand; Pi config, `pi_perf` budget on the Pi 5, IMX500 source with munkres and scipy, systemd unit, status file.
+- [ ] GATE B (human): Pi 5 in hand; Pi config, `pi_perf` budget on the Pi 5, IMX500 source with munkres and scipy, plan Task 24 (systemd unit, status file, thermal policy).
 
 ## Carried fixes
 (none)

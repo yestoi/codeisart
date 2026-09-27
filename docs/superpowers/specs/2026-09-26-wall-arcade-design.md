@@ -328,8 +328,10 @@ with `REAL_NOISE` constants fitted from the real fixtures. Deterministic: no ran
 
 - No camera frame or audio sample leaves its source thread. Nothing is written, logged or sent except
   Sensed records, scores, the sessions log and the status file. A test fails if `arcade/` references
-  `imwrite`, `imencode`, `np.save`, `Image.save`, `VideoWriter` or `wave`, and another asserts a
-  scenario line holds no field outside the Sensed schema.
+  `imwrite`, `imencode`, `np.save`, `Image.save`, `VideoWriter` or `wave`, with one exemption:
+  `arcade/sources/record.py`, the only module allowed to write raw frames and audio, and only under
+  `--raw` with consent (below). Another test asserts a scenario line holds no field outside the Sensed
+  schema.
 - No preview or stream server is ever started on the Pi.
 - `arcade record` requires `--i-have-consent`, and on the `colorlight` backend `allow_record = true`.
   The wall shows 3, 2, 1, then a red REC glyph and a seconds counter for the whole recording. Event
@@ -386,7 +388,8 @@ class Game(Protocol):
 ```
 
 `debug_state` returns a small flat dictionary of the game's own truth. Conventions: a `phase` key
-(`intro`, `play`, `over`, `card`), a `score` key when the game has one, an `active` boolean that is true
+whose values are declared in a `PHASES` class attribute (default `("play",)`; typically `intro`,
+`play`, `over`, `card`) so the soak can assert every phase is reached, a `score` key when the game has one, an `active` boolean that is true
 on any tick the game received meaningful input, and keys ending in `_xy` holding wall pixel coordinates
 of a visible entity, which a generic test checks are lit. Keys are stable per game and listed in the
 game's docstring. Games must not use the runner's keys (`game`, `t`, `idle`, `attract`, `hidden`,
@@ -696,7 +699,7 @@ game cannot take down the arcade. Adding a game never edits the registry.
 - Display push fails: logged once per minute, retried next tick, never raised into a game. After 10 s
   of failures the process keeps ticking and the status file says so.
 - The flash governor and brightness limiter are the hard ceilings; no game or mode can bypass them.
-- **Service.** A systemd unit with `Restart=always`, `StartLimitIntervalSec=0`, `WatchdogSec=10`
+- **Service** (Pi phase, plan Task 24, part of GATE B). A systemd unit with `Restart=always`, `StartLimitIntervalSec=0`, `WatchdogSec=10`
   (pinged only while ticks advance and a push succeeded in the last 5 s), `AmbientCapabilities=CAP_NET_RAW`,
   `ProtectSystem=strict` with `ReadWritePaths=` for `data_dir`. A dusk restart timer clears hidden games
   and starts the night's scores. Read-only root overlay, journald `Storage=volatile`, `data_dir` on its
