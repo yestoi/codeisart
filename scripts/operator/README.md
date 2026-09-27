@@ -19,6 +19,7 @@ Every other Claude session in this repo is unaffected. Never put `OPERATOR=1` in
 | `reinject.py` | `SessionStart` (compact; startup and resume with `--fresh`) | Prints the re-entry banner, `state.md`, the last journal entry, the open question in `decisions.md`, `gate.md` if present, and "invoke the workflow-loop skill". `--fresh` adds the list of state files. |
 | `stop.py` | `Stop` | Refuses to let the session stop while the roadmap has an unchecked `- [ ] M` milestone and no gate is open. Allows the stop on `gate.md`, `STOP`, a finished roadmap, `stop_hook_active` while `phase: gated`, or when the per-run counter in `workflow/.blocks` reaches `iterations-per-run` from `config.md`. |
 | `guard_bash.py` | `PreToolUse` (Bash) | Blocks (exit 2) `git push` and `gh pr create` unless `workflow/push-allowed` exists; `git reset --hard`, `git checkout .`, `git checkout -- .`, `git restore .`, `git clean`, `git branch -D`; recursive `rm` outside `/private/tmp/`, `/tmp/` or a `.venv`; any write to `tests/arcade/fixtures/real/`. |
+| `guard_write.py` | `PreToolUse` (Write, Edit, MultiEdit, NotebookEdit) | Blocks (exit 2) any file-tool write under `tests/arcade/fixtures/real/`, closing the gap `guard_bash.py` cannot cover. |
 | `_common.py` | none | Shared guard and file parsing. |
 
 Tests: `bash scripts/operator/test_hooks.sh` (standard library only, runs in a temp dir).

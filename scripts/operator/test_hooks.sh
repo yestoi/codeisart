@@ -243,6 +243,16 @@ touch "$WF/push-allowed"
 expect_allow 'git push origin main'
 expect_block 'git reset --hard HEAD~1'
 
+echo "# guard_write.py"
+setup
+write_json() { python3 -c 'import json,sys; print(json.dumps({"session_id":"s","transcript_path":"/x","cwd":".","hook_event_name":"PreToolUse","tool_name":sys.argv[1],"tool_input":{"file_path":sys.argv[2]}}))' "$1" "$2"; }
+run 1 guard_write.py "$(write_json Write tests/arcade/fixtures/real/empty-room.jsonl.gz)"; check "write guard blocks Write to fixtures/real" '[ $RC -eq 2 ] && [ -n "$ERR" ]' "rc=$RC err=$ERR"
+run 1 guard_write.py "$(write_json Edit "$ROOT/tests/arcade/fixtures/real/x.jsonl.gz")"; check "write guard blocks absolute Edit to fixtures/real" '[ $RC -eq 2 ]' "rc=$RC"
+run 1 guard_write.py "$(write_json Write tests/arcade/fixtures/realish/x.txt)"; check "write guard allows a sibling dir" '[ $RC -eq 0 ] && [ -z "$ERR" ]' "rc=$RC err=$ERR"
+run 1 guard_write.py "$(write_json Write arcade/games/pong.py)"; check "write guard allows game files" '[ $RC -eq 0 ] && [ -z "$ERR" ]' "rc=$RC err=$ERR"
+run 1 guard_write.py "$(bash_json 'rm -rf tests/arcade/fixtures/real')"; check "write guard ignores Bash" '[ $RC -eq 0 ] && [ -z "$ERR" ]' "rc=$RC"
+run "" guard_write.py "$(write_json Write tests/arcade/fixtures/real/x)"; check "write guard inert without OPERATOR" '[ $RC -eq 0 ] && [ -z "$ERR" ]'
+
 echo
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" -eq 0 ]
