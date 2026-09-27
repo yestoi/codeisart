@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable, TextIO
@@ -14,6 +15,8 @@ Probe = Callable[[float], tuple[bool, str]]
 
 
 def probe_camera(timeout: float, index: int = 0) -> tuple[bool, str]:
+    """Runs on the calling thread, unlike probe_pose: macOS asks for camera access only from the
+    main thread. The deadline is checked between reads, so one blocking read can overrun it."""
     import cv2  # inside the probe, so importing arcade.main never loads OpenCV
 
     cap, frames, deadline = cv2.VideoCapture(index), 0, time.monotonic() + timeout
@@ -48,10 +51,37 @@ def probe_mic(timeout: float, device: str = "") -> tuple[bool, str]:
     return False, f"{device or 'default input'}: {why}"
 
 
+def within(timeout: float, what: str, fn: Callable[[], tuple[bool, str]]) -> tuple[bool, str]:
+    """fn's result if it finishes within timeout, else unavailable. fn runs in a daemon thread,
+    which cannot be killed: a hung fn keeps running until the process exits, which for the
+    doctor is right away. An exception in fn is raised here, so the doctor reports it."""
+    box: dict = {}
+
+    def target():
+        try:
+            box["result"] = fn()
+        except BaseException as e:
+            box["error"] = e
+
+    worker = threading.Thread(target=target, name=f"doctor-{what}", daemon=True)
+    worker.start()
+    worker.join(timeout)
+    if worker.is_alive():
+        return False, f"{what} did not finish within {timeout:g} s"
+    if "error" in box:
+        raise box["error"]
+    return box["result"]
+
+
 def probe_pose(timeout: float, model: Path = MODEL_PATH) -> tuple[bool, str]:
     if not Path(model).exists():
         return False, f"model missing at {model}; run: python tools/env_check.py"
-    import mediapipe as mp
+    import mediapipe as mp   # untimed: a cold first import can take seconds, but it does not hang
+
+    return within(timeout, "pose landmarker", lambda: _run_pose(mp, Path(model)))
+
+
+def _run_pose(mp, model: Path) -> tuple[bool, str]:
     import numpy as np
 
     vision = mp.tasks.vision
@@ -68,6 +98,9 @@ def probe_pose(timeout: float, model: Path = MODEL_PATH) -> tuple[bool, str]:
 def doctor(require: list[str], probes: dict[str, Probe], timeout: float = TIMEOUT,
            out: TextIO | None = None) -> int:
     out = out or sys.stdout  # CLI output, not library logging
+    if not require:
+        print(f"doctor: --require names no source; choose from {', '.join(sorted(probes))}", file=out)
+        return 2
     unknown = [n for n in require if n not in probes]
     if unknown:
         print(f"doctor: unknown source {', '.join(unknown)}; choose from {', '.join(sorted(probes))}", file=out)

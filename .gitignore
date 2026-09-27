@@ -9,10 +9,10 @@ __pycache__/
 # arcade operator: per-run Stop-hook block counter (reset by the loop)
 docs/superpowers/workflow/.blocks
 
-# arcade: pose model, runtime data, contact sheets
-models/
-data/
-shots/
+# arcade: pose model, runtime data, contact sheets (anchored: tests/arcade/fixtures/ may hold data/ dirs)
+/models/
+/data/
+/shots/
 
 # show daemon: entry build products stay local; sources, entry.toml and fallback casts are tracked
 entries/*/*
