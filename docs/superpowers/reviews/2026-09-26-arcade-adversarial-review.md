@@ -539,7 +539,8 @@ governor, Copy Me and Pong, session log, systemd unit and status file.
   Wi-Fi. The Pi 5's built-in real-time clock connector replaces the DS3231 item. Spec revision 3 changes
   section 2 (hardware), section 3 (foundation: the Colorlight backend task instead of the DDP task, or
   both), and the `backend` config default for the Pi; the operator's Gate B and `pi_perf` budget target
-  the Pi 5. Still pending: the cardioid mic and USB interface.
+  the Pi 5. Mic: a cardioid dynamic vocal mic on a gooseneck through a USB interface (Trey ordering). No
+  decisions remain open.
 
 ## 11. Checked and found OK
 
