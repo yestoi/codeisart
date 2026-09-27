@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+import math
 import re
 import tomllib
 from dataclasses import dataclass
@@ -93,8 +94,19 @@ def load_config(path: Path | str) -> ArcadeConfig:
     for name in ("night_start", "night_end"):
         if not HHMM.fullmatch(getattr(cfg, name)):
             raise ValueError(f"{name} must be HH:MM (00:00 to 23:59), got {getattr(cfg, name)!r}")
-    if not 0 < cfg.brightness <= 1:
-        raise ValueError(f"brightness must be in (0, 1], got {cfg.brightness}")
+    for name in ("brightness", "apl_cap_day", "apl_cap_night"):
+        if not 0 < getattr(cfg, name) <= 1:   # NaN fails too
+            raise ValueError(f"{name} must be in (0, 1], got {getattr(cfg, name)}")
+    for name in ("fps", "camera_fps", "gamma"):
+        if not getattr(cfg, name) > 0:
+            raise ValueError(f"{name} must be greater than 0, got {getattr(cfg, name)}")
+    if not math.isfinite(cfg.gamma):
+        raise ValueError(f"gamma must be finite, got {cfg.gamma}")
+    if cfg.sdl_scale < 1:
+        raise ValueError(f"sdl_scale must be at least 1, got {cfg.sdl_scale}")
+    for name in [f.name for f in dataclasses.fields(ArcadeConfig) if f.name.endswith("_seconds")] + ["night_lux"]:
+        if not getattr(cfg, name) >= 0:
+            raise ValueError(f"{name} must be 0 or more, got {getattr(cfg, name)}")
     if cfg.width < 8 or cfg.height < 8:
         raise ValueError(f"width and height must be at least 8, got {cfg.layout}")
     return cfg

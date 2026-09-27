@@ -71,6 +71,30 @@ def test_wrong_type_rejected(tmp_path, line, field):
         load_config(write(tmp_path, line))
 
 
+@pytest.mark.parametrize("line,field", [("apl_cap_day = 0", "apl_cap_day"), ("apl_cap_day = 5", "apl_cap_day"),
+                                        ("apl_cap_night = -0.1", "apl_cap_night"),
+                                        ("apl_cap_night = nan", "apl_cap_night"), ("fps = 0", "fps"),
+                                        ("fps = -3", "fps"), ("camera_fps = 0", "camera_fps"), ("gamma = 0", "gamma"),
+                                        ("gamma = nan", "gamma"), ("gamma = inf", "gamma"),
+                                        ("sdl_scale = 0", "sdl_scale"),
+                                        ("night_lux = -1", "night_lux"), ("dwell_seconds = nan", "dwell_seconds")])
+def test_rejects_out_of_range_values(tmp_path, line, field):
+    with pytest.raises(ValueError, match=field):
+        load_config(write(tmp_path, line))
+
+
+@pytest.mark.parametrize("field", [f.name for f in dataclasses.fields(ArcadeConfig) if f.name.endswith("_seconds")])
+def test_every_seconds_field_rejects_negative(tmp_path, field):
+    with pytest.raises(ValueError, match=field):
+        load_config(write(tmp_path, f"{field} = -1.0"))
+
+
+def test_range_edges_accepted(tmp_path):
+    cfg = load_config(write(tmp_path, "apl_cap_day = 1.0\napl_cap_night = 1\ndwell_seconds = 0\nsdl_scale = 1\n"
+                                      "night_lux = 0"))
+    assert (cfg.apl_cap_day, cfg.apl_cap_night, cfg.dwell_seconds, cfg.sdl_scale, cfg.night_lux) == (1.0, 1.0, 0.0, 1, 0.0)
+
+
 def test_layout_name():
     assert ArcadeConfig().layout == "128x32"
     assert ArcadeConfig(width=64, height=64).layout == "64x64"
