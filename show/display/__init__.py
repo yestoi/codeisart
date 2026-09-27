@@ -37,4 +37,7 @@ def make_display(cfg: DisplayConfig, on_key: Callable[[int], None] | None = None
     if cfg.backend == "colorlight":
         from show.display.colorlight import ColorlightDisplay
         return ColorlightDisplay(cfg.width, cfg.height, getattr(cfg, "iface", None) or cfg.colorlight_iface)
+    if cfg.backend == "ddp":
+        from show.display.ddp import DDPDisplay
+        return DDPDisplay(cfg.width, cfg.height, cfg.ddp_host, cfg.ddp_port)
     raise ValueError(f"unknown display backend {cfg.backend!r}")
