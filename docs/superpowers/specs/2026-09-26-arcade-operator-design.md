@@ -93,6 +93,20 @@ The workflow-loop steps with the arcade substitutions. Steps not listed are unch
    the last journal entry plus one.
 2. **Plan.** writing-plans as usual, one slice plus all Carried fixes. A slice is one to three plan tasks
    or one to two games. Commit. Write `state.md`.
+2a. **Plan review (added 2026-09-27, owner decision Q6).** Before the plan is committed, one opus
+   reviewer attacks the iteration plan against the spec, the core plan's amendments, the review lenses
+   and the operator design's gate table. It looks for:
+   - spec drift and wrong defaults;
+   - weak, missing or unfalsifiable tests;
+   - safety gaps (brightness, flashing);
+   - unverified hardware and protocol assumptions;
+   - carried fixes the plan misses or only half addresses;
+   - decisions the plan takes that section 5 reserves for the owner.
+
+   Its verdict is APPROVED or BLOCKED. The blocking findings go back to the plan writer (SendMessage; it keeps
+   context), which revises and re-replays the plan; the plan is then re-reviewed once. If it is still blocked
+   after two rounds, the loop gates. Non-blocking notes are either folded into the plan by the writer or
+   journaled. The verdict is saved to `evidence/itNN/plan-review.md`.
 3. **Implement.** One orchestrator agent, one fresh implementer per task, as the skill says. Two rules
    added to the orchestrator prompt: game test modules are copied from the plan verbatim and any
    difference is a Deviation; never edit `arcade/games/__init__.py` except to add a name to

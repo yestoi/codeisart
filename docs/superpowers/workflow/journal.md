@@ -13,3 +13,5 @@
 - Operator tooling finding (owner item, raised at the iteration-2 gate): `stop.py` counts every blocked stop, including turns that end while an agent is in flight, so `iterations-per-run: 2` was used up waiting for the plan writer in iteration 1, not by iterations. The loop enforces the iteration cap itself at step 8. Proposed fix: do not block or count when state.md `in_flight` names an agent.
 - Carried forward: C1-C4 (Colorlight and display hardening, must land before GATE B), C5-C9 (config and calibration validation, test and tooling tightening); see roadmap Carried fixes.
 - Status: done
+
+Owner intervention, 2026-09-27, during iteration 2's plan phase: the owner asked whether iteration plans get adversarial reviews (they did not; iteration 1's 12 plan defects surfaced only after implementation) and approved adding one (decisions.md Q6, operator design step 2a, config "Plan review: required"). Applies from iteration 2's plan.
