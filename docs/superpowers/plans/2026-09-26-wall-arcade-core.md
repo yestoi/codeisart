@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The arcade framework end to end: shared display foundation, config, the Sensed input record, scripted actors, canvas, LED-look previews, the runner with its menu, two games (light painting and pose puppet), the headless tools agents use to verify games, and the live camera and microphone sources for the Mac and the Pi.
+**Goal:** The arcade framework end to end, per spec revision 3: an environment spike, the shared display foundation with the raw Colorlight backend, config and calibration, the Sensed record with player and presence, scripted actors, canvas, LED-look previews, the runner with session rules, flash governor, brightness limiter and effects, the attract director with four modes, the mirror and the doors, Paint as the first game, the headless tools, feel metrics, bots and the evidence package, and the live camera and microphone sources for the Mac and the Raspberry Pi 5.
 
 **Architecture:** One Python process ticking at 30 Hz. Camera and audio sources run in threads and expose their latest result; the runner builds one `Sensed` record per tick, hands it to the current game, and pushes the game's canvas to a display backend shared with the show daemon. Everything a game sees is data, so tests drive games with scripted actors against a recording display and assert on `debug_state()` first and pixels second.
 
-**Tech Stack:** Python 3.11+ (3.12 on the Mac, mediapipe needs it), numpy, pygame (SDL preview), opencv-python, sounddevice, Pillow, pytest. Mac extra: mediapipe. Pi: picamera2 from apt.
+**Tech Stack:** Python 3.12 through uv on the Mac (`uv venv --python 3.12 .venv`; the system Python 3.14 is not used) and the Pi 5's system Python with `--system-site-packages`; numpy, pygame (SDL preview), one OpenCV (`opencv-contrib-python`), sounddevice, Pillow, pytest. Mac extra: mediapipe 1.x. Pi 5: picamera2, `python3-munkres` and `python3-scipy` from apt, and the raw Colorlight backend over the wired port to the 5A-75E.
 
-**Spec:** `docs/superpowers/specs/2026-09-26-wall-arcade-design.md`. The remaining nine games and the three project skills (spec sections 8 and 11) are a second plan, written after this one is executed so it can describe real files.
+**Spec:** `docs/superpowers/specs/2026-09-26-wall-arcade-design.md`, revision 3 (commit 44d860a). Read the "Amendments for spec revision 3" section below before any task. The nine games after Paint, the attract modes after the first four, and the three project skills (spec sections 8, 7.7 and 11) are a second plan, written after this one is executed so it can describe real files.
 
 ## Global Constraints
 
@@ -20,6 +20,740 @@
 - Tests run headless: `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` are set in `tests/conftest.py` before pygame is imported.
 - No `print` in library code; use `logging.getLogger("arcade")`.
 - Commit after every task with the message given in the task.
+
+## Amendments for spec revision 3 (apply while executing)
+
+The spec was revised to revision 3 after the six-lens review
+(`docs/superpowers/reviews/2026-09-26-arcade-adversarial-review.md`; verified corrected code in
+`docs/superpowers/reviews/2026-09-26-arcade-review-lenses/05-plan.md`, cited below as "05-plan").
+
+### How to read this plan now
+
+The task bodies below show revision 2 code, and the spec (revision 3) overrides them wherever they differ. The
+operator's writing-plans step turns each milestone slice into an iteration plan that applies the amendments below to
+the task bodies it uses. Test modules are copied verbatim from either this plan or the iteration plan, and any
+difference from both is a deviation the reviewer must see.
+
+### Global Constraints, revised
+
+These replace the first two Global Constraints bullets and add three.
+
+- Every game declares `layouts`; its tests are parametrized over the declared layouts, and the other layout gets the
+  run-and-legible tests (spec 9.1). 128x32 is the default and design layout.
+- Brightness: the runner calls `display.set_brightness(cfg.brightness)` once. The Colorlight backend enforces it at
+  the panel with the card's brightness packet; SDL and fake model it in the preview; DDP logs once that it is Falcon
+  Player's setting. Pixels pushed to hardware are never scaled for `brightness`. The brightness limiter (spec 7.6)
+  is a separate, picture-level cap that does scale frames.
+- Never seed from `hash()` of a str; use `zlib.crc32` and print the seed in the assertion message.
+- The test harness runs `strict=True`: game exceptions re-raise. Runner keys win in `state()`, and games must not
+  use them (spec 7.1 list).
+- Python 3.12 through uv on the Mac; one OpenCV distribution, `opencv-contrib-python`.
+
+### Task 0: Environment spike
+
+**Files:**
+- Create: `pyproject.toml`, `arcade/__init__.py`, `arcade/__main__.py`, `arcade/main.py` (doctor only; Task 18 grows it), `arcade/sources/__init__.py`, `arcade/sources/README.md` (written by the tool), `tools/env_check.py`, `tests/__init__.py`, `tests/arcade/__init__.py`
+- Modify: `.gitignore` (add `models/`, `data/`, `shots/`)
+- Test: `tests/arcade/test_doctor.py`
+
+**Interfaces:**
+- Produces: `arcade.main.doctor(require, probes, timeout=5.0, out=None) -> int` (0 all available, 1 any unavailable, 2 unknown name); `Probe = Callable[[float], tuple[bool, str]]`; `probe_camera(timeout, index=0)`, `probe_mic(timeout, device="")`, `probe_pose(timeout, model=MODEL_PATH)`; `main(argv) -> int` with `doctor --require camera,mic,pose [--timeout S] [--camera-index N] [--audio-device NAME] [--model PATH]`; `tools/env_check.py`, which rewrites the versions block of `arcade/sources/README.md`.
+
+Before any other task. The Mac's system Python (3.14) is not used. This task's `pyproject.toml` and venv replace
+Task 1 Step 1's; the `__init__.py` files later tasks list as Create already exist.
+
+- [ ] **Step 1: Toolchain, `pyproject.toml`, install**
+
+```bash
+uv python install 3.12 && uv venv --python 3.12 .venv && . .venv/bin/activate
+```
+
+`pyproject.toml` (the daemon's dependencies plus the arcade's, each bounded below its next major):
+
+```toml
+[project]
+name = "codeisart-show"
+version = "0.1.0"
+requires-python = ">=3.11"   # Mac: 3.12 from uv; Pi 5: its system Python
+dependencies = [
+    "pyte>=0.8.2,<0.9", "numpy>=1.26,<3", "pygame>=2.5,<3", "sdnotify>=0.3,<0.4",
+    "opencv-contrib-python>=4.9,<6",   # the only OpenCV: mediapipe requires the contrib build
+    "sounddevice>=0.4.6,<0.6", "Pillow>=10,<13",
+]
+
+[project.optional-dependencies]
+pi = ["gpiozero>=2.0,<3", "lgpio"]
+mac = ["mediapipe>=1.0,<2"]
+dev = ["pytest>=8,<10"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["show*", "arcade*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["perf: timing budget tests", "feel: feel budget tests", "hardware: needs a real device or model"]
+```
+
+Create empty `arcade/__init__.py`, `arcade/sources/__init__.py`, `tests/__init__.py`, `tests/arcade/__init__.py`;
+add `models/`, `data/`, `shots/` to `.gitignore`. Then `uv pip install -e '.[dev,mac]'` and check `uv pip list |
+grep -i opencv` prints exactly one line, `opencv-contrib-python`. On the Pi 5, later: `uv venv
+--system-site-packages .venv` (apt's picamera2 must be visible), then `uv pip install -e '.[dev,pi]'`.
+
+- [ ] **Step 2: Write the failing tests**
+
+`tests/arcade/test_doctor.py`:
+
+```python
+import subprocess
+import sys
+from pathlib import Path
+
+from arcade.main import doctor, main
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def fixed(ok, detail="fine"):
+    return lambda timeout: (ok, detail)
+
+
+def boom(timeout):
+    raise OSError("device busy")
+
+
+def test_exit_code_and_report(capsys):
+    assert doctor(["camera", "mic"], {"camera": fixed(True), "mic": fixed(True)}) == 0
+    assert "UNAVAILABLE" not in capsys.readouterr().out
+    assert doctor(["camera", "mic"], {"camera": fixed(True), "mic": fixed(False, "no frames")}) == 1
+    out = capsys.readouterr().out
+    assert "mic" in out and "UNAVAILABLE" in out and "no frames" in out
+
+
+def test_raising_probe_counts_as_unavailable(capsys):
+    assert doctor(["pose"], {"pose": boom}) == 1
+    assert "OSError: device busy" in capsys.readouterr().out
+
+
+def test_unknown_source_exits_two():
+    assert doctor(["radar"], {"camera": fixed(True)}) == 2
+    assert main(["doctor", "--require", "radar"]) == 2
+
+
+def test_every_probe_gets_five_seconds():
+    seen = []
+    spy = lambda timeout: (seen.append(timeout), (True, ""))[1]
+    assert doctor(["camera", "mic"], {"camera": spy, "mic": spy}) == 0 and seen == [5.0, 5.0]
+
+
+def test_importing_main_loads_no_hardware_module():
+    code = "import sys, arcade.main; print(sorted({'cv2', 'mediapipe', 'sounddevice'} & set(sys.modules)))"
+    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "[]"
+```
+
+Run: `pytest tests/arcade/test_doctor.py -v` Expected: FAIL with `ModuleNotFoundError: No module named
+'arcade.main'`
+
+- [ ] **Step 3: Implement the doctor**
+
+`arcade/__main__.py`:
+
+```python
+import sys
+
+from arcade.main import main
+
+sys.exit(main())
+```
+
+`arcade/main.py`:
+
+```python
+"""Arcade command line. Task 0 provides `doctor`; Task 18 adds run (the default), calibrate, record, stats."""
+from __future__ import annotations
+
+import argparse
+import importlib.metadata
+import sys
+import time
+from pathlib import Path
+from typing import Callable, TextIO
+
+MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "pose_landmarker_lite.task"
+TIMEOUT = 5.0
+Probe = Callable[[float], tuple[bool, str]]
+
+
+def probe_camera(timeout: float, index: int = 0) -> tuple[bool, str]:
+    import cv2  # inside the probe, so importing arcade.main never loads OpenCV
+
+    cap, frames, deadline = cv2.VideoCapture(index), 0, time.monotonic() + timeout
+    try:
+        while time.monotonic() < deadline:
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                time.sleep(0.05)
+                continue
+            frames += 1
+            if frame.any():
+                return True, f"device {index}: {frame.shape[1]}x{frame.shape[0]}"
+        why = f"{frames} frames, all black" if frames else f"no frames in {timeout:.0f} s"
+        return False, f"device {index}: {why} (macOS: grant this terminal camera access)"
+    finally:
+        cap.release()
+
+
+def probe_mic(timeout: float, device: str = "") -> tuple[bool, str]:
+    import numpy as np
+    import sounddevice as sd
+
+    blocks: list = []
+    with sd.InputStream(samplerate=16000, channels=1, dtype="float32", device=device or None,
+                        callback=lambda data, n, t, status: blocks.append(data.copy())):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if any(np.any(b != 0.0) for b in list(blocks)):
+                return True, f"{device or 'default input'}: {sum(len(b) for b in blocks)} samples"
+            time.sleep(0.05)
+    why = "exact zeros (macOS: grant this terminal microphone access)" if blocks else "no audio callbacks"
+    return False, f"{device or 'default input'}: {why}"
+
+
+def probe_pose(timeout: float, model: Path = MODEL_PATH) -> tuple[bool, str]:
+    if not Path(model).exists():
+        return False, f"model missing at {model}; run: python tools/env_check.py"
+    import mediapipe as mp
+    import numpy as np
+
+    vision = mp.tasks.vision
+    options = vision.PoseLandmarkerOptions(base_options=mp.tasks.BaseOptions(model_asset_path=str(model)),
+                                           running_mode=vision.RunningMode.VIDEO, num_poses=2)
+    frame = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.full((480, 640, 3), 96, np.uint8))
+    with vision.PoseLandmarker.create_from_options(options) as landmarker:
+        t0 = time.monotonic()
+        landmarker.detect_for_video(frame, 0)
+        ms = (time.monotonic() - t0) * 1000
+    return True, f"mediapipe {importlib.metadata.version('mediapipe')}: landmarker ran in {ms:.0f} ms"
+
+
+def doctor(require: list[str], probes: dict[str, Probe], timeout: float = TIMEOUT,
+           out: TextIO | None = None) -> int:
+    out = out or sys.stdout  # CLI output, not library logging
+    unknown = [n for n in require if n not in probes]
+    if unknown:
+        print(f"doctor: unknown source {', '.join(unknown)}; choose from {', '.join(sorted(probes))}", file=out)
+        return 2
+    failed = 0
+    for name in require:
+        try:
+            ok, detail = probes[name](timeout)
+        except Exception as e:  # a probe that raises is a source that is unavailable
+            ok, detail = False, f"{type(e).__name__}: {e}"
+        print(f"{name:7s} {'ok' if ok else 'UNAVAILABLE'}  {detail}", file=out)
+        failed += not ok
+    return 1 if failed else 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="arcade", description="Wall arcade")
+    sub = p.add_subparsers(dest="command", required=True)
+    d = sub.add_parser("doctor", help="exit 1 if a required source is unavailable after the timeout")
+    d.add_argument("--require", default="camera,mic,pose", help="comma list of camera, mic, pose")
+    d.add_argument("--timeout", type=float, default=TIMEOUT)
+    d.add_argument("--camera-index", type=int, default=0)
+    d.add_argument("--audio-device", default="")
+    d.add_argument("--model", default=str(MODEL_PATH))
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    probes = {"camera": lambda t: probe_camera(t, args.camera_index),
+              "mic": lambda t: probe_mic(t, args.audio_device),
+              "pose": lambda t: probe_pose(t, Path(args.model))}
+    return doctor([n.strip() for n in args.require.split(",") if n.strip()], probes, args.timeout)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+Run: `pytest tests/arcade/test_doctor.py -v` Expected: 5 passed
+
+- [ ] **Step 4: The environment check**
+
+`tools/env_check.py`:
+
+```python
+#!/usr/bin/env python3
+"""Environment spike (Task 0, Mac): prove the toolchain works and record the versions that did."""
+from __future__ import annotations
+
+import importlib.metadata as md
+import platform
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.request
+from datetime import date
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+README = ROOT / "arcade" / "sources" / "README.md"
+MODEL_URL = ("https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/"
+             "float16/1/pose_landmarker_lite.task")
+MODEL_PATH = ROOT / "models" / "pose_landmarker_lite.task"
+PACKAGES = ("mediapipe", "opencv-contrib-python", "numpy", "pygame", "sounddevice", "Pillow", "pytest")
+OPENCVS = {"opencv-python", "opencv-python-headless", "opencv-contrib-python", "opencv-contrib-python-headless"}
+BEGIN, END = "<!-- env_check:begin -->", "<!-- env_check:end -->"
+
+
+def version(name: str) -> str:
+    try:
+        return md.version(name)
+    except md.PackageNotFoundError:
+        return "MISSING"
+
+
+def run_pose(jpeg: Path) -> str:
+    import mediapipe as mp
+
+    if not MODEL_PATH.exists():
+        MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(MODEL_URL, timeout=60) as r:
+            MODEL_PATH.with_suffix(".part").write_bytes(r.read())
+        MODEL_PATH.with_suffix(".part").replace(MODEL_PATH)
+    vision = mp.tasks.vision
+    options = vision.PoseLandmarkerOptions(base_options=mp.tasks.BaseOptions(model_asset_path=str(MODEL_PATH)),
+                                           running_mode=vision.RunningMode.VIDEO, num_poses=2)
+    image = mp.Image.create_from_file(str(jpeg))
+    with vision.PoseLandmarker.create_from_options(options) as landmarker:
+        t0 = time.perf_counter()
+        for ts in (0, 33, 66):  # VIDEO mode needs strictly increasing timestamps
+            result = landmarker.detect_for_video(image, ts)
+        ms = (time.perf_counter() - t0) / 3 * 1000
+    return f"PoseLandmarker VIDEO mode ran: {len(result.pose_landmarks)} poses, {ms:.1f} ms per frame"
+
+
+def main() -> int:
+    from PIL import Image, ImageDraw
+
+    if sys.version_info[:2] != (3, 12):
+        sys.exit(f"expected Python 3.12 from uv, got {platform.python_version()}")
+    opencvs = sorted({(d.metadata["Name"] or "").lower() for d in md.distributions()} & OPENCVS)
+    if opencvs != ["opencv-contrib-python"]:
+        sys.exit(f"exactly one OpenCV, opencv-contrib-python, must be installed; found {opencvs}")
+    vers = {name: version(name) for name in PACKAGES}
+    if "MISSING" in vers.values() or not vers["mediapipe"].startswith("1."):
+        sys.exit(f"a package is missing or mediapipe is not 1.x: {vers}")
+    with tempfile.TemporaryDirectory() as tmp:  # a grey frame with a figure: no pose needed, no raise allowed
+        img = Image.new("RGB", (640, 480), (90, 90, 90))
+        ImageDraw.Draw(img).ellipse((280, 60, 360, 420), fill=(230, 200, 170))
+        img.save(Path(tmp) / "figure.jpg", "JPEG")
+        pose_line = run_pose(Path(tmp) / "figure.jpg")
+    probe = subprocess.run([sys.executable, "-c", "import cv2, pygame"], capture_output=True, text=True)
+    sdl = probe.stderr.count("is implemented in both")  # opencv and pygame each bundle SDL2 on macOS
+    rows = "\n".join(f"| {k} | {v} |" for k, v in vers.items())
+    block = (f"{BEGIN}\n## Environment (tools/env_check.py, {date.today().isoformat()})\n\n"
+             f"- Python {platform.python_version()} on {platform.platform()}\n- {pose_line}\n"
+             f"- SDL duplicate-class warnings importing cv2 with pygame: {sdl}\n\n"
+             f"| Package | Version |\n|---|---|\n{rows}\n\n"
+             f"pyproject.toml bounds each package below its next major version.\n{END}\n")
+    text = README.read_text() if README.exists() else "# Sources\n\nMeasured facts and decisions (spec 12).\n"
+    if BEGIN in text and END in text:
+        text = text.split(BEGIN, 1)[0] + block + text.split(END, 1)[1].lstrip("\n")
+    else:
+        text = text.rstrip("\n") + "\n\n" + block
+    README.write_text(text)
+    print(f"{pose_line}\nSDL duplicate warnings: {sdl}\nwrote {README}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+Run: `python tools/env_check.py` Expected: `PoseLandmarker VIDEO mode ran: ...`, and `arcade/sources/README.md`
+holds the versions table. If `mp.tasks.vision` does not resolve in the installed mediapipe, use the working import
+path here, in `probe_pose` and in Task 16, and record it in the README.
+
+**SDL duplication (macOS).** opencv and pygame each bundle `libSDL2`; importing both prints objc "implemented in
+both" warnings that can crash. Task 6 moves `look.py`'s blur to numpy, so only the camera source imports cv2 and
+replay or no-camera runs never load both. The live Mac run with the camera still loads both; if the owner's live
+smoke crashes, switch `pygame` to `pygame-ce` (same `import pygame`).
+
+- [ ] **Step 5: Run the doctor, then commit**
+
+Run: `python -m arcade doctor --require pose` (loop-verifiable; expected exit 0), then `python -m arcade doctor
+--require camera,mic,pose`. A camera or mic permission failure becomes an owner item in the journal and the loop
+continues; granting macOS permissions is the owner's.
+
+```bash
+git add pyproject.toml .gitignore arcade/__init__.py arcade/__main__.py arcade/main.py arcade/sources/__init__.py \
+    arcade/sources/README.md tools/env_check.py tests/__init__.py tests/arcade/__init__.py tests/arcade/test_doctor.py
+git commit -m "chore(arcade): environment spike, pinned deps, doctor"
+```
+
+### Per-task amendments
+
+- **Task 1, foundation.** Use Task 0's `pyproject.toml` and venv, not Step 1's. Execute daemon Tasks 1, 2, 5, 16 and
+  15 in that order with the daemon amendments for Tasks 1, 5, 15 and 16 (the `0x0107` frame packet before the rows,
+  the prebuilt packet array, constants diffed against chubby75 and Falcon Player before the first panel test). The
+  raw Colorlight backend is the arcade's primary wall path, not descope step 1. `DisplayConfig` gains `iface`;
+  `make_display`'s colorlight branch passes `getattr(cfg, "iface", None) or cfg.colorlight_iface`, so the daemon's
+  `Config` keeps working. `ColorlightDisplay.set_brightness` sends `brightness_packet(level)` (the daemon code
+  already does); `DDPDisplay.set_brightness` stores the level and logs once "brightness is Falcon Player's setting".
+  `FakeDisplay` keeps `last` and `count` as Step 3 shows. Tests: add `test_colorlight_set_brightness_sends_packet`
+  (fake socket, last sent equals `brightness_packet(0.4)`), `test_make_display_reads_iface` (SimpleNamespace config
+  with `iface="eth9"`, monkeypatched `ColorlightDisplay` records its arguments, because raw sockets are Linux-only),
+  `test_ddp_brightness_logged_once` (caplog, two calls, one record).
+- **Task 2, config.** `ArcadeConfig` has exactly the spec 4.3 fields and defaults plus `font_path` and `fps`:
+  `width=128, height=32`, `backend` in `sdl|fake|colorlight|ddp`, `iface="eth0"`, `camera_fps=10`,
+  `audio_device=""`, `apl_cap_day=0.12`, `apl_cap_night=0.06`, `night_start="01:00"`, `night_end="06:00"`,
+  `night_lux=5.0`, `dwell_seconds=1.2`, `present_on_seconds=1.0`, `present_off_seconds=3.0`,
+  `player_lost_seconds=0.5`, `leave_seconds=8`, `inactive_seconds=30`, `max_session_seconds=180`,
+  `exit_seconds=3.0`, `allow_record=False`. Remove `idle_seconds`. Add `cfg.layout -> f"{width}x{height}"`.
+  Enumerated fields and `HH:MM` times are validated at load. `arcade.toml` lists every field with its default. Also
+  create `arcade/calibration.py` (spec 4.1, 6.6): `Calibration(zone, min_height, baseline_scale, static_mask,
+  audio_floor_db, calibrated)`, `load_calibration(data_dir)` returning the defaults (zone the central 60 percent,
+  `min_height=0.45`, `calibrated=False`) when the file is absent or corrupt, `save_calibration(data_dir, cal)` with
+  fsync then rename. Tests: change `test_defaults_when_file_missing` to the new defaults and `not hasattr(cfg,
+  "idle_seconds")`; add `test_rejects_bad_enum_values` (backend `matrix`, camera `kinect`, look `crt`),
+  `test_rejects_bad_night_time` (`"25:00"`), `test_layout_name`, and in `tests/arcade/test_calibration.py`:
+  `test_default_calibration`, `test_calibration_round_trip`, `test_corrupt_calibration_falls_back_to_defaults`.
+- **Task 3, Sensed.** Fields exactly as spec 5; new fields default (`Body`: `vx=vy=0.0`, `scale=0.0` meaning
+  "compute nose-to-mid-hip", `in_zone=True`, `zone_x=zone_y=0.5`, `seen_ago=0.0`; `Blob.in_zone=True`; `Audio` adds
+  `level_smooth`, `voice_db=-90.0`, `floor_db=-90.0`, `voice`, `clap`; `Sensed` adds `camera_t`, `camera_fresh`,
+  `camera_seq`, `player=None`, `player2=None`, `present=False`). Remove `Sensed.primary` and the body-box
+  rasterizing in `with_motion`: `motion` is all False at wall size when empty, and `with_motion(size)` only
+  resamples a grid of another shape. Helper properties per spec 5: `shoulder_mid`, `hip_mid`, `torso`, `raise_line`
+  (0.3 torso above the shoulder midpoint; the nose only when both shoulders are under `MIN_CONF`), `raised_wrist`
+  and `both_hands_up` against it, `cursor` (the wrist further from its hip, through `reach`), `reach(kp) -> (u, v)`
+  (u across 1.5 shoulder widths each side of the shoulder midpoint; v from 1.05 torso above the shoulder midpoint,
+  head plus a forearm, down to hip height; both clamped 0..1). Add `place(body, calibration) -> Body` setting
+  `in_zone`, `zone_x`, `zone_y`; actors and the tracker both call it. Create `arcade/sources/mirror.py` with
+  `mirror_keypoints(kps)` (x to 1 - x, index order kept, labels never swapped) and `mirror_box`. Tests: keep
+  `test_body_cleans_bad_keypoints` (Review Focus 1); replace `test_raised_wrist_and_both_hands` with
+  `test_raise_line_is_above_shoulders` (0.1 torso above is not raised, 0.4 is),
+  `test_nose_fallback_only_without_shoulders`, `test_hooded_body_still_raises` (nose conf 0); replace
+  `test_sensed_defaults_and_primary` with `test_sensed_defaults` (no `primary` attribute); add
+  `test_with_motion_resamples_never_rasterizes`, `test_reach_box_corners`, `test_cursor_is_wrist_further_from_hip`,
+  `test_place_uses_calibration_zone`, and in `tests/arcade/test_mirror.py` `test_mirror_flips_x_keeps_labels`,
+  `test_mirror_twice_is_identity`.
+- **Task 4, actors.** Per spec 6.4. Replace `_on_tick` with 05-plan S10's `_fires(t, when)` (`when - 1e-9 <= t <
+  when + TICK - 1e-9`) in `claps` and `tempo` (`n = math.floor((t - start) / period + 1e-9)`). Add
+  `Person.wrist(hand, y_from, y_to, seconds, at)` with y in reach-box v units, `Person.pose(name, at, seconds)`
+  reading `arcade/poses.py` (`POSES: dict[str, tuple[tuple[float, float], ...]]`, 17 offsets in body-height units
+  from the hip centre, at least `t_pose` and `arms_up`), `motion_rect(x0, y0, x1, y1, start, seconds)` returning a
+  grid on the fixed 128x64 scenario grid, `level_ramp([(t, level), ...])`, and `scene(persons=, blobs=, motion=,
+  audio=, ticks=)` that stamps `camera_t`, `camera_fresh`, `camera_seq` and calls `place()` with the default
+  calibration. `degrade(scene, fps=10, latency=0.15, keypoint_dropout=0.15, jitter=0.01)` samples and holds at
+  `fps`, delays by `latency`, drops and jitters keypoints by `zlib.crc32` of (tick, body id, joint), never `random`;
+  `REAL_NOISE` holds those defaults until the real fixtures refit them. Festival scenes: `crowd(n)` (small
+  out-of-zone bodies behind the player), `headlamps()` (out-of-zone blobs), `camp_kick(bpm)` (broadband onsets, no
+  claps, voice at the floor), `wind()`, `shake(start, seconds)` (what the gated source yields: an empty grid and
+  keypoint jitter 0.03). Tests: add `test_tempo_128_exactly_one_beat_per_period` (128 beats in 60 s, no gap under 14
+  ticks), `test_claps_fire_exactly_once`, `test_wrist_ramp_in_reach_units`, `test_pose_from_table`,
+  `test_unknown_pose_raises`, `test_motion_rect_grid`, `test_level_ramp_interpolates`,
+  `test_degrade_samples_holds_and_delays`, `test_degrade_is_deterministic`, `test_crowd_is_out_of_zone`,
+  `test_camp_kick_has_onsets_but_no_claps`. `test_scene_assigns_ids_and_ticks` now expects `frames[0].motion` all
+  False, not None.
+- **Task 5, canvas.** Apply 05-plan S4: `_i(v)` (round, clamp to plus or minus `1 << 20`, NaN, infinity or garbage
+  to `-(1 << 20)`) and `_c(color)` (clamp 0..255) at the top of `pixel`, `fill_rect`, `line`, `_disc` and `blit`; in
+  `line`, skip when an endpoint exceeds `4 * (width + height)`. Add `text(x, y, s, color, scale=1)` and
+  `text_width(s, scale=1)` (scale 2 is 10 by 14 with 2 px strokes), `blit_rgb(sprite, x, y)` with black transparent,
+  `sprite_from_rows(rows, palette) -> (h, w, 3) uint8` (`.` is black, an unknown character raises `ValueError`).
+  Interface line: "Coordinates may be int or float and are rounded; colours are clamped to 0..255." Tests: add
+  `test_float_coordinates_round`, `test_nan_inf_and_huge_never_raise_or_hang` (asserts each call returns within 50
+  ms), `test_colours_clamped`, `test_line_with_float_endpoint_terminates`, `test_text_scale_two` (width 12 for
+  `"8"`, four times the scale-1 lit count), `test_blit_rgb_black_is_transparent`, `test_sprite_from_rows_palette`.
+  Step 4's expected count becomes 13.
+- **Task 6, look.** `render(frame, mode, scale=8, gamma=2.2, metres=5.0)`. `distance` models spec 9.4: a Gaussian of
+  sigma `metres * tan(1.5 arcmin) / 0.005` wall pixels (P5 pitch) times `scale`, plus a luminance-weighted halation
+  Gaussian of three times that sigma, both built from numpy box blurs, so `look.py` never imports cv2 (the Task 0
+  SDL mitigation). `led` and `plain` unchanged. `PreviewDisplay.set_brightness` forwards to the inner display and
+  scales the rendered preview only. Tests: keep `test_distance_blurs` with `metres=5.0`; add
+  `test_distance_blur_grows_with_metres` (spread at 10 m over spread at 2 m), `test_look_never_imports_cv2`
+  (subprocess, as Task 0's import test), `test_preview_models_brightness`.
+- **Task 7, game protocol, registry, scores.** `GameInfo` per spec 7.1 (`verb`, 16x16 `icon`, `layouts`, `players`,
+  `exit_gesture`, `kind`, `abandon_seconds`), validated in `__post_init__`; `icon_from_rows` takes 16 rows of 16.
+  `Game` gains `scores`, `SCENARIOS`, `CAPTION_KEYS`, `PHASES` (see Task 20) and `reset(size, rng, fx)`; `draw()`
+  must work right after `reset()`. `RUNNER_KEYS` (spec 7.1 list) and the `fx_` prefix live in `game.py`;
+  `draw_figure(canvas, body, rect, color, stroke=2)` too (the mirror and Copy Me share it). Scores per spec 7.5 and
+  05-plan S7: `Scores(path | None, clock=datetime.now)`, `None` keeps everything in memory; bests keyed game then
+  layout; `for_game(name, layout)` returns the view games get as `self.scores`, with `record(value, margin=0.0) ->
+  bool`, `best()`, `last_night()`; bests roll over at 16:00 local time; write with fsync then rename. The spec types
+  `scores` as `Scores`; the per-game view satisfies its `self.scores.record(value)`. `SessionLog(path |
+  None).append(game, layout, start, duration, players, score, reason)` validates the reason against spec 7.5's six.
+  Registry: `MENU_ORDER = ("copyme", "pong", "paint", "quickdraw", "dodge", "tug", "flap", "swat", "strongman",
+  "freeze")`; `all_games()` imports each existing `arcade.games.<name>` with `importlib`, skips missing modules,
+  logs and skips a module that raises, and reads its `GAME` attribute. Games never append to a list. Tests: replace
+  `test_icon_from_rows` (16x16) and `test_registry_lookup`; add `test_menu_order_lists_the_ten_spec_games`,
+  `test_discovery_skips_missing_modules`, `test_broken_module_is_logged_and_skipped` (monkeypatched
+  `import_module`), `test_game_info_validates` (bad icon shape, kind, layout, needs),
+  `test_scores_in_memory_never_writes`, `test_scores_per_layout`, `test_scores_roll_over_at_1600`,
+  `test_scores_margin`, `test_sessions_log_appends_json_line`, `test_sessions_log_rejects_unknown_reason`.
+- **Task 8, runner and harness.** Per spec 7.2. `Runner(cfg, display, font, lobby, games, seed=0, clock, sleep, log,
+  scores=None, sessions=None, calibration=None, strict=False)`; `attract=` and `in_attract` go (the lobby is the
+  attract). `LobbyLike` replaces `MenuLike`: a `Game` plus `request: str | None`, `set_available(names)`,
+  `set_status(camera_ok, mic_ok, inputs, calibrated)`, `end_session(result)`. States LOBBY and GAME. Tick order:
+  sense, build Sensed, derive `player`, `player2`, `present` (classes `PlayerLock` and `Presence` in `runner.py`),
+  session rules, `update`, `draw`, `Juice.render`, `FlashGovernor.apply`, `BrightnessLimiter.apply`, `push`. Games
+  get only in-zone blobs; the lobby sees all. Session rules: leave (`leave_seconds` or `abandon_seconds`, reason
+  `left`), inactivity (prompt 5 s, a raised hand cancels, reason `inactive`), cap (only while an in-zone body beyond
+  `info.players` waits, applied at the next tick whose `phase` is not `play`, reason `capped`), deliberate exit with
+  `Hold(exit_seconds, grace=0.25)` and a runner-drawn ring only when `info.exit_gesture`, then 05-plan S2's block
+  (the lobby gets no bodies, blobs or player until both hands are down). Crash guard per 05-plan B2 around
+  `__init__`, `reset`, `update`, `draw` and `done`, `last_error = traceback.format_exc()`, and a static dim red
+  16x16 icon fading over 0.5 s replaces the 30-tick noise glitch; a lobby that raises is replaced by a built-in
+  title card until restart; `strict` re-raises (05-plan S3). `state()` per 05-plan S5 with runner keys `game, t,
+  idle, attract, hidden, crashes, glitch, flash_held_ticks, player, present` and the `fx_*` keys winning. `sense()`
+  reads the new `latest()` shapes (`(capture_t, bodies, blobs, motion) | None`, `(capture_t, Audio)`) and treats
+  results older than 1.0 s (camera) or 0.5 s (audio) as empty and unavailable. `run_headless(cfg, font, game_cls,
+  sensed_iter, seed=0, strict=True, trace=False, raw=False)` uses `Scores(None)`, `SessionLog(None)` and a
+  `NullLobby`, sets `runner.game` to the launched instance, and keeps per-tick `state()` (`trace`) and pre-governor
+  frames (`raw`). `helpers.run(game_cls, sensed_iter, size, font, ticks=None, seed=0, strict=True, **cfg_over)`
+  returns `(frames, runner.game, runner)`, which meets spec 9.1's signature. New modules in this task:
+  `arcade/flash.py` (`FlashGovernor(h, w, gamma)` per spec 7.6, prototype `FlashLimiter` in
+  `.../2026-09-26-arcade-review-lenses/flashguard2.py`, plus `flash_area(frames, gamma) -> float` for tests and
+  tools), `arcade/brightness.py` (`BrightnessLimiter(cfg, clock, lux=None)` with `apply`, `is_night`, `cap`; LUT
+  scaling never below 0.5), `arcade/juice.py` (`Juice(rng)` per spec 8.1, one per launch, `freeze` skips `update`,
+  shake as a slice copy, `fx_*` keys), `arcade/input.py` (`Edge`, `Hold(seconds, grace=0.25)` with `progress`,
+  `OneEuro(min_cutoff=1.0, beta=0.007, d_cutoff=1.0)`, and Task 11's `to_wall`). Tests in `test_runner.py`: drop
+  `test_idle_attract_and_presence_returns`, rewrite the exit and crash tests, add
+  `test_init_reset_and_done_raises_are_guarded`, `test_crash_shows_static_dim_icon_then_lobby`,
+  `test_strict_reraises`, `test_run_headless_returns_launched_instance_after_done`, `test_state_runner_keys_win`,
+  `test_last_error_holds_traceback`, `test_lobby_crash_falls_back_to_title_card`,
+  `test_crowd_of_six_never_steals_the_player`, `test_player_switches_after_1_3x_for_one_second`,
+  `test_player_reacquired_by_position_keeps_slot`, `test_presence_hysteresis_ignores_out_of_zone`,
+  `test_leave_ends_session_with_card`, `test_abandon_seconds_overrides_leave`, `test_inactivity_prompt_then_end`,
+  `test_cap_only_when_someone_waits`, `test_exit_gesture_disabled_by_info`,
+  `test_exit_then_hands_still_up_reaches_lobby_as_no_bodies`, `test_session_logged_with_reason`,
+  `test_push_path_order`, `test_stale_camera_is_unavailable`. New modules: `test_flash.py`
+  (`test_15hz_white_strobe_held_to_3_per_second`, `test_static_and_moving_sprite_pass_bit_identical`,
+  `test_saturated_red_counts_double`, perf `test_governor_under_half_ms_at_128x32`), `test_brightness.py`
+  (`test_frame_under_cap_passes_identical`, `test_white_frame_scaled_not_below_half`,
+  `test_night_by_clock_spans_midnight`, `test_lux_overrides_clock`), `test_juice.py`
+  (`test_particle_pool_capped_at_96`, `test_shake_decays_to_zero`, `test_freeze_skips_update_keeps_drawing`,
+  `test_flash_rate_limited`, `test_fx_keys_in_runner_state`, perf `test_full_pool_under_half_ms`), `test_input.py`
+  (`test_edge_fires_once`, `test_hold_tolerates_200ms_dropout_resets_after_300ms`,
+  `test_one_euro_cuts_jitter_and_lags_under_200ms`).
+- **Task 9, menu: superseded** by the attract director and doors (spec 7.3, 7.7). Create
+  `arcade/attract/__init__.py`, `arcade/attract/director.py` (`Director(games, cfg, modes=None, scores=None)`
+  implementing `LobbyLike`: tiers EMPTY, PASSING, NEAR, ENGAGED with spec 7.7's hysteresis; sub-states ATTRACT,
+  INVITE, PLAY, CARD; the mirror within 0.5 s of stepping in; the breathing 16 px hand-up pictogram after 1.5 s; a
+  raised hand requests the featured game, which rotates every 15 minutes among offerable games; the 3, 2, 1 at 5 s
+  near; doors from an end card per spec 7.3 at 128x32 and 64x64, selected by `zone_x` while a hand is up; the card
+  per spec 7.3; every 20 s at EMPTY a 5 s demo replay or tonight's best card; blobs never select while a body
+  is present and body centre never selects; `debug_state` keys per spec 7.7), `arcade/attract/modes/__init__.py` (`ModeInfo(name, needs, calm,
+  layouts, duration=(40, 150))`, the `Mode` protocol with `attend(focus)` and `settled()`, `MODE_ORDER` with the
+  thirteen spec 7.7 names, the same guarded discovery as games) and four modes, `watcher.py`, `echo.py`, `warp.py`,
+  `contours.py`, as described in the review's section 5 table. Survives from Task 9: the dwell accumulation (now
+  decaying over 0.3 s instead of resetting), `_perimeter` for the door fill ring, `_reason_unavailable` (now also
+  checking `layouts`), and the two-pixel status glyph. Dropped: the twelve tiles, `TITLE_SLOT`, the title band,
+  `DIM_COLOR`, `cursor_of` from raw frame coordinates, and the body-centre and blob cursor fallbacks. Review Focus 3
+  moves here: the director lays out at 64x32, 96x48 and 128x64. Tests (`test_director.py`):
+  `test_standing_still_10s_never_selects_a_door` (in INVITE it launches only the featured game, through the 3, 2, 1
+  at 5 s, the spec's ten-second guarantee), `test_crowd_of_six_never_steals_the_player`,
+  `test_walk_stand_raise_passes_attract_invite_play`, `test_mirror_within_half_second`, `test_pictogram_after_1_5s`,
+  `test_no_mode_repeats_back_to_back`, `test_no_luminance_step_over_0_1_across_substate_change`,
+  `test_hands_still_up_after_exit_select_nothing`, `test_door_fill_decays_over_0_3s`,
+  `test_unofferable_games_never_shown` (needs and layouts), `test_camera_down_favours_no_input_modes`,
+  `test_lays_out_at_64x32_96x48_128x64`, `test_blob_never_selects_with_body_present`. `test_modes.py`, parametrized over discovered modes and 128x32, 64x64:
+  debug keys `lit_fraction`, `apl`, `focus` present, `flash_area` at most 0.10, APL under `apl_cap_day`; plus
+  `test_watcher_pupil_follows_walk`, `test_echo_black_3s_after_motion_stops`, `test_warp_speeds_up_under_loud`,
+  `test_contours_lit_fraction_0_05_to_0_2`.
+- **Task 10, paint.** `GAME = Paint`; `GameInfo(verb="PAINT", layouts both, players=1, kind="toy",
+  abandon_seconds=45, needs={"blobs"})`. Only `in_zone` blobs paint; each tracked blob draws a segment from its last
+  position (skipped above a quarter of the wall width) in its halo colour; a raised wrist paints through
+  `body.cursor` when no blob is present; trails fade over 20 s; after 60 s, or 10 s without input, a 5 s gallery
+  freeze of the fullest frame, then `done()` (starting values). Key `idle` becomes `since_input`; keys `phase`,
+  `active`, `lit`, `since_input`, `brush_xy`; `CAPTION_KEYS = ("phase", "lit", "since_input")`; `SCENARIOS`
+  canonical, idle_body, nobody, fail (no light), win (full gallery). No registry edit. Tests: add
+  `test_out_of_zone_blob_never_paints`, `test_fast_blob_draws_connected_segment`, `test_wrist_paints_without_blob`,
+  `test_gallery_freeze_then_done`, `test_session_survives_8s_empty_ends_at_45s` (through the runner). Step 4's count
+  is 6 plus the new tests (05-plan: the sized tests run twice).
+- **Task 11, puppet: superseded** as a game; it becomes the director's mirror layer. Its drawing moves to
+  `game.draw_figure` (Task 7) and its uniform `to_wall(body, rect)` to `arcade/input.py` (Task 8). No
+  `arcade/games/puppet.py`, not in `MENU_ORDER`. Its tests move into `test_director.py` as
+  `test_mirror_draws_2px_figure_in_player_colour`, `test_two_bodies_two_colours`,
+  `test_low_confidence_limbs_skipped`, and into `test_input.py` as `test_to_wall_is_uniform`. Tasks 13, 14 and 18
+  that name `puppet` use `paint`.
+- **Task 12, scenarios.** Files are `.jsonl.gz` (`gzip.open` in text mode) with a header record first: `{"kind":
+  "header", "version": 1, "type": "sensed" | "raw", "fps", "grid": [128, 64], "script", "cues": [[t, "RAISE RIGHT
+  HAND"], ...], "created", "git"}`. Sensed records store `motion` as base64 `np.packbits` on the fixed 128x64 grid,
+  resampled on replay. Raw records (spec 6.3): capture time, raw detections, a 160x120 grey frame as base64 bytes,
+  plus a 16 kHz WAV whose RIFF header is written with `struct` (the privacy test forbids the `wave` module in
+  `arcade/`). Replay returns the new `latest()` shapes; raw replay runs `FrameFeatures` and `BodyTracker` (after
+  Tasks 15 and 16). Tests: keep the garbage-line test (Review Focus 4); add `test_gz_round_trip_with_header`,
+  `test_header_cues_readable`, `test_motion_packed_on_128x64_resampled_to_wall`, `test_raw_record_round_trip`
+  (detections, frame bytes, WAV length from its header), `test_sensed_line_has_only_schema_fields`.
+- **Task 13, contact sheets.** Per spec 9.4 and 05-plan S9: a provenance header band (git short sha, dirty flag,
+  game, size, look, seed, scenario); refuse an all-black run unless `--allow-black`, naming the game's `needs`; cap
+  sheets at 1,536 px wide (fewer columns, then smaller scale); `--look both` (default) writes `<stem>-plain.png` and
+  `<stem>-led.png`; `--flash-report` prints `flash_area` of the raw frames and the mean picture level; each cell
+  captioned `#30 1.00s` plus its `CAPTION_KEYS` from `run_headless(trace=True)`; `--scenario NAME` resolves
+  `game.SCENARIOS[NAME]`, else a file; `--ticks` is honoured with `--scenario` (it was ignored); `--audio` is
+  rejected unless the evaluated script returns an `Audio`; prints frames, non-black count, final `runner.state()`
+  and `ScenarioReader.skipped`. Tests: replace `max() > 0` with `test_cells_match_render` (each cell region equals
+  `render(frame)`); add `test_header_has_provenance`, `test_all_black_refused_unless_allowed`,
+  `test_width_capped_at_1536`, `test_both_looks_written`, `test_flash_report_prints`,
+  `test_scenario_name_from_game`, `test_ticks_honoured_with_scenario`, `test_audio_without_call_rejected`.
+- **Task 14, REPL.** Per spec 9.4 and 05-plan S9: `--log PATH` appends each verb and reply as JSON lines; `hand`
+  must be `left|right|both|none` and `blob` has 2 or 5 parts, else an error; `x=0.3,0.7` makes one body per value;
+  `pose=NAME`, `motion=x0,y0,x1,y1`; `beat=` builds `tempo(bpm, start=t0)` for the whole step; every `step` reply
+  carries `"input": {"bodies", "hand", "blobs", "pose", "motion", "beat"}`; `launch`, `lobby` (`menu` kept as an
+  alias) and `reset` clear `display.last`, and `shot` refuses with `error: no frame since the last launch, lobby or
+  reset; step 1 first`; `log` prints `runner.last_error`. The Session builds the runner with the `Director`.
+  `tools/repl_to_test.py LOG OUT.py` turns a log into a pytest module replaying the verbs through `Session` and
+  asserting each recorded reply's `game`, `phase` and `score`. Tests: replace `test_menu_dwell_via_steps` with
+  `test_hand_up_in_lobby_starts_featured_game`; add `test_unknown_hand_is_error`,
+  `test_blob_with_three_parts_is_error`, `test_step_echoes_input`, `test_two_bodies`, `test_pose_verb`,
+  `test_motion_verb`, `test_beat_fires_every_15_ticks_over_step`, `test_shot_refuses_stale_frame`,
+  `test_log_verb_shows_traceback`, `test_log_file_written`, `test_repl_to_test_generates_passing_test`.
+- **Task 15, blobs and motion.** Per spec 6.1 and 5, on the 160x120 stream: a light source is value at or above 220
+  whose 3 px halo has saturation 0.5 or more; hue from the halo; colour from `cv2.mean` over the component's
+  bounding box with its mask; components over 0.5 percent of the frame rejected; a `StaticMask` hides a blob still
+  for 5 s until it moves; `Blob.in_zone` from the calibration zone. `motion_grid`: 5x5 blur, divide by the frame
+  median, threshold, cell fill 0.2, more than 35 percent of cells returns an empty grid and increments `shakes`,
+  crop to the zone at the wall's aspect, then downsample. Tests: replace the old blob tests with
+  `test_small_saturated_red_is_a_red_blob`, `test_large_lamp_rejected`,
+  `test_white_core_without_saturated_halo_rejected`, `test_static_blob_masked_after_5s_unmasked_on_move`,
+  `test_out_of_zone_blob_flagged`, `test_uniform_brightness_step_gives_no_motion`,
+  `test_shake_returns_empty_and_counts`, `test_motion_zone_crop_maps_to_wall_cell`, perf
+  `test_features_under_3ms_at_160x120`.
+- **Task 16, camera base and tracker.** MediaPipe runs on the unflipped frame and `mirror_keypoints` flips once;
+  drop `cv2.flip`. Inference is paced to `camera_fps`. `ThreadedCamera` stamps each result with the capture clock,
+  `latest()` returns `None` past 1.0 s and `available` stays False until a fresh result, a `step()` returning `None`
+  holds the last result, and `close()` sets stop, joins the thread, then releases the capture and the landmarker.
+  `BodyTracker` per spec 5: anchor on the shoulder midpoint, then nose, then hips; constant-velocity prediction from
+  capture timestamps; global assignment on distance plus scale difference through `assign(cost)` (scipy's
+  `linear_sum_assignment` when importable, exhaustive search for up to six otherwise; Task 19 reuses it); coast 300
+  ms emitting `seen_ago`; drop after 0.5 s; never reuse an id; One Euro on every keypoint; `vx`, `vy`, `scale`; and
+  `place()`. Review Focus 2 becomes: "Two people of the same height cross at the same depth, one hiding the other
+  for three frames. Their ids must not swap." Tests: replace `test_tracker_keeps_ids_when_two_people_cross` with
+  `test_ids_survive_same_height_crossing_with_occlusion` (10 fps, y 0.5 for both, one detection for the three
+  crossing frames); replace `test_tracker_orders_by_confidence_and_handles_gaps` with
+  `test_coast_300ms_then_drop_at_0_5s`, `test_ids_never_reused`, `test_velocity_from_irregular_timestamps`,
+  `test_one_euro_smooths_keypoints`; add `test_stale_result_is_none_and_unavailable`, `test_step_none_holds_last`,
+  `test_close_joins_before_release`, `test_raised_right_hand_gives_right_wrist_x_over_half` (unflipped landmarks
+  through the parser and mirror), and the hardware-marked `test_mediapipe_runs_on_clip` (a five-second clip built
+  from a public MediaPipe sample image that `tools/fetch_models.py` fetches, URL verified at implementation time;
+  skipped without mediapipe; the doctor is the gate).
+- **Task 17, audio.** Per spec 5 and 6.2: a callback fills a 2 s ring buffer at 16 kHz mono and stamps its time; per
+  block, a 512-point FFT gives `voice_db` (300 Hz to 3.4 kHz, dBFS, no gain), `floor_db` (rolling 30 s 90th
+  percentile), `voice = clamp((voice_db - floor_db) / 30)`, `clap` (2 to 6 kHz spectral-flux onset, crest factor
+  over 4, 12 dB over the floor), `level` with its slow gain, `level_smooth` (50 ms attack, 300 ms release), `onset`,
+  `beat`, `bpm`. Windows are seconds, updated per block, never per tick; `latest()` returns `(capture_t, Audio)` and
+  the runner applies 0.5 s staleness. `audio_device` selects by name. The first second of exact zeros logs once that
+  macOS microphone permission is probably denied and sets `available = False`. Tests: add
+  `test_kick_plus_pink_noise_gives_no_claps_in_20s` (125 bpm), `test_claps_12db_over_floor_caught_90_percent`,
+  `test_voice_db_is_absolute`, `test_floor_is_30s_90th_percentile`, `test_level_smooth_attack_release`,
+  `test_features_independent_of_block_size`, `test_exact_zeros_warn_once_and_unavailable`,
+  `test_latest_carries_capture_time`; keep the bpm test.
+- **Task 18, sources and CLI.** Keep Task 0's `doctor` and its tests; `run` becomes the default command, with
+  `--require camera,mic,pose` refusing to start after five seconds. Add `calibrate` (spec 6.6 as a `Calibrator`
+  state machine driven by Sensed, writing `calibration.json`), `record --script NAME --i-have-consent [--raw]
+  [--with-motion]` (refused without consent; refused on `colorlight` unless `allow_record`; `--raw` always refused
+  on `colorlight`; 3, 2, 1 then the red REC glyph and a seconds counter on the wall for the whole recording; motion
+  dropped unless `--with-motion`; cues written to the header), and `stats` (per game: sessions, median duration, end
+  reasons). `main` builds `Runner(cfg, display, font, Director(all_games(), cfg, scores=scores), all_games(),
+  scores=scores, sessions=SessionLog(cfg.data_dir / "sessions.jsonl"), calibration=load_calibration(cfg.data_dir))`.
+  `--backend` accepts `colorlight`. `tools/latency_probe.py` (spec 9.4) lands here at interface level: flash a
+  square, count pushes until the camera reports the blob. Tests: add
+  `test_run_require_exits_nonzero_without_camera`, `test_calibrate_with_actors_writes_zone`,
+  `test_record_requires_consent`, `test_record_refused_on_colorlight_without_allow_record`,
+  `test_raw_refused_on_colorlight`, `test_record_script_writes_cues`, `test_record_drops_motion_by_default`,
+  `test_rec_glyph_on_every_recorded_tick`, `test_stats_summarises_sessions`,
+  `test_main_builds_runner_with_director`; the replay test launches `paint`.
+- **Task 19, IMX500 on the Pi 5.** `sudo apt install imx500-all python3-picamera2 python3-munkres python3-scipy`.
+  Before importing picamera2's HigherHRNet postprocess, install a `munkres` shim in `sys.modules` whose
+  `Munkres().compute` calls `assign()` (Task 16), and truncate each output tensor to the top 8 candidates per joint.
+  `FrameRate` from `camera_fps`; `step()` returns `None` without an output tensor; normalise by the model input
+  size, never by picamera2's boxes; `mirror_keypoints`, not `cv2.flip`; `close()` joins, then `picam2.close()`.
+  Parsers are pluggable (`PARSERS = {"higherhrnet": ..., "yolo11n-pose": ...}`, a constructor argument, not a config
+  field). Exposure and white balance lock after a 3 s warm-up and re-converge after 30 s without bodies; `lux` from
+  metadata feeds the brightness limiter. Pi 5 target: `AmbientCapabilities=CAP_NET_RAW` for the Colorlight socket,
+  the wired port dedicated to the card, the RTC battery fitted. Tests: add `test_munkres_shim_matches_assign`,
+  `test_truncates_to_top8_per_joint`, `test_parse_normalises_by_input_size`, `test_missing_tensor_returns_none`,
+  `test_parser_registry`, and the shared `test_raised_right_hand_gives_right_wrist_x_over_half` fixture through this
+  parser.
+- **Task 20, generic game tests.** Per spec 9.1 and 9.2. Seeds: `[zlib.crc32(f"{name}:{layout}:{i}".encode()) for i
+  in range(5)]`, printed on failure. `random_mix` is 05-plan B1's, extended to add `motion_rect` when `"motion" in
+  needs`. Sizes: every declared layout plus 96x48. Soak runs under `degrade` and with `hostile_mix` (five bodies,
+  eight blobs, keypoints at 0 and 1, confidence-0 limbs, flickering presence, short both-hands-up), raises nothing,
+  draws a non-black frame, and reaches every phase in the game's `PHASES` (a class attribute, default `("play",)`,
+  added because spec 9.2's "every declared phase" needs a declaration). Counterfactual: `actors.Script` records each
+  `Person` call, clap and blob as an event and `build(drop=...)` omits one; frames must diverge by `RESPONSE_PX =
+  12` within `LATENCY_TICKS = 2` (spec 11), overridable per game with a comment. Also `_xy` lit on every tick of
+  every scenario, flash (raw frames under `claps` at 12 Hz, `tempo(180)` and an alternating motion grid have
+  `flash_area` at most 0.10), namespacing (no key in `RUNNER_KEYS` or starting `fx_`), and budget (`BUDGET_MS =
+  float(os.environ.get("ARCADE_TICK_BUDGET_MS", "2.0"))`, the whole `runner.tick` through `run_headless` with
+  `RecordingDisplay(keep_all=False)`, mean under the budget and p95 under twice it, 300 ticks). A collection hook in
+  `tests/arcade/conftest.py` fails unless each declared layout of each game has at least three items in
+  `test_<game>.py`. Privacy (spec 6.5) is `tests/arcade/test_privacy.py` here: `test_no_forbidden_calls` tokenizes
+  every `arcade/**/*.py` (comments and strings excluded) and fails on the names `imwrite`, `imencode`,
+  `VideoWriter`, `wave`, `savez`, on `np.save` and on `.save` attribute access;
+  `test_scenario_lines_hold_only_sensed_fields` encodes every actor scene and every festival scene.
+- **Tasks 21 to 23 (new, interface level; the iteration plan writes their code and tests).**
+  - **Task 21, feel metrics.** Create `arcade/feel.py` (`measure(game_cls, layout, seeds) -> dict` computing spec
+    9.3's metrics from `SCENARIOS`, counterfactual runs and traces) and `arcade/feel_budgets.toml` (per `kind`; a
+    game override needs an `override_reason` key beside it, since TOML drops comments). `pytest -m feel` asserts the
+    budgets. Tests assert a spy game that follows the player's x passes fidelity and response, a screensaver that
+    ignores input fails both, and an override without a reason is rejected.
+  - **Task 22, bots.** Create `arcade/bots.py` (`Bot` protocol `(debug_state, t) -> actor spec` with
+    `reaction_ticks` and position noise; `play(game_cls, bot, seed, layout, ticks)` closed loop; `win_rate(game_cls,
+    bot, seeds=20)`). Every game module exports `BOTS = {"good": ..., "lazy": ...}`. Tests assert determinism under
+    a seed, that reaction delay is honoured, and that on a target spy game `good` beats `lazy` beats no input.
+  - **Task 23, feel table and evidence.** Create `tools/arcade_feel.py` (prints the feel table for a game and
+    layout) and `tools/arcade_evidence.py --iteration N --games changed` (spec 9.6; "changed" from `git diff
+    --name-only` since the last evidence commit; GIF at most 6 s and 300 KB). Tests run it for paint into a
+    temporary directory and assert the file set, the GIF caps, the README's first line pattern, and that unchanged
+    games are not regenerated.
+
+### Spec drift already known
+
+05-plan's Minor list named three places where the spec disagreed with the plan's names. Revision 3 already uses the
+plan's names, so keep them: `scene(...)` (not `combine`), `--person` on the contact sheet tool (not `--actors`), and
+games that keep their own buffer blit it (no "kept canvas").
+
+### Done when (revision 3)
+
+Loop-verifiable:
+
+- `pytest` passes on the Mac with no hardware attached, including `-m perf` and `-m feel`, and the journal records
+  the collected and skipped counts.
+- `python tools/env_check.py` has written `arcade/sources/README.md`, and `python -m arcade doctor --require pose`
+  exits 0.
+- `python tools/arcade_shot.py --game paint --scenario canonical --size 128x32 --out shots/paint.png` writes
+  non-black plain and LED sheets with provenance headers, and the same at 64x64.
+- Headless, the director takes a walk, a stand and a raised hand from ATTRACT through INVITE to the featured game at
+  128x32 and 64x64, and runs with the mirror at 64x32.
+- Paint passes the soak, counterfactual, `_xy`, flash, namespacing and budget tests, and the layout collection hook
+  is active.
+- `python tools/arcade_play.py --game paint --log probe.jsonl` answers validated verbs, and `tools/repl_to_test.py`
+  turns the log into a passing test.
+- `python tools/arcade_evidence.py --iteration 1 --games paint` writes a complete package.
+- The privacy tests pass.
+
+Owner-verified:
+
+- `python -m arcade doctor --require camera,mic,pose` exits 0 on the Mac with permissions granted.
+- Live smoke, `python -m arcade --backend sdl --camera mediapipe`, at both layouts: the mirror appears within half a
+  second, a raised hand starts a game, walking away returns to attract, and both hands for 3 s exits. Recorded in
+  `docs/superpowers/workflow/live-smoke.md`.
+- The first real fixtures (`empty-room`, `walk-in-stand-leave`, `door-point`, `exit-gesture`) are recorded and their
+  cue assertions pass.
+- Pi 5 day: Colorlight constants verified with the `rgb` pattern, the IMX500 parser chosen, and
+  `ARCADE_TICK_BUDGET_MS=20` perf numbers committed to `docs/superpowers/workflow/evidence/pi-perf.md`.
+- The second plan (nine games, nine more attract modes, project skills) can be written against the real `Game`,
+  actors, director and tools.
 
 ## Review Focus
 
@@ -34,28 +768,44 @@
 ## File Structure
 
 ```
-pyproject.toml                       (modified) packages show* and arcade*, new deps and extras
+pyproject.toml                       (modified) packages show* and arcade*, new deps and extras  (rev 3: created in Task 0)
 arcade.toml                          default arcade config
 show/display/__init__.py             (modified) DisplayConfig protocol, make_display duck-typed
 show/display/fake.py                 (modified per amendment) last, count
 show/display/ddp.py                  data type 0x0B, no scaling
+show/display/colorlight.py           daemon Task 16, the arcade's wall path; set_brightness sends the packet  (new, rev 3)
 arcade/__init__.py
 arcade/__main__.py                   python -m arcade
 arcade/config.py                     ArcadeConfig, load_config
+arcade/calibration.py                Calibration, load_calibration, save_calibration  (new, rev 3)
 arcade/sensed.py                     Keypoint, Body, Blob, Audio, Sensed, COCO constants, SKELETON
 arcade/canvas.py                     Canvas drawing over a frame
 arcade/look.py                       gamma LUT, render(frame, mode, scale, gamma)
 arcade/preview.py                    PreviewDisplay wrapping SDLDisplay with a look mode
 arcade/game.py                       GameInfo, Game protocol, icon_from_rows
+arcade/input.py                      Edge, Hold, OneEuro, to_wall  (new, rev 3)
+arcade/juice.py                      shared effects, one instance per launch  (new, rev 3)
+arcade/flash.py                      FlashGovernor, flash_area  (new, rev 3)
+arcade/brightness.py                 BrightnessLimiter and the night schedule  (new, rev 3)
+arcade/poses.py                      POSES in body-relative units  (new, rev 3)
+arcade/bots.py                       Bot protocol, play, win_rate (Task 22)  (new, rev 3)
+arcade/feel.py                       feel metrics (Task 21)  (new, rev 3)
+arcade/feel_budgets.toml             per-kind feel budgets (Task 21)  (new, rev 3)
+arcade/attract/__init__.py           (new, rev 3)
+arcade/attract/director.py           Director: tiers, modes, mirror, invite, doors, cards  (new, rev 3)
+arcade/attract/modes/__init__.py     ModeInfo, Mode protocol, MODE_ORDER, discovery  (new, rev 3)
+arcade/attract/modes/<name>.py       watcher, echo, warp, contours in this plan  (new, rev 3)
 arcade/scores.py                     Scores persistence
 arcade/headless.py                   RecordingDisplay, run_headless
 arcade/runner.py                     Runner
-arcade/menu.py                       Menu
-arcade/games/__init__.py             registry: GAMES, get_game, all_games
+arcade/menu.py                       Menu  (superseded, rev 3: arcade/attract/director.py)
+arcade/games/__init__.py             registry: GAMES, get_game, all_games  (rev 3: MENU_ORDER, importlib discovery, guarded imports)
 arcade/games/paint.py                Paint
-arcade/games/puppet.py               Puppet
+arcade/games/puppet.py               Puppet  (superseded, rev 3: the director's mirror layer)
 arcade/sources/__init__.py           make_sources(cfg, size)
 arcade/sources/camera.py             CameraSource protocol, NoCamera, ThreadedCamera, BodyTracker
+arcade/sources/mirror.py             mirror_keypoints, mirror_box  (new, rev 3)
+arcade/sources/README.md             versions from tools/env_check.py; source decisions  (new, rev 3)
 arcade/sources/audio.py              AudioSource protocol, NoAudio, AudioFeatures, SoundDeviceAudio
 arcade/sources/actors.py             Person, make_keypoints, moving_blob, silence, claps, tempo, loud, scene
 arcade/sources/scenario.py           encode, decode, ScenarioReader, ScenarioWriter
@@ -68,9 +818,15 @@ arcade/main.py                       CLI
 tools/arcade_shot.py                 contact sheets
 tools/arcade_play.py                 step-verb REPL
 tools/fetch_models.py                downloads the MediaPipe model
+tools/env_check.py                   Task 0 environment spike  (new, rev 3)
+tools/repl_to_test.py                REPL log to pytest case  (new, rev 3)
+tools/latency_probe.py               camera-to-wall latency with a mirror  (new, rev 3)
+tools/arcade_feel.py                 feel table (Task 23)  (new, rev 3)
+tools/arcade_evidence.py             evidence package (Task 23)  (new, rev 3)
 tests/arcade/conftest.py             font, size fixtures
 tests/arcade/helpers.py              make_cfg, run, StubMenu
 tests/arcade/test_*.py               one per module, plus test_all_games.py (soak and budget)
+tests/arcade/fixtures/real/          owner-recorded .jsonl.gz fixtures (spec 9.5)  (new, rev 3)
 ```
 
 ---
@@ -4915,7 +5671,7 @@ git commit -m "test(arcade): soak and tick-budget tests for every registered gam
 
 ---
 
-## Done when
+## Done when (revision 2; superseded by "Done when (revision 3)" in the amendments)
 
 - `pytest` passes on the Mac with no hardware attached.
 - `python tools/arcade_shot.py --game paint --blob "moving_blob(0.1,0.5,0.9,0.5,2)" --out shots/paint.png` produces a sheet that looks like a red streak fading on round LEDs.
