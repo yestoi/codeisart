@@ -12,7 +12,8 @@ Allows the stop (exit 0, no output) when any of:
     starts its next turn. This stop is not counted. Once state.md is older than that
     the stop is blocked and counted as usual, and the reason says to check the agent;
   - the run's block counter in docs/superpowers/workflow/.blocks is at or above
-    iterations-per-run from config.md (default 6).
+    stop-blocks from config.md, or iterations-per-run when there is no stop-blocks line
+    (default 6).
 Otherwise increments the counter and prints a block decision as JSON.
 
 The counter counts blocks since the last commit: .blocks-head holds the HEAD the count
@@ -39,10 +40,12 @@ DEFAULT_CAP = 6
 IN_FLIGHT_FRESH = 45 * 60    # seconds: the operator's fallback wake-up is 20 minutes, so two were missed
 UNCHECKED = re.compile(r"^\s*- \[ \] M", re.M)
 CAP_LINE = re.compile(r"^\s*-\s*iterations-per-run:\s*(\d+)", re.M)
+BLOCKS_LINE = re.compile(r"^\s*-\s*stop-blocks:\s*(\d+)", re.M)
 
 
 def read_cap():
-    m = CAP_LINE.search(c.read_text(c.wf("config.md")) or "")
+    config = c.read_text(c.wf("config.md")) or ""
+    m = BLOCKS_LINE.search(config) or CAP_LINE.search(config)
     return int(m.group(1)) if m else DEFAULT_CAP
 
 

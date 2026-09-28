@@ -264,6 +264,14 @@ run 1 guard_write.py "$(write_json Write arcade/games/pong.py)"; check "write gu
 run 1 guard_write.py "$(bash_json 'rm -rf tests/arcade/fixtures/real')"; check "write guard ignores Bash" '[ $RC -eq 0 ] && [ -z "$ERR" ]' "rc=$RC"
 run "" guard_write.py "$(write_json Write tests/arcade/fixtures/real/x)"; check "write guard inert without OPERATOR" '[ $RC -eq 0 ] && [ -z "$ERR" ]'
 
+echo "# stop.py: stop-blocks sets the hook's cap apart from the iteration cap"
+setup; no_agent
+printf -- '# Workflow config\n- iterations-per-run: 2\n- stop-blocks: 5\n' > "$WF/config.md"
+run 1 stop.py "$STOP_JSON"; check "stop-blocks wins over iterations-per-run" 'printf "%s" "$OUT" | grep -q "Block 1 of 5"'
+echo 4 > "$WF/.blocks"; rm -f "$WF/.blocks-head"
+run 1 stop.py "$STOP_JSON"; check "blocks up to stop-blocks" 'printf "%s" "$OUT" | grep -q "Block 5 of 5"'
+run 1 stop.py "$STOP_JSON"; check "allows at stop-blocks" '[ -z "$OUT" ]'
+
 echo "# stop.py: the counter starts again when a commit lands"
 setup; no_agent
 run 1 stop.py "$STOP_JSON"; run 1 stop.py "$STOP_JSON"; run 1 stop.py "$STOP_JSON"
@@ -328,6 +336,10 @@ cmds = [h["command"] for groups in hooks.values() for g in groups for h in g["ho
 assert len(cmds) == 6, cmds
 bad = [c for c in cmds if not c.startswith("python3 \"$CLAUDE_PROJECT_DIR/scripts/operator/")]
 assert not bad, bad
+P'
+check "worktrees of subagents start from the local HEAD, not the remote's" 'python3 - "$HERE/../../.claude/settings.json" <<"P"
+import json, sys
+assert json.load(open(sys.argv[1])).get("worktree", {}).get("baseRef") == "head"
 P'
 
 echo
