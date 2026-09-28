@@ -1,23 +1,11 @@
 # Operator state
 iteration: 6
-phase: plan
-plan: none yet (it06: director, mirror, four attract modes; with C28, C30 first, C33)
+phase: orient
+plan: none yet (it06 is roadmap M3b, first playable, headless: runner fixes and a lobby argument for `run_headless`, then the small lobby, Pong and `tools/arcade_shot.py` in parallel; M3c, the camera and `arcade run`, beside it if there is room)
 base: none
 orchestrator: none
-in_flight: none (it05 done at a1320bc; state committed)
-carried: it06: C28, C30 (priority), C33, C31 if the runner is touched; C29/C32 as files are touched; C11, C17, C34 with Task 15; C21 rest with Tasks 12, 14, 18; C23 with Tasks 13, 18; C24 with Task 20 and M6; C35 with M5; C36 with Tasks 11, 19, 20
-next_gate: after iteration 6 (iterations-per-run: 6); owner standing instruction 2026-09-28: take the loop's defaults for owner questions until then (decisions.md), list them at the check-in; still gate on destructive actions or scope changes
-last_compaction: 2026-09-27T19:54:02Z at iteration 2 phase plan (auto)
-
-## Compaction footer 2026-09-28T16:45:05Z
-- trigger: auto
-- head: ee6780b
-- last journal entry: ## Iteration 4 — 2026-09-28
-- gate.md: absent
-- git status --short (up to 20 lines):
-```
- M docs/superpowers/workflow/decisions.md
- M docs/superpowers/workflow/state.md
-?? docs/superpowers/plans/2026-09-28-it05-juice-runner-headless.md
-?? docs/superpowers/workflow/evidence/it05/
-```
+in_flight: none (the it06 plan writer started 2026-09-28 13:16 ended with its session 30 seconds later and wrote nothing; nothing of it06 exists)
+carried: C30 and C31 with M3b. Notes for M3b: C23 (the tool), C33 (`LobbyLike`, end card, `to_wall`, `draw_figure`). Notes for M3c: C23 (`build_display`), C28, C36 (`main`). The rest wait under the roadmap's "Notes for later tasks"
+next_gate: after iteration 11 (iterations-per-run: 6, and this run starts at iteration 6). Owner questions take their default at once (decisions.md, standing instruction); owner items in the roadmap never stop the loop
+rules: config.md "Loop rules" (2026-09-28) override the workflow-loop skill and its sub-skills
+last_compaction: 2026-09-28T16:45:05Z at iteration 5 phase plan (auto)

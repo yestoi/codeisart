@@ -1,25 +1,34 @@
 # Decisions — wall arcade
 
-Every question put to the owner, one block each. The loop appends a block when it asks, and
-transcribes the owner's answer under it before acting on it. A block with an empty `answer:` line is
-open. Loop-decidable questions are never asked here; they are journaled. At the deadline an
-unanswered question takes its default and is marked `defaulted`; the owner can override it later.
+Every question for the owner, one block each. Since 2026-09-28 the loop does not ask and wait: it
+appends the block, takes the default, and the owner answers at a check-in or whenever they like; the loop
+then transcribes the answer under the question and follows it from there. A block with an empty `answer:`
+line is open. Loop-decidable questions are never asked here; they are journaled. Every
+question takes its default at once and is marked `defaulted` (standing instruction below); the owner can
+override it later.
 
-## Standing instruction 2026-09-28
+## Standing instruction (2026-09-28, made permanent the same day)
 
-The owner said: "I will take your leans for decisions tonight. I will review our work after iteration 6."
-Until the iteration-6 check-in, a new owner question gets its block here as usual, then takes its
-default at once, marked `status: defaulted (standing instruction 2026-09-28)`, and is listed for review
-at the check-in gate. It is not asked. Plan-review deadlocks after two rounds take the verified fix plus a
-confirm-only round (the Q7/Q14 precedent). Still stops the loop with gate.md: a destructive or
-irreversible action, or a change to the roadmap's scope or end goal.
+First the owner said: "I will take your leans for decisions tonight. I will review our work after iteration 6."
+After the retrospective of 2026-09-28 the owner made it the rule for every run (config.md, Loop rule 8).
+
+A new owner question gets its block here as usual, then takes its default at once, marked
+`status: defaulted (standing instruction)`, and is listed at the next check-in. It is not asked, and the
+loop does not wait. A plan review that blocks gets the fix and one confirming look (config.md, Loop rule 4).
+The loop writes gate.md only for a destructive or irreversible action, a change to the roadmap's scope or
+end goal, or the iteration cap. A step only the owner can do goes to the roadmap's "Owner items" and the
+loop takes the next milestone that does not need it.
+
+The "review after iteration 6" happened early, on 2026-09-28 before iteration 6 (journal, owner
+intervention). Q17 to Q20 stand as defaulted until the owner says otherwise; they are listed in the
+roadmap's owner items. The next check-in gate is after iteration 11.
 
 Block format:
 
 ```
 ### Q<n>: <question>
 asked: it<N>
-default: <what the loop does if no answer by the deadline, or "none (blocks)">
+default: <what the loop does at once; every question has one>
 deadline: it<N>
 answer: <owner's answer, transcribed; empty while open>
 status: open|answered|defaulted

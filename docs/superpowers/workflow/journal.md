@@ -140,3 +140,13 @@ Owner intervention, 2026-09-27, during iteration 2's plan phase: the owner asked
   - Closed: C10, C22, C25, C26, C27, and C21's Task 8 part.
 - Owner questions: Q17-Q20 defaulted under the standing instruction; listed for the iteration-6 check-in.
 - Status: done
+
+Owner intervention, 2026-09-28, between iterations 5 and 6: the owner reviewed iterations 1 to 5 (docs/superpowers/reviews/2026-09-28-operator-retrospective.md) and changed how the loop works. Of 24 hours, 2.4 were implementation, 9.6 planning and plan review, 8.1 waiting on answers and 3.4 a stall nobody woke from. What changed:
+- config.md has "Loop rules" that override the skill: thin plans with no code bodies, implementers write the code test-first, one review per iteration, adversarial plan review only for safety slices, a finding is carried only with a failing test or a safety gap, tasks on different files run in parallel in worktrees, a 20 minute fallback wake-up while waiting on an agent, owner questions never block, no `cd`.
+- The roadmap's order: M3b first playable, headless (the small lobby and Pong) is iteration 6, with M3c (the camera source and `arcade run`) beside it or next; then M4a the oracle for games, then the games in parallel. This replaces the next step named in evidence/it05/README.md (the director). The attract director moved to M8. Hardware checks moved from GATE B to the owner's items now that the panels are in hand.
+- Carried fixes triaged: C30 and C31 carried; C29 and C32 closed without a change; the rest are notes for the tasks that need them.
+- Hooks: commands anchored to `$CLAUDE_PROJECT_DIR` (one `cd` had locked a session out of Bash, Write and Edit); a stop while an agent is in flight is allowed and not counted; the block counter starts again when a commit lands (it had sat at its cap since 2026-09-27 14:56, so the Stop hook allowed every stop for the rest of the run). 129 hook checks pass.
+- New tool for the owner's hardware bring-up: `tools/wall_pattern.py`.
+- The it06 plan writer named in state.md had died with its session; iteration 6 starts from orient.
+- This review was the check-in planned for after iteration 6. Q17 to Q20 stand as defaulted; the next check-in gate is after iteration 11.
+- config.md has its own orchestrator and reviewer prompts; the skill's are not used.

@@ -1,6 +1,29 @@
 # Arcade Operator Design
 
-Date: 2026-09-26. Status: DRAFT, awaiting the owner's approval. Nothing here is installed yet.
+Date: 2026-09-26. Status: approved 2026-09-26 (decision Q4) and installed; amended 2026-09-27 (step 2a) and
+2026-09-28 (below).
+
+## Amendments, 2026-09-28
+
+The owner's review of iterations 1 to 5 (`docs/superpowers/reviews/2026-09-28-operator-retrospective.md`)
+changed the loop. The rules are in `docs/superpowers/workflow/config.md` under "Loop rules", which the loop
+reads every iteration. Where this document differs from them, they win. In short:
+
+| Section here | What it said | What holds now |
+|---|---|---|
+| 4, step 1 | Carried fixes are all part of the next iteration | Only those tagged for the files the slice touches (rule 5) |
+| 4, step 2 | writing-plans as usual; a slice is one to three plan tasks or one to two games | Thin plans: interfaces and acceptance tests, no bodies, under 300 lines (rule 1); a slice is what fits the time, about six tasks when most run in parallel, three or four games (rule 10) |
+| 4, step 2a | Every plan gets an adversarial review, two rounds, then a gate | Only a safety slice, one round and a confirming look, never a gate (rule 4) |
+| 4, step 3 | One implementer per task, in turn, copying test modules from the plan | Implementers write the code test-first; tasks on different files run together in worktrees, the orchestrator integrates (rules 2, 6) |
+| 4, step 4 | A review after each task, a whole-branch review and an iteration review | One review of BASE..HEAD per iteration (rule 3) |
+| 4, step 8 and "Defaults and deadlines"; 5 | A human-only decision writes gate.md; human-only questions block | No question blocks; gate.md only for destructive actions, scope changes and the iteration cap; what only the owner can do is an owner item in the roadmap (rule 8) |
+| 4, steps 3 and 4, the prompts | The skill's Orchestrator and Reviewer prompts with two added rules | The prompts in config.md under "Prompts" |
+| 6, hook commands | `scripts/operator/<name>.sh`, relative | `python3 "$CLAUDE_PROJECT_DIR/scripts/operator/<name>.py"`; see `scripts/operator/README.md` |
+| 6, `stop.sh` | Counts every block up to the cap | A stop while an agent is in flight is allowed and not counted; the count starts again when a commit lands |
+| 8 | M3 to M7, GATE A, GATE B in that order | `roadmap.md`: first playable, then the oracle, then games in parallel; hardware checks are owner items from 2026-09-28 |
+| 9, "Compaction mid-agent" | SendMessage an agent named in `in_flight` | After a compaction, yes. In a new session the agent is gone: set `in_flight` to none and redo its work (rule 7) |
+
+The text below is kept as written, for the reasoning behind the design.
 
 The operator is one long-running Claude Code session on the Mac that builds the wall arcade mostly
 unattended: it plans a slice, implements it through fresh subagents, has it reviewed, verifies it
