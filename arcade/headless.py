@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from datetime import datetime
-from typing import TYPE_CHECKING, Iterable, Sequence
+from typing import TYPE_CHECKING, Callable, Iterable, Sequence
 
 import numpy as np
 
@@ -79,8 +79,9 @@ class NullLobby:
         self.results.append(result)
 
 
-def run_headless(cfg: ArcadeConfig, font: Font, game_cls: type | Sequence[type], sensed_iter: Iterable[Sensed],
-                 seed: int = 0, strict: bool = True, trace: bool = False, raw: bool = False, display=None,
+def run_headless(cfg: ArcadeConfig, font: Font, game_cls: type | Sequence[type],
+                 sensed_iter: Iterable[Sensed] | Callable[[Runner], Iterable[Sensed]], seed: int = 0,
+                 strict: bool = True, trace: bool = False, raw: bool = False, display=None,
                  lobby: LobbyLike | None = None) -> tuple[list[np.ndarray], Runner]:
     """Run the real runner, one tick of TICK per Sensed, and return (frames, runner).
 
@@ -91,6 +92,9 @@ def run_headless(cfg: ArcadeConfig, font: Font, game_cls: type | Sequence[type],
     limiter's day cap). runner.game is the launched instance, kept after done() or a crash; with trace
     runner.trace holds state() after every tick, and with raw runner.raw_frames every frame before the limiter.
     display defaults to a RecordingDisplay keeping every frame; frames is its list (empty for another display).
+    sensed_iter may be a callable instead: it is called once with the built runner, before any launch or tick,
+    and its iterable is pulled one record per tick, so a generator can read runner.game.debug_state() between
+    ticks (the closed loop of arcade/bots.py).
     """
     from arcade.runner import Runner
 
@@ -101,6 +105,8 @@ def run_headless(cfg: ArcadeConfig, font: Font, game_cls: type | Sequence[type],
                     local_clock=lambda: OPENING_NIGHT)
     runner.trace = [] if trace else None
     runner.raw_frames = [] if raw else None
+    if callable(sensed_iter):
+        sensed_iter = sensed_iter(runner)
     if lobby is None:
         runner.launch(games[0].info.name)
     for sensed in sensed_iter:

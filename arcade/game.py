@@ -7,7 +7,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Callable, ClassVar, Protocol
+from typing import TYPE_CHECKING, Callable, ClassVar, Protocol
 
 import numpy as np
 
@@ -16,9 +16,13 @@ from arcade.look import is_real
 from arcade.scores import GameScores
 from arcade.sensed import Sensed
 
+if TYPE_CHECKING:
+    from arcade.juice import Juice
+
 INPUTS = frozenset({"pose", "blobs", "motion", "audio"})
 KINDS = ("control", "toy", "score")               # selects the feel budget set (spec 9.3)
 LAYOUTS = frozenset({"128x32", "64x64"})
+REQUIRED_SCENARIOS = ("canonical", "idle_body", "nobody")   # every game's SCENARIOS has at least these
 ICON_SIZE = 16
 RUNNER_KEYS = frozenset({"game", "t", "idle", "attract", "hidden", "crashes", "glitch", "flash_held_ticks", "player",
                          "present"})
@@ -93,10 +97,25 @@ class GameInfo:
 class Game(Protocol):
     """A game (spec 7.1). A fresh instance per launch; state across plays only through scores.
 
-    The runner sets scores (the per-game view Scores.for_game(name, layout)) before reset(). draw() must
-    work right after reset(). debug_state() is a small flat dict: a phase key with values from PHASES, score
-    when there is one, active on any tick with meaningful input, *_xy for wall coordinates of a visible
-    entity, and never a reserved() key. fx is the launch's effects object (arcade/juice.py, core Task 8).
+    The runner sets scores (the per-game view Scores.for_game(name, layout)) before reset(), then calls
+    reset((w, h), random.Random, Juice) on a fresh instance per launch, update(Sensed, TICK) with the runner's
+    player and player2 set, and draw() on a cleared Canvas. draw() must work right after reset(). fx is the
+    launch's effects object (arcade/juice.py). A game never pushes a frame, saves one or reads the config.
+
+    debug_state() is a small flat dict and never uses a reserved() key:
+    - phase, a value from PHASES. Leave "play" between rounds (a serve, a point, the end): the session cap
+      only ends a session outside "play", so a game that never leaves it is never capped.
+    - score, when there is one.
+    - active, True (or a numpy True) on any tick with meaningful input; 1, "yes" and numpy ints do not
+      count. Without it the inactive prompt shows and then ends the session.
+    - *_xy, the wall pixel coordinates of a visible entity.
+
+    SCENARIOS holds scripts (arcade/sources/actors.py) and has at least REQUIRED_SCENARIOS: canonical starts
+    with 2 s of an empty wall (attract, then the walk-up and the raised hand that launch the game from the
+    lobby, then play), idle_body stands in the zone without moving, nobody is an empty wall. Winning and
+    losing are judged by bots, not scripts: a game's bots (BOTS = {"good": ..., "lazy": ...} and won(state))
+    live in arcade/games/<name>_bots.py and its feel budget overrides in arcade/games/<name>_feel.toml, beside
+    the per-kind defaults of arcade/feel_budgets.toml; arcade/bots.py plays them.
     A game may subclass Game to inherit PHASES, SCENARIOS and CAPTION_KEYS defaults.
     """
 
@@ -106,7 +125,7 @@ class Game(Protocol):
     CAPTION_KEYS: ClassVar[tuple[str, ...]] = ()
     PHASES: ClassVar[tuple[str, ...]] = ("play",)
 
-    def reset(self, size: tuple[int, int], rng: random.Random, fx: Any) -> None: ...
+    def reset(self, size: tuple[int, int], rng: random.Random, fx: Juice) -> None: ...
     def update(self, sensed: Sensed, dt: float) -> None: ...
     def draw(self, canvas: Canvas) -> None: ...
     def done(self) -> bool: ...

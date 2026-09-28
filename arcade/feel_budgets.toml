@@ -1,0 +1,102 @@
+# Feel budgets per GameInfo.kind (spec 9.3), read by arcade/feel.py. Each metric is a table with min and/or
+# max. [<kind>.layouts."<WxH>".<metric>] overrides one metric at one layout; a game's own overrides live in
+# arcade/games/<name>_feel.toml, each with a reason. The numbers are an owner question, defaulted: 2 ticks,
+# 12 px and rounds of 20 to 120 s are spec 11's; the win bands are good >= 0.7, lazy 0.1 to 0.7, none <= 0.05.
+
+[control.response_ticks]
+max = 2
+
+[control.fidelity]
+min = 0.8
+
+[control.range]
+min = 0.6
+
+[control.lit_fraction]
+min = 0.01
+max = 0.5
+
+[control.dim_fraction]
+max = 0.1
+
+[control.liveliness]
+min = 0.001
+
+[control.flash_area_raw]
+max = 0.1
+
+[control.square_flashes]
+max = 6
+
+[control.phases_reached]
+min = 1.0
+
+[control.round_seconds]
+min = 20
+max = 120
+
+
+[score.response_ticks]
+max = 2
+
+[score.fidelity]
+min = 0.8
+
+[score.range]
+min = 0.6
+
+[score.lit_fraction]
+min = 0.01
+max = 0.5
+
+[score.dim_fraction]
+max = 0.1
+
+[score.liveliness]
+min = 0.001
+
+[score.flash_area_raw]
+max = 0.1
+
+[score.square_flashes]
+max = 6
+
+[score.phases_reached]
+min = 1.0
+
+[score.round_seconds]
+min = 20
+max = 120
+
+[score.win_good]
+min = 0.7
+
+[score.win_lazy]
+min = 0.1
+max = 0.7
+
+[score.win_none]
+max = 0.05
+
+
+[toy.response_ticks]
+max = 2
+
+[toy.lit_fraction]
+min = 0.01
+max = 0.5
+
+[toy.dim_fraction]
+max = 0.1
+
+[toy.liveliness]
+min = 0.001
+
+[toy.flash_area_raw]
+max = 0.1
+
+[toy.square_flashes]
+max = 6
+
+[toy.phases_reached]
+min = 1.0

@@ -1,14 +1,28 @@
+import dataclasses
 import importlib
+import inspect
+import itertools
 import logging
 import math
+import random
 import types
+from types import MappingProxyType
 
 import numpy as np
 import pytest
 
+import arcade.game as game_module
 import arcade.games as games
-from arcade.game import FX_PREFIX, INPUTS, KINDS, LAYOUTS, RUNNER_KEYS, Game, GameInfo, icon_from_rows, reserved
+from arcade.canvas import Canvas
+from arcade.game import (FX_PREFIX, INPUTS, KINDS, LAYOUTS, REQUIRED_SCENARIOS, RUNNER_KEYS, Game, GameInfo,
+                         icon_from_rows, reserved)
 from arcade.games import MENU_ORDER, all_games, get_game
+from arcade.headless import run_headless
+from arcade.juice import Juice
+from arcade.scores import GameScores
+from arcade.sensed import Sensed
+from arcade.sources.actors import TICK, Person, scene
+from tests.arcade.helpers import SpyGame, make_cfg, spy_info
 
 BLANK = ["." * 16] * 16
 
@@ -84,6 +98,73 @@ def test_game_protocol_defaults():
     assert Toy.PHASES == ("play",) and Toy.CAPTION_KEYS == () and Toy.SCENARIOS == {}
     with pytest.raises(TypeError):
         Toy.SCENARIOS["serve"] = lambda: None                        # one default shared by every game: read-only
+
+
+def test_protocol_members_are_the_frozen_set():
+    # The canary for game-protocol-v1: a change here is a change to the frozen protocol, and needs a journaled
+    # reason and no game task in flight (roadmap M4a).
+    members = {n for n in vars(Game) if not n.startswith("_")} | set(Game.__annotations__)
+    assert members == {"info", "scores", "SCENARIOS", "CAPTION_KEYS", "PHASES", "reset", "update", "draw", "done",
+                       "debug_state"}
+    params = {n: tuple(inspect.signature(getattr(Game, n)).parameters)
+              for n in ("reset", "update", "draw", "done", "debug_state")}
+    assert params == {"reset": ("self", "size", "rng", "fx"), "update": ("self", "sensed", "dt"),
+                      "draw": ("self", "canvas"), "done": ("self",), "debug_state": ("self",)}
+    assert inspect.signature(Game.reset).parameters["fx"].annotation == "Juice"
+    assert [f.name for f in dataclasses.fields(GameInfo)] == ["name", "title", "verb", "icon", "needs", "layouts",
+                                                               "players", "exit_gesture", "kind", "abandon_seconds"]
+    for name in ("REQUIRED_SCENARIOS", "INPUTS", "KINDS", "LAYOUTS", "RUNNER_KEYS", "reserved", "icon_from_rows"):
+        assert hasattr(game_module, name), name
+
+
+def test_required_scenarios():
+    assert REQUIRED_SCENARIOS == ("canonical", "idle_body", "nobody")
+
+    class Stub(Game):
+        info = info(name="stub")
+        SCENARIOS = MappingProxyType({name: (lambda: iter(())) for name in REQUIRED_SCENARIOS})
+
+    assert set(REQUIRED_SCENARIOS) <= set(Stub.SCENARIOS)
+    assert not set(REQUIRED_SCENARIOS) <= set(Game.SCENARIOS)             # the default declares none
+
+
+class Recorder(SpyGame):
+    """Records what the runner passes: the dt of each update and the canvas at each draw."""
+
+    info = spy_info("recorder", players=2)
+
+    def __init__(self):
+        super().__init__()
+        self.dts, self.canvases = [], []
+
+    def update(self, sensed, dt):
+        super().update(sensed, dt)
+        self.dts.append(dt)
+
+    def draw(self, canvas):
+        self.canvases.append((canvas, canvas.frame.copy()))
+        super().draw(canvas)
+
+
+def test_runner_passes_what_the_protocol_says(font5x7):
+    feed = scene(persons=[Person(0.4, id=1), Person(0.6, id=2, height=0.5)], ticks=8)
+    frames, runner = run_headless(make_cfg((128, 32)), font5x7, Recorder, itertools.islice(feed, 4))
+    first = runner.game
+    assert isinstance(first.scores_at_reset, GameScores)                  # scores set before reset
+    assert first.size == (128, 32) and all(type(v) is int for v in first.size)
+    assert type(first.rng) is random.Random and isinstance(first.fx, Juice)
+    assert len(first.seen) == 4 and all(isinstance(s, Sensed) for s in first.seen)
+    assert first.dts == [TICK] * 4
+    assert all(s.player is not None and s.player.id == 1 and s.player2 is not None and s.player2.id == 2
+               for s in first.seen)
+    assert all(isinstance(c, Canvas) and not pixels.any() for c, pixels in first.canvases)   # a cleared canvas
+    runner.end_session("done")
+    assert runner.launch("recorder")
+    for sensed in feed:
+        runner.tick(sensed, TICK)
+    second = runner.game
+    assert second is not first and isinstance(second, Recorder) and second.updates == 4 and first.updates == 4
+    assert second.fx is not first.fx and second.rng is not first.rng
 
 
 def test_menu_order_lists_the_ten_spec_games():

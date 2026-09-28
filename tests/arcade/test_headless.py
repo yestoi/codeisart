@@ -171,6 +171,28 @@ def test_a_sequence_without_a_lobby_launches_the_first(font5x7):
     assert type(runner.game) is first and runner.game.updates == 6
 
 
+def test_a_callable_feed_gets_the_runner_before_the_first_tick(font5x7):
+    calls = []
+
+    def feed(runner):
+        calls.append((runner, runner.game, runner.t, runner.display.count))
+        return stand(3)
+
+    frames, runner = run_headless(make_cfg((64, 64)), font5x7, SpyGame, feed)
+    assert len(calls) == 1 and calls[0] == (runner, None, 0.0, 0)          # called once, before launch and tick
+    assert len(frames) == 3 and runner.game.updates == 3
+
+
+def test_a_callable_feed_reads_state_between_ticks(font5x7):
+    def feed(runner):
+        records = stand(100)
+        while runner.game.updates < 5:
+            yield next(records)
+
+    frames, runner = run_headless(make_cfg((64, 64)), font5x7, SpyGame, feed, trace=True)
+    assert len(frames) == 5 and runner.game.updates == 5 and len(runner.trace) == 5
+
+
 def timed(frames, stamps):
     for s in frames:
         stamps.append(time.thread_time())
