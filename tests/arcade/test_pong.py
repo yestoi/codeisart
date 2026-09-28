@@ -1,15 +1,21 @@
 """Pong (spec 8, game 2): a paddle on each side that follows a hand, a beatable CPU, first to 5 or the leader at 90 s."""
 import dataclasses
+import functools
 import math
 import random
+import statistics
+import tomllib
 import zlib
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from arcade.canvas import Canvas
 from arcade.flash import BUDGET, flash_area, square_flashes
-from arcade.game import reserved
+from arcade.attract.lobby import Lobby
+from arcade.bots import Nobody, for_game, play, seeds
+from arcade.game import REQUIRED_SCENARIOS, reserved
 from arcade.games import get_game
 from arcade.games.pong import BALL_GAIN, BALL_MAX, BALL_START, GAME, MAX_SECONDS, WIN_POINTS, Pong
 from arcade.headless import OPENING_NIGHT, run_headless
@@ -71,7 +77,7 @@ def test_registered_and_declared():
     assert info.players == 2 and info.kind == "score"
     assert Pong.PHASES == ("serve", "play", "point", "over")
     assert Pong.CAPTION_KEYS == ("phase", "left", "right")
-    assert set(Pong.SCENARIOS) == {"solo", "duel"}
+    assert set(Pong.SCENARIOS) == {"solo", "duel", "canonical", "idle_body", "nobody"}
 
 
 @pytest.mark.parametrize("wrist", [0.1, 0.9])
@@ -265,3 +271,94 @@ def test_debug_keys_not_reserved_and_xy_on_the_wall():
             x, y = state[key]
             assert 0 <= x < WALL[0] and 0 <= y < WALL[1], (key, state)
     assert {"phase", "score", "left", "right", "cpu", "humans", "active", "speed"} <= set(state)
+
+
+def test_required_scenarios_start_with_an_empty_wall():
+    assert set(REQUIRED_SCENARIOS) <= set(Pong.SCENARIOS)
+    for name in REQUIRED_SCENARIOS:
+        frames = list(Pong.SCENARIOS[name]())
+        assert frames, name
+    canonical = list(Pong.SCENARIOS["canonical"]())
+    assert len(canonical) == round(100 / TICK)
+    assert all(not f.bodies for f in canonical[:round(2.0 / TICK)]) and canonical[round(2.0 / TICK) + 1].bodies
+    assert len(list(Pong.SCENARIOS["idle_body"]())) == round(60 / TICK)
+    assert len(list(Pong.SCENARIOS["nobody"]())) == round(30 / TICK)
+    assert all(not f.bodies for f in Pong.SCENARIOS["nobody"]())
+
+
+def test_canonical_drives_the_lobby_to_pong(font5x7):
+    cfg = make_cfg(WALL)
+    lobby = Lobby([Pong], cfg)
+    _, runner = run_headless(cfg, font5x7, [Pong], Pong.SCENARIOS["canonical"](), trace=True, lobby=lobby)
+    games = [s["game"] for s in runner.trace]
+    assert games[0] == "lobby" and "pong" in games
+    first = games.index("pong")
+    raised = round(4.5 / TICK)                 # the scene frame the hand goes up on
+    assert raised <= first <= raised + 1, (first, raised)
+
+
+def test_idle_body_scores_nothing(font5x7):
+    s = seed("128x32", 8)
+    _, game, runner = run(Pong, Pong.SCENARIOS["idle_body"](), WALL, font5x7, seed=s)
+    state = game.debug_state()
+    assert state["humans"] == 1 and state["phase"] == "over", (s, state)
+    assert not for_game(Pong)[1](state) and state["left"] < state["right"], (s, state)    # the CPU beats a body that never plays
+    assert state["score"] == state["left"], (s, state)
+
+
+def test_score_stays_with_player_one_when_they_leave():
+    game = make()
+    p1 = Person(0.3, id=1).raise_hand(0.0, 100.0)
+    frames = scene(persons=[p1.leave(4.0), Person(0.7, id=2)], ticks=3000)
+    for _ in drive(game, frames, until=lambda g: g.t >= 3.0 and g.phase == "play"):
+        pass
+    assert game.debug_state()["humans"] == 2
+    game.seats[0].points = 2
+    for _ in drive(game, frames, until=lambda g: g.t >= 5.5 and g.phase == "play"):
+        pass
+    game.bx, game.vx = -5.0, -BALL_START if game.left_seat == 0 else BALL_START
+    game.bx = -5.0 if game.left_seat == 0 else game.w + 5.0
+    advance(game, frames, "serve")
+    state = game.debug_state()
+    assert state["humans"] == 1 and game.seats[0].ctrl is None, state
+    assert state["score"] == game.seats[0].points >= 2, state
+
+
+def test_bots_module_is_found():
+    bots, won = for_game(Pong)
+    assert set(bots) == {"good", "lazy"}
+    assert won({"phase": "over", "left": 3, "right": 2, "cpu": "right", "humans": 1})
+    assert not won({"phase": "over", "left": 2, "right": 3, "cpu": "right", "humans": 1})
+    assert not won({"phase": "play", "left": 4, "right": 0, "cpu": "right", "humans": 1})
+    assert won({"phase": "over", "left": 2, "right": 3, "cpu": "left", "humans": 1})
+    assert not won({"phase": "over", "left": 0, "right": 0, "cpu": "right", "humans": 1})
+
+
+@functools.lru_cache(maxsize=None)
+def bot_play(name: str, s: int):
+    """One play of a named bot ("none" is Nobody) on seed s, shared by the two bot tests."""
+    make = Nobody if name == "none" else for_game(Pong)[0][name]
+    return play(Pong, make(), s)
+
+
+def test_good_beats_lazy_beats_nobody():
+    ss = seeds(Pong, "128x32", 5)
+    wins = {name: sum(bot_play(name, s).won for s in ss) for name in ("good", "lazy", "none")}
+    assert wins["good"] >= 4 and wins["none"] == 0 and wins["lazy"] < wins["good"], (ss, wins)
+
+
+def test_good_round_length_in_band():
+    plays = [bot_play("good", s) for s in seeds(Pong, "128x32", 5)]
+    lengths = [p.seconds for p in plays if p.done]
+    assert len(lengths) >= 4, [(p.seed, p.seconds, p.done) for p in plays]
+    assert 20 <= statistics.median(lengths) <= 120, ([p.seed for p in plays], lengths)
+
+
+def test_feel_file_overrides_have_reasons():
+    data = tomllib.loads((Path(__file__).resolve().parents[2] / "arcade/games/pong_feel.toml").read_text())
+    assert data["fidelity"] == {"input": "cursor_y", "xy": "left_xy", "axis": 1}
+    overrides = data["budgets"]["128x32"]
+    assert "dim_fraction" in overrides
+    for metric, table in overrides.items():
+        assert table.get("reason", "").strip(), metric
+        assert "min" in table or "max" in table, metric

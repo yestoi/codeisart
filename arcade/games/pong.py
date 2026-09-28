@@ -21,11 +21,11 @@ MAX_SECONDS = 90.0
 SERVE_SECONDS = 1.0
 POINT_SECONDS = 1.0
 OVER_SECONDS = 2.0
-BALL_START = 40.0       # px/s
+BALL_START = 60.0       # px/s
 BALL_GAIN = 1.08        # the speed times this on each paddle hit
 BALL_MAX = 110.0
 MAX_ANGLE = 60          # degrees off horizontal at the paddle's edge
-CPU_SPEED = 28.0        # px/s: beatable by a ball that arrives late
+CPU_SPEED = 24.0        # px/s: beatable by a ball that arrives late
 PADDLE_W = 2
 BALL = 2
 JOIN_SECONDS = 1.0
@@ -92,6 +92,7 @@ class Pong(Game):
         self._synced = False
         self._duel = False
         self._active = False
+        self._p1: int | None = None             # the seat player 1 took at the first serve they were there for
         self._last: dict[int, float] = {}       # body id -> when last seen
         self._since: dict[int, float] = {}      # body id -> when its present run began
 
@@ -131,6 +132,11 @@ class Pong(Game):
             if seat.ctrl is None and candidates:
                 body = candidates.pop(0)
                 seat.ctrl, seat.seen, seat.zone_x = body.id, self.t, body.zone_x
+        if self._p1 is None:
+            taken = [i for i, seat in enumerate(self.seats) if seat.ctrl is not None]
+            lead = next((i for i in taken if sensed.player is not None and self.seats[i].ctrl == sensed.player.id),
+                        taken[0] if taken else None)
+            self._p1 = lead
         self._synced = False                # paddles jump to the hands once, without counting as input
         for seat in self.seats:
             if seat.ctrl is not None:
@@ -155,8 +161,8 @@ class Pong(Game):
         return sum(seat.ctrl is not None for seat in self.seats)
 
     def _score_seat(self) -> Seat:
-        humans = [seat for seat in self.seats if seat.ctrl is not None]
-        return humans[0] if len(humans) == 1 else self.seats[0]
+        """Player 1's seat, by the body seated at the first serve: it stays theirs when they leave (Q23)."""
+        return self.seats[self._p1 or 0]
 
     # ----- the tick -----
 
@@ -333,6 +339,21 @@ def _sweeps(person: Person, start: float = 4.0, end: float = 100.0) -> Person:
     return person
 
 
+def canonical():
+    """The wall empty for 2 s, then one player walks up, raises a hand at 4.5 s and sweeps from 6 s: 100 s."""
+    person = Person(0.3, id=1).arrive(2.0).raise_hand(4.5, 0.5)
+    return scene(persons=[_sweeps(person, start=6.0)], ticks=3000)
+
+
+def idle_body():
+    """One body standing, hands down, for 60 s."""
+    return scene(persons=[Person(0.3, id=1)], ticks=1800)
+
+
+def nobody():
+    return scene(ticks=900)
+
+
 def solo():
     """One player who walks up, raises a hand at 2.5 s and then sweeps the paddle up and down."""
     return scene(persons=[_sweeps(Person(0.3, id=1).raise_hand(2.5, 0.5))], ticks=3000)
@@ -344,5 +365,6 @@ def duel():
     return scene(persons=[_sweeps(Person(0.3, id=1).raise_hand(2.5, 0.5)), other], ticks=3000)
 
 
-Pong.SCENARIOS = MappingProxyType({"solo": solo, "duel": duel})
+Pong.SCENARIOS = MappingProxyType({"canonical": canonical, "idle_body": idle_body, "nobody": nobody,
+                                     "solo": solo, "duel": duel})
 GAME = Pong

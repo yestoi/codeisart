@@ -1,0 +1,9 @@
+# Pong's feel: the paddle follows the cursor's height, and the dashed net is dim on purpose.
+[fidelity]
+input = "cursor_y"
+xy = "left_xy"
+axis = 1
+
+[budgets."128x32".dim_fraction]
+max = 0.3
+reason = "the dashed centre net is deliberately dim (0, 0, 96) so it never competes with the ball and paddles"
