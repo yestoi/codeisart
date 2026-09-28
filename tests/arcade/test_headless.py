@@ -10,7 +10,7 @@ from arcade.flash import FlashGovernor
 from arcade.game import RUNNER_KEYS
 from arcade.headless import OPENING_NIGHT, NullLobby, RecordingDisplay, run_headless
 from arcade.sources.actors import Person, scene
-from tests.arcade.helpers import SpyGame, make_cfg, run, spy
+from tests.arcade.helpers import SpyGame, StubLobby, make_cfg, run, spy
 
 BUDGET_MS = float(os.environ.get("ARCADE_TICK_BUDGET_MS", "2.0"))
 SIZES = [(128, 32), (64, 64)]
@@ -122,6 +122,53 @@ def test_helpers_run_takes_ticks_and_config(font5x7):
     assert runner.strict is True
     frames, game, runner = run(spy(raise_in=frozenset({"draw"})), stand(5), (64, 64), font5x7, strict=False)
     assert len(frames) == 5 and runner.crashes == {"spy": 1}
+
+
+class RequestingLobby(StubLobby):
+    """Requests the game called name in its update on tick at (counted from 0), once."""
+
+    def __init__(self, name: str, at: int):
+        super().__init__()
+        self.name, self.at = name, at
+
+    def update(self, sensed, dt):
+        super().update(sensed, dt)
+        if self.updates - 1 == self.at:
+            self.request = self.name
+
+
+def test_with_a_lobby_the_run_starts_in_the_lobby(font5x7):
+    lobby = StubLobby()
+    frames, runner = run_headless(make_cfg((64, 64)), font5x7, SpyGame, stand(10), trace=True, lobby=lobby)
+    assert runner.lobby is lobby and lobby.updates == 10 and lobby.available == {"spy"}
+    assert [s["game"] for s in runner.trace] == ["lobby"] * 10
+    assert runner.game is None and len(frames) == 10
+    assert all(f[0, 1].any() and not f[0, 0].any() for f in frames)  # the stub lobby's pixel, never the spy's
+
+
+def test_the_lobbys_request_launches_the_game(font5x7):
+    lobby = RequestingLobby("spy", at=5)
+    frames, runner = run_headless(make_cfg((64, 64)), font5x7, SpyGame, stand(12), trace=True, lobby=lobby)
+    assert [s["game"] for s in runner.trace] == ["lobby"] * 5 + ["spy"] * 7
+    assert isinstance(runner.game, SpyGame) and runner.game.updates == 6   # ticks 6 to 11
+    assert lobby.updates == 6 and lobby.request is None                   # the runner took the request
+
+
+def test_several_games_are_offered_to_the_lobby(font5x7):
+    first, second = spy("first"), spy("second")
+    lobby = RequestingLobby("second", at=3)
+    _, runner = run_headless(make_cfg((64, 64)), font5x7, [first, second], stand(8), trace=True, lobby=lobby)
+    assert lobby.available == {"first", "second"} and set(runner.games) == {"first", "second"}
+    assert [s["game"] for s in runner.trace] == ["lobby"] * 3 + ["second"] * 5
+    assert type(runner.game) is second
+
+
+def test_a_sequence_without_a_lobby_launches_the_first(font5x7):
+    first, second = spy("first"), spy("second")
+    _, runner = run_headless(make_cfg((64, 64)), font5x7, (first, second), stand(6), trace=True)
+    assert isinstance(runner.lobby, NullLobby) and set(runner.games) == {"first", "second"}
+    assert [s["game"] for s in runner.trace] == ["first"] * 6
+    assert type(runner.game) is first and runner.game.updates == 6
 
 
 def timed(frames, stamps):

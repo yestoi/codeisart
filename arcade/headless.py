@@ -1,10 +1,10 @@
 """Headless pieces shared by the tests and the agent tools: a recording display, a lobby that never requests, and
-run_headless, which runs one game through the real runner (spec 9.1)."""
+run_headless, which runs games through the real runner, launched directly or from a lobby (spec 9.1)."""
 from __future__ import annotations
 
 import random
 from datetime import datetime
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 import numpy as np
 
@@ -13,6 +13,9 @@ from arcade.scores import Scores, SessionLog
 from arcade.sensed import Sensed
 from arcade.sources.actors import TICK
 from show.font import Font
+
+if TYPE_CHECKING:
+    from arcade.runner import LobbyLike, Runner
 
 OPENING_NIGHT = datetime(2026, 11, 11, 21, 0)    # headless local time: evidence never depends on the time of day
 
@@ -76,24 +79,30 @@ class NullLobby:
         self.results.append(result)
 
 
-def run_headless(cfg: ArcadeConfig, font: Font, game_cls: type, sensed_iter: Iterable[Sensed], seed: int = 0,
-                 strict: bool = True, trace: bool = False, raw: bool = False, display=None):
-    """Run game_cls through the real runner, one tick of TICK per Sensed, and return (frames, runner).
+def run_headless(cfg: ArcadeConfig, font: Font, game_cls: type | Sequence[type], sensed_iter: Iterable[Sensed],
+                 seed: int = 0, strict: bool = True, trace: bool = False, raw: bool = False, display=None,
+                 lobby: LobbyLike | None = None) -> tuple[list[np.ndarray], Runner]:
+    """Run the real runner, one tick of TICK per Sensed, and return (frames, runner).
 
-    The runner has in-memory scores and sessions, a NullLobby, and a local clock fixed at OPENING_NIGHT (the
-    brightness limiter's day cap). runner.game is the launched instance, kept after done() or a crash; with trace
+    game_cls is one game class or a sequence of them: the runner's games. With lobby None the runner has a
+    NullLobby and the first game is launched before the first tick; with a lobby instance given, nothing is
+    launched, the run starts in that lobby and its request launches a game (runner.game is None until then).
+    The runner has in-memory scores and sessions and a local clock fixed at OPENING_NIGHT (the brightness
+    limiter's day cap). runner.game is the launched instance, kept after done() or a crash; with trace
     runner.trace holds state() after every tick, and with raw runner.raw_frames every frame before the limiter.
     display defaults to a RecordingDisplay keeping every frame; frames is its list (empty for another display).
     """
     from arcade.runner import Runner
 
+    games = [game_cls] if isinstance(game_cls, type) else list(game_cls)
     display = RecordingDisplay() if display is None else display
-    runner = Runner(cfg, display, font, NullLobby(), [game_cls], seed=seed, strict=strict,
+    runner = Runner(cfg, display, font, NullLobby() if lobby is None else lobby, games, seed=seed, strict=strict,
                     scores=Scores(None, lambda: OPENING_NIGHT), sessions=SessionLog(None),
                     local_clock=lambda: OPENING_NIGHT)
     runner.trace = [] if trace else None
     runner.raw_frames = [] if raw else None
-    runner.launch(game_cls.info.name)
+    if lobby is None:
+        runner.launch(games[0].info.name)
     for sensed in sensed_iter:
         runner.tick(sensed, TICK)
     return getattr(display, "frames", []), runner
