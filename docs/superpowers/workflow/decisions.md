@@ -181,3 +181,31 @@ default: stay on the arcade
 deadline: it6
 answer: two arcade iterations (6 and 7: the first playable, headless and on the camera), then the operator moves to the show daemon. `iterations-per-run` is 2. At the gate after iteration 7 the loop stops; the daemon's roadmap and workflow files are written then, with the owner. The arcade resumes after the daemon, if there is time before the event.
 status: answered
+
+### Q22: What does the small lobby show when nobody is near, before M8's attract modes exist?
+asked: it6
+default: the featured game's title at 1x, centred, static and dim (`TITLE_COLOR = (120, 60, 0)`); nothing when no game fits. M8's director replaces it
+deadline: it6
+answer:
+status: defaulted (standing instruction)
+
+### Q23: Which score does the end card show after a two-player Pong, and which games record a best?
+asked: it6
+default: the card shows player 1's points; Pong records a best for solo games only (a duel's points depend on the other player)
+deadline: it6
+answer:
+status: defaulted (standing instruction)
+
+### Q24: Does a raised hand during the 3 s end card start the next game at once?
+asked: it6
+default: no. Hands do nothing while the card shows; after it a raise starts the game. The result stays readable for its 3 s
+deadline: it6
+answer:
+status: defaulted (standing instruction)
+
+### Q25: A player walks in with a hand already up. Does the game start?
+asked: it6
+default: no. The hand must be lowered and raised again (the lobby's edge is primed when a new player locks and after the end card), so a hand left up, or someone waving while passing, starts nothing by accident. To be judged at the first live smoke: it costs a stranger who arrives waving about a second
+deadline: it6
+answer:
+status: defaulted (standing instruction)
