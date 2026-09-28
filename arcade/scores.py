@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import numbers
 import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -91,9 +92,12 @@ class Scores:
                 if entry is None:
                     dropped += 1
                     continue
-                previous = _entry(value.get("previous"))
-                if previous is not None:
-                    entry["previous"] = previous
+                if "previous" in value:
+                    previous = _entry(value["previous"])
+                    if previous is None:
+                        dropped += 1                                # the entry stays, without last night
+                    else:
+                        entry["previous"] = previous
                 self._data.setdefault(game, {})[layout] = entry
             dropped += not isinstance(layouts, dict)
         if dropped:
@@ -174,9 +178,10 @@ class GameScores:
 class SessionLog:
     """One JSON line per session in data_dir/sessions.jsonl (spec 7.5), appended and fsynced.
 
-    SessionLog(None) keeps the records in memory (records) and never writes. A reason outside REASONS raises
-    ValueError (a runner bug); a write that fails logs a warning. A duration or score that is not a finite
-    number is written as null.
+    SessionLog(None) keeps the records in memory (records) and never writes. A reason outside REASONS, a game
+    or layout that is not a string, or a players count that is not an int of 0 or more raises ValueError (a
+    runner bug); a numpy int is an int (C25). A write that fails logs a warning. A duration or score that is not
+    a finite number is written as null.
     """
 
     def __init__(self, path: Path | str | None):
@@ -189,17 +194,22 @@ class SessionLog:
             raise ValueError(f"session end reason must be one of {REASONS}, got {reason!r}")
         if not isinstance(start, datetime):
             raise ValueError(f"session start must be a datetime, got {start!r}")
+        if not isinstance(game, str) or not isinstance(layout, str):
+            raise ValueError(f"session game and layout must be strings, got {game!r} and {layout!r}")
+        if isinstance(players, bool) or not isinstance(players, numbers.Integral) or players < 0:
+            raise ValueError(f"session players must be an int, 0 or more, got {players!r}")
         record = {"game": game, "layout": layout, "start": start.isoformat(), "duration": _finite(duration),
-                  "players": players, "score": _finite(score), "reason": reason}
+                  "players": int(players), "score": _finite(score), "reason": reason}
         if self.path is None:
             self.records.append(record)
             return record
         try:
+            line = json.dumps(record) + "\n"
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.path, "a") as f:
-                f.write(json.dumps(record) + "\n")
+                f.write(line)
                 f.flush()
                 os.fsync(f.fileno())
-        except OSError as e:
+        except (OSError, TypeError, ValueError) as e:
             log.warning("could not append to sessions log %s: %s", self.path, e)
         return record

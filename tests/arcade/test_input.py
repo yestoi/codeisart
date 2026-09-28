@@ -270,3 +270,24 @@ def test_one_euro_matches_the_paper():
         x_hat += alpha(0.8 + 2.0 * abs(dx_hat), te) * (x - x_hat)
         last = t
         assert f(x, t) == pytest.approx(x_hat, abs=1e-12), f"seed={seed}"
+
+
+def test_one_euro_casts_its_samples():
+    # C26 pins it04's ruled deviation B5: the filter stores floats. C29: a numpy sample comes out as a float, and a
+    # sample that is not a real number, or too big for a float, is not a sample.
+    assert type(OneEuro(np.float32(1)).min_cutoff) is float and type(OneEuro(beta=np.int64(0)).beta) is float
+    f = OneEuro()
+    first = f(np.float32(0.25), np.float64(1.0))
+    assert type(first) is float and type(f.value) is float and first == 0.25
+    v = f(np.float32(0.75), np.int64(2))
+    assert type(v) is float and 0.25 < v < 0.75
+    for x, t in ((None, 3.0), ("0.9", 3.0), (0.9, None), (np.True_, 3.0), (10**400, 3.0), (0.9, 10**400)):
+        assert f(x, t) == v and f.value == v
+    assert math.isnan(OneEuro()(None, 0.0))                          # nothing yet: NaN, as for a NaN sample
+    for kwargs in (dict(min_cutoff=10**400), dict(beta=-10**400), dict(d_cutoff=np.float64(np.inf))):
+        with pytest.raises(ValueError):
+            OneEuro(**kwargs)
+    with pytest.raises(ValueError):
+        capture_grace(10**400)
+    with pytest.raises(ValueError):
+        Hold(10**400)

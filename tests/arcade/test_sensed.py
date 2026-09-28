@@ -271,3 +271,22 @@ def test_blob_coordinates_are_clamped():
     assert Blob(None, 0.5, 0.02, (255, 0, 0)).x == 0.0                                  # as a keypoint's None
     assert place_blob(b, Calibration()).x == 0.0
     assert Blob(0.25, 0.75, 0.02, (255, 0, 0)) == Blob(0.25, 0.75, 0.02, (255, 0, 0), True)   # in range: kept
+
+
+def test_raise_line_needs_a_torso_over_the_floor():
+    # C22: side-on at the bar the shoulders overlap (0.03 apart) and the counter hides the hips. The torso from
+    # the shoulder width is 0.0375, under 0.1 of the 0.8 box, and a line from it would sit a hair (0.011) above
+    # the shoulders, so a wrist at the collarbone would count as raised.
+    from arcade.sensed import TORSO_FLOOR
+    side = {LEFT_SHOULDER: Keypoint(0.485, 0.4), RIGHT_SHOULDER: Keypoint(0.515, 0.4),
+            LEFT_HIP: Keypoint(0.45, 0.7, 0.0), RIGHT_HIP: Keypoint(0.55, 0.7, 0.0)}
+    b = figure(side)
+    assert TORSO_FLOOR == 0.1
+    assert b.torso == pytest.approx(0.0375) and b.torso < TORSO_FLOOR * b.height
+    assert b.raise_line == pytest.approx(0.22)                                           # the nose
+    assert figure({**side, RIGHT_WRIST: Keypoint(0.65, 0.38)}).raised_wrist is None      # at the collarbone
+    assert figure({**side, RIGHT_WRIST: Keypoint(0.65, 0.18)}).raised_wrist == Keypoint(0.65, 0.18)
+    assert figure({**side, NOSE: Keypoint(0.5, 0.22, 0.0)}).raise_line is None           # no nose either: None
+    near = figure(side, box=(0.3, 0.6, 0.7, 0.95))              # a 0.35 box: the floor is 0.035, the torso passes
+    assert near.raise_line == pytest.approx(0.4 - 0.3 * 0.0375)
+    assert figure().raise_line == pytest.approx(0.31)                                     # a full torso is unchanged

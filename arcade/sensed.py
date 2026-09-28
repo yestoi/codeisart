@@ -31,6 +31,7 @@ REACH_WIDTHS = 1.5               # the reach box spans this many shoulder widths
 REACH_TOP_TORSOS = 1.05          # and from this many torso lengths above it (head plus a forearm) down to the hips
 TORSO_PER_SHOULDER_WIDTH = 1.25  # torso length estimated from shoulder width when no hip is seen
 NOSE_TO_HIP_PER_TORSO = 1.5      # scale estimated from the torso when the nose is not seen
+TORSO_FLOOR = 0.1                # a torso shorter than this share of the box height is not measured (C22)
 MOTION_GRID = (128, 64)          # (width, height) of the fixed grid scenario files and actors store motion on
 
 
@@ -164,11 +165,12 @@ class Body:
         """A wrist above this y is raised: 0.3 torso above the shoulders.
 
         The nose stands in without shoulders, and when the torso cannot be measured (one shoulder and no
-        hip), because a line on the shoulder itself would count a wrist a hair above it; with neither,
+        hip) or is under TORSO_FLOOR of the box height (side-on shoulders with the hips hidden, C22),
+        because a line a hair above the shoulders would count a wrist at the collarbone; with neither,
         None, and nothing is raised.
         """
         s, torso = self.shoulder_mid, self.torso
-        if s is not None and torso > 0.0:
+        if s is not None and torso > 0.0 and torso >= TORSO_FLOOR * self.height:
             return s.y - RAISE_TORSOS * torso
         if self.nose.conf >= MIN_CONF:
             return self.nose.y

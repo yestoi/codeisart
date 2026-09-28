@@ -7,6 +7,11 @@ percent, in runs (C10, measured over 6000 s of degrade(REAL_NOISE) captures): 3 
 every 7 s of holding, 5 or more about every 5 minutes, 6 about every 25 minutes, 7 or more never. Every helper
 here takes a grace in seconds. The lobby and the runner give theirs capture_grace(cfg.camera_fps), which is
 sized in captures (Q10); a game chooses its own, and a grace delays a release by that long.
+
+The caller rule (C27): call update on a Hold, an Edge or a Cursor every tick, with the value false when there is
+nothing to see, or reset() it when it comes back into use (the runner resets its exit hold on every launch). A
+helper not updated for a while still holds its last state, so a Hold could fire at once on the first tick after
+the gap.
 """
 from __future__ import annotations
 
@@ -19,20 +24,38 @@ CAPTURE_GRACE = 5        # missed captures in a row that a hold, an edge or the 
 EPSILON = 1e-9           # tick times are sums of 1/30: a 3.0 s hold must not miss by a rounding error
 
 
+def _float(value) -> float:
+    """value as a float: NaN if it is not a real number, an infinity if it is an int too big for a float."""
+    if not is_real(value):
+        return math.nan
+    try:
+        return float(value)
+    except OverflowError:
+        return math.inf if value > 0 else -math.inf
+
+
 def _check(name: str, value: float) -> float:
-    if not is_real(value) or not 0.0 <= value < math.inf:
+    v = _float(value)
+    if not 0.0 <= v < math.inf:
         raise ValueError(f"{name} must be a finite number of seconds, 0 or more, got {value!r}")
-    return float(value)
+    return v
+
+
+def _positive(name: str, value: float, zero: bool = False) -> float:
+    """value as a float if it is finite and over 0 (or 0 itself, with zero), else ValueError."""
+    v = _float(value)
+    if not (0.0 <= v if zero else 0.0 < v) or not v < math.inf:
+        raise ValueError(f"{name} must be {'0 or more' if zero else 'over 0'} and finite, got {value!r}")
+    return v
 
 
 def capture_grace(camera_fps: float, captures: int = CAPTURE_GRACE) -> float:
     """Seconds that cover this many missed captures in a row, plus half a capture so a run of exactly that
     many never trips on a rounding error: 0.55 s at 10 fps. A run one capture longer ends the hold."""
-    if not is_real(camera_fps) or not 0.0 < camera_fps < math.inf:
-        raise ValueError(f"camera_fps must be over 0 and finite, got {camera_fps!r}")
+    fps = _positive("camera_fps", camera_fps)
     if isinstance(captures, bool) or not isinstance(captures, int) or captures < 0:
         raise ValueError(f"captures must be an int, 0 or more, got {captures!r}")
-    return (captures + 0.5) / float(camera_fps)
+    return (captures + 0.5) / fps
 
 
 class Edge:
@@ -139,17 +162,14 @@ class OneEuro:
     """The One Euro filter (Casiez, Roussel and Vogel, CHI 2012) for one coordinate, timed by capture time.
 
     A sample at a time no later than the last one (the same capture held over several ticks) returns the
-    last output unchanged, and so does a sample that is not finite. beta = 0.007 is the paper's value for
+    last output unchanged, and so does a sample that is not a finite real number (NaN before the first). A
+    numpy sample is taken as a float, and the output is always a float. beta = 0.007 is the paper's value for
     pixel units; in the 0..1 camera units the arcade uses it barely adapts, so the tracker (core Task 16)
     passes its own when it is tuned against the real fixtures."""
 
     def __init__(self, min_cutoff: float = 1.0, beta: float = 0.007, d_cutoff: float = 1.0):
-        for name, v in (("min_cutoff", min_cutoff), ("d_cutoff", d_cutoff)):
-            if not is_real(v) or not 0.0 < v < math.inf:
-                raise ValueError(f"{name} must be over 0 and finite, got {v!r}")
-        if not is_real(beta) or not 0.0 <= beta < math.inf:
-            raise ValueError(f"beta must be 0 or more and finite, got {beta!r}")
-        self.min_cutoff, self.beta, self.d_cutoff = float(min_cutoff), float(beta), float(d_cutoff)
+        self.min_cutoff, self.d_cutoff = _positive("min_cutoff", min_cutoff), _positive("d_cutoff", d_cutoff)
+        self.beta = _positive("beta", beta, zero=True)
         self.reset()
 
     def reset(self) -> None:
@@ -163,8 +183,9 @@ class OneEuro:
         return r / (r + 1.0)
 
     def __call__(self, x: float, t: float) -> float:
+        x, t = _float(x), _float(t)
         if not (math.isfinite(x) and math.isfinite(t)):
-            return x if self.value is None else self.value
+            return math.nan if self.value is None else self.value
         if self.value is None:
             self.value, self._t = x, t
             return x

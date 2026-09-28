@@ -226,3 +226,56 @@ def test_sessions_log_rejects_unknown_reason(tmp_path):
     for reason in REASONS:
         log.append("pong", "128x32", datetime(2026, 11, 11, 21), 10.0, 1, 3, reason)
     assert [json.loads(line)["reason"] for line in p.read_text().splitlines()] == list(REASONS)
+
+
+def test_sessions_log_casts_numpy_players_and_checks_names(tmp_path, caplog, monkeypatch):
+    # C25: the runner counts players with numpy. json.dumps(np.int64(2)) raised TypeError outside the OSError try,
+    # so a game crash, logged on the runner's "crash" path, would have become a runner crash.
+    p = tmp_path / "sessions.jsonl"
+    log = SessionLog(p)
+    when = datetime(2026, 11, 11, 21)
+    record = log.append("tug", "128x32", when, 30.0, np.int64(2), np.int64(5), "crash")
+    assert record["players"] == 2 and type(record["players"]) is int
+    assert json.loads(p.read_text()) == record
+    memory = SessionLog(None).append("tug", "64x64", when, 30.0, np.uint8(1), None, "done")
+    assert type(memory["players"]) is int
+    for game, layout, players in ((None, "128x32", 1), ("tug", 64, 1), (b"tug", "128x32", 1), ("tug", "128x32", 1.5),
+                                  ("tug", "128x32", True), ("tug", "128x32", "2"), ("tug", "128x32", -1),
+                                  ("tug", "128x32", None)):
+        with pytest.raises(ValueError):
+            log.append(game, layout, when, 30.0, players, 5, "done")
+    assert len(p.read_text().splitlines()) == 1
+
+    def refuse(*args, **kwargs):
+        raise TypeError("not serializable")
+
+    monkeypatch.setattr(scores_module.json, "dumps", refuse)
+    with caplog.at_level(logging.WARNING, logger="arcade"):
+        assert log.append("tug", "128x32", when, 30.0, 1, 5, "crash")["reason"] == "crash"   # logged, never raised
+    assert caplog.records and len(p.read_text().splitlines()) == 1
+
+
+def test_scores_drop_huge_ints_and_count_a_bad_previous(tmp_path, caplog):
+    # C26 pins it04's ruled deviation (decision 10): _finite catches OverflowError, so a huge int in the file is a
+    # malformed entry and record(10**400) is not a best. C29: a malformed "previous" is counted in the warning.
+    p = tmp_path / "scores.json"
+    clock = Clock("2026-11-11T21:00")
+    p.write_text('{"x": {"128x32": {"best": ' + "9" * 400 + ', "when": "2026-11-11T20:00:00"}, '
+                 '"64x64": {"best": 2.0, "when": "2026-11-11T20:00:00"}}}')
+    with caplog.at_level(logging.WARNING, logger="arcade"):
+        s = Scores(p, clock)
+    assert [r.getMessage().split()[1] for r in caplog.records] == ["1"]
+    assert s.best("x", "128x32") is None and s.best("x", "64x64") == 2.0
+    assert s.record("x", "128x32", 10**400) is False and s.best("x", "128x32") is None
+    assert s.record("x", "128x32", -10**400) is False
+    caplog.clear()
+    p.write_text(json.dumps({"x": {"128x32": {"best": 3.0, "when": "2026-11-12T20:00:00",
+                                              "previous": {"best": "low", "when": "2026-11-11T20:00:00"}},
+                                   "64x64": {"best": 2.0, "when": "2026-11-12T20:00:00",
+                                             "previous": {"best": 1.0, "when": "2026-11-11T20:00:00"}}}}))
+    clock.set("2026-11-12T21:00")
+    with caplog.at_level(logging.WARNING, logger="arcade"):
+        s = Scores(p, clock)
+    assert [r.getMessage().split()[1] for r in caplog.records] == ["1"]    # the bad "previous"; its entry is kept
+    assert s.best("x", "128x32") == 3.0 and s.last_night("x", "128x32") is None
+    assert s.best("x", "64x64") == 2.0 and s.last_night("x", "64x64") == 1.0
