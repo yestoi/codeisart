@@ -2,7 +2,8 @@
 against per-kind budgets.
 
 measure() runs the game's canonical scenario (its first FEEL_SECONDS) through run_headless at a layout, with
-counterfactual reruns for latency, and plays the game's bots (arcade/bots.py) over seeds. budgets() reads
+counterfactual reruns for latency, looks for the score in its frames (in the project's font, then through look's
+distance model at 5 m), compares idle_body with nobody for the idle hint, and plays the game's bots (arcade/bots.py) over seeds. budgets() reads
 feel_budgets.toml (per GameInfo.kind, then its layout table) and the game's own <name>_feel.toml, whose every
 override needs a reason. judge() names each budget a metric misses; report() is all three, JSON-ready.
 """
@@ -15,16 +16,19 @@ import statistics
 import sys
 import tomllib
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Sequence
 
 import numpy as np
 
-from arcade import bots, flash
+from arcade import bots, flash, look
+from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
 from arcade.headless import RecordingDisplay, run_headless
 from arcade.sensed import Body, Sensed
 from arcade.sources.actors import TICK
+from show.font import CELL_H, CELL_W
 
 RESPONSE_PX = 12                   # pixels that must change for a response to count (spec 11)
 LATENCY_TICKS = 2                  # spec 11's response budget; 5 x this is the value when nothing responds
@@ -32,6 +36,10 @@ PROBES = 8                         # canonical ticks probed for latency
 FEEL_SECONDS = 20.0                # the part of canonical measured
 FEEL_SEEDS = 20                    # spec 9.3's bot plays per bot
 DIM_LEVEL = 140                    # a lit pixel with every channel under this is dim (spec 11)
+SCORE_SCALES = (1, 2)              # text scales a score is looked for at (spec 7.4: scores use 2)
+LEGIBLE_METRES = 5.0               # the distance a score must read from (spec 9.4's distance look)
+LEGIBLE_SCALE = 4                  # preview px per wall px for the distance look (look.distance_sigma: 4 or more)
+IDLE_WINDOW = 6.0                  # seconds of idle_body compared; the value when the wall never answers a body
 DEFAULTS = Path(__file__).with_name("feel_budgets.toml")
 INPUTS = {"cursor_x": lambda p: None if p.cursor is None else p.cursor[0],
           "cursor_y": lambda p: None if p.cursor is None else p.cursor[1],
@@ -140,6 +148,114 @@ def _lit(frame: np.ndarray) -> np.ndarray:
     return frame.any(axis=2)
 
 
+@lru_cache(maxsize=256)
+def _text_mask(font, text: str, scale: int) -> np.ndarray | None:
+    """text's lit pixels in the font at scale, cropped to them (read-only); None when nothing is lit."""
+    canvas = Canvas(CELL_W * scale * len(text), CELL_H * scale, font)
+    canvas.text(0, 0, text, (255, 255, 255), scale=scale)
+    lit = _lit(canvas.frame)
+    rows, cols = np.flatnonzero(lit.any(axis=1)), np.flatnonzero(lit.any(axis=0))
+    if not len(rows):
+        return None
+    mask = lit[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1].copy()
+    mask.flags.writeable = False
+    return mask
+
+
+def _window_sums(lit: np.ndarray, h: int, w: int) -> np.ndarray:
+    """The lit count of every h by w window of lit, indexed by its top-left corner."""
+    c = np.pad(lit.astype(np.int32).cumsum(axis=0).cumsum(axis=1), ((1, 0), (1, 0)))
+    return c[h:, w:] - c[:-h, w:] - c[h:, :-w] + c[:-h, :-w]
+
+
+def find_text(frame: np.ndarray, font, text: str, scales: Sequence[int] = SCORE_SCALES):
+    """(x, y, mask) where text shows on frame in the project's font: mask is the text's lit pixels at one of
+    scales, cropped to them, and frame's lit pixels in the box at (x, y) are exactly mask with a 1 px dark gutter
+    round it (off the wall is dark). The top-most, then left-most match at the first scale that has one; None when
+    the text does not show."""
+    lit = np.pad(_lit(frame), 1)
+    for scale in scales:
+        mask = _text_mask(font, str(text), scale)
+        if mask is None or mask.shape[0] + 2 > lit.shape[0] or mask.shape[1] + 2 > lit.shape[1]:
+            continue
+        want = np.pad(mask, 1)
+        h, w = want.shape
+        for y, x in np.argwhere(_window_sums(lit, h, w) == int(mask.sum())):
+            if np.array_equal(lit[y:y + h, x:x + w], want):
+                return int(x), int(y), mask
+    return None
+
+
+@lru_cache(maxsize=512)
+def _seen(data: bytes, shape: tuple[int, int, int], gamma: float, metres: float) -> np.ndarray:
+    """Each wall pixel's relative luminance, 0..1, in look's distance render at metres: the mean light over the
+    pixel's LEGIBLE_SCALE by LEGIBLE_SCALE footprint, decoded from the preview's bytes."""
+    frame = np.frombuffer(data, np.uint8).reshape(shape)
+    shown = look.render(frame, "distance", LEGIBLE_SCALE, gamma, metres).astype(np.float64) / 255.0
+    h, w, s = shape[0], shape[1], LEGIBLE_SCALE
+    light = (shown ** look.MONITOR_GAMMA).reshape(h, s, w, s, 3).mean(axis=(1, 3))
+    return light @ look.LUMA.astype(np.float64)
+
+
+def legibility(frame: np.ndarray, x: int, y: int, mask: np.ndarray, gamma: float,
+               metres: float = LEGIBLE_METRES) -> float:
+    """How much of the text find_text found at (x, y) survives as the eye sees it from metres (look's distance
+    model: blur and halation): the share of its box and 1 px gutter that the best single threshold on each wall
+    pixel's seen luminance puts on mask's side (lit on a stroke, dark elsewhere). 1.0 when the glyph comes back
+    whole; about 0.5 when it is a blob."""
+    h, w = mask.shape
+    margin = math.ceil(3 * look.HALATION_SIGMAS * look.distance_sigma(metres)) + 1   # the glow's reach
+    y0, x0 = max(0, y - 1 - margin), max(0, x - 1 - margin)
+    crop = np.ascontiguousarray(frame[y0:y + h + 1 + margin, x0:x + w + 1 + margin])
+    luma = np.pad(_seen(crop.tobytes(), crop.shape, float(gamma), float(metres)), 1)   # off the wall is dark
+    box = luma[y - y0:y - y0 + h + 2, x - x0:x - x0 + w + 2].ravel()
+    order = np.argsort(box, kind="stable")
+    lit, seen = np.pad(mask, 1).ravel()[order], box[order]
+    # A threshold after the k dimmest calls them dark and the rest lit; it cannot split equal luminances.
+    right = np.concatenate(([0], np.cumsum(~lit))) + int(lit.sum()) - np.concatenate(([0], np.cumsum(lit)))
+    splits = np.concatenate(([True], seen[1:] > seen[:-1], [True]))
+    return float(right[splits].max() / lit.size)
+
+
+def _score(font, pushed: list[np.ndarray], trace: list[dict], current: list[bool], gamma: float) -> dict:
+    """score_visible: over the ticks the game runs with an integer debug_state()["score"], the share whose pushed
+    frame shows it (find_text); score_legible: the median legibility() at LEGIBLE_METRES of those shown. None where
+    no tick counts."""
+    ticks, seen = 0, []
+    for frame, state, on in zip(pushed, trace, current):
+        score = state.get("score")
+        if isinstance(score, float) and score.is_integer():
+            score = int(score)
+        if not on or isinstance(score, bool) or not isinstance(score, (int, np.integer)):
+            continue
+        ticks += 1
+        found = find_text(frame, font, str(score))
+        if found is not None:
+            seen.append(legibility(frame, *found, gamma))
+    return {"score_visible": len(seen) / ticks if ticks else None,
+            "score_legible": float(statistics.median(seen)) if seen else None}
+
+
+def _idle_hint(cfg, font, game_cls, seed: int) -> float | None:
+    """Seconds from idle_body's first record with a body until its pushed frame differs in RESPONSE_PX pixels or
+    more from nobody's under the same seed, over IDLE_WINDOW; IDLE_WINDOW when never; None without both
+    scenarios or a body."""
+    scripts = game_cls.SCENARIOS
+    if "idle_body" not in scripts or "nobody" not in scripts:
+        return None
+    n = round(IDLE_WINDOW / TICK)
+    idle = list(itertools.islice(scripts["idle_body"](), n))
+    first = next((i for i, s in enumerate(idle) if s.bodies), None)
+    if first is None:
+        return None
+    body, _ = run_headless(cfg, font, game_cls, idle, seed=seed)
+    empty, _ = run_headless(cfg, font, game_cls, itertools.islice(scripts["nobody"](), n), seed=seed)
+    for i in range(first, min(len(body), len(empty))):
+        if int((body[i] != empty[i]).any(axis=2).sum()) >= RESPONSE_PX:
+            return idle[i].t - idle[first].t
+    return IDLE_WINDOW
+
+
 def _held(records: list[Sensed], i: int, j: int) -> Sensed:
     """Record i's input at record j's times."""
     r = records[j]
@@ -215,6 +331,8 @@ def _canonical(cfg, font, game_cls, seed, own) -> dict[str, float | None]:
                          if len(raw) > 1 else 0.0)
     out["flash_area_raw"] = float(flash.flash_area(raw, cfg.gamma, cfg.fps))
     out["square_flashes"] = float(flash.square_flashes(pushed, cfg.gamma, cfg.fps))
+    out |= _score(font, pushed, trace, current, cfg.gamma)
+    out["idle_hint_seconds"] = _idle_hint(cfg, font, game_cls, seed)
     return out
 
 
@@ -245,7 +363,8 @@ def measure(game_cls, layout: str, seeds: int | Sequence[int] = FEEL_SEEDS, font
     span over the wall's extent - 1 (both None without [fidelity]). lit_fraction: pushed, the mean share of
     non-black pixels; dim_fraction: raw, the share of lit pixels with every channel under DIM_LEVEL;
     liveliness: raw, the mean share changing per tick; flash_area_raw (raw) and square_flashes (pushed) as
-    arcade/flash.py counts them. From bots.play over seeds (n: bots.seeds(game_cls, layout, n)): win_good,
+    arcade/flash.py counts them. score_visible and score_legible: pushed, as _score() says (the score read from
+    debug_state()["score"]); idle_hint_seconds as _idle_hint() says, under the first seed. From bots.play over seeds (n: bots.seeds(game_cls, layout, n)): win_good,
     win_lazy, win_none (Nobody); round_seconds, the median length of the good plays that ended done();
     phases_reached, the share of PHASES seen over the good plays. own is the game's feel file (control()).
     """

@@ -5,10 +5,13 @@ import statistics
 import sys
 import types
 
+import numpy as np
 import pytest
 
 from arcade import bots, feel
 from arcade.bots import Move, Nobody
+from arcade.canvas import Canvas
+from arcade.config import ArcadeConfig
 from arcade.game import Game, GameInfo
 from arcade.sources.actors import TICK, Person, scene
 from tests.arcade.helpers import CROSS_ICON
@@ -27,10 +30,19 @@ def sweeping():
     return scene(persons=[person], ticks=round((feel.FEEL_SECONDS + 1) / TICK))
 
 
+def idle_body():
+    """One body standing still, hands down, from the first tick."""
+    return scene(persons=[Person(0.3, id=1)], ticks=round((feel.IDLE_WINDOW + 1) / TICK))
+
+
+def nobody():
+    return scene(ticks=round((feel.IDLE_WINDOW + 1) / TICK))
+
+
 class Stub(Game):
     """A game that lasts a little longer than canonical's feel window."""
 
-    SCENARIOS = {"canonical": sweeping}
+    SCENARIOS = {"canonical": sweeping, "idle_body": idle_body, "nobody": nobody}
     LIMIT = feel.FEEL_SECONDS + 1
 
     def reset(self, size, rng, fx):
@@ -111,6 +123,23 @@ class Still(Stub):
         return {**super().debug_state(), "active": True}
 
 
+class Scorer(Stub):
+    """A point every 2 s, drawn white at the top left (at 2x from 10 s), hidden for the first second of every 4."""
+
+    info = GameInfo(name="scorer", title="Scorer", verb="COUNT", icon=CROSS_ICON, needs=frozenset({"pose"}),
+                    kind="score")
+
+    def points(self):
+        return int(self.t // 2.0)
+
+    def draw(self, canvas):
+        if self.t % 4.0 >= 1.0:
+            canvas.text(3, 2, self.points(), WHITE, scale=2 if self.t >= 10.0 else 1)
+
+    def debug_state(self):
+        return {**super().debug_state(), "active": True, "score": self.points()}
+
+
 class Good:
     """Holds the wrist at the top: wins the follower in HOLD seconds."""
 
@@ -138,7 +167,7 @@ def stub_bots():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(sys.modules, "arcade.games.follower_bots",
                    _bots_module("follower", Good, Lazy, lambda state: state.get("won") is True))
-        for name in ("screensaver", "still"):
+        for name in ("screensaver", "still", "scorer"):
             mp.setitem(sys.modules, f"arcade.games.{name}_bots",
                        _bots_module(name, Nobody, Nobody, lambda state: False))
         yield
@@ -266,7 +295,7 @@ def test_measure_repeats_under_seeds(follower_report, follower_own, font5x7):
     assert again == report["metrics"], f"seeds {runs}"
     assert set(again) == {"response_ticks", "fidelity", "range", "lit_fraction", "dim_fraction", "liveliness",
                           "flash_area_raw", "square_flashes", "win_good", "win_lazy", "win_none", "round_seconds",
-                          "phases_reached"}
+                          "phases_reached", "score_visible", "score_legible", "idle_hint_seconds"}
 
 
 def test_report_is_json_ok(follower_report):
@@ -276,3 +305,81 @@ def test_report_is_json_ok(follower_report):
     assert back["budgets"]["response_ticks"] == {"min": None, "max": 2.0, "reason": None}
     assert set(back["budgets"]) == set(feel.budgets(Follower, WALL))
     assert back["failures"] == feel.judge(report["metrics"], feel.budgets(Follower, WALL))
+
+
+def _drawn(font, text, x, y, color=WHITE, scale=1):
+    canvas = Canvas(128, 32, font)
+    canvas.text(x, y, text, color, scale=scale)
+    return canvas.frame
+
+
+def test_find_text_locates_the_score_at_either_scale(font5x7):
+    frame = _drawn(font5x7, "37", 40, 3)
+    x, y, mask = feel.find_text(frame, font5x7, "37")
+    assert (x, y) == (40, 3) and int(mask.sum()) == int(frame.any(axis=2).sum())
+    x, y, mask = feel.find_text(_drawn(font5x7, "1", 10, 12, GREEN, scale=2), font5x7, "1")
+    assert (x, y) == (12, 12) and mask.shape == (14, 6)            # "1" is lit in its glyph's columns 1 to 3
+    assert feel.find_text(_drawn(font5x7, "0", 3, 0), font5x7, "0")[:2] == (3, 0)   # off the wall is dark
+    assert feel.find_text(_drawn(font5x7, "38", 40, 3), font5x7, "37") is None
+    assert feel.find_text(_drawn(font5x7, "37", 40, 3), font5x7, "7") is not None    # a digit of a bigger number
+    touching = _drawn(font5x7, "37", 40, 3)
+    touching[2, 45] = ORANGE                                        # a lit pixel in the glyph's gutter
+    assert feel.find_text(touching, font5x7, "37") is None
+    assert feel.find_text(np.zeros((32, 128, 3), np.uint8), font5x7, "0") is None
+
+
+def test_legibility_passes_a_bright_score_at_5m_and_fails_one_in_glare_or_far(font5x7):
+    floor = feel.budgets(Scorer, WALL)["score_legible"].min
+    for color, scale in ((WHITE, 1), (GREEN, 1), (ORANGE, 2)):
+        for digit in "0123456789":
+            frame = _drawn(font5x7, digit, 60, 4, color, scale)
+            assert feel.legibility(frame, *feel.find_text(frame, font5x7, digit), 2.2) >= floor, (color, scale, digit)
+    frame = _drawn(font5x7, "8", 60, 4)
+    assert feel.legibility(frame, *feel.find_text(frame, font5x7, "8"), 2.2) == 1.0      # whole at 5 m
+    frame = _drawn(font5x7, "5", 60, 4)
+    found = feel.find_text(frame, font5x7, "5")
+    assert feel.legibility(frame, *found, 2.2, metres=10.0) < floor       # 1x is too small at 10 m (spec 7.4)
+    glare = np.full((32, 128, 3), 255, np.uint8)                   # a white field up to a 1 px dark gutter
+    glare[3:12, 59:66] = 0
+    glare |= _drawn(font5x7, "8", 60, 4, (140, 0, 0))
+    x, y, mask = feel.find_text(glare, font5x7, "8")
+    assert (x, y) == (60, 4)
+    assert feel.legibility(glare, x, y, mask, 2.2) < floor
+
+
+@pytest.fixture(scope="module")
+def scorer_report(font5x7):
+    runs = bots.seeds(Scorer, WALL, 1)
+    return runs, feel.report(Scorer, WALL, seeds=runs, font=font5x7)
+
+
+def test_score_visibility_counts_the_ticks_it_is_shown(scorer_report):
+    runs, report = scorer_report
+    m = report["metrics"]
+    assert m["score_visible"] == pytest.approx(0.75, abs=0.01), f"seeds {runs}: {m}"
+    assert m["score_legible"] >= report["budgets"]["score_legible"]["min"], f"seeds {runs}: {m}"
+    assert [f for f in report["failures"] if f.startswith("score_")] == ["score_visible 0.75 < min 0.8"], \
+        f"seeds {runs}: {report['failures']}"                        # hidden one tick in four: too often
+    assert m["idle_hint_seconds"] == feel.IDLE_WINDOW                   # draws nothing for a body
+    assert "idle_hint_seconds 6 > max 3" in report["failures"]
+
+
+def test_a_score_that_is_never_shown_misses_both(follower_report):
+    runs, report = follower_report
+    m = report["metrics"]
+    assert m["score_visible"] is None and m["score_legible"] is None, f"seeds {runs}: {m}"   # no score key
+    table = feel.budgets(Scorer, WALL)
+    assert "score_visible" not in feel.budgets(Follower, WALL)          # only the score kind is judged on it
+    liar = {"score_visible": 0.0, "score_legible": None, "idle_hint_seconds": None}
+    assert feel.judge(liar, {k: table[k] for k in liar}) \
+        == ["score_visible 0 < min 0.8", "score_legible None misses min 0.9", "idle_hint_seconds None misses max 3"]
+
+
+def test_idle_hint_times_the_first_answer_to_a_still_body(follower_report, font5x7):
+    runs, report = follower_report
+    assert report["metrics"]["idle_hint_seconds"] < 0.5, f"seeds {runs}: {report['metrics']}"
+    assert report["budgets"]["idle_hint_seconds"] == {"min": None, "max": 3.0, "reason": None}
+    cfg = ArcadeConfig(128, 32, backend="fake", camera="none", audio="none")
+    assert feel._idle_hint(cfg, font5x7, Screensaver, runs[0]) == feel.IDLE_WINDOW, f"seed {runs[0]}"
+    blind = type("Blind", (Follower,), {"SCENARIOS": {"canonical": sweeping}})
+    assert feel._idle_hint(cfg, font5x7, blind, runs[0]) is None
