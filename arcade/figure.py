@@ -6,11 +6,13 @@ unit of height, and its normalised x is multiplied by that before the scale.
 """
 from __future__ import annotations
 
+import dataclasses
 import math
 from typing import Callable
 
 from arcade.canvas import Canvas, Color
-from arcade.sensed import MIN_CONF, NOSE, SKELETON, Body
+from arcade.input import EPSILON
+from arcade.sensed import MIN_CONF, NOSE, SKELETON, Body, Keypoint
 
 FRAME_ASPECT = 4 / 3     # the camera frame's width over its height: both camera streams are 4:3
 STROKE = 2               # px (spec 7.3 step 2)
@@ -56,6 +58,37 @@ def _thick_line(canvas: Canvas, a: tuple[int, int], b: tuple[int, int], color: C
     for k in range(first, first + stroke):
         dx, dy = (k, 0) if steep else (0, k)
         canvas.line(ax + dx, ay + dy, bx + dx, by + dy, color)
+
+
+class KeypointHold:
+    """One figure's keypoints held through single dropouts (C37). One per figure: the lobby's mirror, Copy Me
+    and M8 each keep their own.
+
+    update(body, t) gives body with every keypoint under MIN_CONF in its last confident place and conf, while
+    that was seen within grace seconds; a keypoint gone longer stays low, so its limb is not drawn. A new body
+    id or None clears what is held. Call it every tick with the body drawn, None when there is none.
+    """
+
+    def __init__(self, grace: float):
+        if not 0.0 <= grace < math.inf:
+            raise ValueError(f"grace must be finite seconds, 0 or more, got {grace!r}")
+        self.grace = float(grace)
+        self._id: int | None = None
+        self._seen: dict[int, tuple[Keypoint, float]] = {}      # keypoint index: (last confident, when)
+
+    def update(self, body: Body | None, t: float) -> Body | None:
+        if body is None or body.id != self._id:
+            self._id, self._seen = (None if body is None else body.id), {}
+        if body is None:
+            return None
+        kps = list(body.keypoints)
+        for i, k in enumerate(kps):
+            if k.conf >= MIN_CONF:
+                self._seen[i] = (k, t)
+            elif i in self._seen and t - self._seen[i][1] <= self.grace + EPSILON:
+                kps[i] = self._seen[i][0]
+        held = tuple(kps)
+        return body if held == body.keypoints else dataclasses.replace(body, keypoints=held)
 
 
 def draw_figure(canvas: Canvas, body: Body, rect: Rect, color: Color, stroke: int = STROKE) -> None:

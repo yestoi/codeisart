@@ -13,7 +13,8 @@ is primed on a newly locked player and at the end of the card, so a hand already
 itself; it has to come down and go up again. Blobs and the body centre never start anything.
 
 A player who drops out for up to capture_grace(cfg.camera_fps) keeps their figure and the invite, so a missed
-capture never flickers the mode. The lobby's own drawing keeps the flash rule: mode changes are single steps,
+capture never flickers the mode; a keypoint that drops out keeps its last place as long (KeypointHold, C37), so
+a missed joint never blinks a limb. The lobby's own drawing keeps the flash rule: mode changes are single steps,
 the pictogram breathes at 1 Hz, and nothing fills the field.
 """
 from __future__ import annotations
@@ -23,7 +24,7 @@ from typing import Sequence
 
 from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
-from arcade.figure import draw_figure, figure_rect, to_wall
+from arcade.figure import KeypointHold, draw_figure, figure_rect, to_wall
 from arcade.game import INPUTS, ICON_SIZE, icon_from_rows
 from arcade.games import MENU_ORDER
 from arcade.input import EPSILON, Edge, Hold, capture_grace
@@ -112,6 +113,7 @@ class Lobby:
         """Show result's card from the next update; what was seen before the session is stale."""
         self._card, self._card_start = result, None
         self._slots = [None, None]
+        self._keypoints = [KeypointHold(self.grace), KeypointHold(self.grace)]
         self._hold.reset()
         self._side = None
 
@@ -132,6 +134,7 @@ class Lobby:
         self.t = 0.0
         self.request = None
         self._slots: list[tuple[Body, float] | None] = [None, None]   # (body, last seen) for player and player2
+        self._keypoints = [KeypointHold(self.grace), KeypointHold(self.grace)]   # C37: one per figure
         self._hold = Hold(PICTOGRAM_SECONDS, grace=self.grace)
         self._edge = Edge(self.grace)
         self._player_id: int | None = None
@@ -152,8 +155,9 @@ class Lobby:
             elif t - self._card_start >= CARD_SECONDS - EPSILON:
                 self._card, self._card_start, card_ended = None, None, True
         for i, body in enumerate((player, sensed.player2)):
-            if body is not None:
-                self._slots[i] = (body, t)
+            held = self._keypoints[i].update(body, t)
+            if held is not None:
+                self._slots[i] = (held, t)
         self._hold.update(player is not None, t)
         if player is not None and player.id != self._player_id:
             self._player_id = player.id
