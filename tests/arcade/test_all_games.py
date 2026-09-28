@@ -225,7 +225,6 @@ def test_every_game_fits_the_tick_budget(game_cls, layout, font5x7):
     assert mean < BUDGET_MS and p95 < 2 * BUDGET_MS, f"{report} (budget {BUDGET_MS} ms)"
 
 
-@pytest.mark.xfail(strict=True, reason="until P3")
 @pytest.mark.parametrize("game_cls", GAMES)
 def test_every_game_declares_the_required_scenarios(game_cls):
     scenarios = game_cls.SCENARIOS
@@ -234,7 +233,6 @@ def test_every_game_declares_the_required_scenarios(game_cls):
     assert all(callable(scenarios[n]) for n in REQUIRED_SCENARIOS)
 
 
-@pytest.mark.xfail(strict=True, reason="until P3")
 @pytest.mark.parametrize("game_cls", GAMES)
 def test_every_game_has_good_and_lazy_bots(game_cls):
     name = game_cls.info.name
