@@ -290,3 +290,142 @@ Other notes, each with a fix:
 None new. Q8 (C11) and Q9 (`shake` and `test_festival.py:180`) are already with the owner, and this plan needs
 neither. The C14 wording change to spec 5 (N11) should be journaled as spec drift for the next spec revision; it is
 not a gate.
+
+## Round 2
+
+### Verdict: APPROVED
+
+B1 and B2 are closed. Q9 is applied as the owner answered it, and the Q9 line is the only committed assert that
+changed. The revised plan replays exactly as written. No blocking defect remains in the plan's code. The notes below
+are test gaps over correct code: six added asserts close them, and the plan's own rules allow adding asserts at any
+time. One sentence of the plan's "Declined" paragraph is wrong and needs correcting (R2-N1).
+
+### What I ran
+
+- **Replay.** I cloned `83b6945` fresh into the scratchpad and replayed Tasks 1 to 4 from the plan text, tests
+  before code and one commit per task. Every step matched the plan:
+  - Task 1: `3 failed, 17 passed`, then `186 passed`.
+  - Task 2: `5 failed, 29 passed` (the five named tests; two fail with `ZeroDivisionError`, three with
+    `DID NOT RAISE`), then `190 passed`.
+  - Tasks 3 and 4: `ModuleNotFoundError` for `arcade.canvas` and `arcade.look`, then `19` and `209 passed`, then
+    `15` and `224 passed`.
+  - `--collect-only`: `224 tests collected`. The per-module counts match verify step 2 exactly.
+  - `-W error`: `224 passed`.
+  - `git diff 83b6945 -- tests/ | grep '^-[^-]'` prints exactly the two lines named in verify step 3: the import and
+    line 180.
+- **Q9.** The new line 180 is `pytest.raises(ValueError, match="calibration")` around the same `shake(0.5, 1.0)`
+  call. That matches the owner's answer in `decisions.md` ("Yes, raise"), and Task 2's commit body cites Q9.
+- **B1 is closed.** I rendered flat fields in `distance`: grey 128, amber (255, 200, 0), grey 60, blue, white and
+  (1, 1, 1), at 0, 5, 10 and 20 m and scales 1, 4 and 8. The centre pixel is exactly `gamma_lut(2.2)` of the colour
+  (0 bytes off) in every case.
+  - Only at 50 m does the centre lose 3 to 11 bytes. There the 3-sigma glow (13 wall px) reaches the frame's edges
+    and some light falls into the dark air beside the wall, which is physically right.
+  - The round-1 additive glow fails the new test, HALATION 0.6 fails, and 0.5 passes.
+  - The regenerated PNGs show yellow as yellow, not lemon.
+- **B2 is closed.** `blit_rgb` of float `[300, 127.5, 0.49]`, NaN, -5, `[inf, -inf]` and `1e300` gives (255, 128, 0),
+  black, black, (255, 0, 0) and (255, 1, 0). An int64 sprite of `[2**62, -2**62, 1]` gives (255, 0, 1). All of this
+  runs under `warnings.simplefilter("error")`.
+- **Mutations.** I wrote 75: my 39 from round 1, re-aimed at the revised code where a pattern moved, and 36 new
+  ones for this round's changes. 3 round-1 patterns no longer apply to the rewritten `_light_lut` and re-encode,
+  so 72 ran: 57 were caught and 15 survived. The survivors are judged in R2-N1 and R2-N4.
+  - The S4 start-point-only `_i` mutation now fails within the 1 s `deadline` instead of hanging.
+  - Newly caught: the additive glow, HALATION 0.6, unweighted or max-channel scatter, flat or swapped `LUMA`, a
+    no-op `_frozen` or any one cache left writable, `int(scale)`, `dim`'s exponent, every `blit_rgb` conversion
+    step except the rounding mode, the line skip at `>=`, `4 * max(w, h)` or the start point only, off-left skip +1,
+    `shake` unchecked, `shake` checking the jittered bodies, and `_placed_by` without `zone_x`.
+- **`deadline`.**
+  - After a normal exit and after an expired one, the SIGALRM handler is the original and `getitimer` is (0, 0).
+  - A pure-Python `while True` is interrupted at 0.20 s by `deadline(0.2)`.
+  - From a thread it raises `ValueError: signal only works in main thread`.
+  - It cancels any `ITIMER_REAL` timer set outside it.
+  - `pyproject.toml` has neither pytest-xdist nor pytest-timeout.
+- **Timing.**
+  - Idle: `PreviewDisplay.push` in `distance` at scale 8 takes a median 9.4 ms; `render` alone takes 7.2 ms.
+  - Under 16 busy processes on 8 cores: the push median is 10 to 26 ms across three runs (max 55 to 70 ms), and
+    `test_look.py` plus `test_canvas.py` passed three runs out of three.
+- **PNGs.** I ran the verify snippet and read all six images.
+  - Sizes are 1024x256 and 512x512, and the `git` text chunk is present.
+  - 64x64 shows "CODE IS" over "ART". The diagonal touches no text, no disc and no sha. The sha is top right at
+    128x32 and bottom left at 64x64.
+  - `distance` at 5 m: every letter, both 8s and the sha are readable. Yellow and red match `led` (the red is pink in
+    both, since `led` at gamma 2.2 shows 40 as 110). The glow is barely visible.
+
+### Blocking findings
+
+None.
+
+### Notes (non-blocking)
+
+- **R2-N1. Four of the seven "equivalent" survivors are observable, and this round's new code adds three more
+  survivors.**
+  - The plan's "Declined" paragraph says seven survivors "change no behaviour a test can observe short of timing".
+    That holds for three: `text` without its y cull, `text` without the off-left skip (the `continue` still
+    culls), and `_spread` without `lru_cache`.
+  - It is false for four:
+    - `_i` without its clamp: `fill_circle(5, 5, 1e200, c)` raises `OverflowError` because `(r + 0.5) ** 2`
+      overflows a float. That breaks spec 7.4's "never raises". The hostile list's radii stop at `10**9`.
+    - `_i` sending +inf to +FAR: `fill_rect(0, 0, inf, 4, c)` lights 64 pixels instead of the 0 that `_i`'s new
+      docstring promises.
+    - `rect` without its `w <= 0` guard: `rect(3, 0, 0, 4, c)` draws two columns. A game's health bar at width 0 would
+      show this.
+    - Forwarding `min(level, 1)`: the inner display gets 1.0 instead of 1.5, against loop decision 11's "forwards it
+      unchanged".
+  - Three survivors are new with this round's code:
+    - `range(max(0, -(x // cell_w)), ...)`, a one-character slip in the new arithmetic skip: `text(-1, 0, "B")`
+      draws nothing instead of B's four visible columns, so text scrolling in from the left edge loses its first
+      glyph.
+    - `_require_placed` checking only the first body: in a two-person custom-zone scene whose first person stands
+      outside both zones, `degrade` and `shake` pass silently. All the C13 tests use one person.
+    - `blit_rgb` using `np.round` (half to even): 0.5 becomes 0 (transparent) and 126.5 becomes 126, against loop
+      decision 7's half up. The test's values have no exact .5.
+  - **Fix.** Add these asserts. Each passes on the plan's code and fails under its mutation; I checked all seven, and
+    the test file is kept in the scratchpad as `r2_extra_tests.py`.
+    - Hostile list: `lambda: c.fill_circle(5, 5, 1e200, RED)` (it fills the canvas).
+    - `test_rects_and_clear`: `rect(3, 0, 0, 4)`, `rect(10, 0, -3, 4)` and `fill_rect(0, 0, math.inf, 4)` light
+      nothing.
+    - `test_text_uses_font_and_clips`: after `text(-1, 0, "B")` against `text(5, 0, "B")`, `frame[:, 0:4]` equals
+      `frame[:, 6:10]` and is lit.
+    - `test_colours_clamped`: `blit_rgb([[[0.5, 126.5, 2.5]]] float32)` gives (1, 127, 3).
+    - `test_preview_models_brightness`: `set_brightness(1.5)` leaves `inner.brightness == 1.5`.
+    - `test_degrade_needs_the_scene_calibration`: `persons=[Person(0.1, id=1), Person(0.85, id=2)]` under
+      `zone=(0.5, 0.2, 1.0, 0.8)`, and both `degrade` and `shake(0.0, 1.0)` raise `match="body 2"`.
+  - That makes 3 more canvas asserts in existing tests, 1 in `test_look.py` and 1 in `test_festival.py`; the counts
+    do not change. Then reword the "Declined" sentence to name only the three truly equivalent survivors.
+- **R2-N2. `_i`'s new docstring is wrong about radius.** "An infinite radius or width draws nothing" is not what
+  happens: `_disc` clamps `r` to 0, so `fill_circle(8, 4, inf)` and any negative radius draw the centre pixel. Fix
+  the docstring to "an infinite width draws nothing and an infinite radius draws only the centre pixel". Changing the
+  behaviour is not needed.
+- **R2-N3. `deadline` is sound for this repo, with known limits.**
+  - It is Unix-only (no `SIGALRM` or `setitimer` on Windows) and works only in the main thread.
+  - It cancels any outer `ITIMER_REAL` timer, so it would silently disarm pytest-timeout's `signal` method.
+  - None of these applies today:
+    - The suite runs on the Mac (core plan line 730).
+    - The Pi and the Omarchy box are Linux.
+    - pytest runs tests in the main thread.
+    - Neither xdist nor pytest-timeout is installed.
+    - xdist 3.6 and later runs tests in the worker's main thread in any case.
+  - It does not leak:
+    - I verified the handler is restored and the timer disarmed on both exits.
+    - The one window, an alarm landing between the block's end and `setitimer(0)`, leaves the `expired` handler
+      installed with no timer armed. That is harmless, and the 50 ms assert has already failed by then.
+  - Optional hardening: when `threading.current_thread() is not threading.main_thread()` or `signal` lacks
+    `setitimer`, just `yield`. Say in the docstring that it replaces any outer SIGALRM timer.
+- **R2-N4. The declined lower bound on HALATION: I agree.**
+  - Spec 9.4 and the Task 6 amendment say only "a luminance-weighted halation Gaussian" of three times the sigma, with
+    no amount. HALATION 0.05 and 0.01 both survive.
+  - What is pinned: the glow's presence (`blue > 0`), its luminance ordering, its 3-sigma width (HALATION_SIGMAS
+    2.7 fails; 3.1 survives within the 10% variance tolerance, which is fine) and its upper bound (0.5 passes, 0.6
+    fails).
+  - Any floor would be a number nobody specified, and verify step 5's "faint glow widest around white and green"
+    is where a vanished glow shows.
+  - Two other survivors are truly equivalent: `render` keeping the numpy scale unconverted, and allowing
+    `np.bool_` (numpy 2's `np.True_` has no `__index__`, so it is rejected anyway).
+- **R2-N5. The perf test has less headroom under load than round 1 measured.** The push median rose to 26 ms in one
+  of three loaded runs, against 33 ms, though it never failed. Keep the test as it is; `-m "not perf"` is the
+  documented escape for a slow box. If it ever flakes, time the median of 30 pushes instead of 20 rather than
+  raising the budget.
+
+### Owner decisions
+
+None. Q8 and Q9 are applied exactly as answered. The C14 refinement of spec 5 is forwarded as spec drift for the
+journal, and the torso floor goes to core Task 8 or 16. Neither is a gate.
