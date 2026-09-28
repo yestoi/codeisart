@@ -1,0 +1,11 @@
+a1320bc86dec756908c6250d4c0433db5628cbd4
+
+strobe 128x32: tick mean 0.365 ms, p95 0.397 ms, governor 0.196 ms (54% of the tick), held 200 ticks
+.
+strobe 64x64: tick mean 0.395 ms, p95 0.453 ms, governor 0.213 ms (54% of the tick), held 200 ticks
+.
+static 128x32: tick mean 0.354 ms, p95 0.367 ms, governor 0.174 ms (49% of the tick), held 0 ticks
+.
+static 64x64: tick mean 0.350 ms, p95 0.364 ms, governor 0.181 ms (52% of the tick), held 0 ticks
+.                                                                     [100%]
+4 passed, 7 deselected in 0.60s

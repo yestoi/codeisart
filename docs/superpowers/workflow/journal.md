@@ -84,3 +84,59 @@ Owner intervention, 2026-09-27, during iteration 2's plan phase: the owner asked
   - C18-C20 and C10's helper half are closed.
 - Loop decisions: bound the backstop at 8 passes; the game guide goes in M6's `arcade-game-authoring` skill (C24). Owner questions this iteration: Q10-Q16, all answered.
 - Status: done
+
+## Iteration 5 — 2026-09-28
+- Plan: docs/superpowers/plans/2026-09-28-it05-juice-runner-headless.md (4971882)
+- Shipped:
+  - Carried C22 (torso floor), C25 (the sessions log casts numpy players and never raises on a write), C26 (tests pin it04's deviations), C27 (caller rule) and C29's touched part.
+  - Perf tests time CPU, not wall: 4 existing lines switched clock only.
+  - `arcade/juice.py`: jump shake (Q18), held flash (Q20), bursts spaced 0.5 s (Q19), pops, banner, freeze, celebrate, echo, markers.
+  - The runner:
+    - player lock, presence (in-zone bodies and moving in-zone blobs), session rules;
+    - the exit Hold with `capture_grace`, updated every tick and reset on launch (C10, C27);
+    - crash guard (hidden after 3, Q17), title card, `state()`;
+    - `sense()` with keyword Sensed (C21) and the capture-stamp check;
+    - every frame goes limiter, then governor, then push (Q11).
+  - `run_headless`, `NullLobby`, `helpers.run` and the tick budget.
+  - 4 commits, e94de6b..a1320bc.
+- Plan review:
+  - Round 1 BLOCKED on two findings:
+    - B1: numpy `active` was never counted, which would end real sessions.
+    - B2: the timing tests fail under the loop's own parallel-agent load. That was the writer's "unexplained failure".
+  - Operator decisions:
+    - clock-only switch to `thread_time` in 4 existing timing lines, thresholds unchanged;
+    - `BURST_GAP` 0.5;
+    - accept the Mac efficiency-core flake of `test_governor_under_half_ms_at_128x32` under several parallel suites (rerun rule; the Pi 5's cores are uniform).
+  - Round 2 APPROVED. R2-N2 (future or non-finite stamps are a failed source), R2-N3 (launch refused mid-session), R2-N4 (request read inside the guard) and R2-N5 folded in before commit.
+- Review: APPROVED after 1 round (0 blocking). No code deviations: all 15 files byte-identical to the plan. The reviewer's probe confirmed:
+  - no ungoverned or unlimited frame reaches the display on any path;
+  - over 900 ticks of random raises and strobes: square_flashes at most 6, concurrent_area at most 0.0996.
+- Deploy: none (phase 1)
+- Verify: 7/7 items passed.
+  - Freshness: head.txt, tick-budget.txt, runner-path.txt and the sheet read a1320bc = HEAD.
+  - Doctor: camera, mic and pose ok.
+  - Evidence: docs/superpowers/workflow/evidence/it05/
+- Tests: 448 collected, 448 passed, 0 skipped (it04: 334/334/0). Removed test lines since ee6780b: exactly the 4 planned `perf_counter` lines.
+- Verdict:
+  - I read it05-128x32-strobe-raw-vs-pushed.png myself.
+  - Raw: full white and black every tick.
+  - Pushed:
+    - white comes out mid grey (the day APL cap);
+    - three grey/black flashes in ticks 0-6, then held grey until the next second's window;
+    - the burst ring and the 2 px marker come through dimmed;
+    - no pushed frame reaches the game's full white.
+  - The timeline shows the same pattern every 30 ticks.
+  - Success criterion touched: the flash governor and limiter now hold through the real runner path, at most 3 flashes a second.
+  - Tick: 0.35-0.40 ms mean on the Mac, with the governor about half of it.
+- Carried forward:
+  - C30 (priority for it06: a numpy `phase` or object motion grid kills `loop()`; `echo` unhashable; a `_push` raise test);
+  - C31 (rival timer);
+  - C32 (minors);
+  - C33 (director's LobbyLike and end card, with it04's forwards);
+  - C34 (lamps and the source clock, Task 15 and GATE A);
+  - C35 (per-input availability, M5);
+  - C36 (`main`, lux, soak budget).
+  - C28 moved to it06.
+  - Closed: C10, C22, C25, C26, C27, and C21's Task 8 part.
+- Owner questions: Q17-Q20 defaulted under the standing instruction; listed for the iteration-6 check-in.
+- Status: done
