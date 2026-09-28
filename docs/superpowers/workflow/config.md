@@ -8,8 +8,8 @@
 - Freshness check: every PNG in evidence/itNN/ carries the git sha in its header and it must equal HEAD. Before M4a, the evidence README records HEAD by hand (`git rev-parse --short HEAD`). A mismatch is a tooling defect, fixed before anything is judged.
 - Gates: gate-deploys: false, gate-iteration-plans: false
 - Plan review: only for a safety slice (Loop rule 4), one round. Verdict in evidence/itNN/plan-review.md. (Owner decision 2026-09-28; it replaces Q6's review of every plan.)
-- iterations-per-run: 2
-  (Owner decision Q21, 2026-09-28: iterations 6 and 7 on the arcade, then the operator moves to the show daemon. The loop counts iterations itself and gates at step 8.)
+- iterations-per-run: 1
+  (Owner decision Q33, 2026-09-28, answering the gate after iteration 7: iteration 8 is M4b, then the loop gates and the operator moves to the show daemon. Before it, Q21: iterations 6 and 7. The loop counts iterations itself and gates at step 8.)
 - stop-blocks: 6
   (How many times the Stop hook blocks with nothing committed between the blocks. Keep it below 8, Claude Code's consecutive Stop-hook block cap.)
 
@@ -152,7 +152,7 @@ Replaces the walkthrough checklist; run inline in the main session (design secti
 ## Success criteria
 - The roadmap end goal: a stranger is playing within ten seconds of walking up, unprompted.
 - Every game in the accepted list runs headlessly from scripted inputs and produces sheets, GIFs and feel metrics an agent can judge.
-- Every game meets its feel budgets in full on each layout it declares; on undeclared layouts it runs and stays legible.
-- 128x32 is the design layout; 64x64 is first-class for single-player games and square visuals.
+- Every game meets its feel budgets in full at 128x64; at a size it does not declare it runs and stays legible.
+- 128x64 is the design layout and the only one games are judged for: four 64x32 panels mounted 2 x 2 (owner decisions Q32 and Q33, 2026-09-28; before them 128x32 and 64x64).
 - The flash governor and brightness limiter hold on every game and attract mode (at most 3 full-field flashes per second).
-- The owner's live smoke (live-smoke.md) scores each shipped game "responded: y" and "understood: y" on both layouts it declares.
+- The owner's live smoke (live-smoke.md) scores each shipped game "responded: y" and "understood: y" at 128x64.

@@ -260,3 +260,10 @@ default: none taken; the owner answered at once
 deadline: it7
 answer: "2x2, put 128x64 at the top of the roadmap". 128x64 is the third first-class layout, beside 128x32 and 64x64. Milestone M4b, the first unchecked line after M4a, before the games of M7a. Iteration 7 is not changed by it: Pong stays at 128x32 in it07, and the freeze tag `game-protocol-v1` is set as planned (a layout is a data value of `GameInfo`, not a member of the protocol). Q21's gate after iteration 7 stands until the owner says otherwise
 status: answered (owner, 2026-09-28)
+
+### Q33: Is 128x64 the only layout games are built for, and what comes after the gate: the show daemon or M4b?
+asked: it7, at the gate (gate.md, 358b7ca), 2026-09-28
+default: Q21 stands, the show daemon; 128x64 a third layout beside 128x32 and 64x64
+deadline: none
+answer: "yes, make 128x64 the only layout and do M4b first". Games are designed, tuned and judged at 128x64 alone; the engine stays free of any size and every game still runs at a size it does not declare. Iteration 8 is M4b; the loop gates after it and the operator then moves to the show daemon. Pong's 128x32 declaration stays only if it passes without extra work
+status: answered (owner, 2026-09-28)
