@@ -11,7 +11,7 @@ from arcade.headless import run_headless
 from arcade.juice import PLAYER_COLORS
 from arcade.runner import LobbyLike, SessionResult
 from arcade.sensed import Sensed
-from arcade.sources.actors import TICK, Person, scene
+from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
 from tests.arcade.helpers import make_cfg, spy
 
 AMBER, BLUE = PLAYER_COLORS
@@ -251,6 +251,22 @@ def test_lobby_frames_keep_the_flash_rule(font5x7, size):
     assert flash_area(raw) == 0.0
     assert concurrent_area(raw) < SMALL_AREA
     assert square_flashes(raw) <= BUDGET
+
+
+@pytest.mark.parametrize("size", [(128, 32), (64, 64)])
+def test_mirror_under_real_noise_keeps_the_area_rule(font5x7, size):
+    # C37, the input of evidence/it06/reviewer-notes.md: before the hold, 64x64 reached 0.131 to 0.151.
+    cfg = make_cfg(size)
+    runs = [((pid, x),) for pid, x in ((1, 0.45), (2, 0.3), (3, 0.6), (7, 0.5))] + [((1, 0.3), (2, 0.7))]
+    for who in runs:
+        game = spy("pong")
+        lobby = Lobby([game], cfg)
+        persons = [Person(x, id=pid).arrive(0.5) for pid, x in who]
+        _, runner = run_headless(cfg, font5x7, [game], degrade(scene(persons=persons, ticks=600), **REAL_NOISE),
+                                 lobby=lobby, raw=True)
+        assert lobby.debug_state()["figures"] == len(who), (size, who)       # the mirror was drawn to the end
+        area = concurrent_area(runner.raw_frames)
+        assert area < SMALL_AREA, (size, who, area)
 
 
 def test_debug_keys_are_not_reserved(font5x7):

@@ -1,12 +1,13 @@
 import dataclasses
 
 import numpy as np
+import pytest
 
 from arcade.canvas import Canvas
-from arcade.figure import FRAME_ASPECT, STROKE, draw_figure, figure_rect, to_wall
+from arcade.figure import FRAME_ASPECT, STROKE, KeypointHold, draw_figure, figure_rect, to_wall
 from arcade.juice import PLAYER_COLORS
-from arcade.sensed import (LEFT_ANKLE, LEFT_ELBOW, LEFT_KNEE, LEFT_WRIST, RIGHT_ANKLE, RIGHT_ELBOW, RIGHT_KNEE,
-                           RIGHT_WRIST, Body, Keypoint)
+from arcade.sensed import (LEFT_ANKLE, LEFT_ELBOW, LEFT_KNEE, LEFT_WRIST, MIN_CONF, RIGHT_ANKLE, RIGHT_ELBOW,
+                           RIGHT_KNEE, RIGHT_WRIST, Body, Keypoint)
 from arcade.sources.actors import body_box, make_keypoints
 
 AMBER = PLAYER_COLORS[0]
@@ -86,3 +87,65 @@ def test_low_confidence_limbs_skipped(font5x7):
     none = Canvas(*size, font5x7)
     draw_figure(none, headless, rect, AMBER)
     assert 0 < lit(none.frame) < lit(full.frame)                       # no head disc, no neck lines
+
+
+GRACE = 0.55                                                           # capture_grace(10)
+
+
+def dropped(body: Body, joints, dx: float = 0.0) -> Body:
+    """body moved dx to the right, with joints dropped out (conf 0 at (0, 0), as degrade drops them)."""
+    return dataclasses.replace(body, keypoints=tuple(Keypoint(0.0, 0.0, 0.0) if i in joints
+                                                     else Keypoint(k.x + dx, k.y, k.conf)
+                                                     for i, k in enumerate(body.keypoints)))
+
+
+def drawn(font, body: Body, size=(64, 64)):
+    canvas = Canvas(*size, font)
+    draw_figure(canvas, body, figure_rect(body, size), AMBER)
+    return canvas.frame
+
+
+def test_a_single_keypoint_dropout_is_held(font5x7):
+    hold = KeypointHold(GRACE)
+    seen = standing()
+    assert hold.update(seen, 0.0) == seen                              # a whole body passes as it is
+    out = hold.update(dropped(seen, {LEFT_ELBOW}, dx=0.01), 0.1)
+    assert out.keypoints[LEFT_ELBOW] == seen.keypoints[LEFT_ELBOW]     # its last confident place and conf
+    moved = dropped(seen, set(), dx=0.01)
+    assert out.keypoints[:LEFT_ELBOW] + out.keypoints[LEFT_ELBOW + 1:] == \
+        moved.keypoints[:LEFT_ELBOW] + moved.keypoints[LEFT_ELBOW + 1:]  # the confident ones are this capture's
+    assert out.id == seen.id and out.box == seen.box
+    held = hold.update(dropped(seen, {LEFT_ELBOW}), GRACE)             # still held at exactly grace
+    assert np.array_equal(drawn(font5x7, held), drawn(font5x7, seen))
+    back = dataclasses.replace(seen, keypoints=seen.keypoints[:LEFT_ELBOW] + (Keypoint(0.3, 0.5, 0.9),)
+                               + seen.keypoints[LEFT_ELBOW + 1:])
+    assert hold.update(back, GRACE + 0.1).keypoints[LEFT_ELBOW] == Keypoint(0.3, 0.5, 0.9)
+    assert hold.update(dropped(seen, {LEFT_ELBOW}), GRACE + 0.2).keypoints[LEFT_ELBOW] == Keypoint(0.3, 0.5, 0.9)
+
+
+def test_a_limb_gone_longer_than_grace_disappears(font5x7):
+    hold = KeypointHold(GRACE)
+    seen = standing()
+    hold.update(seen, 0.0)
+    gone = dropped(seen, {LEFT_ELBOW, LEFT_WRIST})
+    for t in (0.1, 0.3, 0.5):
+        assert hold.update(gone, t).keypoints[LEFT_WRIST] == seen.keypoints[LEFT_WRIST], t
+    late = hold.update(gone, GRACE + 0.1)
+    assert late.keypoints[LEFT_ELBOW].conf < MIN_CONF and late.keypoints[LEFT_WRIST].conf < MIN_CONF
+    assert late == gone                                                # stays low: the arm is not drawn
+    assert lit(drawn(font5x7, late)) < lit(drawn(font5x7, seen))
+    assert hold.update(gone, 5.0) == gone                              # and does not come back later
+
+
+def test_hold_clears_on_a_new_body_id():
+    seen = standing()
+    other = dataclasses.replace(dropped(seen, {LEFT_ELBOW}), id=2)
+    hold = KeypointHold(GRACE)
+    hold.update(seen, 0.0)
+    assert hold.update(other, 0.1) == other                            # another person: nothing of body 1 held
+    hold = KeypointHold(GRACE)
+    hold.update(seen, 0.0)
+    assert hold.update(None, 0.1) is None
+    assert hold.update(dropped(seen, {LEFT_ELBOW}), 0.2) == dropped(seen, {LEFT_ELBOW})   # None cleared it
+    with pytest.raises(ValueError):
+        KeypointHold(-1.0)
