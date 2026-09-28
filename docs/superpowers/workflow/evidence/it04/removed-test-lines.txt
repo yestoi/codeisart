@@ -1,0 +1,2 @@
+-from arcade.sensed import MIN_CONF
+-    assert not list(shake(0.5, 1.0)(iter(source)))[30].bodies[0].in_zone     # the default zone ends at 0.8

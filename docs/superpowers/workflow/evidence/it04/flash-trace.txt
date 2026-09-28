@@ -1,0 +1,16 @@
+HEAD 9e48c24  BUDGET 6
+128x32 white/black 15 Hz                  square_flashes  30 ->   6   flash_area 1.000 -> 0.000   concurrent 0.000   held_ticks 60
+128x32 red/blue 12 Hz (Pokemon)           square_flashes  30 ->   6   flash_area 1.000 -> 0.000   concurrent 0.000   held_ticks 60
+128x32 red/green 10 Hz                    square_flashes  15 ->   6   flash_area 1.000 -> 0.000   concurrent 0.000   held_ticks 44
+128x32 5 dithers taking turns             square_flashes  30 ->   6   flash_area 0.000 -> 0.000   concurrent 0.000   held_ticks 62
+128x32 2 dithers taking turns             square_flashes  12 ->   6   flash_area 0.000 -> 0.000   concurrent 0.000   held_ticks 105
+128x32 grating every 11 px, 15 Hz         square_flashes   0 ->   0   flash_area 0.188 -> 0.000   concurrent 0.000   held_ticks 60
+128x32 static control                     square_flashes   0 ->   0   flash_area 0.000 -> 0.000   concurrent 0.000   held_ticks 0
+64x64 white/black 15 Hz                  square_flashes  30 ->   6   flash_area 1.000 -> 0.000   concurrent 0.000   held_ticks 60
+64x64 red/blue 12 Hz (Pokemon)           square_flashes  30 ->   6   flash_area 1.000 -> 0.000   concurrent 0.000   held_ticks 60
+64x64 red/green 10 Hz                    square_flashes  15 ->   6   flash_area 1.000 -> 0.000   concurrent 0.000   held_ticks 44
+64x64 5 dithers taking turns             square_flashes  30 ->   6   flash_area 0.000 -> 0.000   concurrent 0.000   held_ticks 62
+64x64 2 dithers taking turns             square_flashes  12 ->   6   flash_area 0.000 -> 0.000   concurrent 0.000   held_ticks 105
+64x64 grating every 11 px, 15 Hz         square_flashes   0 ->   0   flash_area 0.188 -> 0.000   concurrent 0.000   held_ticks 60
+64x64 static control                     square_flashes   0 ->   0   flash_area 0.000 -> 0.000   concurrent 0.000   held_ticks 0
+worst governed square_flashes 6 <= BUDGET

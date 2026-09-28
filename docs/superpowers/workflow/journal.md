@@ -41,3 +41,46 @@ Owner intervention, 2026-09-27, during iteration 2's plan phase: the owner asked
 - Verdict (pixels read by the operator: 128x32 and 64x64, led and distance at 5 m): every element is where the plan says, inside the blue border. LED shows round dots with dark gaps. The distance look is soft but every letter, both scale-2 8s and the sha read clearly at both layouts, amber stays amber, and the glow is widest on white and green and barely there on blue. The diagonal clears the text and disc. One thing to note for the owner: the red "88" is drawn as (255, 40, 40) and previews as salmon pink, because with gamma 2.2 modelled a channel at 40 emits visible light on an uncorrected panel. That is the preview telling the truth, not a bug; whether the card applies gamma (config `gamma` 2.2 vs 1.0) is the owner's prototype-week decision, and until then games should pick colours with low channels at 0. Success criterion touched: text is legible at 5 m at both layouts.
 - Carried forward: C17-C21 (roadmap); forwarded-to-task items and GATE B additions recorded in the roadmap.
 - Status: done
+
+## Iteration 4 — 2026-09-28
+- Plan: docs/superpowers/plans/2026-09-28-it04-carried-input-protocol-safety.md (e9b23ec)
+- Shipped:
+  - Carried C18-C20: `circle` draws its centre at tiny radii, huge ints clamp, `apply_gamma` copies, and preview settings are checked at construction.
+  - Input helpers `Edge`, `Hold`, `Cursor` and `OneEuro`, with graces sized in camera captures (C10 helper half; owner Q10: CAPTURE_GRACE 5).
+  - Core Task 7: `GameInfo` and the Game protocol, a guarded registry in MENU_ORDER, nightly scores and the sessions log.
+  - Flash governor: per pixel with red counted three ways, small areas exempt (Q13), a 32 px square backstop (B7, Q14), a 12.5% field cap (Q15) and a bounded backstop.
+  - Brightness limiter: lux only adds night (Q12); the tick order is limiter then governor (Q11).
+  - 4 commits, 257d30e..9e48c24. The first slice of M3 is in.
+- Plan review:
+  - Round 1 BLOCKED: B1-B6 (red flashes, limiter strobes, lux night, runner wiring, numpy scores, a plan-literal assert).
+  - Round 2 BLOCKED: B7 (pixels taking turns flash the whole wall). Gated as Q14, with Q15 and Q16 alongside; the owner answered all three.
+  - The first plan-writer agent ended with the compacted session before it edited anything. A new one applied B7 and the Q15 cap.
+  - Operator decision: the backstop is bounded at 8 passes, then the whole frame is held. A wrong tracker update could otherwise hang the governor.
+  - Round 3 (confirm-only) APPROVED; N25-N28 folded in before commit.
+- Review: APPROVED after 1 round (0 blocking).
+  - Two ruled library deviations, both accepted: OneEuro stores floats (B5), and `scores._finite` catches OverflowError (decision 10).
+  - The orchestrator rewrote local, unpushed SHAs with a non-interactive autosquash.
+- Deploy: none (phase 1)
+- Verify: 7/7 items passed.
+  - Freshness: head.txt and the flash trace read 9e48c24 = HEAD. This iteration has no PNGs.
+  - Doctor: camera, mic and pose all ok.
+  - Evidence: docs/superpowers/workflow/evidence/it04/
+- Tests: 334 collected, 334 passed, 0 skipped (it03: 224/224/0). 0 test lines removed since e6e31f5.
+- Verdict:
+  - I read the trace I ran myself (flash-trace.txt) at both layouts.
+  - Whole-field white/black at 15 Hz, red/blue at 12 Hz and red/green at 10 Hz each drop from 15-30 square transitions a second to 6.
+  - The turn-taking dithers that beat the round-2 plan drop to 6.
+  - The 12-pair grating is held to a flash_area of 0.
+  - The static control is never held.
+  - Success criterion touched: the flash governor holds at most 3 full-field flashes a second, at module level. The runner wiring is it05, and the soak is Task 20.
+  - Nothing visual changed, so there are no sheets to read.
+- Carried forward:
+  - C24: flash content rules for the soak and the game guide in M6.
+  - C25: SessionLog with a numpy players count, priority for it05.
+  - C26: tests to pin the two deviations.
+  - C27: the it05 caller rule and the holding-path tick budget.
+  - C28: cache `all_games`.
+  - C29: minors.
+  - C18-C20 and C10's helper half are closed.
+- Loop decisions: bound the backstop at 8 passes; the game guide goes in M6's `arcade-game-authoring` skill (C24). Owner questions this iteration: Q10-Q16, all answered.
+- Status: done
