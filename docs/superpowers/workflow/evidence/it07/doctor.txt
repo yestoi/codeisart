@@ -1,0 +1,8 @@
+2026-09-28 18:10:15.806 python[14812:54901953] WARNING: AVCaptureDeviceTypeExternal is deprecated for Continuity Cameras. Please use AVCaptureDeviceTypeContinuityCamera and add NSCameraUseContinuityCameraDeviceType to your Info.plist.
+I0000 00:00:1790637017.873582 54902222 init-domain.cc:132] Fiber init: default domain = pthread, concurrency = 8, prefix = pthread-default
+I0000 00:00:1790637017.914846 54902222 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 89.4), renderer: Apple M1
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1790637017.967549 54902227 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1790637017.980344 54902227 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+camera  ok  device 0: 1920x1080
+pose    ok  mediapipe 1.0.0: landmarker ran in 18 ms

@@ -206,3 +206,58 @@ Owner intervention, 2026-09-28, between iterations 5 and 6: the owner reviewed i
 - Status: done
 
 Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:15 CDT, not 16:25. Verify and report took 6 minutes, not 20, and the iteration took 72 minutes from orient (15:03) to the commit (5ed04f2).
+
+## Iteration 7 — 2026-09-28
+- Verdict (the operator, from evidence/it07/ read with the Read tool, feel.json first; written before any other tool call): **M4a passes: the oracle works and Pong passes it at 128x32.** What was read and what it shows:
+  - `feel.json` (sha 06172ed, 20 seeds): `failures` is empty against 15 budgets. response_ticks 2.0 (max 2, no margin), fidelity 0.995, range 0.774, lit 0.022, dim 0.189 (Pong's own max 0.3, reason given: the dim net), liveliness 0.0035, flash_area_raw 0.0, square_flashes 0, score_visible 0.959, score_legible 1.0, win_good 1.0, win_lazy 0.2, win_none 0.0, round_seconds 92.0 (the 90 s cap), phases_reached 1.0. `presence_answer_seconds` 0.0 is in the report with no budget, as the review's fix decided.
+  - The canonical sheet, plain, led and at 5 m (20 frames over 30 s): the empty wall shows the lobby's title "PONG" (frames at 0 and 1.5 s); the body's mirror stands in amber at 3.0 s; at 4.5 s the hand is up beside the green pictogram; Pong plays from 6.0 s with the amber paddle and score left, the green CPU right, the white ball, the dim blue net. The CPU takes three points in 30 s and the scripted body none (a script is not a player: the bots judge difficulty, and the good bot wins 20 of 20). The "+1" pop under the CPU's 3 at 21.0 s is readable. At 5 m every digit still reads and the net stays visible without competing with the ball. So the evidence script now shows attract, the walk-up and the game in one sheet, which it06's did not.
+  - The timeline agrees with the sheet: attract 0.03, invite 3.53, serve 4.57, play 5.53, points at 9.73 and 20.50.
+  - The strobe check (duel through the small lobby, 3000 ticks): raw and pushed rows are the same, held 0 of 3000, flash_area 0.000 raw and pushed, concurrent_area(pushed) 0.001 of 0.1, square_flashes 2 of 6. On the raw-vs-pushed sheet the end card "PONG 5 / HAND UP = AGAIN" holds still for 20 frames, then two mirrors (amber, blue) stand and the pictogram fades in from dim to bright green over about 12 ticks: a fade, not a blink.
+  - What the evidence does NOT show, said plainly: the Read tool shows a GIF's first frame only (the mirror with its hand up, 256x64), so the GIF's motion was not judged by eye; its length (6.0 s) and size (9.6 KB) were checked by the tests and the reviewer. No metric measures an idle hint any more.
+  - Seen and written down for later: (a) `games.md` prints "yes" in the ok column for `presence_answer_seconds`, which has no budget; it should print "-". (b) The sheet's frame at 4.50 s is captioned "pong" and shows the lobby's last drawing; the timeline puts the launch at 4.57 s, so the caption is one capture early. (c) response_ticks sits on its max. (d) Every judged round ends at the 90 s cap. (e) The scores are drawn at 1x; they read at 5 m, spec 7.4 asks for 2x.
+- Plan: docs/superpowers/plans/2026-09-28-it07-oracle-for-games.md (6ddaf78), 298 lines, thin. Not a safety slice (the pattern check is a new file that only reads `flash.signals`): no plan review.
+- Shipped: all of M4a's must, C37, and the stretch X1 in part; 26 files, 3197 lines added, 6ddaf78..6ebbb6d.
+  - S1 (17ca145): `run_headless` takes a callable feed; `REQUIRED_SCENARIOS`; `arcade/bots.py` (`Bot`, `Move`, `play`, `win_rate`, `seeds`, `for_game`); the default budgets; the canary test for the freeze.
+  - P1: `arcade/feel.py`, the metrics and `judge`. P2: `arcade/pattern.py` (the stripe rule, Q30) and the generic tests and soak for every game.
+  - P3: Pong's three scripts, its `good` and `lazy` bots, its budget override for the dim net.
+  - P4: `tools/arcade_evidence.py` (sheets in three looks, GIF, timeline, trace, `games.md`, `feel.json`). P5: `arcade_shot`'s provenance header and the black refusal.
+  - P6: C37, the mirror holds a dropped keypoint. P7: the game guide, `.claude/skills/arcade-game-authoring/SKILL.md`.
+  - I1: `tests/arcade/test_oracle.py`, the oracle end to end on Pong. The Pong feel fix (35ae954): a body in view takes a CPU seat at once.
+  - X1 (a2e6681): `score_visible`, `score_legible` and a third metric that the review blocked (below).
+  - The tag `game-protocol-v1` is set on 6ebbb6d, the reviewed head.
+- Review: APPROVED after 2 rounds.
+  - Round 1: BLOCKED on one finding, B1: `idle_hint_seconds` passed without an idle hint. On Pong it measured the seated body's amber paddle, digit and marker against the CPU's green, and Pong has no hint code. Ten other points were ruled not blocking, each by running (evidence/it07/reviewer-round1.md): the oracle catches two stub games (a blind dot, moving stripes); the pattern check gives 1.000 on a grating and 0.0 on Pong and the lobby; the freeze matches the plan.
+  - The fix (6ebbb6d, the operator's choice of the reviewer's two): the metric is renamed `presence_answer_seconds`, stays in the report and has no budget for any kind. No other band changed.
+  - Round 2: APPROVED; one assert form lost (a missing value against a max-only budget), the same line is tested in its two other forms (evidence/it07/reviewer-round2.md).
+- Deploy: none (phase 1)
+- Verify: 7/7 items passed.
+  - Freshness: `feel.json`, `games.md`, the six PNGs and head.txt read 06172ed = HEAD at verify (6ebbb6d plus the operator's workflow files), from a clean tree.
+  - Tests green; skips 0 (it06: 0); collected 675 (it06: 596); doctor: camera ok, pose ok.
+  - Evidence: docs/superpowers/workflow/evidence/it07/, README with the decision on line 1.
+- Tests: 675 collected, 675 passed, 0 skipped, 133.6 s (it06: 596 in 36.9 s). The suite's time grew 3.6 times: the oracle 55 s, Pong's tests 22 s, feel 11 s, the soak 6 s a game.
+- Minutes: orient 2, plan 13, implement 74 (serial 9, parallel 25, integration 22, stretch 16), review 19 (round 1 8, fix 7, round 2 3), verify and report about 13. About 123 from orient (16:15) to the commit, against a target of 90. Where the 33 went: the stretch produced the one blocking finding (16 for X1, 10 for its fix and re-review), and the integration held two send-backs (P4's merge, Pong's feel).
+- Loop decisions:
+  - The owner, at 18:00 during the review: the prototype has four panels, mounted 2 x 2; 128x64 goes to the top of the roadmap (Q32, answered). Milestone M4b is written, first in line after M4a; the end goal names the third layout; the wiring is an owner item. Iteration 7 was not changed by it, and the freeze went ahead: a layout is a value in `GameInfo`, not a member of the protocol.
+  - B1's fix: the smaller of the reviewer's two. A metric that cannot tell a hint from a seat colour is not given a budget; a real measure is a note for a later task. Q31 records the three numbers.
+  - A budget band was never loosened. When the oracle failed on Pong (`response_ticks` 10, `fidelity` -0.28), Pong was fixed, in two rounds at most, by a fresh agent in the main checkout.
+  - The P3 agent, bound to its worktree, was refused git on main and made no change. That was right; its sandbox was not worked around.
+  - P4's first merge broke the suite (a list made from an int): reverted with `git revert -m 1`, sent back once, merged again.
+  - Agents wrote their full reports to files and sent the path and the verdict (it06's lesson). No report was cut off.
+  - `arcade_shot`'s sheets were made with the new evidence folder moved aside, so that they carry a clean sha.
+  - Process slips, no effect: eight agents (S1, P2, the Pong fix, X1, the B1 fix, the orchestrator, the reviewer twice) ran a command with `cd` into the directory they were already in. The orchestrator did not start P5 to P7 when slots came free until the operator asked.
+- Carried forward:
+  - C38 (new): `response_ticks` depends on where its probes fall (2.0 at 8 probes, 5.0 at 4 and 16, Pong answers in 1 tick), and `feel.measure` launches a game into an empty wall.
+  - C39 (new): Pong's scores are drawn at 1x, spec 7.4 asks for 2x, and the oracle accepts 1x.
+  - C40 (new): `games.md` prints "yes" for a metric with no budget.
+  - C41 (new): an idle body banks points in Pong and they are stored as a best; the test's name says it scores nothing and it never asserts that.
+  - Closed: C37 (raw `concurrent_area` at most 0.0918 on 64x64 under real noise, 0 held ticks).
+- Noted, not carried:
+  - Every good-bot round runs to the 90 s cap (tuning, for the live smoke).
+  - A held keypoint stays at its place on the wall, 9 to 15 px from a walking body's true wrist for up to 0.5 s.
+  - No metric for the idle hint or the fail-versus-win transient; X2 and X3 not started; the "`_xy` is lit" test waits for M8.
+  - The sheet's caption at the launch tick is one capture early.
+  - Raw frames include the runner's player marker.
+  - Ten merged worktrees are left in place.
+- Owner questions: Q26 to Q31 defaulted under the standing instruction; Q32 answered by the owner. All of Q22 to Q32 are listed in gate.md.
+- Owner items open: the first live smoke (`.venv/bin/python -m arcade run`); the 2 x 2 wiring shown with the `index` pattern at 128x64.
+- Status: done. The loop gates here on the iteration cap (Q21) and does not start iteration 8.

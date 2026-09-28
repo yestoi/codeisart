@@ -1,0 +1,10 @@
+0.03 lobby/attract
+3.53 lobby/invite
+4.57 pong/serve
+5.53 pong/play
+7.63 pong/serve
+9.73 pong/point
+11.73 pong/play
+20.50 pong/point
+22.50 pong/play
+29.77 pong/serve

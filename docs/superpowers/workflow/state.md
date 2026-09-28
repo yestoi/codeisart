@@ -1,24 +1,16 @@
 # Operator state
-iteration: 7
-phase: verify
-plan: docs/superpowers/plans/2026-09-28-it07-oracle-for-games.md (298 lines, thin; committed 6ddaf78)
-base: 6ddaf78 (reviewed range 6ddaf78..6ebbb6d; the reviewed code head is 6ebbb6d, the tag `game-protocol-v1` goes on it)
-orchestrator: `it07-orchestrator` (opus), reported 17:44; idle, keeps its context for blocking findings. Its full report: session scratchpad, it07-orchestrator-report.md (copy it to evidence/it07/orchestrator-report.md in verify)
-in_flight: none. Review APPROVED after 2 rounds at 18:06 CDT (round 2 report: session scratchpad, it07-review-round2.md; 675 collected, 675 passed, 0 skipped, 135.7 s). Verify started 18:07, inline, by the operator
-review fix: B1 fixed by the orchestrator in 6ebbb6d at 18:03 (four files, the budget file lost only the three `idle_hint_seconds` tables; read by the operator); 675 collected, 675 passed, 0 skipped, 142.1 s; Pong's failures == []. Review range is now 6ddaf78..6ebbb6d
-owner, 18:00: the prototype has four panels, mounted 2 x 2. Answered as Q32 in decisions.md; roadmap.md has M4b (128x64, first in line after M4a), a line in the end goal and an owner item for the wiring; all three uncommitted, to go in with the verify commit. it07 itself is not changed by it; name M4b in gate.md as the next arcade milestone
-review round 1: BLOCKED at 17:55 on B1 (`idle_hint_seconds` in arcade/feel.py passes without an idle hint: on Pong it measures the seat's colour). Full report: session scratchpad, it07-review.md. Everything else ruled not blocking; 674 collected, 674 passed, 0 skipped, 133.8 s; one changed assert in the diff, extended. The operator's fix decision: rename the metric `presence_answer_seconds`, keep it in the report, take it out of the default budgets; files arcade/feel.py, arcade/feel_budgets.toml, tests/arcade/test_feel.py, tests/arcade/test_bots.py. Then ONE confirming look by `it07-reviewer` (SendMessage, it keeps its context) on the fix commit only; after that the review is over either way (Loop rule 3)
-to carry after the review (Loop rule 5, reproduced): C38 `response_ticks` sits at its max by probe placement (Pong answers in 1 tick; 2.0 at PROBES 8, 5.0 at 4 and 16) and `measure` launches a game into canonical's empty-wall start, which the arcade never does; C39 Pong draws its scores at 1x where spec 7.4 says 2x (a 1x digit reads 0.857 at 10 m) and `SCORE_SCALES = (1, 2)` lets the oracle accept it. Noted, for the owner's live test: every good-bot round runs to the 90 s cap at 1 to 4 points against 0; an idle body banks 1 or 2 points on 3 seeds of 10 and they are stored as a best; a held keypoint lands up to 9 px from the true one for 0.5 s while a person walks
-implemented: all of M4a's must, C37, and the stretch X1 in part. S1 17ca145; merges P3 1a493e1, P1 7f71237, P2 af86881, P5 cf846e5, P6 387936a, P7 1014118, P4 a4a3c6d (reverted a6aef84, sent back once, reapplied 60f3989, fix merged 8c750a4); I1 4ede4a6 and 8f68d07; the Pong feel fix 35ae954 (round 1 of 2: a body in view takes a CPU seat at once); X1 a2e6681. Orchestrator's count: 674 collected, 674 passed, 0 skipped, 132.5 s (it06: 596, 36.9 s). Not started: X2, X3. Not done in X1: the fail-versus-win transient
-pong's feel at 128x32, 20 seeds (orchestrator): response_ticks 2.0 of max 2 (no margin); fidelity 0.995; range 0.774; round_seconds 92.0 (the 90 s cap: the good bot leads at the cap and does not reach 5 points); win_good 1.0, win_lazy 0.2, win_none 0.0; dim_fraction 0.189 under Pong's own override of 0.3 (the dim net); score_visible 0.959, score_legible 1.0, idle_hint_seconds 0.0 (weak: a colour change)
-for the review to rule on: is the Pong fix real or does it game the metric; rounds that always run to the cap; four changed asserts (test_pong's scenario set and idle body, test_bots' expected dicts, test_feel's key set); an idle body banks points and `Scores.record` stores them; Pong's score is drawn at 1x where spec 7.4 says 2x; C37's margin (raw `concurrent_area` up to 0.0918 of 0.1); raw frames include the runner's player marker
-for verify, in this order: (1) commit this file so the tree is clean; (2) the plan's I2: `python -m tools.arcade_evidence --iteration 7 --games pong --out docs/superpowers/workflow/evidence/it07` (its first run from the command line) and the strobe check; (3) the test command, `--collect-only`, head.txt, doctor; (4) read feel.json first, then the sheets and the GIF, and write the verdict into the journal before anything else; (5) README with the decision on line 1; (6) decisions.md Q31 (X1's three budget numbers); (7) the tag `game-protocol-v1` on the reviewed HEAD; (8) journal, roadmap (M4a checked, C37 closed), gate.md, commit. Then stop: the gate
-for the journal: minutes plan 13, implement 74 (serial 9, parallel 25, integration 22, stretch 16). Process slips: five agents ran `cd` into the directory they were already in. The P3 agent refused to work around its worktree sandbox, rightly; the fix went to a fresh agent in the main checkout. The suite grew from 37 s to 132 s (the oracle 55 s, Pong's tests 22 s, feel 11 s, the soak 6 s a game). Ten merged worktrees are left under .claude/worktrees/
-decisions: Q22 to Q25 (it06) and Q26 to Q31 (it07) defaulted (decisions.md; Q31 written 17:58); Q32 answered by the owner; list them at the gate after this iteration. Q23 reads wrong on it06's sheet (the winner of a duel sees "PONG 0")
-next_gate: after this iteration (iterations-per-run: 2, owner decision Q21). At the gate the loop writes gate.md and stops, and the operator moves to the show daemon; do not start iteration 8
-rules: config.md "Loop rules" (2026-09-28) override the workflow-loop skill and its sub-skills
-times: it06 ran 15:03 to 16:15 CDT on 2026-09-28 (72 minutes). it07 orient 16:15-16:17; plan 16:17-16:29; implement 16:30-17:44; review from 17:47 to 18:06 (round 1 BLOCKED 17:55, fix 17:56-18:03, round 2 18:04-18:06); verify from 18:07
-last_compaction: 2026-09-28T16:45:05Z at iteration 5 phase plan (auto)
+iteration: 7 (done)
+phase: gated
+gate: docs/superpowers/workflow/gate.md (the iteration cap, owner decision Q21). Do not start iteration 8. Wait for the owner's answer: the show daemon (the default) or M4b first
+last: iteration 7, M4a, done 2026-09-28 18:18 CDT. Code head 6ebbb6d, tag `game-protocol-v1` on it. 675 collected, 675 passed, 0 skipped, 133.6 s. Review APPROVED after 2 rounds. Evidence: docs/superpowers/workflow/evidence/it07/
+in_flight: none. Teammates it07-orchestrator and it07-reviewer are idle; nothing is owed by them
+next arcade milestone: M4b, the four-panel wall, 128x64 (Q32, the owner's answer of 2026-09-28), with C38, C39, C41 inside it
+carried: C38, C39, C40, C41 (roadmap.md). Closed in it07: C37
+decisions: Q22 to Q31 defaulted, Q32 answered; all listed in gate.md. Q23 reads wrong on the sheet
+owner items: the first live smoke (`.venv/bin/python -m arcade run`); the 2 x 2 wiring; hardware bring-up
+rules: config.md "Loop rules" (2026-09-28) override the workflow-loop skill and its sub-skills. Never `cd` in a Bash command
+times: it06 15:03 to 16:15 CDT (72 minutes); it07 16:15 to 18:18 CDT (about 123 minutes)
+last_compaction: 2026-09-28T22:55:53Z at iteration 7 phase review (auto)
 
 ## Compaction footer 2026-09-28T22:55:53Z
 - trigger: auto
