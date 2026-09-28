@@ -267,3 +267,45 @@ default: Q21 stands, the show daemon; 128x64 a third layout beside 128x32 and 64
 deadline: none
 answer: "yes, make 128x64 the only layout and do M4b first". Games are designed, tuned and judged at 128x64 alone; the engine stays free of any size and every game still runs at a size it does not declare. Iteration 8 is M4b; the loop gates after it and the operator then moves to the show daemon. Pong's 128x32 declaration stays only if it passes without extra work
 status: answered (owner, 2026-09-28)
+
+### Q34: What are Pong's numbers at 128x64?
+asked: it8
+default: the paddle a quarter of the wall's height (16 px) and 2 px wide; the ball 2 px; ball speeds in px/s as at 128x32 (start 60, gain 1.08, max 110) before tuning; the CPU at 0.75 wall heights a second (48 px/s) before tuning; both scores at 2x at the top, centred over each half. Pong's 128x32 declaration is dropped (it would need its own tuning and a second 20-seed report); Pong still runs at sizes it does not declare
+deadline: it8
+answer:
+status: defaulted (standing instruction)
+
+### Q35: Does a player who stands still bank points in Pong (C41)?
+asked: it8
+default: no. A human's point counts only if they moved the paddle 1 px or more in the rally that ended in it; otherwise nobody scores and the next serve follows. A best is stored only when the solo player moved during the game
+deadline: it8
+answer:
+status: defaulted (standing instruction)
+
+### Q36: Must a good player's round of Pong reach 5 points before the 90 s cap?
+asked: it8
+default: no. The round band (20 to 120 s) holds; the owner's live smoke judges the pace
+deadline: it8
+answer:
+status: defaulted (standing instruction)
+
+### Q37: How is the small lobby laid out on 64 rows?
+asked: it8
+default: the attract title, the card's title-and-score line and "BEST!" at 2x on a wall of 48 rows or more where they fit, the prompt line at 1x; the mirror figure the wall's full height (64 px) with 2 px strokes; the hand-up pictogram 16 px, level with the shoulders. The card's content stays Q23's
+deadline: it8
+answer:
+status: defaulted (standing instruction)
+
+### Q38: How large must a game's answer to an input be (the response budget, C38)?
+asked: it8
+default: `response_px` at least 12 pixels changed two ticks after the input moves, for control, score and toy games (spec 11's "within two ticks and at least 12 lit pixels"). `response_ticks` stays the latency alone, at most 2
+deadline: it8
+answer:
+status: defaulted (standing instruction)
+
+### Q39: What does the wall test pattern show for the 2 x 2 wall?
+asked: it8
+default: `wall_pattern index` defaults to 128x64 and draws a seam at every 64 columns and every 32 rows, so a panel in the wrong place shows
+deadline: it8
+answer:
+status: defaulted (standing instruction)
