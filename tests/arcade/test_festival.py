@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from arcade.calibration import Calibration
-from arcade.sensed import MIN_CONF
+from arcade.sensed import MIN_CONF, Sensed, place
 from arcade.sources.actors import (REAL_NOISE, TICK, Person, camp_kick, claps, crowd, degrade, headlamps,
                                    motion_rect, scene, shake, wind)
 
@@ -177,4 +177,64 @@ def test_shake_places_against_the_scene_calibration():
     assert all(f.bodies[0].in_zone for f in source)
     shaken = list(shake(0.5, 1.0, calibration=right)(iter(source)))
     assert all(f.bodies[0].in_zone for f in shaken)
-    assert not list(shake(0.5, 1.0)(iter(source)))[30].bodies[0].in_zone     # the default zone ends at 0.8
+    with pytest.raises(ValueError, match="calibration"):                    # owner decision Q9: no silent default zone
+        list(shake(0.5, 1.0)(iter(source)))
+
+
+def test_degrade_needs_the_scene_calibration():
+    # C13: degrade (and shake, owner decision Q9) placed noisy bodies against the default zone whatever
+    # the scene used.
+    right = Calibration(zone=(0.5, 0.2, 1.0, 0.8))
+    source = list(scene(persons=[Person(0.85)], ticks=60, calibration=right))
+    with pytest.raises(ValueError, match="calibration"):
+        list(degrade(iter(source)))
+    kept = list(degrade(iter(source), keypoint_dropout=0.0, jitter=0.0, calibration=right))
+    assert all(f.bodies[0].in_zone for f in kept[5:]) and kept[8].bodies == source[3].bodies
+    noisy = list(degrade(iter(source), calibration=right))
+    assert sum(f.bodies[0].in_zone for f in noisy[5:]) >= 0.9 * 55
+    unplaced = [Sensed(t=i * TICK, bodies=(Person().body_at(i * TICK, 0),)) for i in range(6)]
+    with pytest.raises(ValueError, match="place"):
+        list(degrade(iter(unplaced)))
+    # Calibrations that differ from the default in one placement field each: min_height moves in_zone
+    # alone, a wider zone zone_x alone, a taller one zone_y alone. degrade and shake catch every one.
+    for cal, x in ((Calibration(min_height=0.3), 0.5), (Calibration(zone=(0.1, 0.2, 0.9, 0.8)), 0.4),
+                   (Calibration(zone=(0.2, 0.1, 0.8, 0.9)), 0.5)):
+        source = list(scene(persons=[Person(x, height=0.4)], ticks=12, calibration=cal))
+        b, default = source[0].bodies[0], place(source[0].bodies[0], Calibration())
+        differs = (b.in_zone != default.in_zone, b.zone_x != default.zone_x, b.zone_y != default.zone_y)
+        assert sum(differs) == 1, (cal, differs)
+        with pytest.raises(ValueError, match="calibration"):
+            list(degrade(iter(source)))
+        with pytest.raises(ValueError, match="calibration"):
+            list(shake(0.0, 1.0)(iter(source)))
+        assert len(list(degrade(iter(source), calibration=cal))) == 12
+        assert len(list(shake(0.0, 1.0, calibration=cal)(iter(source)))) == 12
+    # Every body is checked, not just the first: body 1 stands outside both zones, body 2 only in the scene's.
+    source = list(scene(persons=[Person(0.1, id=1), Person(0.85, id=2)], ticks=12, calibration=right))
+    with pytest.raises(ValueError, match="body 2"):
+        list(degrade(iter(source)))
+    with pytest.raises(ValueError, match="body 2"):
+        list(shake(0.0, 1.0)(iter(source)))
+
+
+def test_scene_refuses_duplicate_ids_and_crowd_takes_an_id_base():
+    # C15: crowd always started at 100 and scene used the list index, so ids could collide.
+    with pytest.raises(ValueError, match="duplicate body id 100"):
+        scene(persons=[Person(), *crowd(2), *crowd(2)])
+    with pytest.raises(ValueError, match="duplicate body id 0"):
+        scene(persons=[Person(0.2), Person(0.5, id=0)])
+    assert [p.id for p in crowd(3, id_base=200)] == [200, 201, 202]
+    frames = list(scene(persons=[Person(), *crowd(2), *crowd(2, id_base=200)], ticks=1))
+    assert sorted(b.id for b in frames[0].bodies) == [0, 100, 101, 200, 201]
+
+
+def test_festival_guard_rails():
+    # C16: headlamp blobs stay on the wall; camp_kick(0) is a ValueError; degrade keeps the detector box.
+    assert all(0.0 <= b.x <= 1.0 for f in scene(blobs=headlamps(), ticks=600) for b in f.blobs)
+    with pytest.raises(ValueError, match="bpm"):
+        camp_kick(0)
+    source = list(scene(persons=[walker()], ticks=30))
+    for f in degrade(iter(source)):
+        for b in f.bodies:
+            truth = source[round(f.camera_t / TICK)].bodies[0]
+            assert (b.box, b.scale, b.vx, b.vy) == (truth.box, truth.scale, truth.vx, truth.vy)

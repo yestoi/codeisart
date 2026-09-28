@@ -175,3 +175,10 @@ def test_person_velocity():
     assert p.body_at(2.0, 0).vx == pytest.approx(0.4)           # the last tick of the walk still moved
     assert p.body_at(2.5, 0).vx == 0.0 and p.body_at(2.5, 0).vy == 0.0
     assert p.body_at(3.1, 0).vy < 0                             # rising
+
+
+def test_tempo_needs_a_positive_bpm():
+    # C16: tempo(0) divided by zero; a negative bpm gave a negative period.
+    for bad in (0, -120, math.nan, math.inf):
+        with pytest.raises(ValueError, match="bpm"):
+            tempo(bad)

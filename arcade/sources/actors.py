@@ -237,6 +237,8 @@ def claps(times: list[float]) -> AudioScript:
 
 
 def tempo(bpm: float, start: float = 0.0) -> AudioScript:
+    if not 0.0 < bpm < math.inf:
+        raise ValueError(f"tempo needs a bpm over 0, got {bpm!r}")
     period = 60.0 / bpm
 
     def script(t: float) -> Audio:
@@ -252,17 +254,26 @@ def scene(persons: Iterable[Person] = (), blobs: Iterable[BlobScript] = (), moti
           calibration: Calibration | None = None) -> Iterator[Sensed]:
     """Sensed records at 30 Hz with a fresh camera frame every tick, as a perfect 30 fps camera gives.
 
-    Bodies are placed against the calibration (the default one when None) and sorted largest scale
-    first; blobs are placed, kept in script order (a Blob has no brightness to sort by) and capped at 8;
-    motion scripts are ORed on the 128x64 grid.
+    A person without an id gets its index in persons; two persons with one id raise ValueError here,
+    before the first frame, because the tracker never gives two bodies one id and degrade keys its noise
+    on it. Bodies are placed against the calibration (the default one when None) and sorted largest
+    scale first; blobs are placed, kept in script order (a Blob has no brightness to sort by) and capped
+    at 8; motion scripts are ORed on the 128x64 grid.
     """
     persons, blobs, motion = list(persons), list(blobs), list(motion)
-    audio = audio or silence()
-    cal = calibration or Calibration()
+    ids = [p.id if p.id is not None else idx for idx, p in enumerate(persons)]
+    for body_id in ids:
+        if ids.count(body_id) > 1:
+            raise ValueError(f"duplicate body id {body_id} in scene: give crowd() an id_base or Person an id")
+    return _frames(persons, ids, blobs, motion, audio or silence(), ticks, calibration or Calibration())
+
+
+def _frames(persons: list[Person], ids: list[int], blobs: list[BlobScript], motion: list[MotionScript],
+            audio: AudioScript, ticks: int, cal: Calibration) -> Iterator[Sensed]:
     w, h = MOTION_GRID
     for i in range(ticks):
         t = i * TICK
-        bodies = [place(p.body_at(t, idx), cal) for idx, p in enumerate(persons) if p.present(t)]
+        bodies = [place(p.body_at(t, body_id), cal) for p, body_id in zip(persons, ids) if p.present(t)]
         bodies.sort(key=lambda b: -b.scale)
         lights = tuple(place_blob(b, cal) for b in (s(t) for s in blobs) if b is not None)[:MAX_BLOBS]
         grid = np.zeros((h, w), bool)
@@ -278,12 +289,14 @@ def scene(persons: Iterable[Person] = (), blobs: Iterable[BlobScript] = (), moti
 
 # Festival scenes (spec 6.4, 9.3): what a burn puts in front of the camera and microphone.
 
-def crowd(n: int, start: float = 0.0) -> list[Person]:
-    """n small people behind the player: 0.3 tall, so under the zone's min_height, drifting and waving."""
+def crowd(n: int, start: float = 0.0, id_base: int = 100) -> list[Person]:
+    """n small people behind the player: 0.3 tall, so under the zone's min_height, drifting and waving.
+
+    Their ids are id_base, id_base + 1, ...; a second crowd in one scene needs another id_base."""
     people = []
     for i in range(n):
         x = (i + 0.5) / n
-        p = Person(x, y=0.35, height=0.3, id=100 + i)
+        p = Person(x, y=0.35, height=0.3, id=id_base + i)
         p.walk(min(1.0, x + 0.04), 3.0, at=start + 0.4 * i).walk(x, 3.0)
         p.raise_hand(at=start + 1.0 + 0.7 * i, seconds=0.8, hand="left" if i % 2 else "right")
         people.append(p)
@@ -293,7 +306,9 @@ def crowd(n: int, start: float = 0.0) -> list[Person]:
 def headlamps(period: float = 20.0, cross_seconds: float = 6.0) -> tuple[BlobScript, BlobScript]:
     """A headlamp parked at the top left, and one crossing the top of the frame every period seconds.
 
-    Both stay above the default zone (y under 0.2), so games never see them."""
+    Both stay above the default zone (y under 0.2), so games never see them. Blob clamps x to 0..1, so the
+    crossing lamp sits on the edge column for its first and last 0.27 s instead of leaving the frame; it is
+    out of the zone there, and a real blob source never reports a light outside the frame."""
     parked = lambda t: Blob(0.05, 0.15, 0.02, (255, 244, 214))
 
     def crossing(t: float) -> Blob | None:
@@ -330,6 +345,9 @@ def _unit(tag: str, tick: int, body_id: int, joint: int) -> float:
 
 
 def _noisy(body: Body, tick: int, tag: str, dropout: float, jitter: float) -> Body:
+    """body with its keypoints dropped and jittered. box, scale, vx and vy are kept: the box stands for the
+    detector's box, which does not lose a joint, and scale and velocity come from the tracker (core
+    Task 16), which smooths them over captures. Re-placing is the caller's job."""
     pts = []
     for j, k in enumerate(body.keypoints):
         x = k.x + (2 * _unit(tag + "x", tick, body.id, j) - 1) * jitter
@@ -339,15 +357,34 @@ def _noisy(body: Body, tick: int, tag: str, dropout: float, jitter: float) -> Bo
     return dataclasses.replace(body, keypoints=tuple(pts))
 
 
+def _placed_by(body: Body, cal: Calibration) -> bool:
+    """Whether body's in_zone, zone_x and zone_y are what place(body, cal) gives."""
+    again = place(body, cal)
+    return (again.in_zone, again.zone_x, again.zone_y) == (body.in_zone, body.zone_x, body.zone_y)
+
+
+def _require_placed(bodies: Iterable[Body], cal: Calibration, who: str, t: float) -> None:
+    """Raises ValueError unless cal reproduces every body's placement: re-placing noisy bodies against
+    another calibration would move the zone silently (C13)."""
+    for b in bodies:
+        if not _placed_by(b, cal):
+            raise ValueError(f"{who}: body {b.id} at t={t:.3f} was not placed against this calibration; "
+                             f"pass the scene's calibration= (and place() every body)")
+
+
 def shake(start: float, seconds: float, jitter: float = 0.03,
           calibration: Calibration | None = None) -> Callable[[Iterable[Sensed]], Iterator[Sensed]]:
     """What the gated camera source yields while the wall or pole shakes: an empty motion grid and
-    keypoints jittered by up to 0.03, during [start, start + seconds). Wraps a scene; pass the
-    scene's calibration so jittered bodies are placed against the same zone."""
+    keypoints jittered by up to 0.03, during [start, start + seconds). Wraps a scene.
+
+    Jittered bodies are placed again against calibration (the default one when None), which must be the
+    scene's: a body in the window whose placement it does not reproduce raises ValueError (owner
+    decision Q9), as in degrade."""
     def wrap(frames: Iterable[Sensed]) -> Iterator[Sensed]:
         cal = calibration or Calibration()
         for i, s in enumerate(frames):
             if start - 1e-9 <= s.t < start + seconds - 1e-9:
+                _require_placed(s.bodies, cal, "shake", s.t)
                 bodies = tuple(place(_noisy(b, i, "shake", 0.0, jitter), cal) for b in s.bodies)
                 s = dataclasses.replace(s, bodies=bodies, motion=np.zeros((0, 0), bool))
             yield s
@@ -362,6 +399,11 @@ def degrade(frames: Iterable[Sensed], fps: float = 10, latency: float = 0.15, ke
     time and becomes visible latency seconds later, then holds until the next one. Each keypoint of a
     capture is dropped (confidence 0) with probability keypoint_dropout and moved by up to jitter,
     keyed by zlib.crc32 of (tick, body id, joint). Audio and t stay on the current tick.
+
+    Noisy bodies are placed again against calibration (the default one when None), which must be the
+    one the input was placed with: a captured body whose placement that calibration does not reproduce
+    (a scene built with another zone, or a body never placed) raises ValueError rather than moving the
+    zone silently.
     """
     if not fps > 0 or not latency >= 0 or not 0 <= keypoint_dropout <= 1 or not jitter >= 0:
         raise ValueError(f"degrade needs fps > 0, latency >= 0, dropout in [0, 1], jitter >= 0; got "
@@ -384,6 +426,7 @@ def degrade(frames: Iterable[Sensed], fps: float = 10, latency: float = 0.15, ke
             shot = seen[src]
             for old in [j for j in seen if j < src]:
                 del seen[old]
+            _require_placed(shot.bodies, cal, "degrade", shot.t)
             bodies = tuple(place(_noisy(b, src, "degrade", keypoint_dropout, jitter), cal) for b in shot.bodies)
             held = (k, dataclasses.replace(shot, bodies=bodies))
         shot = held[1]
