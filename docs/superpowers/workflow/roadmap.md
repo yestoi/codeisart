@@ -27,6 +27,15 @@ Closed: C1-C3, C5-C9 (it02); C4 (it01 report); C12-C16 (it03, e6e31f5).
 - C22 (it03 forwarded; core Task 8 or 16) Torso floor: `torso > 0.0` catches only an exact zero; side-on shoulders with hips hidden by the bar counter give a raise line a hair above the shoulders. Use the nose line under a floor (e.g. 0.1 of box height), with a test. The tracker (Task 16) smooths `scale`, which stays 0 with one shoulder and no hip. Spec 5's wording ("the nose only when both shoulders are missing") is spec drift for the next revision.
 - C23 (it03 forwarded; core Tasks 13 and 18) `tools/arcade_shot.py` renders `-distance.png` with `render(frame, "distance", scale, gamma, metres=5.0)` at scale 4 or more and saves PNGs only from `tools/` (Task 20's privacy test forbids `.save` in `arcade/`), with the git sha in a PNG text chunk. `build_display` keeps the inner `SDLDisplay(w*scale, h*scale, 1)` wrapped by `PreviewDisplay(inner, look, scale, gamma)`; the runner's `set_brightness` dims the preview.
 
+## Spec revision 4 notes (owner-approved or found drift; fold in at the next spec revision)
+- Tick order: limiter, then flash governor, then push (owner Q11; spec 4, 7.2, 8.1 say otherwise).
+- Night: clock window OR lux below night_lux, with hysteresis (owner Q12; spec 7.6 lets lux cancel night).
+- Flash rule exempts small flashing areas below a field fraction (owner Q13; spec 7.6 is per-pixel).
+- Red weighting: a continuous red weight instead of the 0.8 red-share cliff (it04 plan review N2).
+- Spec 8's "ship order is the table order" conflicts with owner Q2's ship order; MENU_ORDER follows spec 8's table (it04 N8).
+- 2x titles do not fit 42 px doors (it04 N6).
+- Spec 5 raise-line wording ("the nose only when both shoulders are missing") vs the torso floor (C22).
+
 ## Owner items for the next check-in
 - Gamma location (prototype-week decision): with gamma 2.2 modelled, a channel at 40 previews as visible light, so red (255, 40, 40) reads salmon (evidence/it03/it03-128x32-led.png). If the card applies gamma, config `gamma` becomes 1.0 and the preview changes.
 - stop.py counts turns spent waiting on agents against the run's cap (journal it01, it02); proposed fix: skip blocking and counting while state.md `in_flight` names an agent.
