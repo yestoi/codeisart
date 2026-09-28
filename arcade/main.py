@@ -1,14 +1,28 @@
-"""Arcade command line. Task 0 provides `doctor`; Task 18 adds run (the default), calibrate, record, stats."""
+"""Arcade command line: `run` (the default) and `doctor`. M5 adds calibrate, record and stats."""
 from __future__ import annotations
 
 import argparse
 import importlib.metadata
+import logging
 import sys
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, TextIO
 
+from arcade.attract.lobby import Lobby
+from arcade.calibration import load_calibration
+from arcade.config import ArcadeConfig, load_config
+from arcade.games import all_games
+from arcade.preview import PreviewDisplay
+from arcade.runner import Runner
+from arcade.scores import Scores, SessionLog
+from arcade.sources import SCRIPTS, make_sources
+from show.display import Display, make_display
+from show.font import Font
+
+COMMANDS = ("run", "doctor")
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "pose_landmarker_lite.task"
 TIMEOUT = 5.0
 Probe = Callable[[float], tuple[bool, str]]
@@ -116,9 +130,50 @@ def doctor(require: list[str], probes: dict[str, Probe], timeout: float = TIMEOU
     return 1 if failed else 0
 
 
+def build_display(cfg: ArcadeConfig) -> Display:
+    """sdl: a window of the wall at sdl_scale, rendered in cfg.look by PreviewDisplay (the SDL display itself at
+    scale 1, since the preview has already scaled). Any other backend: show.display.make_display."""
+    if cfg.backend == "sdl":
+        from show.display.sdl import SDLDisplay
+        inner = SDLDisplay(cfg.width * cfg.sdl_scale, cfg.height * cfg.sdl_scale, 1)
+        return PreviewDisplay(inner, cfg.look, cfg.sdl_scale, cfg.gamma)
+    return make_display(cfg)
+
+
+def run(args) -> int:
+    """The arcade: the small lobby and every game, until --seconds pass, the window closes or ^C."""
+    cfg = load_config(args.config)
+    data_dir = Path(cfg.data_dir)
+    calibration = load_calibration(data_dir)
+    camera, audio = make_sources(cfg, cfg.size, script=args.script, calibration=calibration)   # main thread
+    try:
+        font = Font.load(Path(cfg.font_path))
+        display = build_display(cfg)
+        try:
+            games = all_games()
+            runner = Runner(cfg, display, font, Lobby(games, cfg), games, scores=Scores(data_dir / "scores.json"),
+                            sessions=SessionLog(data_dir / "sessions.jsonl"), calibration=calibration,
+                            local_clock=datetime.now, lux=None)
+            max_ticks = None if args.seconds is None else round(args.seconds * cfg.fps)
+            runner.loop(camera, audio, max_ticks=max_ticks)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            display.close()
+        return 0
+    finally:
+        for source in (camera, audio):
+            source.close()
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="arcade", description="Wall arcade")
     sub = p.add_subparsers(dest="command", required=True)
+    r = sub.add_parser("run", help="run the arcade (the default command)")
+    r.add_argument("--config", default="arcade.toml", help="the flat config; a missing file means the defaults")
+    r.add_argument("--seconds", type=float, help="stop after this many seconds of ticks (seconds * fps)")
+    r.add_argument("--script", choices=sorted(SCRIPTS), help="play a scripted camera instead of cfg.camera")
+    r.add_argument("-v", "--verbose", action="store_true")
     d = sub.add_parser("doctor", help="exit 1 if a required source is unavailable after the timeout")
     d.add_argument("--require", default="camera,mic,pose", help="comma list of camera, mic, pose")
     d.add_argument("--timeout", type=float, default=TIMEOUT)
@@ -129,7 +184,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv or (argv[0] not in COMMANDS and argv[0] not in ("-h", "--help")):
+        argv.insert(0, "run")                     # run is the default command
     args = build_parser().parse_args(argv)
+    if args.command == "run":
+        logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                            format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+        return run(args)
     probes = {"camera": lambda t: probe_camera(t, args.camera_index),
               "mic": lambda t: probe_mic(t, args.audio_device),
               "pose": lambda t: probe_pose(t, Path(args.model))}
