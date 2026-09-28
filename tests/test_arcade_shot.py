@@ -142,3 +142,85 @@ def test_raw_vs_pushed_sheet_and_report(tmp_path, capsys):
 def test_raw_vs_pushed_exits_1_when_pushed_flashes(tmp_path, monkeypatch):
     monkeypatch.setattr(FlashGovernor, "apply", lambda self, frame: frame)
     assert shot.main(strobe_args(tmp_path)) == 1
+
+
+class Dark(SpyGame):
+    """Draws nothing at all: an all-black wall."""
+
+    info = spy_info("dark", needs=frozenset({"pose"}))
+    SCENARIOS = {"short": stand_seven}
+
+    def draw(self, canvas):
+        pass
+
+
+class Keyed(Blink):
+    info = spy_info("keyed")
+    CAPTION_KEYS = ("score", "side")
+    extra = {"score": 7, "side": "left"}
+
+
+def run_shot(tmp_path, game="tests.test_arcade_shot:Blink", *more, stem="o"):
+    return shot.main([game, "--out", str(tmp_path / stem), "--scenario", "short", "--every", "2", *more])
+
+
+def test_header_has_provenance(tmp_path, monkeypatch):
+    titles = []
+    real = shot.contact_sheet
+
+    def spy(*args, **kw):
+        titles.append(args[6] if len(args) > 6 else kw["title"])
+        return real(*args, **kw)
+
+    monkeypatch.setattr(shot, "contact_sheet", spy)
+    monkeypatch.setattr(shot, "git_sha", lambda: "abc1234+dirty")
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", "--seed", "5", "--lobby", "none") == 0
+    for word in ("abc1234", "dirty", "tests.test_arcade_shot:Blink", "128x32", "plain", "seed 5",
+                 "scenario short", "lobby none"):
+        assert word in titles[0], titles[0]
+
+
+def test_all_black_refused_unless_allowed(tmp_path, capsys):
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Dark", stem="a") == 2
+    err = capsys.readouterr().err
+    assert "black" in err and "pose" in err
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Dark", "--allow-black", stem="b") == 0
+    assert (tmp_path / "b.png").exists()
+
+
+def test_width_capped_at_1536(tmp_path):
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", "--cols", "8", "--scale", "2",
+                    "--every", "1", "--look", "both", "--raw-vs-pushed") == 0
+    for suffix in ("-plain", "-led", "-distance", "-raw-vs-pushed"):
+        assert Image.open(f"{tmp_path}/o{suffix}.png").width <= 1536, suffix
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", "--scale", "20", stem="big") == 0
+    assert Image.open(f"{tmp_path}/big.png").width <= 1536
+
+
+def test_both_looks_written(tmp_path):
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", "--look", "both") == 0
+    assert (tmp_path / "o-plain.png").exists() and (tmp_path / "o-led.png").exists()
+    assert not (tmp_path / "o.png").exists()
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", stem="p") == 0
+    assert (tmp_path / "p.png").exists() and not (tmp_path / "p-plain.png").exists()
+
+
+def test_flash_report_prints(tmp_path, capsys):
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", "--flash-report") == 0
+    out = capsys.readouterr().out
+    assert "flash_area raw" in out and "pushed" in out and "mean_level" in out
+
+
+def test_every_run_prints_frames_nonblack_and_state(tmp_path, capsys):
+    assert run_shot(tmp_path) == 0
+    out = capsys.readouterr().out
+    assert "frames 7" in out and "non-black 7" in out and "'game': 'blink'" in out
+
+
+def test_captions_carry_caption_keys(tmp_path):
+    keys = {"keyed": ("score", "side")}
+    trace = [{"game": "keyed", "score": 7, "side": "left"}, {"game": "lobby", "mode": "card"}]
+    assert shot._caption(trace, 0, keys) == "#0 0.00s keyed 7 left"
+    assert shot._caption(trace, 1, keys) == "#1 0.03s lobby card"
+    assert shot._caption(trace, 0) == "#0 0.00s keyed"          # no keys given: the phase, as before
+    assert shot.main(["tests.test_arcade_shot:Keyed", "--out", str(tmp_path / "k"), "--scenario", "short"]) == 0
