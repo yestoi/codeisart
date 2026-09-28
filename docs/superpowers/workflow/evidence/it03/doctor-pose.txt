@@ -1,0 +1,2 @@
+pose    ok  mediapipe 1.0.0: landmarker ran in 18 ms
+exit 0

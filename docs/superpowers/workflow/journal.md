@@ -29,3 +29,15 @@ Owner intervention, 2026-09-27, during iteration 2's plan phase: the owner asked
 - Operator tooling finding, still open: stop.py spent all six of this run's blocks on turns waiting for agents. Proposed fix unchanged (skip blocking and counting while state.md `in_flight` names an agent).
 - Carried forward: C12-C16 (see roadmap); C10 extended with the exit-hold grace finding.
 - Status: done
+
+## Iteration 3 — 2026-09-27
+- Plan: docs/superpowers/plans/2026-09-27-it03-carried-canvas-look.md
+- Shipped: carried C12-C16 (keyword-only Sensed/Audio, nose raise line without a torso, blobs clamped, degrade and shake check the calibration (owner Q9), unique scene ids, tempo needs bpm > 0); core Task 5 canvas (float coordinates, clamped colours, scaled text, blit_rgb, sprite_from_rows); core Task 6 plain/LED/distance looks in numpy with light-conserving glow, PreviewDisplay models brightness. 4 commits 6b973ad..e6e31f5. M2 complete.
+- Plan review: BLOCKED round 1 (B1 distance look added light, turning amber lemon; B2 blit_rgb wrapped float/int64 colours), APPROVED round 2; round-2 notes (six mutation-killing asserts, docstring, deadline hardening) folded in before commit.
+- Review: APPROVED after 1 round (0 blocking; plan defects carried)
+- Deploy: none (phase 1)
+- Verify: 7/7 items passed. Freshness: canvas sha and PNG `git` chunk read e6e31f5 = HEAD (chunk says `-dirty` only because docs/superpowers/workflow/state.md was modified). Evidence: docs/superpowers/workflow/evidence/it03/
+- Tests: 224 collected, 224 passed, 0 skipped (it02: 183/183/0); 2 removed test lines since 83b6945: the MIN_CONF import and test_festival.py:180 (owner decision Q9)
+- Verdict (pixels read by the operator: 128x32 and 64x64, led and distance at 5 m): every element is where the plan says, inside the blue border. LED shows round dots with dark gaps. The distance look is soft but every letter, both scale-2 8s and the sha read clearly at both layouts, amber stays amber, and the glow is widest on white and green and barely there on blue. The diagonal clears the text and disc. One thing to note for the owner: the red "88" is drawn as (255, 40, 40) and previews as salmon pink, because with gamma 2.2 modelled a channel at 40 emits visible light on an uncorrected panel. That is the preview telling the truth, not a bug; whether the card applies gamma (config `gamma` 2.2 vs 1.0) is the owner's prototype-week decision, and until then games should pick colours with low channels at 0. Success criterion touched: text is legible at 5 m at both layouts.
+- Carried forward: C17-C21 (roadmap); forwarded-to-task items and GATE B additions recorded in the roadmap.
+- Status: done
