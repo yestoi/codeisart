@@ -138,6 +138,16 @@ def test_sha_taken_once_and_own_outputs_never_dirty_it(tmp_path, monkeypatch):
     assert len(calls) == 2 and calls[1] == sha        # clean_sha once, and package got its sha
 
 
+def test_main_hands_package_the_seed_count_unchanged(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(ev, "clean_sha", lambda out, allow: "sha")
+    monkeypatch.setattr(ev, "package", lambda games, out, sha, seeds, **k: seen.append(seeds) or [])
+    monkeypatch.setattr("arcade.games.get_game", lambda name: Stub)
+    assert ev.main(["--iteration", "1", "--games", "paint", "--seeds", "3", "--out", str(tmp_path)]) == 0
+    assert ev.main(["--iteration", "1", "--games", "paint", "--out", str(tmp_path)]) == 0
+    assert seen == [3, 20]
+
+
 def test_changed_games_from_git_diff(tmp_path, monkeypatch):
     repo = make_repo(tmp_path)
     monkeypatch.chdir(repo)
