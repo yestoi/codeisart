@@ -32,7 +32,7 @@ from arcade.game import Game
 from arcade.input import EPSILON, Hold, capture_grace
 from arcade.juice import Juice
 from arcade.look import is_real
-from arcade.scores import Scores, SessionLog
+from arcade.scores import Scores, SessionLog, _finite
 from arcade.sensed import Audio, Blob, Body, Sensed
 from show.display import Display
 from show.font import CELL_H, Font
@@ -64,7 +64,7 @@ class SessionResult:
     game: str
     layout: str
     reason: str                  # one of scores.REASONS
-    score: float | None
+    score: float | None          # the game's score as a finite float, else None (scores._finite)
     duration: float
     players: int
     best: float | None           # tonight's best after this session
@@ -87,7 +87,8 @@ class PlayerLock:
     """spec 7.2's player lock. update(bodies, t) returns (player, player2).
 
     player is the in-zone body with the largest scale. Once locked it stays until its body has been absent for
-    more than lost_seconds, or another in-zone body has been SWITCH_RATIO times larger for SWITCH_SECONDS.
+    more than lost_seconds, or another in-zone body has been SWITCH_RATIO times larger for SWITCH_SECONDS while the
+    player is seen (the rival's time restarts when the player returns).
     While the locked body is absent, player is None and the slot is kept; a body with an id that was not there
     when it went missing, in the zone within REACQUIRE_DISTANCE of its last place, takes the slot (the tracker
     never reuses an id, so a re-detected player is a new id). player2 is the next in-zone body by scale.
@@ -120,7 +121,9 @@ class PlayerLock:
         if self.id is None and inside:
             self.id, self._rival = inside[0].id, None
         player = by_id.get(self.id)
-        if player is not None:
+        if player is None:                            # the rival's time counts only while the player is seen (C31)
+            self._rival = None
+        else:
             rival = next((b for b in inside if b.id != player.id and b.scale > SWITCH_RATIO * player.scale), None)
             if rival is None:
                 self._rival = None
@@ -215,15 +218,16 @@ def _stamped(capture_t, now: float) -> bool:
 
 def _camera_result(got, now: float) -> tuple[float, tuple[Body, ...], tuple[Blob, ...], np.ndarray | None] | None:
     """A camera latest() result checked: None, or (capture_t, bodies, blobs, motion) with capture_t _stamped,
-    Body and Blob items and motion None or a 2-D grid. Anything else raises, and sense() treats the source as
-    failed."""
+    Body and Blob items and motion None or a 2-D grid of bool, int, uint or float (the dtypes np.asarray(..., bool)
+    and the resample take safely; C30b). Anything else raises, and sense() treats the source as failed."""
     if got is None:
         return None
     capture_t, bodies, blobs, motion = got
     bodies, blobs = tuple(bodies), tuple(blobs)
     if not (_stamped(capture_t, now) and all(isinstance(b, Body) for b in bodies)
             and all(isinstance(b, Blob) for b in blobs)
-            and (motion is None or (isinstance(motion, np.ndarray) and motion.ndim == 2))):
+            and (motion is None or (isinstance(motion, np.ndarray) and motion.ndim == 2
+                                    and motion.dtype.kind in "biuf"))):
         raise TypeError(f"camera latest() gave a malformed result: {got!r:.200}")
     return float(capture_t), bodies, blobs, motion
 
@@ -364,7 +368,7 @@ class Runner:
         name, info = self.current_name, self.games[self.current_name].info
         s, state = self._session, self._state
         bodies = sum(b.in_zone for b in self._bodies)
-        result = SessionResult(game=name, layout=self.cfg.layout, reason=reason, score=state.get("score"),
+        result = SessionResult(game=name, layout=self.cfg.layout, reason=reason, score=_finite(state.get("score")),
                                duration=self.t - s["start"], players=s["players"],
                                best=self.scores.best(name, self.cfg.layout), waiting=bodies > info.players)
         self.sessions.append(name, self.cfg.layout, s["local"], result.duration, result.players, result.score,
@@ -506,8 +510,9 @@ class Runner:
                 return "inactive"
         elif self.t - s["active"] >= cfg.inactive_seconds - EPSILON:
             s["prompt"] = self.t
+        phase = self._state.get("phase", "play")      # a non-str phase counts as "play", as a missing key (C30a)
         if (self.t - s["start"] >= cfg.max_session_seconds - EPSILON and inside > info.players
-                and self._state.get("phase", "play") != "play"):
+                and isinstance(phase, str) and phase != "play"):
             return "capped"
         return None
 

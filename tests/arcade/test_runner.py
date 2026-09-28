@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import json
 import math
@@ -883,3 +884,92 @@ def test_games_get_only_in_zone_blobs(font5x7):
     runner.launch("spy")
     feed(runner, [Sensed(TICK, blobs=(inside, outside))])
     assert runner.game.seen[-1].blobs == (inside,)
+
+
+def crowd_of_three():
+    """Three people in the zone: two wait for a one-player game."""
+    return [Person(x=0.3, height=0.6, id=1), Person(x=0.5, height=0.55, id=2), Person(x=0.7, height=0.5, id=3)]
+
+
+def test_an_array_phase_never_raises_out_of_tick(font5x7):
+    # C30a: phase is compared only when it is a str. An array's != gives an array, and `and` on it raises out of
+    # tick() with no guard; a non-str phase counts as "play", as a missing key does.
+    game = spy(info={"players": 1}, extra={"phase": np.array(["a", "b"]), "active": True})
+    runner, _, lobby = make_runner(font5x7, games=(game,), strict=False, cfg=make_cfg(SIZE, max_session_seconds=1.0))
+    runner.launch("spy")
+    assert ended(runner, lobby, scene(persons=crowd_of_three(), ticks=90)) is None   # never capped, never raised
+    assert runner.current_name == "spy"
+
+
+def test_a_numpy_str_phase_still_caps(font5x7):
+    game = spy(info={"players": 1}, extra={"phase": np.str_("serve"), "active": True})
+    runner, _, lobby = make_runner(font5x7, games=(game,), strict=False, cfg=make_cfg(SIZE, max_session_seconds=1.0))
+    runner.launch("spy")
+    reason, t = ended(runner, lobby, scene(persons=crowd_of_three(), ticks=90))
+    assert reason == "capped" and t == pytest.approx(1.0, abs=TICK + 1e-9)
+
+
+def test_an_object_motion_grid_is_a_failed_source(font5x7, caplog):
+    # C30b: a motion grid is bool, int, uint or float. An object grid would reach np.asarray(..., bool) and the
+    # resample, which call bool() on whatever its cells hold; it is a malformed result, so the camera failed.
+    clock = FakeClock()
+    runner, _, lobby = make_runner(font5x7, clock=clock)
+    body = next(stand(ticks=1)).bodies[0]
+    grid = np.full((64, 128), None, object)
+    with caplog.at_level(logging.ERROR, logger="arcade"):
+        for _ in range(3):
+            s = runner.sense(Camera((clock.now, (body,), (), grid)), Camera((clock.now, Audio())))
+            assert s.bodies == () and lobby.status[0] is False
+    assert [r.getMessage() for r in caplog.records].count("camera source failed") == 1
+    for kind in (bool, np.uint8, np.int32, np.float32):                   # the grids a camera gives still count
+        s = runner.sense(Camera((clock.now, (body,), (), np.zeros((64, 128), kind))), Camera((clock.now, Audio())))
+        assert s.bodies == (body,) and lobby.status[0] is True, kind
+
+
+@pytest.mark.parametrize("stage", ["limiter", "governor"])
+def test_a_raising_limiter_or_governor_pushes_nothing(font5x7, stage, caplog):
+    # C30: a frame that did not pass both ceilings never reaches the wall.
+    runner, display, _ = make_runner(font5x7)
+
+    def boom(frame):
+        raise RuntimeError(f"boom in {stage}")
+
+    setattr(getattr(runner, stage), "apply", boom)
+    with caplog.at_level(logging.ERROR, logger="arcade"):
+        feed(runner, stand(ticks=3))
+    assert display.count == 0
+    assert [r.getMessage() for r in caplog.records].count("display push failed (logged once a minute)") == 1
+
+
+def test_rival_timer_restarts_when_the_player_returns(font5x7):
+    # C31: the switch needs SWITCH_SECONDS of a larger rival while the player is seen. A rival that came while the
+    # player was briefly lost starts its second when the player is back.
+    t0 = 0.5
+    a, b = Person(x=0.35, height=0.5, id=1), Person(x=0.65, height=0.75, id=2).arrive(t0)
+    gap = (ticks(t0 + 0.2), ticks(t0 + 0.6))                          # scene ticks with A missing
+    frames = [dataclasses.replace(s, bodies=tuple(x for x in s.bodies if x.id != 1)) if gap[0] <= i < gap[1] else s
+              for i, s in enumerate(scene(persons=[a, b], ticks=ticks(3.0)))]
+    both = frames[ticks(t0) + 1].bodies
+    assert all(x.in_zone for x in both) and max(x.scale for x in both) / min(x.scale for x in both) >= 1.45
+    runner, _, _ = make_runner(font5x7)
+    seen = []
+    for s in frames:
+        runner.tick(s, TICK)
+        seen.append((runner.t, None if runner.player is None else runner.player.id))
+    at = lambda t: min(seen, key=lambda e: abs(e[0] - t))[1]
+    assert at(t0) == 1 and at(t0 + 0.4) is None and at(t0 + 0.7) == 1
+    assert at(t0 + 1.1) == 1, seen                                     # the rival's time before the gap is gone
+    first_b = next(t for t, p in seen if p == 2)
+    assert first_b == pytest.approx(t0 + 1.6, abs=TICK + 1e-9), seen
+
+
+@pytest.mark.parametrize("score, want", [(np.array([3]), None), (4, 4.0), (math.nan, None)],
+                         ids=["array", "int", "nan"])
+def test_session_result_score_is_a_finite_float_or_none(font5x7, score, want):
+    # C30c: the end card formats the score, and an array would crash the lobby.
+    runner, _, lobby = make_runner(font5x7, games=(spy(extra={"score": score}),))
+    runner.launch("spy")
+    feed(runner, stand(ticks=2))
+    result = runner.end_session("exit")
+    assert result.score == want and type(result.score) is type(want)
+    assert lobby.results[-1] is result
