@@ -246,3 +246,17 @@ default: stripes are more than 5 light-dark pairs of equal width (within 1 px) i
 deadline: it7
 answer:
 status: defaulted (standing instruction)
+
+### Q31: What are the budgets for the score's visibility and legibility, and is there one for the idle hint?
+asked: it7
+default: `score_visible` at least 0.8 (the share of play ticks on which the game's score is found on the wall by font matching) and `score_legible` at least 0.9 (the same digits still read after the 5 m `distance` look), for `control` and `score` games. No budget for the idle hint: the measure built in it07 showed only that the wall answers a present body (Pong passed it at 0.0 s with no hint at all, by the seat's colour), so the review blocked it; it stays in the report as `presence_answer_seconds` without a budget until a measure of a real hint exists (spec 9.3, spec 11's 3 s)
+deadline: it7
+answer:
+status: defaulted (standing instruction)
+
+### Q32: The prototype has four 64x32 panels, not two. Which arrangement does the arcade build for, and when?
+asked: it7 (raised by the owner, 2026-09-28 18:00 CDT, while it07's review was open)
+default: none taken; the owner answered at once
+deadline: it7
+answer: "2x2, put 128x64 at the top of the roadmap". 128x64 is the third first-class layout, beside 128x32 and 64x64. Milestone M4b, the first unchecked line after M4a, before the games of M7a. Iteration 7 is not changed by it: Pong stays at 128x32 in it07, and the freeze tag `game-protocol-v1` is set as planned (a layout is a data value of `GameInfo`, not a member of the protocol). Q21's gate after iteration 7 stands until the owner says otherwise
+status: answered (owner, 2026-09-28)
