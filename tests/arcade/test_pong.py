@@ -306,6 +306,25 @@ def test_idle_body_scores_nothing(font5x7):
     assert state["score"] == state["left"], (s, state)
 
 
+@pytest.mark.parametrize("x, side", [(0.3, "left"), (0.7, "right")])
+def test_a_walk_up_takes_a_cpu_seat_at_once(x, side):
+    game = make(i=3)
+    frames = scene(persons=[Person(x, id=1).arrive(2.0).raise_hand(2.5, 0.2)], ticks=900)
+    for _ in drive(game, frames, until=lambda g: g.t >= 1.5):
+        pass
+    assert game.debug_state()["humans"] == 0
+    for _ in drive(game, frames, until=lambda g: g.t >= 2.3):
+        pass
+    state = game.debug_state()
+    assert state["humans"] == 1 and state["cpu"] == ("right" if side == "left" else "left"), (seed("128x32", 3), state)
+    assert game.seats[game.left_seat if side == "left" else game.right_seat].ctrl == 1
+    assert game._p1 == (game.left_seat if side == "left" else game.right_seat)
+    seated = (game.left_seat, game.right_seat)
+    for _ in drive(game, frames, until=lambda g: g.t >= 6.0):
+        pass
+    assert (game.left_seat, game.right_seat) == seated      # never moved to the other side mid-rally
+
+
 def test_score_stays_with_player_one_when_they_leave():
     game = make()
     p1 = Person(0.3, id=1).raise_hand(0.0, 100.0)

@@ -157,6 +157,19 @@ class Pong(Game):
         else:
             self.left_seat, self.right_seat = 0, 1
 
+    def _walk_up(self, sensed: Sensed) -> None:
+        """The first body in view, with no human seated, takes the CPU seat on its side of the wall at once, mid-rally."""
+        body = sensed.player
+        if body is None or self._humans() or any(seat.ctrl == body.id for seat in self.seats):
+            return
+        index = self.left_seat if body.zone_x <= 0.5 else self.right_seat
+        seat = self.seats[index]
+        seat.ctrl, seat.seen, seat.zone_x = body.id, self.t, body.zone_x
+        seat.color = PLAYER_COLORS[0]
+        if self._p1 is None:
+            self._p1 = index
+        self._synced = False
+
     def _humans(self) -> int:
         return sum(seat.ctrl is not None for seat in self.seats)
 
@@ -175,6 +188,8 @@ class Pong(Game):
         if not self._assigned:
             self._assign(sensed)
             self._assigned = True
+        elif self.phase != "over":
+            self._walk_up(sensed)
         self._move_paddles(found, dt)
         if self.phase == "serve":
             if self.t >= MAX_SECONDS:
