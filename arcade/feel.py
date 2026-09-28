@@ -3,7 +3,7 @@ against per-kind budgets.
 
 measure() runs the game's canonical scenario (its first FEEL_SECONDS) through run_headless at a layout, with
 counterfactual reruns for latency, looks for the score in its frames (in the project's font, then through look's
-distance model at 5 m), compares idle_body with nobody for the idle hint, and plays the game's bots (arcade/bots.py) over seeds. budgets() reads
+distance model at 5 m), compares idle_body with nobody for the wall's answer to a present body, and plays the game's bots (arcade/bots.py) over seeds. budgets() reads
 feel_budgets.toml (per GameInfo.kind, then its layout table) and the game's own <name>_feel.toml, whose every
 override needs a reason. judge() names each budget a metric misses; report() is all three, JSON-ready.
 """
@@ -39,7 +39,7 @@ DIM_LEVEL = 140                    # a lit pixel with every channel under this i
 SCORE_SCALES = (1, 2)              # text scales a score is looked for at (spec 7.4: scores use 2)
 LEGIBLE_METRES = 5.0               # the distance a score must read from (spec 9.4's distance look)
 LEGIBLE_SCALE = 4                  # preview px per wall px for the distance look (look.distance_sigma: 4 or more)
-IDLE_WINDOW = 6.0                  # seconds of idle_body compared; the value when the wall never answers a body
+PRESENCE_WINDOW = 6.0              # seconds of idle_body compared; the value when the wall never answers a body
 DEFAULTS = Path(__file__).with_name("feel_budgets.toml")
 INPUTS = {"cursor_x": lambda p: None if p.cursor is None else p.cursor[0],
           "cursor_y": lambda p: None if p.cursor is None else p.cursor[1],
@@ -236,14 +236,17 @@ def _score(font, pushed: list[np.ndarray], trace: list[dict], current: list[bool
             "score_legible": float(statistics.median(seen)) if seen else None}
 
 
-def _idle_hint(cfg, font, game_cls, seed: int) -> float | None:
-    """Seconds from idle_body's first record with a body until its pushed frame differs in RESPONSE_PX pixels or
-    more from nobody's under the same seed, over IDLE_WINDOW; IDLE_WINDOW when never; None without both
-    scenarios or a body."""
+def _presence_answer(cfg, font, game_cls, seed: int) -> float | None:
+    """That the wall answers a present body: seconds from idle_body's first record with a body until its pushed
+    frame differs in RESPONSE_PX pixels or more from nobody's under the same seed, over PRESENCE_WINDOW;
+    PRESENCE_WINDOW when never; None without both scenarios or a body.
+
+    This is NOT spec 9.3's idle hint: any drawing of the body counts (a seated player's paddle, score or marker in
+    another colour), so a game with no hint passes it. It is measured and reported, with no default budget."""
     scripts = game_cls.SCENARIOS
     if "idle_body" not in scripts or "nobody" not in scripts:
         return None
-    n = round(IDLE_WINDOW / TICK)
+    n = round(PRESENCE_WINDOW / TICK)
     idle = list(itertools.islice(scripts["idle_body"](), n))
     first = next((i for i, s in enumerate(idle) if s.bodies), None)
     if first is None:
@@ -253,7 +256,7 @@ def _idle_hint(cfg, font, game_cls, seed: int) -> float | None:
     for i in range(first, min(len(body), len(empty))):
         if int((body[i] != empty[i]).any(axis=2).sum()) >= RESPONSE_PX:
             return idle[i].t - idle[first].t
-    return IDLE_WINDOW
+    return PRESENCE_WINDOW
 
 
 def _held(records: list[Sensed], i: int, j: int) -> Sensed:
@@ -332,7 +335,7 @@ def _canonical(cfg, font, game_cls, seed, own) -> dict[str, float | None]:
     out["flash_area_raw"] = float(flash.flash_area(raw, cfg.gamma, cfg.fps))
     out["square_flashes"] = float(flash.square_flashes(pushed, cfg.gamma, cfg.fps))
     out |= _score(font, pushed, trace, current, cfg.gamma)
-    out["idle_hint_seconds"] = _idle_hint(cfg, font, game_cls, seed)
+    out["presence_answer_seconds"] = _presence_answer(cfg, font, game_cls, seed)
     return out
 
 
@@ -364,7 +367,7 @@ def measure(game_cls, layout: str, seeds: int | Sequence[int] = FEEL_SEEDS, font
     non-black pixels; dim_fraction: raw, the share of lit pixels with every channel under DIM_LEVEL;
     liveliness: raw, the mean share changing per tick; flash_area_raw (raw) and square_flashes (pushed) as
     arcade/flash.py counts them. score_visible and score_legible: pushed, as _score() says (the score read from
-    debug_state()["score"]); idle_hint_seconds as _idle_hint() says, under the first seed. From bots.play over seeds (n: bots.seeds(game_cls, layout, n)): win_good,
+    debug_state()["score"]); presence_answer_seconds as _presence_answer() says, under the first seed. From bots.play over seeds (n: bots.seeds(game_cls, layout, n)): win_good,
     win_lazy, win_none (Nobody); round_seconds, the median length of the good plays that ended done();
     phases_reached, the share of PHASES seen over the good plays. own is the game's feel file (control()).
     """

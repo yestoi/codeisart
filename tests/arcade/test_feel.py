@@ -3,6 +3,7 @@ import json
 import math
 import statistics
 import sys
+import tomllib
 import types
 
 import numpy as np
@@ -12,7 +13,7 @@ from arcade import bots, feel
 from arcade.bots import Move, Nobody
 from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
-from arcade.game import Game, GameInfo
+from arcade.game import KINDS, Game, GameInfo
 from arcade.sources.actors import TICK, Person, scene
 from tests.arcade.helpers import CROSS_ICON
 
@@ -32,11 +33,11 @@ def sweeping():
 
 def idle_body():
     """One body standing still, hands down, from the first tick."""
-    return scene(persons=[Person(0.3, id=1)], ticks=round((feel.IDLE_WINDOW + 1) / TICK))
+    return scene(persons=[Person(0.3, id=1)], ticks=round((feel.PRESENCE_WINDOW + 1) / TICK))
 
 
 def nobody():
-    return scene(ticks=round((feel.IDLE_WINDOW + 1) / TICK))
+    return scene(ticks=round((feel.PRESENCE_WINDOW + 1) / TICK))
 
 
 class Stub(Game):
@@ -295,7 +296,7 @@ def test_measure_repeats_under_seeds(follower_report, follower_own, font5x7):
     assert again == report["metrics"], f"seeds {runs}"
     assert set(again) == {"response_ticks", "fidelity", "range", "lit_fraction", "dim_fraction", "liveliness",
                           "flash_area_raw", "square_flashes", "win_good", "win_lazy", "win_none", "round_seconds",
-                          "phases_reached", "score_visible", "score_legible", "idle_hint_seconds"}
+                          "phases_reached", "score_visible", "score_legible", "presence_answer_seconds"}
 
 
 def test_report_is_json_ok(follower_report):
@@ -360,8 +361,10 @@ def test_score_visibility_counts_the_ticks_it_is_shown(scorer_report):
     assert m["score_legible"] >= report["budgets"]["score_legible"]["min"], f"seeds {runs}: {m}"
     assert [f for f in report["failures"] if f.startswith("score_")] == ["score_visible 0.75 < min 0.8"], \
         f"seeds {runs}: {report['failures']}"                        # hidden one tick in four: too often
-    assert m["idle_hint_seconds"] == feel.IDLE_WINDOW                   # draws nothing for a body
-    assert "idle_hint_seconds 6 > max 3" in report["failures"]
+    assert m["presence_answer_seconds"] == feel.PRESENCE_WINDOW, f"seeds {runs}: {m}"   # draws nothing for a body
+    assert "presence_answer_seconds" not in report["budgets"], f"seeds {runs}"
+    assert not [f for f in report["failures"] if f.startswith("presence_answer")], \
+        f"seeds {runs}: {report['failures']}"                        # measured, never judged
 
 
 def test_a_score_that_is_never_shown_misses_both(follower_report):
@@ -370,16 +373,31 @@ def test_a_score_that_is_never_shown_misses_both(follower_report):
     assert m["score_visible"] is None and m["score_legible"] is None, f"seeds {runs}: {m}"   # no score key
     table = feel.budgets(Scorer, WALL)
     assert "score_visible" not in feel.budgets(Follower, WALL)          # only the score kind is judged on it
-    liar = {"score_visible": 0.0, "score_legible": None, "idle_hint_seconds": None}
+    liar = {"score_visible": 0.0, "score_legible": None}
     assert feel.judge(liar, {k: table[k] for k in liar}) \
-        == ["score_visible 0 < min 0.8", "score_legible None misses min 0.9", "idle_hint_seconds None misses max 3"]
+        == ["score_visible 0 < min 0.8", "score_legible None misses min 0.9"]
 
 
-def test_idle_hint_times_the_first_answer_to_a_still_body(follower_report, font5x7):
+def test_presence_answer_times_the_first_answer_to_a_present_body(follower_report, font5x7):
     runs, report = follower_report
-    assert report["metrics"]["idle_hint_seconds"] < 0.5, f"seeds {runs}: {report['metrics']}"
-    assert report["budgets"]["idle_hint_seconds"] == {"min": None, "max": 3.0, "reason": None}
+    assert report["metrics"]["presence_answer_seconds"] < 0.5, f"seeds {runs}: {report['metrics']}"
+    assert "presence_answer_seconds" not in report["budgets"], f"seeds {runs}"
     cfg = ArcadeConfig(128, 32, backend="fake", camera="none", audio="none")
-    assert feel._idle_hint(cfg, font5x7, Screensaver, runs[0]) == feel.IDLE_WINDOW, f"seed {runs[0]}"
+    assert feel._presence_answer(cfg, font5x7, Screensaver, runs[0]) == feel.PRESENCE_WINDOW, f"seed {runs[0]}"
     blind = type("Blind", (Follower,), {"SCENARIOS": {"canonical": sweeping}})
-    assert feel._idle_hint(cfg, font5x7, blind, runs[0]) is None
+    assert feel._presence_answer(cfg, font5x7, blind, runs[0]) is None
+
+
+def test_presence_answer_has_no_default_budget():
+    stubs = {g.info.kind: g for g in (Follower, Scorer, Still)}
+    assert set(stubs) == set(KINDS)
+    raw = tomllib.loads(feel.DEFAULTS.read_text())
+    for kind, game in stubs.items():
+        tables = [raw[kind], *raw[kind].get("layouts", {}).values()]
+        table = feel.budgets(game, WALL)
+        assert all("presence_answer_seconds" not in t for t in tables), kind
+        assert "presence_answer_seconds" not in table, kind
+        for value in (None, 0.0, feel.PRESENCE_WINDOW, 1e9):
+            failures = feel.judge({"presence_answer_seconds": value}, table)
+            assert not [f for f in failures if f.startswith("presence_answer")], (kind, value, failures)
+    assert feel.judge({"presence_answer_seconds": None}, {}) == []

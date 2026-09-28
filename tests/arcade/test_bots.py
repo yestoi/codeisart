@@ -196,7 +196,7 @@ def test_for_game_names_the_missing_bots_module(target_bots):
 METRICS = {"response_ticks": {"max": 2}, "fidelity": {"min": 0.8}, "range": {"min": 0.6},
            "lit_fraction": {"min": 0.01, "max": 0.5}, "dim_fraction": {"max": 0.1}, "liveliness": {"min": 0.001},
            "flash_area_raw": {"max": 0.1}, "square_flashes": {"max": 6}, "phases_reached": {"min": 1.0},
-           "round_seconds": {"min": 20, "max": 120}, "idle_hint_seconds": {"max": 3}}
+           "round_seconds": {"min": 20, "max": 120}}
 WINS = {"win_good": {"min": 0.7}, "win_lazy": {"min": 0.1, "max": 0.7}, "win_none": {"max": 0.05},
         "score_visible": {"min": 0.8}, "score_legible": {"min": 0.9}}
 

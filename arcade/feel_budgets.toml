@@ -4,7 +4,7 @@
 # 12 px and rounds of 20 to 120 s are spec 11's; the win bands are good >= 0.7, lazy 0.1 to 0.7, none <= 0.05.
 # A score shows on four ticks in five (the ball and a goal's shake may hide it briefly) and reads at 5 m: nine in
 # ten of its glyph's pixels survive the distance look, as 2x digits do at 10 m, the distance spec 7.4 says they
-# read to. A still body gets an answer within spec 11's 3 s.
+# read to. presence_answer_seconds is measured with no budget: it is not spec 9.3's idle hint.
 
 [control.response_ticks]
 max = 2
@@ -37,9 +37,6 @@ min = 1.0
 [control.round_seconds]
 min = 20
 max = 120
-
-[control.idle_hint_seconds]
-max = 3
 
 
 [score.response_ticks]
@@ -90,9 +87,6 @@ min = 0.8
 [score.score_legible]
 min = 0.9
 
-[score.idle_hint_seconds]
-max = 3
-
 
 [toy.response_ticks]
 max = 2
@@ -115,6 +109,3 @@ max = 6
 
 [toy.phases_reached]
 min = 1.0
-
-[toy.idle_hint_seconds]
-max = 3
