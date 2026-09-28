@@ -138,3 +138,31 @@ default: measure the wall's white at brightness 0.4 in prototype week, then set 
 deadline: GATE B
 answer: "Measure at prototype." Keep THRESHOLD 0.1; in prototype week measure the white at brightness 0.4 and set THRESHOLD = min(0.1, 20/L); added to GATE B. (2026-09-28)
 status: answered
+
+### Q17: Spec 7.2 hides a game that raises "three times in a session", but a crash ends its session. How many crashes hide a game?
+asked: it5
+default: three crashes since the runner started hide the game until the restart (`MAX_CRASHES = 3` per game over the night); alternative: three in a row, a clean session resetting the count
+deadline: it5
+answer: (none: standing instruction 2026-09-28)
+status: defaulted (standing instruction 2026-09-28)
+
+### Q18: Juice shake: a few shrinking jumps (at most 4 a second) so the shake keeps the flash rule by itself, instead of a smooth wobble the governor would hold as a stutter over busy pictures?
+asked: it5
+default: jumps; a shake reads as a few knocks, not a rumble
+deadline: it5
+answer: (none: standing instruction 2026-09-28)
+status: defaulted (standing instruction 2026-09-28)
+
+### Q19: Juice bursts close together: drop a burst within 32 px of one accepted in the last 0.4 s, or merge it into the old one?
+asked: it5
+default: drop it (a fast rally that bursts on every hit shows about every other burst); merging spends more of the particle pool. The gap was 0.4 s at asking; the loop raised it to 0.5 s after it05 plan review N1, so a burst alone changes a pixel at most about 4 times a second
+deadline: it5
+answer: (none: standing instruction 2026-09-28)
+status: defaulted (standing instruction 2026-09-28)
+
+### Q20: Juice flash: a hold (full colour for `seconds`, then off; the next waits 0.5 s after it ends) instead of a fade?
+asked: it5
+default: a hold. A fading saturated red flash crosses the governor's red rule up to three times and got the whole wall held (flash_area 1.0, it05 plan review round 1). The cost is a blink instead of a glow. Alternative: keep the fade, at most one flash a second.
+deadline: it5
+answer: (none: standing instruction 2026-09-28)
+status: defaulted (standing instruction 2026-09-28)
