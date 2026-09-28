@@ -5,6 +5,15 @@ transcribes the owner's answer under it before acting on it. A block with an emp
 open. Loop-decidable questions are never asked here; they are journaled. At the deadline an
 unanswered question takes its default and is marked `defaulted`; the owner can override it later.
 
+## Standing instruction 2026-09-28
+
+The owner said: "I will take your leans for decisions tonight. I will review our work after iteration 6."
+Until the iteration-6 check-in, a new owner question gets its block here as usual, then takes its
+default at once, marked `status: defaulted (standing instruction 2026-09-28)`, and is listed for review
+at the check-in gate. It is not asked. Plan-review deadlocks after two rounds take the verified fix plus a
+confirm-only round (the Q7/Q14 precedent). Still stops the loop with gate.md: a destructive or
+irreversible action, or a change to the roadmap's scope or end goal.
+
 Block format:
 
 ```
@@ -107,4 +116,25 @@ asked: it4
 default: (b) spec 7.6 exempts small flashing areas below a field fraction, matching the success criterion's "full-field flashes"; the director (it06) is where it bites
 deadline: it6 (the director)
 answer: "Exempt small areas." Amend spec 7.6: flashing regions below a fraction of the field are not held, matching the success criterion's "full-field flashes". The loop proposes the fraction conservatively from broadcast guidance and journals it; recorded for spec revision 4. (2026-09-28)
+status: answered
+
+### Q14: The it04 plan review is blocked after two rounds on one finding with a verified fix (B7: pixels that take turns flash the whole wall, so the flash bound does not hold by construction). Apply it and continue?
+asked: it4
+default: apply B7 (a square backstop: after the pixel rule, hold any 32 px square whose mean would make an over-budget transition, repeated until none flips; only tightens; 327/327 tests pass unchanged; square flashes <= 6 on every attack), delete residual (2), reword decisions 16-17, add the turn-taking tests and the <= BUDGET asserts; confirm-only third review round, then implement
+deadline: it4
+answer: "Apply fix, confirm." The writer applies B7 exactly as the reviewer specified (square backstop, residual (2) deleted, decisions 16-17 reworded, turn-taking tests and <= BUDGET asserts); confirm-only third round; then commit and implement. (2026-09-28)
+status: answered
+
+### Q15: Regular patterns (plan-review.md N14): a reversing stripe grating (12 pairs, 15 Hz, whole wall) passes the flash governor, and spec 7.6 has no pattern rule. How should it be covered?
+asked: it4
+default: a content rule in the game guide (no reversing or oscillating stripes with more than 5 pairs over more than 25% of the wall, per BT.1702-3 Guideline 2) plus a soak `pattern` check; the loop also caps over-budget flipping pixels at 12.5% of the wall per frame (text peaks at 0.099, the grating at 0.188)
+deadline: before the first attract mode or game (it06)
+answer: "Guide rule + soak + cap." Game-guide content rule (no reversing or oscillating stripes with more than 5 pairs over more than 25% of the wall, BT.1702-3 Guideline 2), a soak `pattern` check, and the governor caps over-budget flipping pixels at 12.5% of the wall per frame; the cap goes into the it04 plan with B7. (2026-09-28)
+status: answered
+
+### Q16: Absolute flash threshold (plan-review.md N17): spec 7.6's 0.1 is relative; BT.1702 and Ofcom use 20 cd/m² absolute, so a bright outdoor P5 panel may be several times laxer. Change it?
+asked: it4
+default: measure the wall's white at brightness 0.4 in prototype week, then set THRESHOLD = min(0.1, 20/L); keep 0.1 until then
+deadline: GATE B
+answer: "Measure at prototype." Keep THRESHOLD 0.1; in prototype week measure the white at brightness 0.4 and set THRESHOLD = min(0.1, 20/L); added to GATE B. (2026-09-28)
 status: answered

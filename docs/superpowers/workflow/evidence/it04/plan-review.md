@@ -229,3 +229,418 @@ Games compute scores from numpy arrays: Copy Me's limb-angle match, Strongman's 
    - a continuous red weight (N2);
    - spec 8's "ship order is the table order" against Q2 (N8);
    - spec 7.3's 2x titles on 42 px doors (N6).
+
+## Round 2
+
+Revised plan (4160 lines, uncommitted) reviewed 2026-09-28 against HEAD `5cf9943`, which records owner answers Q11 (governor last), Q12 (lux only adds night) and Q13 (small flashing areas exempt).
+
+### Verdict: BLOCKED
+
+One blocking finding, and it is the one the team lead asked me to judge first.
+- Residual (2) is not a 7-against-6 rounding matter. The square rule never holds a pixel that is under its own budget. So any flash spread across pixels that take turns reaches the wall at full rate, over the whole field.
+- Worst case: a full-field flash at 15 Hz with a swing of 0.2 in light, or at 5 Hz with a swing of 0.6. Nothing is held, and every measure the plan forwards (`flash_area`, `concurrent_area`) reads 0.
+- It also shows up without an adversary. In the plan's own composed test, random blocks under the flapping sensor, 28 of 100 longer trials push square means over budget, on up to 63% of the wall's square positions.
+- The fix is prototyped and small. It passes all 327 tests unchanged, and it makes the bound hold by construction.
+
+Everything else from round 1 is fixed and verified. The Q13 geometry and guidance figures check out. The 8 claimed-equivalent survivors are equivalent.
+
+### What I ran (round 2)
+
+All of it ran in scratch clones of `5cf9943` (`r5` for the plan, `r5fix` for the fix). The working tree was never touched.
+
+- **Replay.** Every file block, applied task by task with the tests first. The counts match the plan exactly:
+
+  | Task | Failing first | Task tests | Full suite |
+  |---|---|---|---|
+  | 1 | `6 failed, 76 passed` | 82 | 230 |
+  | 2 | collection error | 12 | 242 |
+  | 3 | 2 collection errors | 51 | 293 |
+  | 4 | 2 collection errors | 34 | 327 |
+
+  - Clean under `-W error` and PYTHONHASHSEED 1, 2 and 3.
+  - `git diff 5cf9943 -- tests/ | grep '^-[^-]'` prints nothing.
+  - Verify steps 4 and 5 print `[]`.
+  - No `hash()`, sleeps or wall-clock reads in the new tests.
+- **Round-1 attacks, re-run.**
+  - B1: the four red pairs and the per-signal pairs are in the tests and held.
+  - B2: the out-of-phase strip after the limiter ramps 128 to 135 and back. That is under a transition, and `flash_area` is 0. The static frame under lux flapping 4.9/5.1 stays at 128.
+  - B3: at 02:00 a reading of 7 keeps the night cap.
+  - B4: at `fps=60` the window follows.
+  - B5: `record(np.int64(7))`, `record(np.float32(8.5), margin=np.float32(0.1))`, `capture_grace(np.int64(10))` and `Cursor(switch=np.float32(1.25))` are all accepted.
+  - B6: `fake_modules`.
+- **New probes.** In the session scratchpad:
+  - `r2_turns.py`: turn-taking attacks;
+  - `r2_search.py` and `r2_compose.py`: random searches;
+  - `r2_pattern.py`: gratings;
+  - `r2_text.py`, `r2_ca.py`, `r2_field.py`: text measures;
+  - `r2_straddle.py`: block offsets;
+  - `r2_perf.py`, `r2_iter.py`: timing and loop count;
+  - `mut_r2.py`: 38 mutants.
+
+### Blocking findings (round 2)
+
+#### B7 (Task 4, `FlashGovernor.apply`, loop decisions 16 and 17): a flash whose pixels take turns reaches the wall at full rate, and the "by construction" bound does not hold
+
+**What.** `hold = flip.any(axis=0) & over` only ever holds a pixel that is over its own budget. The square rule (`self._square_window.count >= self.budget`) only decides *whether* those pixels are held. When every pixel stays within 6 transitions in 31 frames, nothing can be held however fast the area flashes.
+
+The attack:
+- Split the wall into G interleaved dithers.
+- Each dither flashes 3 times in 6 frames, then rests while the next takes its turn.
+- Every pixel stays within budget. Every 32x32 square's mean light, and the wall's, flashes at the frame rate.
+
+Measured on the plan's code (128x32; 64x64 is the same):
+
+| Attack | Mean swing of every square | Square-mean transitions a second (raw → pushed) | Held ticks | `flash_area` pushed | `concurrent_area` pushed |
+|---|---|---|---|---|---|
+| 5 dithers, 6-frame turns | 0.2 (15 Hz) | 30 → **30** | 0 | 0.0 | 0.0 |
+| 3 dithers | 0.33 | 18 → **18** | 0 | 0.0 | 0.0 |
+| 2 dithers | 0.5 | 12 → **12** | 0 | 0.0 | 0.0 |
+| 5 dithers, 3 on 3 off (5 Hz) | 0.6 | 10 → **10** | 49 (changes nothing) | 0.0 | 0.0 |
+| The plan's own ramp attack (`test_a_flash_spread_over_frames_is_held`) | 0.10 | 10 → **7** | 88 | 0.094 | 0.094 |
+
+**How big and where (the team lead's question 1).**
+- **The plan's residual (2) covers the whole field.** The columns repeat every 11 px across the wall. In one second, the governed wall mean runs 0.09, 0.19, 0.19, 0.19, 0.09, 0.09, 0.09, 0.19 and so on: a swing of 0.10 at 5 Hz for about 18 frames of every 30.
+- **It goes past the success criterion** ("no full-field luminance flash faster than 3 per second", spec 7.6; "nothing flashes in the seizure band", spec section 1). It is also only the mildest member of the family: the turn-taking attack gives 15 Hz at twice the swing.
+- **Plain content hits it too.** I ran the plan's `test_limiter_then_governor_never_strobes` random search for 100 trials of 90 frames instead of 30 of 60, and added `square_flashes(pushed)`:
+  - 28 trials push a square mean past 6 transitions in 30 frames, with a worst of 9;
+  - in the worst trial, 63% of the square positions on the wall are over budget.
+- **This was already true of the round-1 plan and of spec 7.6's per-pixel rule. I missed it in round 1.**
+- **It now blocks because the revision claims the opposite.**
+  - Decision 16: "a flash over a large area is over 10% of the squares inside it, so neither can pass"; "a flash spread over a few frames [is] held".
+  - Decision 17: "the flash bound holds on what the wall shows by construction".
+  - The owner chose Q11 on that claim.
+  - The soak assertions forwarded to core Task 20 (`flash_area(raw) <= 0.1`, `concurrent_area(pushed) < SMALL_AREA`) read 0 on every row above, so no later test would catch it.
+
+**Fix (prototyped in `r5fix`).** Add a square backstop, a strict tightening that the loop can decide:
+- **Hold whole squares.** After the pixel rule, find every square whose mean would make a transition while its window already holds `budget`. Hold every pixel of that square at its previous output, whatever the pixels' own budgets.
+- **Re-measure and repeat** until no over-budget square flips.
+  - The loop ends: the held set only grows, and showing the previous frame everywhere flips nothing, because the trackers were advanced on exactly that frame.
+  - In practice it takes at most 4 `square_means` calls per tick over 100 random trials.
+- **Advance** the pixel and square trackers on the shown signals, as now.
+
+The whole change:
+
+```diff
+         hold = flip.any(axis=0) & over
++        if not (hold.any() and ((self._square_window.count >= self.budget).any()
++                                or _concurrent(flip, up, over, WINDOW) >= SMALL_AREA)):
++            hold[:] = False
++        # Square backstop: a square whose mean would make an over-budget transition is held whole, whatever
++        # its pixels' own budgets; repeat until no over-budget square flips (all held flips nothing).
++        square_over = self._square_window.count >= self.budget
++        h, w = hold.shape
++        bh, bw = _band(h, min(WINDOW, h)), _band(w, min(WINDOW, w))
++        while True:
++            shown = np.where(hold, self._shown, s)
++            means = square_means(shown)
++            square_flip, square_up = self._squares.flips(means)
++            bad = square_flip.any(axis=0) & square_over
++            if not bad.any():
++                break
++            hold |= (bh.T @ bad.astype(np.float32) @ bw) > 0
+         out = frame
+-        if hold.any() and (...):
++        if hold.any():
+             self.held_ticks += 1
+             out = np.where(hold[..., None], self._prev, frame)
+-            s = np.where(hold, self._shown, s)
+-            flip, up = self._pixels.flips(s)
++        s = shown
++        flip, up = self._pixels.flips(s)
+         self._pixels.advance(s, flip, up)
+         self._pixel_window.push(flip.any(axis=0))
+-        means = square_means(s)
+-        square_flip, square_up = self._squares.flips(means)
+         self._squares.advance(means, square_flip, square_up)
+```
+
+**Results with the fix.**
+- **Tests:** all 327 pass unchanged. Every text case still has `held_ticks == 0` and returns the same array.
+- **Attacks:** every attack above gives `square_flashes(pushed) <= 6`.
+  - 200 random turn-taking trials: worst 6 (the plan: 24).
+  - 100 composed limiter-then-governor trials: 0 over budget (the plan: 28).
+- **`concurrent_area(pushed)`** stays under 0.1.
+- **Cost:** medians of 0.16 to 0.24 ms at 128x32 and 64x64, and 0.41 ms at worst, against the plan's 0.13 to 0.26 ms. That is inside the test's 0.5 ms.
+
+**Tests to add:**
+- **Turn-taking attacks.** The 5-dither 15 Hz one and the 2-dither 0.5-swing one, asserting `square_flashes(frames) >= 12`, `held_ticks > 0` and `square_flashes(out) <= BUDGET`.
+- **Tighten the ramp test.** `test_a_flash_spread_over_frames_is_held`'s `square_flashes(out) <= BUDGET + 1` becomes `<= BUDGET`. That test is new in this iteration, so changing it is allowed.
+- **Composed test.** `test_limiter_then_governor_never_strobes` asserts `square_flashes(pushed) <= BUDGET` in every trial.
+- **Forward to core Task 20's soak:** `square_flashes(pushed) <= BUDGET`.
+- **Plan text.**
+  - Delete residual (2) from decision 16.
+  - Reword decisions 16 and 17: every pixel holds at most `budget` transitions in any `fps + 1` frames unless it is part of a small flash, and every 32x32 square's mean always does.
+
+### Notes (round 2, non-blocking)
+
+**N14. Residual (1) is a named hazard, not sparkle.** It belongs with the owner (see owner decision 5 below). ITU-R BT.1702-3, Guideline 2 and its Attachment 1, says:
+
+> "more than five light and dark pairs of clearly discernible stripes ... [that] change direction, oscillate, flash, or reverse in contrast and the pattern occupies more than 25% of the displayed screen area"
+
+is potentially harmful. The same Attachment exempts patterns that "flow smoothly across, into, or out of the screen in one direction", which covers scrolling titles.
+
+A counterphase grating passes the plan's governor untouched, and the fix too: 1 px lines every 11 px, 12 pairs across 128 px, over the whole wall, reversing every frame (15 Hz).
+- Held ticks: 0.
+- `flash_area(pushed)`: 0.188.
+- `concurrent_area`: 0.094.
+- Square means: constant.
+
+With 2 px lines (18% one way) it is held.
+
+The spec cannot catch this at all, only at a lower rate. Spec 7.6's per-pixel rule already lets a 50% grating reverse at 3 Hz, and pixels taking turns can move a sparse grating around at 15 Hz under any per-pixel budget. A rule that counted every flipping pixel, whatever its budget, would have to sit above the 6-12% of the wall that scrolling titles already flip each frame (measured). Moving figures in the mirror, which I did not measure, will be in the same range. So no cheap governor rule separates the grating from ordinary motion.
+
+Recommended loop-level tightening, optional:
+- Cap the over-budget flipping pixels of *both* directions at `FIELD_AREA = 0.125` of the whole wall per frame. That matches Q13's wording, "below a fraction of the field".
+- Measured maxima for text: 0.099 for 1x titles at 30 px/s on 128x32, 0.084 for 2x, and 0.072 on 64x64. Text passes.
+- The 12-line grating (0.188) would be held.
+
+**N15. "10% is 2.5 times stricter" overstates the margin.**
+- The concurrent rule counts rises and falls apart, so up to about 2 x 9.9% of a square can be flashing at once, in opposite phase.
+- BT.1702's "combined area of flashes occurring concurrently" does not split by direction.
+- Against 25% the real margin is about 1.25x, not 2.5x. Say so in decision 16, or adopt N14's field cap.
+
+**N16. The geometry and the guidance figures check out.**
+
+Geometry:
+- 32 px at P5 (5 mm) is 16 cm, which is a 10-degree field at 2 x 0.915 x tan(5°) = 16.0 cm, so 92 cm.
+- 102 px is 25.5 cm², which is 0.006 sr at 65 cm.
+- WCAG 2.2's 0.006 sr is 25% of a 10-degree field.
+- BT.1702-3 says 25% of the displayed screen area and more than 3 flashes (6 changes) in a second. I read the PDF.
+- At the spec's distances the rule is stricter still:
+  - The mat starts 1.5-2 m out. At 1.5 m a 32 px square is 6 degrees.
+  - At 3.7 m and beyond, the whole 64 x 16 cm wall sits inside one 10-degree field, and at most about 10% of it can flash one way.
+
+Windows:
+- The squares sit at every offset (`_band` has n - k + 1 rows), so nothing straddles a boundary: a 110 px block was held at all 105 offsets tried on both layouts.
+- Small flashes in separate squares can add up to at most about 10% of the wall per direction, about 400 px. A dither can reach 9.4% of every square, which is the N15 margin.
+
+**N17. The spec's threshold is relative, and the guidance's is absolute.**
+- BT.1702-3 (SDR included) and Ofcom call a flash potentially harmful at a change of 20 cd/m² when the darker image is below 160 cd/m². Separately: "irrespective of luminance, a transition to or from a saturated red".
+- Spec 7.6 uses 0.1 of relative light. On a panel whose white at `brightness` 0.4 is L cd/m², the broadcast threshold is 20/L of light.
+- Outdoor P5 modules are rated in the thousands of cd/m², so 0.1 is likely several times laxer than BT.1702.
+- Measure L in prototype week, where the lux-meter step already is. Then set `THRESHOLD = min(0.1, 20 / L)`. That is a spec value, so it is an owner item (below).
+
+**N18. Three of my 38 mutants survive, all observable but minor.** The other 35 were killed, including every square, band, concurrent, release and lux-hysteresis mutant. The survivors:
+- `concurrent_area`'s `budget` keyword hard-wired to `BUDGET`;
+- `square_flashes`'s `window` keyword hard-wired to `WINDOW`;
+- `held_ticks` counted only when more than one pixel is held.
+
+Add one assert each.
+
+**N19. The writer's 8 surviving mutants are equivalent. I checked each against the code.**
+- `need <= factor`: equal values give `min(need, factor + RELEASE) == need`.
+- `factor >= 1.0`: the factor is never above `need <= 1.0`.
+- `level < cap`: at equality `cap / level` is exactly 1.0.
+- `start <= end`: equal times give an empty window in either branch.
+- The bool check on `fps`: True is 1, under 2.
+- `np.bool_`: `isinstance(np.bool_(True), numbers.Real)` is False.
+- `_Transitions` not copying: no array it keeps is changed in place. It is fragile, though; keep the copy.
+- The first-frame `_shown`: on frame 2 every pixel window is 0, so `hold` is empty and `_shown` is never read.
+
+The mutation claim is accurate.
+
+**N20. The square flag is global.** One square over budget anywhere lets over-budget pixels be held anywhere, so a scrolling title smears while an unrelated corner is being governed. It is conservative. With B7's backstop the flag can become local (`square_over` dilated to pixels), or stay global and be documented in decision 16.
+
+**N21. Text margins are thin.**
+- Worst `concurrent_area` over the ten titles, "TUG" and a stroke-heavy "MMMM WWWW HHHH MMMM", at 20-30 px/s: 0.090 at 2x and 0.074 at 1x, against 0.1.
+- A heavier font or 3x text would be held. Forward to it06: door titles stay in the 5x7 font at 2x and at most 30 px/s, with `concurrent_area < 0.09` asserted on the real door frames.
+
+**N22. Two small things.**
+- Decision 17 says "every trial is held somewhere", but the test does not assert it. Add `assert g.held_ticks > 0` or drop the sentence.
+- BT.1702's note that more than 5 s of near-threshold flashing may be a cumulative risk is not addressed. Put it in the game guide beside the pattern rule.
+
+### Owner decisions (round 2)
+
+5. **Regular patterns (N14).**
+   - BT.1702 treats stripes that reverse or oscillate as potentially harmful, when there are more than 5 light-dark pairs over more than 25% of the screen. Spec 7.6 has no pattern rule.
+   - The governor cannot enforce one cheaply without also holding moving figures. Q13 lets sparse gratings reverse at 15 Hz.
+   - Proposed default:
+     - make it a content rule: the game guide, plus a `pattern` check in core Task 20's soak (no reversing or oscillating stripes with more than 5 pairs over more than 25% of the wall);
+     - the loop adds N14's 12.5% field cap to the governor.
+   - Deadline: before the first attract mode or game lands (it05 or M4).
+6. **Absolute flash threshold (N17).**
+   - Spec 7.6's 0.1 of relative light against BT.1702's 20 cd/m².
+   - Proposed default: measure the wall's white at `brightness` 0.4 in prototype week, then set `THRESHOLD = min(0.1, 20 / L)`.
+   - Deadline: GATE B.
+
+Sources checked: [ITU-R BT.1702-3 (11/2023)](https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.1702-3-202311-I!!PDF-E.pdf), Guidelines 1 and 2 and Attachment 1, read in full; [International Guidelines for Photosensitive Epilepsy: Gap Analysis (PMC11872230)](https://pmc.ncbi.nlm.nih.gov/articles/PMC11872230/) for WCAG's 0.006 sr / 10-degree / 25% and Ofcom's 25%; [Wilkins, Emmett and Harding 2005, Epilepsia](https://onlinelibrary.wiley.com/doi/10.1111/j.1528-1167.2005.01405.x) for the stripe-pair limits. The [Ofcom guidance note PDF](https://www.ofcom.org.uk/__data/assets/pdf_file/0021/16248/gn_flash.pdf) returned 403; its figures here are as quoted by the sources above.
+
+### Round 2 addendum: governor timing and the lint note
+
+**N23. The governor at 0.24 ms is acceptable. Deferring the check to GATE B is sound, and nothing here blocks.**
+
+*The 0.2 ms figure is a measurement, not a budget.*
+- Spec 7.6 says "Measured cost 0.2 ms on the Mac": that is what the review prototype took. The plan's "spec 7.6 budgets 0.2 ms" (decision 11) misreads it.
+- The budgets the spec does set are for the whole tick, in section 9's Budget item: `runner.tick` must average under `ARCADE_TICK_BUDGET_MS`, which is 2.0 ms on the Mac, with p95 under twice that, over 300 ticks. On the Pi 5 the same test runs with 20 ms in prototype week.
+- The effects module (Juice) has its own figure: under 0.5 ms at 64x64 with a full particle pool.
+
+*My measurements on this Mac, holding path, random frames:*
+
+| Code | Median | p95 | Worst |
+|---|---|---|---|
+| The plan's governor | 0.24-0.26 ms | 0.31-0.33 ms | 0.53 ms |
+| With B7's backstop | 0.23-0.24 ms | about 0.30 ms | 0.41 ms |
+| The limiter | 0.04 ms | | |
+
+Together the governor and limiter are about 15% of the Mac's 2 ms tick.
+
+*On the Pi 5.* At these array sizes numpy is dominated by per-call overhead, so a slowdown of a few times is plausible. That is an estimate, not a measurement: about 0.5-1.2 ms, against a 20 ms tick budget and a 33 ms period. The margin runs the wrong way, but it is an order of magnitude wide.
+
+*A cheaper held path would not help.* The held path is two `np.where` calls and a second `flips` on 3x32x128 floats. Shaving it saves microseconds that no budget asks for.
+
+*Fixes (non-blocking):*
+- In decision 11 and the "Environment facts", reword "spec 7.6 budgets 0.2 ms" to "spec 7.6 measured 0.2 ms for the prototype; the budget is the tick's".
+- Keep the 0.5 ms test.
+- Forward to it05: the runner's tick-budget test must include a scenario that keeps the governor on its holding path (for example `claps` at 12 Hz, or a strobe), not only static attract frames. It must also report the governor's share of the tick.
+- At GATE B, time `FlashGovernor.apply` and `BrightnessLimiter.apply` on the Pi 5 at both layouts. Record the result against the 20 ms tick.
+
+**N24. The lint note is accurate and touches no new test code.**
+- `ruff check --select F` passes on all 18 files the plan writes.
+- `--select E501 --line-length 120` flags exactly one line: `tests/arcade/test_config.py:95` (123 characters).
+- That line is identical at HEAD `5cf9943` (the same line 95, 123 characters). The plan's diff to that file is 10 inserted lines and no changed ones.
+- No new or changed line in any test or source file is over 120 characters.
+
+## Round 3 (confirm-only)
+
+The revised plan (4363 lines, uncommitted) was reviewed on 2026-09-28 against HEAD `5cf9943`, under owner decision Q14 (apply B7, confirm only) and Q15 (guide rule, soak check and field cap). Settled questions were not reopened.
+
+### Verdict: APPROVED
+
+- B7 is applied as specified. With the field cap turned off, the plan's governor gives the same output as my round-2 fix, frame for frame, on 286 inputs.
+- Residual (2) is gone. Decisions 16 and 17 are reworded as asked. Every test and assert I asked for is present and passes.
+- The `BACKSTOP_PASSES = 8` bound cannot flip anything, cannot hang, and only tightens the bound.
+- Q15's cap holds the 12-pair grating, and the titles pass untouched. Content hovering at 12.5% does not strobe.
+- Every count in the plan replays exactly.
+
+Nothing blocks. Three small test gaps and one overstated sentence are below as notes.
+
+### What I ran (round 3)
+
+All of it ran in a scratch clone of `5cf9943`. The working tree was never touched.
+
+- **Replay.** Every file block, applied task by task with the tests first, and committed in the clone. The counts match the plan:
+
+  | Task | Failing first | Task tests | Full suite |
+  |---|---|---|---|
+  | 1 | `6 failed, 76 passed` | 82 | 230 |
+  | 2 | collection error | 12 | 242 |
+  | 3 | 2 collection errors | 51 | 293 |
+  | 4 | 2 collection errors | 41 | 334 |
+
+  - `-W error` and PYTHONHASHSEED 1, 2 and 3 each give `334 passed`.
+  - The per-module collect counts match verify step 2's table.
+  - `git diff 5cf9943 -- tests/ | grep '^-[^-]'` prints nothing.
+  - Verify steps 4 and 5 both print `[]`.
+  - `ruff --select F` is clean on the 18 files. E501 at 120 flags only the committed `tests/arcade/test_config.py:95`, as before.
+  - The new tests have no `hash()`, sleeps or wall-clock reads.
+- **B7 as specified.** I loaded my round-2 `r5fix` governor beside the plan's and turned the plan's field cap off (`FIELD_AREA = 2.0`). Outputs and `held_ticks` were identical on all 286 inputs:
+  - the 5-, 3- and 2-dither attacks;
+  - 120 random block trials and 120 random turn-taking trials, on both layouts;
+  - 40 noise runs.
+
+  The code diff against `r5fix` is only the field clause, the `for`/`else` bound and comments.
+- **Decision 17's claim.** On the test's own seed, the round-2 governor without the backstop pushes a square's mean past budget in 5 of the 30 trials (worst 8). The plan's governor pushes at most 6, and every trial holds something. The claim is accurate.
+- **The bound.**
+  - By reading the code:
+    - The fallback shows `_prev` whole.
+    - It advances the pixel tracker on `_shown`. Re-applying the value a tracker was advanced on can never flip it: a rise needs `direction <= 0` and a fall needs `direction >= 0`, and a swing that big would have flipped on the frame before.
+    - It advances the square tracker on `square_means(_shown)` with explicit zero flips, and both windows push zeros.
+    - So it flips nothing, and the loop is a `range`, so it cannot hang.
+  - Timed with a forced fallback (a square tracker that always flips): median 0.41 ms at 128x32 and 0.47 ms at 64x64, worst 0.50 ms.
+  - Pass counts, measured as `square_means` calls per `apply`:
+    - at most 3 over all 286 inputs above;
+    - at most 2 in 100 composed trials and in 200 random turn-taking trials;
+    - 4 at most from a hill-climb with passes unbounded, searching frame sequences after a prologue that puts every square over budget with no pixel over its own.
+
+    Nothing reached 8, and the fallback never fired.
+- **Q15.**
+  - The review's grating is held on both layouts. `flash_area` is 0.1875 raw and 0.0 governed.
+  - Over-budget flips peak per frame at:
+    - 0.0994 for the ten titles at 1x and 30 px/s on 128x32;
+    - 0.0845 at 2x;
+    - 0.0718 on 64x64.
+
+    These are the plan's figures, and nothing is held.
+  - "MMMM WWWW HHHH MMMM" at 2x and 30 px/s reaches 0.131 and is held for 6 frames, as decision 16 says.
+  - The boundary test is sound. On both layouts, 16 px lines flip exactly 512/4096 of the wall, and `>=` holds that. Removing (0, 0) in the lit phase leaves 511 flips, with square means constant and one-way concurrency at 6.25%. The `>` mutant fails the test.
+  - Hovering results are in N28.
+- **Round-2 attacks, re-run** (`r3rev/p4_attacks.py`, all on the plan as written):
+
+  | Attack | Result |
+  |---|---|
+  | Composed limiter-then-governor, 30 trials x 60 frames (the test's seed) | Square flashes pushed: worst 6, 0 trials over budget, every trial held something, concurrent under 0.1 |
+  | Composed, 100 trials x 90 frames | Square flashes pushed: worst 6, 0 trials over budget, every trial held something, worst concurrent 0.0996 |
+  | 200 random turn-taking trials (2-7 dithers, bursts of 2/4/6, 4 group shapes, random colours, both layouts) | Square flashes pushed: worst 6 |
+  | Text: titles, "TUG" and "MMMM WWWW HHHH MMMM" at 1x/2x, 20-30 px/s, both layouts | Only the MMMM case above is held. Square flashes pushed: at most 1 |
+  | Timing on random frames (held path) | Median 0.236 ms at 128x32 and 0.247 ms at 64x64, worst 0.30 ms |
+  | Timing on turn-taking | Median 0.18-0.23 ms |
+
+  All timings are under the test's 0.5 ms.
+- **Mutants** (`r3rev/mut.py`): 19 aimed at this revision, run against Task 4's tests. 16 fail:
+  - N18's three;
+  - the field cap at `>`, removed, at 0.1 and 0.2, and counting every flip rather than over-budget ones;
+  - the backstop removed;
+  - the fallback holding nothing, logging every time, or looping 2, 3 or 9 passes;
+  - a dilation that misses the edge;
+  - trackers advanced on the input.
+
+  3 survive (N25, N26).
+- **Round-2 notes folded in:**
+  - N15: decision 16 gives the 1.25x margin.
+  - N18: the three asserts are present, and each kills its mutant.
+  - N20: the global flag is documented in decision 16.
+  - N21: forwarded to it06.
+  - N22: `held_ticks > 0` is asserted in the random search, and the cumulative-risk note is in the game guide.
+  - N23: decision 11 and "Environment facts" are reworded. The it05 holding-path scenario and GATE B timing are forwarded.
+  - Q16: `THRESHOLD = min(0.1, 20 / L)` is under GATE B.
+
+  All present as claimed.
+
+### Blocking findings (round 3)
+
+None.
+
+### Notes (round 3, non-blocking)
+
+**N25. The fallback's tracker invariants are not pinned.** `test_the_backstop_gives_up_by_holding_the_whole_frame` checks the output, the pass count, `held_ticks` and the log, but not what the trackers were advanced on. Two mutants survive all 41 tests:
+- Dropping `square_flip = square_up = np.zeros(...)`, which keeps the last pass's square flips. This looks like the plan's own mutant (5), "a fallback that keeps the trackers' flips", which the plan says fails.
+- Replacing `shown, means = self._shown, square_means(self._shown)` with `means = square_means(shown)`. The pixel tracker then advances on signals the wall never showed.
+
+The code as written is right, and the path is unreached, but it is the safety path. After the loop in that test, add:
+
+```python
+    assert np.array_equal(g._shown, signals(out, 2.2)) and g._square_window.count.max() == BUDGET   # nothing counted
+```
+
+Verified: the test passes on the plan, and the line kills both mutants.
+
+**N26. The square flag is no longer tested.** With the backstop in place, removing `square_over.any()` from the small-flash condition passes all 41 tests. The effect is observable: in `test_held_pixels_are_measured_as_shown`'s blinker case, 155 of the 179 changes pass instead of 131. Decision 16 names the flag as one of the three conditions, so pin it with `assert len(changes(out, 0, 127)) < 140` beside the existing `> 120`. Verified: it passes on the plan and kills the mutant.
+
+**N27. "Which only a bug could cause" (decision 11) is too strong.** The termination argument bounds the passes by the number of squares, not by 8. I could not reach 8: random content gave 3 at most, and a hill-climb gave 4. But I have no proof that crafted square histories cannot chain further. Either way the fallback is safe. It only tightens, freezes for at most the second in which squares are over budget, and costs at most 0.5 ms. Suggested wording: "which no search has reached (the most seen is 4)". The `BACKSTOP_PASSES` comment ("the review saw 4 at most") is already accurate.
+
+**N28. The field cap does not strobe on its own.** I ran content hovering at 12.5% on both layouts:
+- 16 px gratings with one pixel dropped on alternate frames, on every third frame, or by half-seconds;
+- 11 px gratings with random rows cut, flipping 11-14%;
+- random dots reversing at 12.1-12.9%.
+
+The cap holds and releases in turn. It only removes transitions: on the dropped-pixel gratings, the per-pixel maximum falls from 31 to 17-23 a second, and frames flipping 10% of the wall fall from 30 to 16-22 a second. Square means stay constant.
+
+A 300-trial random search compared the cap on against the cap off and against the raw frames. The worst differences:
+
+| Measure | Cap on minus cap off | Cap on minus raw |
+|---|---|---|
+| `flash_area` | +0.017 | never above raw |
+| Per-pixel transitions in any 31 frames | +2 | +1 |
+| Frames a second flipping 10% of the wall | +1 | +1 |
+
+Square flashes stayed at 6 at most, and the per-frame over-budget flip share at 0.1248. These are timing shifts of a few pixels, not a flash of an area.
+
+`flash_area(pushed)` can exceed 12.5% (0.19 in the search), because the cap is per frame and different pixels spend their over-budget flip in different frames. The plan claims no bound on it, and the soak asserts `flash_area(raw)`, so nothing is wrong. It is worth knowing when reading soak output.
+
+Scripts: `r3rev/` in this session's scratchpad:
+- `replay.sh`;
+- `p1_equiv.py` (B7 equivalence);
+- `p2*_passes.py` (the pass searches);
+- `p3*_field.py` (the cap hovering);
+- `p4*_attacks.py`, `p5.py`, `p6.py`, `p7.py`;
+- `mut.py`.
