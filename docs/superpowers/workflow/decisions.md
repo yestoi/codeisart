@@ -80,3 +80,10 @@ default: yes, change it in the next iteration that touches actors; the change ma
 deadline: it4
 answer: "Yes, raise." shake raises ValueError like degrade; test_festival.py:180 changes to pytest.raises(ValueError). Applied in iteration 3, which already touches actors. (2026-09-27)
 status: answered
+
+### Q10: How many missed camera captures should holds, edges and the cursor ride out (CAPTURE_GRACE)?
+asked: it4
+default: 5 captures (0.55 s at 10 fps). Under spec noise the 3 s exit hold completes 40 of 40 times at 5, 30 of 40 at the old 0.25 s grace; a release registers after 0.55 s instead of 0.25 s. The real fixtures at GATE A refit it.
+deadline: it4
+answer: "5 captures." CAPTURE_GRACE = 5 (0.55 s at 10 fps); GATE A's real fixtures refit it. (2026-09-28)
+status: answered
