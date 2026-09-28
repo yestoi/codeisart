@@ -5,6 +5,7 @@ Pure numpy: this module never imports cv2, so the SDL preview never loads OpenCV
 from __future__ import annotations
 
 import math
+import numbers
 import operator
 from functools import lru_cache
 
@@ -33,8 +34,9 @@ def gamma_lut(gamma: float) -> np.ndarray:
 
 
 def apply_gamma(frame: np.ndarray, gamma: float) -> np.ndarray:
+    """frame through gamma_lut(gamma), always a new array: at 1.0 a copy, so a caller may write into it."""
     if gamma == 1.0:
-        return frame
+        return frame.copy()
     return gamma_lut(gamma)[frame]
 
 
@@ -64,6 +66,16 @@ def _light_lut(gamma: float) -> np.ndarray:
     """Byte to the light the preview shows, 0..1: the led look's bytes as a monitor decodes them."""
     v = np.arange(256, dtype=np.float64) / 255.0
     return _frozen((v ** (MONITOR_GAMMA / gamma)).astype(np.float32))
+
+
+def light_lut(gamma: float) -> np.ndarray:
+    """Byte to the light the wall emits, 0..1 of full: the led and distance looks' own read-only table, shared
+    with the flash governor and the brightness limiter so all of them agree. With gamma 2.2 the card sends bytes
+    as they are and the light is linear in the byte; with 1.0 the card applies gamma and the light is
+    (byte / 255) ** 2.2. A gamma that is not a finite number over 0 raises ValueError."""
+    if not (is_real(gamma) and 0.0 < gamma < math.inf):
+        raise ValueError(f"gamma must be over 0 and finite, got {gamma!r}")
+    return _light_lut(float(gamma))
 
 
 def _box_radii(sigma: float, n: int = 3) -> list[int]:
@@ -118,6 +130,32 @@ def _distance(frame: np.ndarray, scale: int, gamma: float, metres: float) -> np.
     return np.round(shown * 255.0).astype(np.uint8)
 
 
+def is_real(v) -> bool:
+    """A real number (NaN and infinities included), not a bool, None or a string."""
+    return isinstance(v, numbers.Real) and not isinstance(v, (bool, np.bool_))
+
+
+def check_settings(mode: str, scale: int, gamma: float, metres: float = 5.0) -> int:
+    """Raises ValueError unless these render settings are valid; returns scale as an int.
+
+    mode is one of MODES; scale is any integer type of at least 1 (a numpy integer from a computed fit,
+    never a float or a bool); gamma is over 0 and finite; metres is 0 or more and finite. None, a string
+    or a bool for gamma or metres raises ValueError too, not TypeError."""
+    if mode not in MODES:
+        raise ValueError(f"look must be one of {MODES}, got {mode!r}")
+    try:
+        size = operator.index(scale)                   # an int or a numpy integer; never a float
+    except TypeError:
+        size = 0
+    if isinstance(scale, (bool, np.bool_)) or size < 1:
+        raise ValueError(f"scale must be an int of at least 1, got {scale!r}")
+    if not (is_real(gamma) and 0.0 < gamma < math.inf):
+        raise ValueError(f"gamma must be over 0 and finite, got {gamma!r}")
+    if not (is_real(metres) and 0.0 <= metres < math.inf):
+        raise ValueError(f"metres must be 0 or more and finite, got {metres!r}")
+    return size
+
+
 def render(frame: np.ndarray, mode: str, scale: int = 8, gamma: float = 2.2, metres: float = 5.0) -> np.ndarray:
     """frame (h, w, 3) uint8 drawn at scale for a monitor.
 
@@ -126,23 +164,12 @@ def render(frame: np.ndarray, mode: str, scale: int = 8, gamma: float = 2.2, met
     applies gamma). distance: each pixel as a full square of the led look's light (not its dot), seen
     from metres away: blurred by 1.5 arcmin, with a luminance-weighted share scattered into a glow three
     times wider, for legibility checks (spec 9.4). At 5 m the real eye still resolves the 5 mm dot grid,
-    so text reads slightly smoother in this preview than on the wall. scale may be any integer type.
+    so text reads slightly smoother in this preview than on the wall. Settings are checked by
+    check_settings; scale may be any integer type.
     """
-    if mode not in MODES:
-        raise ValueError(f"look must be one of {MODES}, got {mode!r}")
+    scale = check_settings(mode, scale, gamma, metres)
     if frame.ndim != 3 or frame.shape[2] != 3 or frame.dtype != np.uint8:
         raise ValueError(f"frame must be (height, width, 3) uint8, got {frame.shape} {frame.dtype}")
-    try:
-        size = operator.index(scale)                   # an int or a numpy integer; never a float
-    except TypeError:
-        size = 0
-    if isinstance(scale, (bool, np.bool_)) or size < 1:
-        raise ValueError(f"scale must be an int of at least 1, got {scale!r}")
-    scale = size
-    if not 0.0 < gamma < math.inf:
-        raise ValueError(f"gamma must be over 0 and finite, got {gamma!r}")
-    if not 0.0 <= metres < math.inf:
-        raise ValueError(f"metres must be 0 or more and finite, got {metres!r}")
     if mode == "plain":
         return _nearest(frame, scale)
     if mode == "distance":
@@ -156,7 +183,10 @@ def render(frame: np.ndarray, mode: str, scale: int = 8, gamma: float = 2.2, met
 
 def dim(image: np.ndarray, level: float) -> np.ndarray:
     """A preview image showing level (0..1) of its light: a monitor decodes bytes with MONITOR_GAMMA, so
-    the bytes scale by level ** (1 / MONITOR_GAMMA). NaN or a level not over 0 gives black."""
+    the bytes scale by level ** (1 / MONITOR_GAMMA). NaN or a level not over 0 gives black; None, a
+    string or a bool is not a level and raises ValueError."""
+    if not is_real(level):
+        raise ValueError(f"level must be a number, got {level!r}")
     if not level > 0.0:
         return np.zeros_like(image)
     if level >= 1.0:

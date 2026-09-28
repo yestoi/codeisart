@@ -12,6 +12,7 @@ BACKENDS = ("sdl", "fake", "colorlight", "ddp")
 CAMERAS = ("mediapipe", "imx500", "replay", "none")
 AUDIOS = ("sounddevice", "replay", "none")
 LOOKS = ("plain", "led", "distance")
+DISTANCE_MIN_SCALE = 4   # below this the distance look's eye blur rounds away (look.distance_sigma)
 HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 
@@ -104,6 +105,9 @@ def load_config(path: Path | str) -> ArcadeConfig:
         raise ValueError(f"gamma must be finite, got {cfg.gamma}")
     if cfg.sdl_scale < 1:
         raise ValueError(f"sdl_scale must be at least 1, got {cfg.sdl_scale}")
+    if cfg.look == "distance" and cfg.sdl_scale < DISTANCE_MIN_SCALE:
+        raise ValueError(f'look = "distance" needs sdl_scale {DISTANCE_MIN_SCALE} or more (its eye blur rounds '
+                         f"away below that), got {cfg.sdl_scale}")
     for name in [f.name for f in dataclasses.fields(ArcadeConfig) if f.name.endswith("_seconds")] + ["night_lux"]:
         if not getattr(cfg, name) >= 0:
             raise ValueError(f"{name} must be 0 or more, got {getattr(cfg, name)}")

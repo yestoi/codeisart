@@ -104,3 +104,13 @@ def test_default_file_in_repo_lists_every_field_with_its_default():
     keys = set(tomllib.loads(REPO_TOML.read_text()))
     assert keys == {f.name for f in dataclasses.fields(ArcadeConfig)}
     assert load_config(REPO_TOML) == ArcadeConfig()
+
+
+def test_distance_look_needs_sdl_scale_4(tmp_path):
+    # C20: at sdl_scale under 4 the distance look's eye blur rounds away (look.distance_sigma), so the preview
+    # would look sharper than the wall seen from 5 m.
+    for scale in (1, 3):
+        with pytest.raises(ValueError, match="sdl_scale"):
+            load_config(write(tmp_path, f'look = "distance"\nsdl_scale = {scale}'))
+    assert load_config(write(tmp_path, 'look = "distance"\nsdl_scale = 4')).sdl_scale == 4
+    assert load_config(write(tmp_path, 'look = "plain"\nsdl_scale = 1')).sdl_scale == 1

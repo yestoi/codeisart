@@ -15,9 +15,13 @@ _FAR = 1 << 20   # coordinates are clamped to plus or minus this; NaN, infinity 
 def _i(v) -> int:
     """A coordinate as an int: rounded half up (so 0.5 px steps are even), clamped to plus or minus _FAR.
 
-    NaN, infinity and anything that is not a number land at -_FAR (05-plan S4), so an infinite width draws
-    nothing and an infinite (or negative) radius draws only the centre pixel, while a huge finite one fills:
-    harmless either way, and nothing hangs."""
+    A huge number clamps to its end, a Python int too (10**400 is past any float but lands at _FAR like
+    1e300). NaN, infinity and anything that is not a number land at -_FAR (05-plan S4). So a huge width
+    or radius fills, an infinite width draws nothing, and an infinite, NaN, negative or sub-half-pixel
+    radius draws only the centre pixel, for circle as for fill_circle: harmless either way, and nothing
+    hangs."""
+    if isinstance(v, int):
+        return max(-_FAR, min(_FAR, v))
     try:
         return max(-_FAR, min(_FAR, math.floor(v + 0.5)))
     except (ValueError, OverflowError, TypeError):
@@ -124,7 +128,7 @@ class Canvas:
         yy, xx = np.ogrid[y0:y1, x0:x1]
         d2 = (xx - cx) ** 2 + (yy - cy) ** 2
         mask = d2 <= (r + 0.5) ** 2
-        if ring:
+        if ring and r > 0:                  # a ring of radius 0 is its centre pixel, as the disc is
             mask &= d2 >= (r - 0.5) ** 2
         self.frame[y0:y1, x0:x1][mask] = _c(color)
 

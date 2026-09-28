@@ -219,3 +219,55 @@ def test_preview_models_brightness():
     far = PreviewDisplay(FakeDisplay(), "distance", scale=4, gamma=2.2, metres=10.0)
     far.push(frame_with_dot())
     assert np.array_equal(far.inner.last, render(frame_with_dot(), "distance", scale=4, gamma=2.2, metres=10.0))
+
+
+def test_apply_gamma_at_one_returns_a_copy():
+    # C19: the led look and later callers (core Task 11) may write into the result.
+    f = frame_with_dot()
+    for gamma in (1.0, 2.2):
+        out = apply_gamma(f, gamma)
+        assert out is not f and not np.shares_memory(out, f) and out.dtype == np.uint8, gamma
+        out[1, 2] = 0
+        assert f[1, 2, 0] == 128, gamma                              # the caller's frame is untouched
+    assert np.array_equal(apply_gamma(f, 1.0), f)
+
+
+def test_settings_that_are_not_numbers_raise_value_error_at_construction():
+    # C20: None, a string or a bool is a ValueError like any other bad setting, and PreviewDisplay checks its
+    # settings when it is built, not on the first push.
+    good = frame_with_dot()
+    for case in (dict(gamma=None), dict(metres=None), dict(gamma="2.2"), dict(metres="5"), dict(gamma=True)):
+        args = dict(mode="distance", scale=4, gamma=2.2, metres=5.0) | case
+        with pytest.raises(ValueError):
+            render(good, **args)
+        with pytest.raises(ValueError):
+            PreviewDisplay(FakeDisplay(), **args)
+    for case in (dict(mode="crt"), dict(scale=0), dict(scale=2.0), dict(gamma=0.0), dict(metres=-1.0)):
+        with pytest.raises(ValueError):
+            PreviewDisplay(FakeDisplay(), **(dict(mode="led", scale=4, gamma=2.2, metres=5.0) | case))
+    assert look.check_settings("led", np.int64(3), np.float64(2.2), 0) == 3
+    assert type(look.check_settings("led", np.int64(3), 1.0)) is int
+    assert type(PreviewDisplay(FakeDisplay(), "plain", np.int64(2), 1.0).scale) is int
+    image = np.full((2, 2, 3), 200, np.uint8)
+    for level in (None, "0.5", True):
+        with pytest.raises(ValueError):
+            look.dim(image, level)
+    assert look.dim(image, math.nan).sum() == 0 and look.dim(image, 0).sum() == 0   # NaN and 0 are still black
+    inner = FakeDisplay()
+    d = PreviewDisplay(inner, "plain", scale=1, gamma=1.0)
+    d.set_brightness(0.5)
+    with pytest.raises(ValueError):
+        d.set_brightness(None)
+    assert d.level == 0.5 and inner.brightness == 0.5                         # neither kept nor forwarded
+
+
+def test_light_lut_is_the_looks_table_checked():
+    # The flash governor and the brightness limiter read the looks' own light table through this public name.
+    assert look.light_lut(2.2) is look._light_lut(2.2) and look.light_lut(np.float32(1.0)) is look._light_lut(1.0)
+    assert look.light_lut(2)[255] == 1.0 and not look.light_lut(1.8).flags.writeable
+    gamma = np.float32(1.7)                                          # worked in float64, as the float it equals
+    v = np.arange(256) / 255.0
+    assert np.array_equal(look.light_lut(gamma), (v ** (look.MONITOR_GAMMA / float(gamma))).astype(np.float32))
+    for bad in (0.0, -1.0, math.nan, math.inf, None, True, "2.2"):
+        with pytest.raises(ValueError):
+            look.light_lut(bad)

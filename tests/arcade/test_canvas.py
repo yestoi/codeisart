@@ -272,3 +272,33 @@ def test_other_wall_sizes_draw_and_clip(font5x7, w, h):
     c.blit_rgb(np.full((5, 5, 3), 90, np.uint8), w - 2, -2)
     assert c.frame.shape == (h, w, 3) and c.frame[h // 2, :, 0].all()
     assert c.text_width("88", scale=2) == 24 and lit(c) > w
+
+
+def test_tiny_negative_and_non_finite_radii_draw_the_centre_as_fill_circle_does(font5x7):
+    # C18: a ring whose radius rounds to 0 or lands at -_FAR (negative, infinite, NaN, not a number) is its
+    # centre pixel, as the disc is; it used to draw nothing while fill_circle drew the centre.
+    for r in (0, 0.25, 0.49, -2, -math.inf, math.inf, math.nan, None):
+        ring, disc = Canvas(16, 16, font5x7), Canvas(16, 16, font5x7)
+        ring.circle(8, 8, r, RED)
+        disc.fill_circle(8, 8, r, RED)
+        assert lit(ring) == 1 and tuple(ring.frame[8, 8]) == RED, r
+        assert np.array_equal(ring.frame, disc.frame), r
+    c = Canvas(16, 16, font5x7)
+    c.circle(8, 8, 0.5, RED)                        # rounds half up to 1: the eight neighbours, not the centre
+    assert lit(c) == 8 and not c.frame[8, 8].any()
+
+
+def test_huge_python_ints_clamp_like_huge_floats(font5x7):
+    # C18: 10**400 has no float, so it used to land at -_FAR: a radius drew 1 px where 1e300 fills.
+    draws = [lambda c, v: c.fill_circle(5, 5, v, RED), lambda c, v: c.fill_rect(0, 0, v, 4, RED),
+             lambda c, v: c.text(0, 0, "H", RED, scale=v), lambda c, v: c.pixel(v, 0, RED),
+             lambda c, v: c.pixel(-v, 0, RED), lambda c, v: c.circle(5, 5, v, RED)]
+    lights = []
+    for draw in draws:
+        huge, big = Canvas(16, 8, font5x7), Canvas(16, 8, font5x7)
+        with deadline(1.0):
+            draw(huge, 10**400)
+            draw(big, 1e300)
+        assert np.array_equal(huge.frame, big.frame)
+        lights.append(lit(huge))
+    assert lights == [128, 64, 128, 0, 0, 0]       # a disc and a rect fill, one glyph pixel fills, a ring is off
