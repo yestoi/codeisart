@@ -2,9 +2,12 @@
 
 Every hook is inert (exit 0, no output) unless BOTH the environment variable
 OPERATOR=1 is set AND docs/superpowers/workflow/state.md exists under the
-project root. Claude Code runs hook commands with cwd = project root, so the
-root is the current working directory. Nothing here depends on conversation
-state: files are truth.
+project root. Nothing here depends on conversation state: files are truth.
+
+The project root is CLAUDE_PROJECT_DIR, which Claude Code sets for hook commands.
+A hook runs in the session's working directory, and that moves when a command
+changes directory, so the working directory is only the fallback: the nearest
+directory at or above it that holds docs/superpowers/workflow/.
 """
 import json
 import os
@@ -15,7 +18,18 @@ WORKFLOW_REL = os.path.join("docs", "superpowers", "workflow")
 
 
 def root():
-    return os.getcwd()
+    project = os.environ.get("CLAUDE_PROJECT_DIR")
+    if project and os.path.isdir(project):
+        return project
+    here = os.getcwd()
+    d = here
+    while True:
+        if os.path.isdir(os.path.join(d, WORKFLOW_REL)):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            return here
+        d = parent
 
 
 def wf(*parts):
@@ -103,6 +117,16 @@ def last_open_question(decisions_text):
         if any(ANSWER_EMPTY.match(l) for l in body):
             found = "\n".join(body).rstrip()
     return found
+
+
+IN_FLIGHT = re.compile(r"^\s*in_flight:[ \t]*(.*)$", re.M)
+
+
+def agent_in_flight(state_text):
+    """True when state.md's in_flight line names something: not empty and not starting with 'none'."""
+    m = IN_FLIGHT.search(state_text or "")
+    value = m.group(1).strip() if m else ""
+    return bool(value) and not value.lower().startswith("none")
 
 
 def state_phase(state_text):

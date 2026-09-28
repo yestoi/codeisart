@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """SessionStart hook for the arcade operator (matchers: compact, and startup|resume with --fresh).
 
-Prints to stdout, which Claude Code adds to context: the re-entry banner,
+Prints to stdout, which Claude Code adds to context: the re-entry banner (after a
+compaction) or the new-session banner (--fresh),
 state.md, the last '## Iteration' journal entry, the last open question in
-decisions.md, gate.md if present, and the instruction to invoke the
-workflow-loop skill. With --fresh it also lists the state files and their
-purposes. Inert unless OPERATOR=1 and state.md exists.
+decisions.md, gate.md if present, the note that config.md's Loop rules
+override the skill, and the instruction to invoke the workflow-loop skill.
+With --fresh it also says that the last session's agents are gone, and lists
+the state files and their purposes. Inert unless OPERATOR=1 and state.md exists.
 """
 import os
 import sys
@@ -33,6 +35,17 @@ FILES = [
     ("evidence/pi-perf.md", "the Pi's measured tick times, once the Pi exists"),
 ]
 
+FRESH_BANNER = ("You are the arcade operator, starting a new session. Enter the workflow loop at the phase in "
+                "state.md. Do not redo an iteration the journal marks done and do not re-plan a committed plan. "
+                "Files are truth.")
+
+FRESH = ("This is a new session, so every agent of the last session is gone. If `in_flight` names an "
+         "agent, do not wait for it and do not SendMessage it: keep what it committed or wrote to disk, "
+         "set `in_flight` to none in state.md, and start that phase's work again from the files.")
+
+RULES = ("config.md's Loop rules override the workflow-loop skill and its sub-skills wherever they differ. "
+         "Never change directory in a Bash command (use absolute paths or `git -C`).")
+
 FINAL = "Invoke the workflow-loop skill with the Skill tool and resume at the phase in state.md."
 
 
@@ -41,7 +54,10 @@ def main():
     if not c.is_operator():
         return
     fresh = "--fresh" in sys.argv[1:]
-    out = [BANNER, ""]
+    out = [FRESH_BANNER if fresh else BANNER, ""]
+    if fresh:
+        out += [FRESH, ""]
+    out += [RULES, ""]
     if fresh:
         out.append("## Workflow state files (docs/superpowers/workflow/)")
         out += [f"- {name}: {purpose}" for name, purpose in FILES]

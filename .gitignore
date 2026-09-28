@@ -6,8 +6,12 @@ __pycache__/
 *.swo
 .DS_Store
 
-# arcade operator: per-run Stop-hook block counter (reset by the loop)
+# arcade operator: Stop-hook block counter and the commit it counts from (reset by the loop)
 docs/superpowers/workflow/.blocks
+docs/superpowers/workflow/.blocks-head
+
+# worktrees of parallel implementers (Agent tool, isolation: worktree)
+/.claude/worktrees/
 
 # arcade: pose model, runtime data, contact sheets (anchored: tests/arcade/fixtures/ may hold data/ dirs)
 /models/
