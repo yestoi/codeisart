@@ -18,6 +18,7 @@ reads every iteration. Where this document differs from them, they win. In short
 | 4, step 4 | A review after each task, a whole-branch review and an iteration review | One review of BASE..HEAD per iteration (rule 3) |
 | 4, step 8 and "Defaults and deadlines"; 5 | A human-only decision writes gate.md; human-only questions block | No question blocks; gate.md only for destructive actions, scope changes and the iteration cap; what only the owner can do is an owner item in the roadmap (rule 8) |
 | 4, steps 3 and 4, the prompts | The skill's Orchestrator and Reviewer prompts with two added rules | The prompts in config.md under "Prompts" |
+| 4, "Iteration cap"; 6, `stop.sh` | One number, `iterations-per-run`, is both the loop's cap and the hook's | `iterations-per-run` is the loop's cap; `stop-blocks` is the hook's |
 | 6, hook commands | `scripts/operator/<name>.sh`, relative | `python3 "$CLAUDE_PROJECT_DIR/scripts/operator/<name>.py"`; see `scripts/operator/README.md` |
 | 6, `stop.sh` | Counts every block up to the cap | A stop while an agent is in flight is allowed and not counted; the count starts again when a commit lands |
 | 8 | M3 to M7, GATE A, GATE B in that order | `roadmap.md`: first playable, then the oracle, then games in parallel; hardware checks are owner items from 2026-09-28 |

@@ -27,12 +27,13 @@ unchecked `M` line whose needs are met. A GATE or an owner item never stops the 
 ## Owner items (none of these stops the loop)
 - Hardware bring-up, panels and Colorlight card in hand 2026-09-28. Tool: `tools/wall_pattern.py` (Linux, CAP_NET_RAW; run it from the Omarchy box or a Pi, after the card's one-time LEDVision setup). Write what the panel shows into `docs/superpowers/workflow/evidence/hardware.md`: pixel order (`rgb`), whether the brightness packet is honoured and scales light evenly (`steps`), whether the card applies gamma (`gamma`), that every row and column is where it should be (`index`), and the card's firmware version. These were GATE B items; the answers set `gamma` in `arcade.toml` and every colour choice after.
 - First live smoke, when M3c lands: play Pong on the webcam, then on the panel, and fill the Pong and walk-up rows of `live-smoke.md`. Each "n" or score of 2 or less becomes a Carried fix.
-- Decisions the loop took by default and the owner has not yet looked at: Q17 (three crashes hide a game), Q18 (shake as jumps), Q19 (close bursts dropped), Q20 (flash as a hold). All in `decisions.md`.
+- At the first live play test, judge on the panel what the owner confirmed on paper: the shake as jumps (Q18), close bursts dropped (Q19, watch two-player rallies), the flash as a hold (Q20, at night).
 
-## Not in this roadmap
-The show daemon (docs/superpowers/plans/2026-09-22-show-daemon.md), the piece with the install date of
-2026-11-11, has only its foundation tasks done (config, font, display backends). The retrospective proposes a
-lane for it. The owner has not decided; the arcade loop does not touch it.
+## After iteration 7
+Owner decision Q21 (2026-09-28): the operator works iterations 6 and 7 here, then moves to the show daemon
+(docs/superpowers/plans/2026-09-22-show-daemon.md), the piece with the install date of 2026-11-11. Only its
+foundation tasks are built (config, font, display backends). The loop gates after iteration 7 and does not
+start iteration 8. The milestones from M4a on wait for the arcade's return.
 
 ## Carried fixes
 Triaged 2026-09-28 under Loop rule 5 (config.md). A fix is carried when it is a failing test or a wrong
@@ -57,6 +58,7 @@ for the slice it plans, and nothing else here.
 - C33 (M3b for `LobbyLike`, the end card, `to_wall` and `draw_figure`; M8 for the doors) The lobby implements `LobbyLike` (`request`, `set_available`, `set_status`, `end_session(SessionResult)`); its end card shows the result for 3 s with "NEXT: RAISE A HAND" when waiting; hand-up and door selection use `Edge` and `Cursor` with `capture_grace(cfg.camera_fps)`, updated every tick; the NEAR tier's moving in-zone blob uses `runner.moving_blob`; the mirror draws players in `juice.PLAYER_COLORS`. For M3b: `to_wall` and `draw_figure`, which the mirror needs. For M8: door titles at most 2x and 30 px/s with `concurrent_area < 0.09` and `held_ticks == 0` asserted on real door frames, door dwell decaying over 0.3 s.
 - C34 (core Task 15 and GATE A; held until lamps are recorded) The moving-blob presence rule is fragile for real lamps: a lamp the source misses every 5th capture re-"appears" and counts, so the session never leaves; ±0.001 fw centroid jitter counts as moving; the leave timer resets on one tick of evidence. Judge displacement over a window (about 0.02 fw over 0.5 s) or require sustained motion, and fit it on captured lamps, not on guesses. Every source stamps captures on the runner's monotonic clock in seconds (picamera2 nanoseconds converted at the source).
 - C35 (M5) Per-input availability: `sense()` claims pose, blobs and motion together whenever the camera result is fresh (`CAMERA_INPUTS`); `test_sense_survives_raising_source_and_reports_status`'s status set changes then.
+- Q17 (GATE B, plan Task 24) A game hidden after three crashes comes back only when the arcade restarts, and nothing restarts it nightly yet: the service must.
 - C36 (M3c for `main`; M4a for the soak; GATE B for lux) `main` builds the runner with `all_games()` once, file-backed `Scores` and `SessionLog` in `data_dir`, the loaded calibration, `local_clock=datetime.now`, `lux=None` until Task 19 (lux is a callable returning the latest reading or None); the soak adds `test_every_game_fits_the_tick_budget` through `run_headless`.
 
 ## Spec revision 4 notes (owner-approved or found drift; fold in at the next spec revision)

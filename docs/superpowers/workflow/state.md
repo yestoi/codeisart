@@ -6,6 +6,6 @@ base: none
 orchestrator: none
 in_flight: none (the it06 plan writer started 2026-09-28 13:16 ended with its session 30 seconds later and wrote nothing; nothing of it06 exists)
 carried: C30 and C31 with M3b. Notes for M3b: C23 (the tool), C33 (`LobbyLike`, end card, `to_wall`, `draw_figure`). Notes for M3c: C23 (`build_display`), C28, C36 (`main`). The rest wait under the roadmap's "Notes for later tasks"
-next_gate: after iteration 11 (iterations-per-run: 6, and this run starts at iteration 6). Owner questions take their default at once (decisions.md, standing instruction); owner items in the roadmap never stop the loop
+next_gate: after iteration 7 (iterations-per-run: 2, owner decision Q21). At that gate the loop stops and the operator moves to the show daemon; do not start iteration 8. Owner questions take their default at once (decisions.md, standing instruction); owner items in the roadmap never stop the loop
 rules: config.md "Loop rules" (2026-09-28) override the workflow-loop skill and its sub-skills
 last_compaction: 2026-09-28T16:45:05Z at iteration 5 phase plan (auto)

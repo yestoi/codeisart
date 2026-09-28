@@ -148,5 +148,6 @@ Owner intervention, 2026-09-28, between iterations 5 and 6: the owner reviewed i
 - Hooks: commands anchored to `$CLAUDE_PROJECT_DIR` (one `cd` had locked a session out of Bash, Write and Edit); a stop while an agent is in flight is allowed and not counted; the block counter starts again when a commit lands (it had sat at its cap since 2026-09-27 14:56, so the Stop hook allowed every stop for the rest of the run). 129 hook checks pass.
 - New tool for the owner's hardware bring-up: `tools/wall_pattern.py`.
 - The it06 plan writer named in state.md had died with its session; iteration 6 starts from orient.
-- This review was the check-in planned for after iteration 6. Q17 to Q20 stand as defaulted; the next check-in gate is after iteration 11.
+- This review was the check-in planned for after iteration 6. The owner confirmed Q17 to Q20. Q21: two arcade iterations (6 and 7), then the operator moves to the show daemon; the gate is after iteration 7.
+- Subagent worktrees started from the last pushed commit, 58 behind; `worktree.baseRef` is now `head`, tested with a live agent (478 passed in its worktree).
 - config.md has its own orchestrator and reviewer prompts; the skill's are not used.

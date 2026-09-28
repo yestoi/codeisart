@@ -20,8 +20,7 @@ end goal, or the iteration cap. A step only the owner can do goes to the roadmap
 loop takes the next milestone that does not need it.
 
 The "review after iteration 6" happened early, on 2026-09-28 before iteration 6 (journal, owner
-intervention). Q17 to Q20 stand as defaulted until the owner says otherwise; they are listed in the
-roadmap's owner items. The next check-in gate is after iteration 11.
+intervention). The owner confirmed Q17 to Q20 there. The next gate is after iteration 7 (Q21).
 
 Block format:
 
@@ -152,26 +151,33 @@ status: answered
 asked: it5
 default: three crashes since the runner started hide the game until the restart (`MAX_CRASHES = 3` per game over the night); alternative: three in a row, a clean session resetting the count
 deadline: it5
-answer: (none: standing instruction 2026-09-28)
-status: defaulted (standing instruction 2026-09-28)
+answer: confirmed by the owner 2026-09-28: three crashes since the runner started hide the game until the restart. Nothing restarts the arcade nightly yet; plan Task 24 (the service) must, or a hidden game stays hidden.
+status: answered
 
 ### Q18: Juice shake: a few shrinking jumps (at most 4 a second) so the shake keeps the flash rule by itself, instead of a smooth wobble the governor would hold as a stutter over busy pictures?
 asked: it5
 default: jumps; a shake reads as a few knocks, not a rumble
 deadline: it5
-answer: (none: standing instruction 2026-09-28)
-status: defaulted (standing instruction 2026-09-28)
+answer: confirmed by the owner 2026-09-28: jumps. To be judged on the panel at the first live play test (does one knock read as an impact or as a glitch).
+status: answered
 
 ### Q19: Juice bursts close together: drop a burst within 32 px of one accepted in the last 0.4 s, or merge it into the old one?
 asked: it5
 default: drop it (a fast rally that bursts on every hit shows about every other burst); merging spends more of the particle pool. The gap was 0.4 s at asking; the loop raised it to 0.5 s after it05 plan review N1, so a burst alone changes a pixel at most about 4 times a second
 deadline: it5
-answer: (none: standing instruction 2026-09-28)
-status: defaulted (standing instruction 2026-09-28)
+answer: confirmed by the owner 2026-09-28: drop it, with the gap at 0.5 s as built. To be judged in two-player play: 32 px is the wall's full height at 128x32, so one player's burst can swallow the other's.
+status: answered
 
 ### Q20: Juice flash: a hold (full colour for `seconds`, then off; the next waits 0.5 s after it ends) instead of a fade?
 asked: it5
 default: a hold. A fading saturated red flash crosses the governor's red rule up to three times and got the whole wall held (flash_area 1.0, it05 plan review round 1). The cost is a blink instead of a glow. Alternative: keep the fade, at most one flash a second.
 deadline: it5
-answer: (none: standing instruction 2026-09-28)
-status: defaulted (standing instruction 2026-09-28)
+answer: confirmed by the owner 2026-09-28: a hold. To be judged on the panel at night at the first live play test, before many games tune their flash values; the safety measurements favour neither a hold nor a fade at one a second.
+status: answered
+
+### Q21: The show daemon has the install date (2026-11-11) and only its foundation tasks are built. When does the operator move to it?
+asked: it6 (owner check-in 2026-09-28, before iteration 6)
+default: stay on the arcade
+deadline: it6
+answer: two arcade iterations (6 and 7: the first playable, headless and on the camera), then the operator moves to the show daemon. `iterations-per-run` is 2. At the gate after iteration 7 the loop stops; the daemon's roadmap and workflow files are written then, with the owner. The arcade resumes after the daemon, if there is time before the event.
+status: answered

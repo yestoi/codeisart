@@ -8,8 +8,10 @@
 - Freshness check: every PNG in evidence/itNN/ carries the git sha in its header and it must equal HEAD. Before M4a, the evidence README records HEAD by hand (`git rev-parse --short HEAD`). A mismatch is a tooling defect, fixed before anything is judged.
 - Gates: gate-deploys: false, gate-iteration-plans: false
 - Plan review: only for a safety slice (Loop rule 4), one round. Verdict in evidence/itNN/plan-review.md. (Owner decision 2026-09-28; it replaces Q6's review of every plan.)
-- iterations-per-run: 6
-  (Keep it below 8, Claude Code's consecutive Stop-hook block cap. The Stop hook reads this line as the number of blocks it gives with nothing committed between them. The loop counts iterations itself and gates at step 8.)
+- iterations-per-run: 2
+  (Owner decision Q21, 2026-09-28: iterations 6 and 7 on the arcade, then the operator moves to the show daemon. The loop counts iterations itself and gates at step 8.)
+- stop-blocks: 6
+  (How many times the Stop hook blocks with nothing committed between the blocks. Keep it below 8, Claude Code's consecutive Stop-hook block cap.)
 
 ## Loop rules
 Owner-approved 2026-09-28, after the retrospective in docs/superpowers/reviews/2026-09-28-operator-retrospective.md.
@@ -55,7 +57,12 @@ not read this file by themselves.
    serial lane in the main checkout: one task at a time, done before the parallel tasks that build on it
    start, and no game task is in flight while one of them changes. A file no rule names belongs to the task
    the plan gives it to; the plan lists every file of every task, and no file appears under two tasks.
-   - Worktrees start from HEAD, so commit the plan and the state files before spawning.
+   - Worktrees start from the local HEAD (`worktree.baseRef: "head"` in `.claude/settings.json`; the default
+     starts them from the last pushed commit, which on 2026-09-28 was 58 commits behind). Commit the plan and
+     the state files before spawning. Every implementer is given the BASE sha and first checks that
+     `git rev-parse --short HEAD` prints it; if not, it stops and reports.
+   - An agent in a worktree runs plain git commands from its starting directory, one per Bash call. A
+     compound command that names git, or a `git -C` to the main checkout, is refused there.
    - `/models/` and `/data/` are not in git. A task that needs the pose model, the camera or the microphone
      runs in the main checkout, not in a worktree.
    - In a worktree, run tools as modules from the worktree's root (`python -m tools.arcade_shot`), never by
@@ -95,7 +102,9 @@ The plan is thin: interfaces, acceptance tests by name, constraints. Implementer
    A task that needs the pose model, the camera or the microphone runs in the main checkout instead.
 3. Every implementer: superpowers:test-driven-development; model opus for engine, safety, lobby and source
    tasks, sonnet for games and tools; given its task, its files, the plan's constraints and these rules:
-   touch only your files; never use `cd` (absolute paths, `git -C`); test with
+   touch only your files; never use `cd`; your checkout must be at <BASE sha> (check
+   `git rev-parse --short HEAD` first and stop if it differs); in a worktree run plain git commands from
+   your starting directory, one per Bash call, and never name the main checkout; test with
    `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /Users/trey/dev/codeisart/.venv/bin/python -m pytest -q -rs`
    from your checkout's root; run tools as modules (`python -m tools.<name>`); no command over 10 minutes;
    commit on your branch; report the files changed, the test counts and any deviation from the plan.
