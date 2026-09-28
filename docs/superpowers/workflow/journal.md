@@ -151,3 +151,56 @@ Owner intervention, 2026-09-28, between iterations 5 and 6: the owner reviewed i
 - This review was the check-in planned for after iteration 6. The owner confirmed Q17 to Q20. Q21: two arcade iterations (6 and 7), then the operator moves to the show daemon; the gate is after iteration 7.
 - Subagent worktrees started from the last pushed commit, 58 behind; `worktree.baseRef` is now `head`, tested with a live agent (478 passed in its worktree).
 - config.md has its own orchestrator and reviewer prompts; the skill's are not used.
+
+## Iteration 6 — 2026-09-28
+- Verdict (written at the sheets, before anything else):
+  - I read it06-128x32-first-playable.png (100 cells, one a second) and it06-128x32-strobe-raw-vs-pushed.png myself. All five PNGs carry `git` = c15f86c = HEAD, made from a clean tree.
+  - Walk-up: player 1's figure in orange at the left from tick 0, player 2's in blue at the right by 1.0 s, both about 20 px wide and the full 32 px high, readable as people. The green hand-up pictogram stands beside player 1 at 2.0 s. Pong serves at 3.0 s (the raise is scripted at 2.5 s).
+  - Pong: a 2 px paddle at each edge in its player's colour, the digits in the same colours, a dim blue dashed net, a white 2 px ball, a "+1" under the scorer's digit on a point, four dotted rings in the winner's colour at over. Nothing fills the field.
+  - Sessions in the 100 s script: game 1 ends 0-5 at about 21 s (player 2, who holds the wrist still, wins); the card "PONG 0 / HAND UP = AGAIN" shows from 23 s to 25 s; the mirror and the pictogram are back at 26 s; the ongoing sweep relaunches Pong at 27 s. Game 2 ends 5-1 and game 3 5-0, each with the card "PONG 5"; a fourth is in play at 99 s.
+  - Strobe sheet: the 40 ticks around the largest raw change, the step from the card to the mirror at t773. Raw and pushed are the same by eye: one step, no full-field flash; the pictogram breathes from dim to bright green over about 15 ticks. strobe-check.txt: held 0 of 3000, `flash_area` raw 0.000 pushed 0.000, `concurrent_area(pushed)` 0.001 (limit 0.1), `square_flashes(pushed)` 2 of BUDGET 6. Exit 0.
+  - What the sheet shows that is weak:
+    - After a duel the card reads "PONG 0" when player 2 has won 5-0: the winner reads a zero. That is Q23's default (player 1's points) doing what it says; on the pixels it reads wrong. For the gate: both scores in the players' colours.
+    - The attract title is not in the evidence: the duel scenario starts with player 1 in view. Only I1's test, with its 1 s empty lead-in, sees attract.
+    - The orchestrator reported I1's duel as 5-0 for player 1; without I1's 1 s lead-in the same script gives game 1 as 0-5. A one second shift turns the result over, so the scripted sweep says nothing about difficulty. That waits for M4a's bots.
+    - At one cell a second and scale 2 I cannot tell whether a paddle at the top or bottom of the sweep is cut by the wall's edge (the plan puts the paddle's centre at `cursor * (height - 1)`). Checked after this entry; the result is below under "Verify".
+  - Success criteria touched: Pong runs headlessly from a scripted input through the real runner, lobby to card, and produces a sheet an agent can judge (GIFs and feel metrics wait for M4a); the flash governor and limiter hold through the lobby and Pong. The ten seconds of the end goal: in the script the walk-up to the serve takes 3.0 s, which says the path is short, not that a stranger finds it. That is the owner's live smoke.
+- Plan: docs/superpowers/plans/2026-09-28-it06-first-playable-headless.md (ab40231), 299 lines, thin. Not a safety slice: no plan review.
+- Shipped: all of M3b and all of M3c, 12 commits, 82de50f..b6cede1.
+  - S1: C30 (a non-str `phase` counts as play; a motion grid needs a bool, int, uint or float dtype or the camera is a failed source; `SessionResult.score` is a finite float or None; the `_push` test) and C31 (the rival is cleared while the locked player is missing).
+  - S2: `run_headless(..., lobby=...)`, `game_cls` a class or a sequence.
+  - P1: `arcade/figure.py` (`to_wall`, `figure_rect`, `draw_figure`) and the small lobby, `arcade/attract/lobby.py`.
+  - P2: Pong, 128x32, first to 5 or the leader at 90 s, a CPU for a solo player.
+  - P3: `tools/arcade_shot.py`, sheets with the sha in a text chunk, the distance sheet, the raw-vs-pushed strobe check that exits 1 on a breach.
+  - I1: `tests/arcade/test_first_playable.py`, the M3b "done when".
+  - X1: the MediaPipe camera source, pose only. X2: `make_sources`, the scripted camera, `build_display`, `python -m arcade run`.
+- Review: APPROVED after 1 round (0 blocking). No removed or changed asserts. The reviewer ran `MediaPipeCamera` on the real camera for 6 s (60 results at 10 fps, nobody in view) and ruled the four deviations put to it not blocking (evidence/it06/reviewer-verdict.md).
+- Deploy: none (phase 1)
+- Verify: 7/7 items passed.
+  - Freshness: every PNG and head.txt read c15f86c = HEAD (b6cede1 plus the operator's state file).
+  - Doctor: camera and pose ok.
+  - Paddles at the ends of the sweep: clamped to the wall (`pong.py:205`), so none is cut. That closes the verdict's open point.
+  - I also read the sheet at 5 m (it06-128x32-first-playable-distance.png): figures, digits, paddles, ball and card text are readable.
+  - Evidence: docs/superpowers/workflow/evidence/it06/
+- Tests: 596 collected, 596 passed, 0 skipped (it05: 448; 478 at this iteration's base, after the owner's tool and hook work).
+- Minutes: plan 11, implement 44 (serial 5, parallel 12, integration 10, stretch 17), review 4, verify and report 20. About 85 from orient to the commit, against a target of 90 for an engine iteration. Iteration 5 took about 5 hours.
+- Loop decisions:
+  - M3c went into the same plan as a stretch with time limits (start X1 before minute 60, X2 before minute 85). Both started, at minutes 28 and 38.
+  - The evidence (plan I2) is made by the operator in verify, not by the orchestrator, so the sheets carry the reviewed HEAD. The output goes outside the repository first: `arcade_shot` stamps `+dirty` when `git status` lists anything, its own new PNGs included.
+  - The state file stays uncommitted while an agent works and is committed before the evidence is made.
+  - The reviewer's report reached the operator cut off in its last section; the reviewer wrote the rest to a file on request (evidence/it06/reviewer-notes.md). From iteration 7 the prompts ask every agent to write its full report to a file and to send only the path and the verdict.
+  - Process slips, no effect: two implementers each ran one read-only command with `cd`.
+- Carried forward:
+  - C37 (new; with the next task that touches `arcade/figure.py` or `arcade/attract/lobby.py`): on 64x64 under `degrade(REAL_NOISE)` the mirror's limbs blink on single keypoint dropouts; raw `concurrent_area` 0.131 to 0.151, over the 0.1 the lobby's own drawing must keep. The governor holds the pushed frames under the limit, so it is a smear on the wall, not a safety gap.
+  - Closed: C30, C31.
+- Noted, not carried:
+  - Pong's reported `score` can switch seats when player 1 leaves mid-duel or is missing on Pong's first tick (read, not reproduced).
+  - `doctor` reports 1280x720, a size the arcade does not capture at.
+  - The solo script under real noise scores 0 in both sessions; scripted sweeps are not bots.
+  - A bare `python -m arcade` opens the real camera.
+  - `helpers.run` has no `raw` passthrough.
+  - The trace on the tick a game ends on `done()` holds only the runner's keys.
+- Notes for later tasks (added to the roadmap): spec 6's 30 s camera reopen retry is not built; scipy for the Pi; `arcade_shot`'s dirty stamp and an evidence script that shows attract; the three merged worktrees are left in place.
+- Owner questions: Q22 to Q25 defaulted under the standing instruction; listed for the gate after iteration 7. Q23 (the duel card shows player 1's points) reads wrong on the sheet: the winner sees "PONG 0".
+- Owner items now open: the first live smoke can be played, `python -m arcade run` on the webcam.
+- Status: done
