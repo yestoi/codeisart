@@ -161,10 +161,15 @@ class Body:
 
     @property
     def raise_line(self) -> float | None:
-        """A wrist above this y is raised: 0.3 torso above the shoulders; the nose only without shoulders."""
-        s = self.shoulder_mid
-        if s is not None:
-            return s.y - RAISE_TORSOS * self.torso
+        """A wrist above this y is raised: 0.3 torso above the shoulders.
+
+        The nose stands in without shoulders, and when the torso cannot be measured (one shoulder and no
+        hip), because a line on the shoulder itself would count a wrist a hair above it; with neither,
+        None, and nothing is raised.
+        """
+        s, torso = self.shoulder_mid, self.torso
+        if s is not None and torso > 0.0:
+            return s.y - RAISE_TORSOS * torso
         if self.nose.conf >= MIN_CONF:
             return self.nose.y
         return None
@@ -243,15 +248,25 @@ class Body:
 
 @dataclass(frozen=True)
 class Blob:
+    """A light source. x and y are clamped to 0..1 (NaN and None to 0), as keypoints are, so a blob that leaves the
+    frame (a headlamp crossing it) never maps outside the wall."""
+
     x: float
     y: float
     size: float
     color: tuple[int, int, int]
     in_zone: bool = True
 
+    def __post_init__(self):
+        for name in ("x", "y"):
+            v = getattr(self, name)
+            object.__setattr__(self, name, 0.0 if v is None or math.isnan(v) else _clamp01(v))
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, kw_only=True)
 class Audio:
+    """Every field is a keyword: Audio(0.8, 1.0) would silently put 1.0 in level_smooth."""
+
     level: float = 0.0            # broadband RMS with slow gain, 0..1, for ambient visuals only
     level_smooth: float = 0.0     # level with 50 ms attack and 300 ms release
     peak: float = 0.0
@@ -299,7 +314,10 @@ def _resample(motion: np.ndarray, width: int, height: int) -> np.ndarray:
 
 @dataclass(frozen=True, eq=False)
 class Sensed:
+    """Every field after t is a keyword: Sensed(t, bodies) would silently put the bodies in camera_t."""
+
     t: float                                     # seconds since runner start
+    _: dataclasses.KW_ONLY
     camera_t: float = 0.0                        # capture time of the newest camera frame, on the runner clock
     camera_fresh: bool = False                   # true on the tick a new camera frame arrived
     camera_seq: int = 0

@@ -1,3 +1,4 @@
+import dataclasses
 import math
 
 import numpy as np
@@ -231,3 +232,42 @@ def test_place_blob():
 def test_skeleton_indices_valid():
     assert all(0 <= a < 17 and 0 <= b < 17 for a, b in SKELETON)
     assert Blob(0.1, 0.2, 0.05, (255, 0, 0)).color == (255, 0, 0)
+
+
+def test_sensed_and_audio_take_keywords_after_t():
+    # C12: revision 2 called Sensed(t, bodies, blobs, motion, audio); in spec 5's field order that binds
+    # the bodies to camera_t without an error. Audio(0.8, 1.0) would put 1.0 in level_smooth.
+    with pytest.raises(TypeError):
+        Sensed(1.0, (figure(),))
+    with pytest.raises(TypeError):
+        Audio(0.8, 1.0)
+    assert [f.name for f in dataclasses.fields(Sensed) if not f.kw_only] == ["t"]
+    assert all(f.kw_only for f in dataclasses.fields(Audio))
+    s = Sensed(1.0, bodies=(figure(),), audio=Audio(level=0.8, level_smooth=1.0))
+    assert s.bodies[0].id == 1 and s.camera_t == 0.0 and s.audio.level_smooth == 1.0
+
+
+def test_one_shoulder_without_hips_uses_the_nose_line():
+    # C14: one shoulder and no hip give no torso, so a line from the shoulders would sit on the shoulder.
+    no_hips = {RIGHT_SHOULDER: Keypoint(0.6, 0.4, 0.0), LEFT_HIP: Keypoint(0.45, 0.7, 0.0),
+               RIGHT_HIP: Keypoint(0.55, 0.7, 0.0)}
+    b = figure(no_hips)
+    assert b.shoulder_mid is not None and b.torso == 0.0
+    assert b.raise_line == pytest.approx(0.22)                                           # the nose
+    assert figure({**no_hips, RIGHT_WRIST: Keypoint(0.65, 0.395)}).raised_wrist is None   # a hair over the shoulder
+    assert figure({**no_hips, RIGHT_WRIST: Keypoint(0.65, 0.25)}).raised_wrist is None    # under the nose
+    assert figure({**no_hips, RIGHT_WRIST: Keypoint(0.65, 0.18)}).raised_wrist == Keypoint(0.65, 0.18)
+    assert figure({**no_hips, LEFT_WRIST: Keypoint(0.35, 0.1), RIGHT_WRIST: Keypoint(0.65, 0.18)}).both_hands_up
+    blind = figure({**no_hips, NOSE: Keypoint(0.5, 0.22, 0.0), RIGHT_WRIST: Keypoint(0.65, 0.1),
+                    LEFT_WRIST: Keypoint(0.35, 0.1)})
+    assert blind.raise_line is None and blind.raised_wrist is None and not blind.both_hands_up
+
+
+def test_blob_coordinates_are_clamped():
+    # C16: headlamps() crosses from x -0.05 to 1.05; a consumer mapping x to a pixel would index at -1.
+    b = Blob(-0.05, 1.2, 0.02, (255, 250, 235))
+    assert (b.x, b.y) == (0.0, 1.0)
+    assert Blob(math.nan, 0.5, 0.02, (255, 0, 0)).x == 0.0 and Blob(0.3, math.inf, 0.02, (255, 0, 0)).y == 1.0
+    assert Blob(None, 0.5, 0.02, (255, 0, 0)).x == 0.0                                  # as a keypoint's None
+    assert place_blob(b, Calibration()).x == 0.0
+    assert Blob(0.25, 0.75, 0.02, (255, 0, 0)) == Blob(0.25, 0.75, 0.02, (255, 0, 0), True)   # in range: kept
