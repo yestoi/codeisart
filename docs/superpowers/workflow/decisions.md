@@ -209,3 +209,40 @@ default: no. The hand must be lowered and raised again (the lobby's edge is prim
 deadline: it6
 answer:
 status: defaulted (standing instruction)
+
+Seen on it06's sheet (operator, 2026-09-28): under Q23's default the card after a duel that player 2 wins 5-0 reads "PONG 0", so the winner reads a zero. The operator's lean for the gate: both scores in the players' colours.
+
+### Q26: What are the feel budgets' numbers? (Spec 9.3 names the metrics and gives no numbers.)
+asked: it7
+default: for `control` and `score` games: `response_ticks` at most 2, `fidelity` at least 0.8, `range` at least 0.6, `lit_fraction` 0.01 to 0.5, `dim_fraction` at most 0.1, `liveliness` at least 0.001, `flash_area_raw` at most 0.1, `square_flashes` at most 6, `phases_reached` 1.0, `round_seconds` 20 to 120 (2 ticks and rounds of 20 to 120 s are spec 11's). Toys: the same without `round_seconds`, `fidelity`, `range`. A game may override one in its own file, with a reason; a band is never loosened to make a game pass
+deadline: it7
+answer:
+status: defaulted (standing instruction)
+
+### Q27: How often must each bot win for a game's difficulty to pass?
+asked: it7
+default: the `good` bot wins at least 0.7 of its plays, the `lazy` bot 0.1 to 0.7, no input at most 0.05, over 20 seeded plays
+deadline: it7
+answer:
+status: defaulted (standing instruction)
+
+### Q28: When is a lit pixel "dim"?
+asked: it7
+default: when every channel is under 140 (spec 11's wall-look line), measured on the game's own drawing before the limiter. At most 10% of lit pixels may be dim; Pong's net is dim on purpose and is an override with a reason
+deadline: it7
+answer:
+status: defaulted (standing instruction)
+
+### Q29: What does a game's evidence GIF show?
+asked: it7
+default: 6 s from 1 s before the game launches, every third tick at 10 frames a second, the plain look at scale 2 (scale 1 if over 300 KB)
+deadline: it7
+answer:
+status: defaulted (standing instruction)
+
+### Q30: How is the stripe rule (Q15, BT.1702-3 Guideline 2) read by the soak's `pattern` check?
+asked: it7
+default: stripes are more than 5 light-dark pairs of equal width (within 1 px) in a row or column, the light bands at least the flash threshold above the dark ones; they count only where they change between two frames (reversing, oscillating or moving; static stripes count 0); the limit is 25% of the wall. It is a check in the tests, not part of the governor
+deadline: it7
+answer:
+status: defaulted (standing instruction)

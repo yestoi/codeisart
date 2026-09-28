@@ -204,3 +204,5 @@ Owner intervention, 2026-09-28, between iterations 5 and 6: the owner reviewed i
 - Owner questions: Q22 to Q25 defaulted under the standing instruction; listed for the gate after iteration 7. Q23 (the duel card shows player 1's points) reads wrong on the sheet: the winner sees "PONG 0".
 - Owner items now open: the first live smoke can be played, `python -m arcade run` on the webcam.
 - Status: done
+
+Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:15 CDT, not 16:25. Verify and report took 6 minutes, not 20, and the iteration took 72 minutes from orient (15:03) to the commit (5ed04f2).
