@@ -1,7 +1,7 @@
 # Flat config. Every key is a field of arcade.config.ArcadeConfig, shown with its default (spec 4.3).
 # Calibration results live in data_dir/calibration.json, not here.
-width = 128              # 128x32 side by side (default), 64x64 stacked
-height = 32
+width = 128              # four 64x32 panels, 2 x 2 (Q32)
+height = 64
 backend = "sdl"          # sdl | fake | colorlight | ddp
 sdl_scale = 8
 iface = "eth0"           # wired interface for the colorlight backend

@@ -85,7 +85,7 @@ class Juice:
     bursts' angles); size is the wall's (width, height), for celebrate. debug_state() gives the fx_* keys the
     runner merges into state()."""
 
-    def __init__(self, rng: random.Random, size: tuple[int, int] = (128, 32)):
+    def __init__(self, rng: random.Random, size: tuple[int, int] = (128, 64)):
         self.rng, self.size = rng, size
         self.t = 0.0
         # shake: jumps of alternating sign whose size decays linearly from amp over [start, start + length)

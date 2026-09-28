@@ -17,7 +17,7 @@ def write(tmp_path, text):
 
 def test_defaults_when_file_missing(tmp_path):
     cfg = load_config(tmp_path / "nope.toml")
-    assert cfg.size == (128, 32)
+    assert cfg.size == (128, 64)
     assert cfg.backend == "sdl" and cfg.sdl_scale == 8 and cfg.iface == "eth0"
     assert (cfg.ddp_host, cfg.ddp_port) == ("127.0.0.1", 4048)
     assert cfg.camera == "mediapipe" and cfg.camera_index == 0 and cfg.camera_fps == 10
@@ -96,7 +96,7 @@ def test_range_edges_accepted(tmp_path):
 
 
 def test_layout_name():
-    assert ArcadeConfig().layout == "128x32"
+    assert ArcadeConfig().layout == "128x64"
     assert ArcadeConfig(width=64, height=64).layout == "64x64"
 
 

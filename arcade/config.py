@@ -19,7 +19,7 @@ HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 @dataclass
 class ArcadeConfig:
     width: int = 128
-    height: int = 32
+    height: int = 64
     backend: str = "sdl"
     sdl_scale: int = 8
     iface: str = "eth0"

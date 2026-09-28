@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import sys
@@ -92,6 +93,23 @@ def test_main_passes_the_saved_calibration(tmp_path, monkeypatch):
     save_calibration(tmp_path / "data", Calibration(zone=(0.1, 0.2, 0.9, 0.8), calibrated=True))
     assert main(["run", "--config", str(config), "--script", "walkup", "--seconds", "0"]) == 0
     assert built[0]["calibration"].zone == (0.1, 0.2, 0.9, 0.8) and built[0]["calibration"].calibrated
+
+
+def test_run_opens_a_128x64_wall_by_default(monkeypatch, caplog):
+    # Q32, Q33: four 64x32 panels, 2 x 2. No --config: the repo's arcade.toml, read from the repo root.
+    sizes = []
+
+    def spy_build_display(cfg):
+        sizes.append(cfg.size)
+        return FakeDisplay()
+
+    monkeypatch.chdir(ROOT)
+    monkeypatch.setattr(arcade.main, "build_display", spy_build_display)
+    caplog.set_level(logging.INFO, logger="arcade.main")
+    assert main(["run", "--seconds", "0.2", "--script", "walkup"]) == 0
+    assert sizes == [(128, 64)]
+    started = [r.getMessage() for r in caplog.records if r.name == "arcade.main" and r.levelno == logging.INFO]
+    assert started == ["wall 128x64, backend sdl"], started
 
 
 def test_run_seconds_exits_zero_under_dummy_sdl(tmp_path):

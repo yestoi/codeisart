@@ -53,7 +53,7 @@ def test_game_info_is_frozen():
 
 def test_game_info_defaults_follow_the_spec():
     i = info()
-    assert i.layouts == LAYOUTS == frozenset({"128x32", "64x64"})
+    assert i.layouts == LAYOUTS == frozenset({"128x64"})
     assert (i.players, i.exit_gesture, i.kind, i.abandon_seconds) == (1, True, "control", None)
     assert INPUTS == frozenset({"pose", "blobs", "motion", "audio"}) and KINDS == ("control", "toy", "score")
     rows = ["#" * 16] + ["." * 16] * 15

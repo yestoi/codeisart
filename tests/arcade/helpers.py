@@ -32,9 +32,14 @@ def run(game_cls: type, sensed_iter: Iterable[Sensed], size: tuple[int, int], fo
     return frames, runner.game, runner
 
 
+SPY_LAYOUTS = frozenset({"128x64", "128x32", "64x64", "96x48"})   # the sizes the engine's tests use
+
+
 def spy_info(name: str = "spy", **over) -> GameInfo:
-    return GameInfo(**(dict(name=name, title=name.title(), verb="SPY", icon=CROSS_ICON, needs=frozenset({"pose"}))
-                       | over))
+    """A spy's GameInfo. It declares SPY_LAYOUTS, so the lobby (which features only a game whose layouts hold
+    cfg.layout) keeps featuring spies at every size the engine's tests run."""
+    return GameInfo(**(dict(name=name, title=name.title(), verb="SPY", icon=CROSS_ICON, needs=frozenset({"pose"}),
+                            layouts=SPY_LAYOUTS) | over))
 
 
 class SpyGame(Game):

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 INPUTS = frozenset({"pose", "blobs", "motion", "audio"})
 KINDS = ("control", "toy", "score")               # selects the feel budget set (spec 9.3)
-LAYOUTS = frozenset({"128x32", "64x64"})
+LAYOUTS = frozenset({"128x64"})                   # the design layout: four 64x32 panels, 2 x 2 (Q32, Q33)
 REQUIRED_SCENARIOS = ("canonical", "idle_body", "nobody")   # every game's SCENARIOS has at least these
 ICON_SIZE = 16
 RUNNER_KEYS = frozenset({"game", "t", "idle", "attract", "hidden", "crashes", "glitch", "flash_held_ticks", "player",
@@ -49,6 +49,9 @@ class GameInfo:
     16x16 bool (kept as a read-only copy), needs a subset of INPUTS, layouts a non-empty set of "WxH" names,
     players 1 or 2, exit_gesture a bool, kind one of KINDS, abandon_seconds None or a finite number over 0.
     A bad value raises ValueError, so a broken game module is skipped at discovery, not launched.
+
+    layouts name the sizes a game is designed and featured at; the default, LAYOUTS, is the design layout
+    128x64. They do not limit where it runs: a game still runs at any size it does not declare.
     """
 
     name: str

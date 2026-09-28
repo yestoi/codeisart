@@ -26,6 +26,7 @@ COMMANDS = ("run", "doctor")
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "pose_landmarker_lite.task"
 TIMEOUT = 5.0
 Probe = Callable[[float], tuple[bool, str]]
+log = logging.getLogger(__name__)
 
 
 def probe_camera(timeout: float, index: int = 0) -> tuple[bool, str]:
@@ -143,6 +144,7 @@ def build_display(cfg: ArcadeConfig) -> Display:
 def run(args) -> int:
     """The arcade: the small lobby and every game, until --seconds pass, the window closes or ^C."""
     cfg = load_config(args.config)
+    log.info("wall %s, backend %s", cfg.layout, cfg.backend)
     data_dir = Path(cfg.data_dir)
     calibration = load_calibration(data_dir)
     camera, audio = make_sources(cfg, cfg.size, script=args.script, calibration=calibration)   # main thread

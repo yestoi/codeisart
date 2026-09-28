@@ -14,6 +14,7 @@ from tests.arcade.helpers import SpyGame, StubLobby, make_cfg, run, spy
 
 BUDGET_MS = float(os.environ.get("ARCADE_TICK_BUDGET_MS", "2.0"))
 SIZES = [(128, 32), (64, 64)]
+WALL = (128, 64)                                   # the design layout: four 64x32 panels, 2 x 2 (Q32, Q33)
 WHITE = (255, 255, 255)
 
 
@@ -201,7 +202,7 @@ def timed(frames, stamps):
 
 
 @pytest.mark.perf
-@pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
+@pytest.mark.parametrize("size", SIZES + [WALL], ids=lambda s: f"{s[0]}x{s[1]}")   # WALL: 8192 pixels, same budget
 @pytest.mark.parametrize("game_cls", [Strobe, Static], ids=lambda g: g.info.name)
 def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypatch, capsys):
     # spec 9.2's budget, with a scenario on the governor's holding path (it04 N23, C27) and the governor's share.
