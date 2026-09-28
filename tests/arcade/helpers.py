@@ -1,13 +1,16 @@
-"""Test helpers: configs, a spy game, a stub lobby and a fake clock."""
+"""Test helpers: configs, a spy game, a stub lobby, a fake clock and spec 9.1's run()."""
 from __future__ import annotations
 
+import itertools
 import random
 from dataclasses import replace
+from typing import Iterable
 
 from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
 from arcade.game import Game, GameInfo, icon_from_rows
 from arcade.sensed import Sensed
+from show.font import Font
 
 BLANK_ICON = icon_from_rows(["." * 16] * 16)
 CROSS_ICON = icon_from_rows(["#" * 16] * 2 + ["##" + "." * 12 + "##"] * 12 + ["#" * 16] * 2)
@@ -15,6 +18,18 @@ CROSS_ICON = icon_from_rows(["#" * 16] * 2 + ["##" + "." * 12 + "##"] * 12 + ["#
 
 def make_cfg(size: tuple[int, int], **over) -> ArcadeConfig:
     return replace(ArcadeConfig(width=size[0], height=size[1], backend="fake", camera="none", audio="none"), **over)
+
+
+def run(game_cls: type, sensed_iter: Iterable[Sensed], size: tuple[int, int], font: Font, ticks: int | None = None,
+        seed: int = 0, strict: bool = True, **cfg_over):
+    """spec 9.1: the real runner on sensed_iter (its first ticks records when ticks is given), returning
+    (frames, the launched game, runner)."""
+    from arcade.headless import run_headless
+
+    cfg = make_cfg(size, **cfg_over)
+    feed = sensed_iter if ticks is None else itertools.islice(sensed_iter, ticks)
+    frames, runner = run_headless(cfg, font, game_cls, feed, seed=seed, strict=strict)
+    return frames, runner.game, runner
 
 
 def spy_info(name: str = "spy", **over) -> GameInfo:
