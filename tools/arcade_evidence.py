@@ -15,7 +15,6 @@ import json
 import re
 import subprocess
 import sys
-import zlib
 from pathlib import Path
 
 import numpy as np
@@ -217,14 +216,6 @@ def package(games: list[type], out: Path, sha: str, seeds, report=None, font=Non
     return written
 
 
-def _seeds(n: int) -> list[int]:
-    try:
-        from arcade import feel
-        known = list(getattr(feel, "FEEL_SEEDS", ()))
-    except ImportError:                    # feel.py not there yet: crc32 seeds only
-        known = []
-    return known[:n] + [zlib.crc32(f"evidence{i}".encode()) for i in range(len(known), n)]
-
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m tools.arcade_evidence", description=__doc__.split("\n")[0])
@@ -244,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     from arcade.games import get_game
     games = [get_game(n) for n in names]
-    files = package(games, out, sha, _seeds(args.seeds))
+    files = package(games, out, sha, args.seeds)
     print(f"{sha}: {len(files)} files in {out}")
     return 0
 
