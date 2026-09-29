@@ -151,6 +151,20 @@ Replaces the walkthrough checklist; run inline in the main session (design secti
 6. Evidence written to evidence/itNN/ with the matching sha: README with the decision on line 1, sheets, GIFs, feel table once feel metrics exist (M4a).
 7. The main session has read the changed games' sheets and GIFs itself with the Read tool (read `feel.json` first; a failing game gets its sheet read closely) and written the verdict into the journal before any other tool call.
 
+## Verify checklist, show daemon (iterations on a `D` milestone; added 2026-09-28 for Q49)
+The same seven items, with these differences: item 5 (`arcade doctor`) is dropped unless the slice touches a camera or
+display path; item 6's evidence is the sheets of `tools/show_shot.py` once D1 has built it (before it exists, the test
+output and a rendered frame written by a test helper); item 7: the operator reads the sheets with the Read tool and
+writes what the terminal shows (the strip on row 24, the cursor, the text legible at the LED look) into the journal
+before any other tool call. A test that needs Linux (`unshare`) is skipped on the Mac with its reason; the rise in
+skips is journaled once, and the owner's Omarchy box runs them at GATE C. The arcade's suite stays green throughout.
+
+## Success criteria, show daemon
+- The wall is never blank: attract scrolls when nothing plays, and any exception returns the show to attract.
+- A press plays an entry for real: real pty, real gcc with `-Wall`, real execution in the sandbox.
+- Row 24 always carries the attribution strip (or flashes it for a `full_screen` entry).
+- A flooding, hanging, crashing or backgrounding entry does not stall the frame loop or outlive its turn.
+
 ## Success criteria
 - The roadmap end goal: a stranger is playing within ten seconds of walking up, unprompted.
 - Every game in the accepted list runs headlessly from scripted inputs and produces sheets, GIFs and feel metrics an agent can judge.
