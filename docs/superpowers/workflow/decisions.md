@@ -384,5 +384,5 @@ status: answered
 asked: it10
 default: yes, from D3 on. An entry's output is arbitrary: a program can flip the whole 80x23 terminal between reverse and normal video several times a second, on a 512x192 wall at night. The show spec (revision 2) has no rule for it. The show's main loop passes each frame through the arcade's flash governor (`arcade/flash.py`, at most 3 full-field flashes a second) before the push; the curation rules (GATE C) also reject entries that flash. D1 and D2 build no display path, so nothing changes before D3. Adding the governor to the show's loop is a safety slice (a plan review, one round)
 deadline: the plan of D3
-answer:
-status: defaulted (standing instruction)
+answer: the owner, 2026-09-28 23:17 CDT: "yes to Q50, use the flash governor." The show's main loop passes every frame through the arcade's flash governor before the push, from D3 on; adding it is a safety slice
+status: answered
