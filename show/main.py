@@ -12,11 +12,14 @@ from __future__ import annotations
 import argparse
 import logging
 import random
+import signal
 import sys
 import textwrap
 import time
+import tomllib
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterator
 
 import numpy as np
 
@@ -41,6 +44,38 @@ PUSH_DARK_S = 10.0       # this long without a frame reaching the wall: all ligh
 WATCHDOG_EVERY_S = 1.0   # WATCHDOG=1 at most this often (the unit's WatchdogSec is 15)
 BLINK_HZ = 1.0           # the cursor's blink
 FAILURE_LOG_EVERY = 300  # a run of push failures is logged at its first and every this many
+FALLBACK_FPS = 20        # run's pace when cfg.fps is not an int of at least 2 (Config's default)
+# A broken show.toml's own values for these still name the wall (config_from's fallback).
+DISPLAY_KEYS = ("backend", "width", "height", "colorlight_iface", "ddp_host", "ddp_port")
+
+
+class Sigterm:
+    """SIGTERM's handler (systemctl stop): KeyboardInterrupt the first time, so run's finally darkens the wall and
+    the lights; later ones only counted, so the close is never cut short. It never logs: main logs the count."""
+
+    def __init__(self) -> None:
+        self.seen = 0
+
+    def __call__(self, signum: int, frame) -> None:
+        self.seen += 1
+        if self.seen == 1:
+            raise KeyboardInterrupt
+
+
+@contextmanager
+def sigterm_raises() -> Iterator[None]:
+    """Sigterm installed for the body, the previous handler back after it. Installed before the devices open, so
+    SDL (the mixer) finds a handler and adds none of its own. Outside the main thread: a warning, nothing."""
+    try:
+        previous = signal.signal(signal.SIGTERM, Sigterm())
+    except ValueError:
+        log.warning("not the main thread: no SIGTERM handler, systemctl stop skips the close")
+        yield
+        return
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous if previous is not None else signal.SIG_DFL)
 
 
 def error_frame(width: int, height: int, phosphor: tuple[int, int, int], font: Font | None,
@@ -322,10 +357,16 @@ class ShowLoop:
     def run(self, play: str | None = None) -> int:
         """Step at most cfg.fps times a second, no catch-up after a stall. 0 on Ctrl-C, the window's close and
         --play's end; with --play, 2 for a slug the show does not have and 1 when no show could be set up."""
-        period = 1.0 / self.cfg.fps
+        pace = self.cfg.fps
+        if isinstance(pace, bool) or not isinstance(pace, int) or pace < 2:
+            # A Config built in code skips load_config's check; the wall's refusal names this fps on its frame.
+            log.error("fps %r is not an int of at least 2: run steps at %d fps", pace, FALLBACK_FPS)
+            pace = FALLBACK_FPS
+        period = 1.0 / pace
         try:
             now = self.clock()
             self.start(now)
+            log.info("the show runs at %d fps", pace)
             pressed = False
             if play is not None:
                 if self.show is None:
@@ -354,6 +395,7 @@ class ShowLoop:
             self._close()
 
     def _close(self) -> None:
+        log.info("closing: the wall goes black, the lights off")
         if self.show is not None:
             try:
                 self.show.abort(self.clock())
@@ -364,6 +406,12 @@ class ShowLoop:
                 self.buttons.close()
             except Exception:
                 log.exception("closing the buttons failed")
+        if self.lights is not None:
+            try:
+                self.lights.all_off()
+                self.lights.tick(self.clock())                # all_off sets the modes; the tick writes them
+            except Exception:
+                log.exception("closing: the lights off failed")
         close = getattr(self.lights, "close", None)
         if close is not None:
             try:
@@ -397,18 +445,37 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def config_from(args: argparse.Namespace) -> tuple[Config, str | None]:
-    """The config and None; if load_config raises, Config() and the error (the error frame names it). --backend
-    and --capture apply either way."""
+    """The config and None; if load_config raises, the fallback and the error (the error frame names it).
+    --backend and --capture apply either way."""
     try:
         cfg, error = load_config(args.config), None
     except Exception as exc:
         log.error("config %s: %s; the defaults run and the wall names the error", args.config, exc)
-        cfg, error = Config(), f"config: {exc}"
+        cfg, error = _fallback(args.config), f"config: {exc}"
     if args.backend:
         cfg.backend = args.backend
     if args.capture:
         cfg.capture = True
     return cfg, error
+
+
+def _fallback(path: Path) -> Config:
+    """Config() with the file's DISPLAY_KEYS (when it parses as TOML and a value has the default's type, never a
+    bool for an int), so the wall it names shows the error; its brightness and brightness_cap only as a level 0 to
+    1 and never above Config()'s, which is the only level known otherwise. Never gamma or fps."""
+    cfg = Config()
+    try:
+        data = tomllib.loads(path.read_text())
+    except Exception:
+        return cfg
+    for key in DISPLAY_KEYS:
+        if type(data.get(key)) is type(getattr(cfg, key)):
+            setattr(cfg, key, data[key])
+    for key in ("brightness", "brightness_cap"):
+        value = data.get(key)
+        if not isinstance(value, bool) and isinstance(value, (int, float)) and 0.0 <= value <= 1.0:   # not nan
+            setattr(cfg, key, min(value, getattr(cfg, key)))
+    return cfg
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -424,7 +491,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.play not in slugs:
             log.error("no entry with slug %r (have %s)", args.play, slugs)
             return 2
-    return ShowLoop(cfg, config_error=error).run(play=args.play)
+    with sigterm_raises():
+        try:
+            return ShowLoop(cfg, config_error=error).run(play=args.play)
+        finally:
+            handler = signal.getsignal(signal.SIGTERM)
+            if isinstance(handler, Sigterm) and handler.seen:
+                log.info("stopped by SIGTERM, seen %d times (the later ones ignored)", handler.seen)
 
 
 if __name__ == "__main__":
