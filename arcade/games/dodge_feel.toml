@@ -1,0 +1,5 @@
+# Dodge's feel: the block follows the hips across the mat (zone_x), and the wall's x is the axis. No budget override.
+[fidelity]
+input = "zone_x"
+xy = "player_xy"
+axis = 0
