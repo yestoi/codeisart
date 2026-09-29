@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from arcade.attract.lobby import Lobby
+from arcade.feel import INPUTS
 from arcade.flash import BUDGET, SMALL_AREA, concurrent_area, flash_area, square_flashes
 from arcade.games.pong import MAX_SECONDS, WIN_POINTS, Pong
 from arcade.headless import run_headless
@@ -26,6 +27,7 @@ RAW_FLASH_AREA = 0.10          # spec 7.6: a game's raw output may flash at most
 MIRROR_SECONDS = 0.5           # spec 7.3: the figure within this of arrival
 PICTOGRAM_SECONDS = 1.5        # the pictogram after this long near
 CARD_SECONDS = 3.0             # the end card
+FAR = INPUTS["far"]            # Pong's control (pong_feel.toml): -ln(body.scale), nearer is up
 
 
 class RecordingLobby(Lobby):
@@ -135,17 +137,20 @@ def test_two_players_walk_up_play_pong_and_see_the_card(duel):
     assert all(s["game"] == "lobby" for s in trace[:launch])
     assert 0 <= launch - raised <= 1, (seed, raised, launch)
 
-    # Two humans, no CPU; the left paddle follows player 1's sweep, the right one stays put.
+    # Two humans, no CPU; each paddle follows its own player's steps in depth (M4c: the control Pong's feel file
+    # declares, "far"), and only its own: the players step on their own phases (C42: both players' points bank).
     states = run.pong_states()
     assert states, seed
     assert all(s["humans"] == 2 and s["cpu"] is None for s in states), seed
     first = launch + 1
-    cursor = np.array([run.body(first + k, player1).cursor[1] for k in range(len(states))])
-    left = np.array([s["left_xy"][1] for s in states])
-    right = {s["right_xy"][1] for s in states}
-    assert left.max() - left.min() >= WALL[1] / 2, (seed, left.min(), left.max())
-    assert np.corrcoef(cursor, left)[0, 1] > 0.95, seed
-    assert len(right) == 1, (seed, sorted(right))
+    player2 = next(b.id for b in run.stream[first].bodies if b.id != player1)
+    for key, pid, other in (("left_xy", player1, player2), ("right_xy", player2, player1)):
+        far = np.array([FAR(run.body(first + k, pid)) for k in range(len(states))])
+        not_mine = np.array([FAR(run.body(first + k, other)) for k in range(len(states))])
+        paddle = np.array([s[key][1] for s in states])
+        assert paddle.max() - paddle.min() >= WALL[1] / 2, (seed, key, paddle.min(), paddle.max())
+        assert np.corrcoef(far, paddle)[0, 1] > 0.95, (seed, key, np.corrcoef(far, paddle)[0, 1])
+        assert abs(np.corrcoef(not_mine, paddle)[0, 1]) < 0.5, (seed, key, np.corrcoef(not_mine, paddle)[0, 1])
 
     # Pong ends done, at 5 points or at 90 s.
     last = states[-1]
@@ -195,9 +200,9 @@ def test_first_playable_keeps_the_flash_rule(duel):
     # From the empty wall through the walk-up, the invite, the launch, the game and its card, nothing flashes.
     _, stop = duel.first_card()
     assert flash_area(pushed[:stop], **kw) == 0.0, seed
-    # Over the whole run the governor passes only a small-area flash (Q13): the scenario's paddle sweeps go on
-    # between games, and the lobby's mirror figure follows the hand turning at the top of each sweep, so a
-    # pixel or two of its arm can switch more than 3 times a second. The governor never adds a flash.
+    # Over the whole run the governor passes only a small-area flash (Q13): the scenario's steps go on between
+    # games, and the lobby's mirror figure follows the stepping body, so a pixel or two of its outline can switch
+    # more than 3 times a second. The governor never adds a flash.
     assert flash_area(pushed, **kw) <= flash_area(raw, **kw), seed
 
 

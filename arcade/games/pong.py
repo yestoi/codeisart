@@ -1,8 +1,15 @@
-"""Pong (spec 8, game 2): paddles follow hand height, sides by where the players stand, a beatable CPU fills an
-empty seat. First to WIN_POINTS, else the leader at MAX_SECONDS (a tie goes to player 1's side).
+"""Pong (spec 8, game 2): each paddle follows its player's body stepping in depth (M4c: nearer the camera is up),
+sides by where the players stand, a beatable CPU fills an empty seat. First to WIN_POINTS, else the leader at
+MAX_SECONDS (a tie goes to player 1's side).
 
 Two seats, a and b (index 0 and 1): seat 0 is player 1's. A seat is held by a body id (a human) or by the CPU (None).
-Seats, and which side of the wall each stands on, are settled at every serve; points belong to the seat."""
+Seats, and which side of the wall each stands on, are settled at every serve; points belong to the seat. A human
+seat reads its body through a Depth (arcade/input.py), reset when a body takes the seat, so the middle of the
+paddle's travel is where the player stood then; the raised hand only launches (the lobby's rule). A human's goal
+banks only when the paddle travelled TRAVEL_SHARE of its range in that rally (C42), and a best needs such a rally.
+
+debug_state: phase, score (player 1's points), left, right, cpu ("left", "right" or None), humans, active, speed,
+ball_xy, left_xy, right_xy, near (player 1's Depth value to 2 places, or None) and hint (the step hint is wanted)."""
 from __future__ import annotations
 
 import math
@@ -11,23 +18,34 @@ from types import MappingProxyType
 
 from arcade.canvas import Canvas
 from arcade.game import Game, GameInfo, icon_from_rows
-from arcade.input import capture_grace
+from arcade.input import Depth, capture_grace
 from arcade.juice import PLAYER_COLORS
 from arcade.sensed import Sensed
-from arcade.sources.actors import Person, scene
+from arcade.sources.actors import TICK, Person, scene
 
 WIN_POINTS = 5
 MAX_SECONDS = 90.0
 SERVE_SECONDS = 1.0
 POINT_SECONDS = 1.0
 OVER_SECONDS = 2.0
-BALL_START = 100.0      # px/s
-BALL_GAIN = 1.2         # the speed times this on each paddle hit
-BALL_MAX = 170.0
-MAX_ANGLE = 60          # degrees off horizontal at the paddle's edge
-CPU_SPEED = 0.35        # wall heights per second (22 px/s at 64 rows): beatable by a ball that arrives late
+BALL_START = 55.0       # px/s: 2.3 s a crossing; a body needs its step
+BALL_GAIN = 1.08        # the speed times this on each paddle hit
+BALL_MAX = 95.0         # px/s: 1.35 s a crossing at the fastest
+MAX_ANGLE = 50          # degrees off horizontal at the paddle's edge: vertical speed at most 73 px/s
+CPU_SPEED = 0.3         # wall heights per second (19 px/s at 64 rows): beatable by an angled return (Q46: 0.35)
 SCORE_SCALE = 2         # spec 7.4: both scores 10x14, top row y 1, centred on w/4 and 3w/4
-PADDLE_W = 2
+PADDLE_W = 3            # px: a smoothed control's 2-tick answer must show 12 px (spec 11)
+PADDLE_SHARE = 0.25     # of the height: 16 px at 64 rows
+TRAVEL_SHARE = 0.3      # C42: a rally counts when the paddle's travel (max y - min y) is at least this share of its
+                        # range (h - paddle_h): 14.4 px at 128x64, over a still body's 8 px under REAL_NOISE (S1's
+                        # measure; the operator's ruling, from the plan's 0.25), under a slow player's 17
+NEAR_IS_UP = True       # Q43: stepping towards the camera raises the paddle
+HINT_LINES = ("STEP IN = UP", "STEP BACK = DOWN")   # 1x: 71 and 95 px wide
+HINT_COLOR = (255, 160, 0)
+HINT_IDLE_SECONDS = 5.0 # in play with the rally's travel under TRAVEL_SHARE this long: the hint again
+HINT_FADE = 0.3         # s in and out: never a blink
+HINT_GAP = 2            # px between the hint's two lines
+GLYPH_H = 7             # the 5x7 font's rows at 1x
 BALL = 2
 JOIN_SECONDS = 1.0
 SERVE_SPREAD = 20       # degrees either way off horizontal at a serve
@@ -59,30 +77,49 @@ ICON = icon_from_rows([
 class Seat:
     """One side's player: a human (ctrl is a body id) or the CPU (None), with the points it has."""
 
-    def __init__(self, color):
+    def __init__(self, color, grace: float):
         self.ctrl: int | None = None
         self.color = color
         self.points = 0
         self.seen = -math.inf       # when the human's body was last seen
         self.zone_x = 0.5
-        self.moved = False          # a human moved the paddle in this rally (C41)
-        self.moved_ever = False     # ... at any time in the game
+        self.depth = Depth(grace=grace)
+        self.near: float | None = None      # the Depth's value on the last tick
+        self.lo = self.hi = math.nan        # the rally's lowest and highest paddle y (C42), from its launch
+        self.anchor = math.nan              # the paddle y at the last tick counted as input (active)
+        self.travelled = False      # a rally of this game counted (C42): a best needs it
+
+    def take(self, body) -> None:
+        """A body takes the seat: its Depth centres where the body stands now."""
+        self.ctrl, self.zone_x = body.id, body.zone_x
+        self.depth.reset()
+        self.near = None
+
+    def rally(self, y: float) -> None:
+        """The rally's travel starts over at paddle y."""
+        self.lo = self.hi = y
+
+    @property
+    def travel(self) -> float:
+        return self.hi - self.lo if self.hi >= self.lo else 0.0
 
 
 class Pong(Game):
     info = GameInfo(name="pong", title="PONG", verb="BLOCK", icon=ICON, needs=frozenset({"pose"}),
                     layouts=frozenset({"128x64"}), players=2, kind="score")
     PHASES = ("serve", "play", "point", "over")
-    CAPTION_KEYS = ("phase", "left", "right")
+    CAPTION_KEYS = ("phase", "left", "right", "near")
     SCENARIOS = MappingProxyType({})     # filled below, once the scripts exist
 
     def reset(self, size, rng: random.Random, fx) -> None:
         self.w, self.h = size
         self.rng, self.fx = rng, fx
-        self.paddle_h = self.h // 4
+        self.paddle_h = round(self.h * PADDLE_SHARE)
+        self.travel_px = TRAVEL_SHARE * (self.h - self.paddle_h)
         self.t = 0.0
         self.phase, self.phase_t = "serve", 0.0
-        self.seats = [Seat(PLAYER_COLORS[0]), Seat(PLAYER_COLORS[1])]
+        self.grace = capture_grace(CAMERA_FPS)
+        self.seats = [Seat(PLAYER_COLORS[0], self.grace), Seat(PLAYER_COLORS[1], self.grace)]
         self.left_seat, self.right_seat = 0, 1
         self.left_y = self.right_y = (self.h - 1) / 2
         self.bx, self.by = self.w / 2, self.h / 2
@@ -90,7 +127,9 @@ class Pong(Game):
         self.speed = BALL_START
         self.serve_dir = rng.choice((-1, 1))
         self.winner: str | None = None
-        self.grace = capture_grace(CAMERA_FPS)
+        self._hint = True                       # wanted: at the first serve, and after HINT_IDLE_SECONDS idle
+        self._hint_level = 0.0                  # shown: fades towards wanted at 1 / HINT_FADE a second
+        self._idle = 0.0                        # seconds in play since a rally's travel last counted
         self._assigned = False
         self._synced = False
         self._duel = False
@@ -121,7 +160,7 @@ class Pong(Game):
         """Settle the seats and the sides for a serve."""
         for seat in self.seats:
             if seat.ctrl is not None and self.t - seat.seen > self.grace:
-                seat.ctrl = None
+                seat.ctrl, seat.near = None, None
         bound = {seat.ctrl for seat in self.seats}
         candidates = []
         if sensed.player is not None and sensed.player.id not in bound:
@@ -133,14 +172,14 @@ class Pong(Game):
             candidates.append(p2)
         for seat in self.seats:
             if seat.ctrl is None and candidates:
-                body = candidates.pop(0)
-                seat.ctrl, seat.seen, seat.zone_x = body.id, self.t, body.zone_x
+                seat.take(candidates.pop(0))
+                seat.seen = self.t
         if self._p1 is None:
             taken = [i for i, seat in enumerate(self.seats) if seat.ctrl is not None]
             lead = next((i for i in taken if sensed.player is not None and self.seats[i].ctrl == sensed.player.id),
                         taken[0] if taken else None)
             self._p1 = lead
-        self._synced = False                # paddles jump to the hands once, without counting as input
+        self._synced = False                # paddles jump to the bodies once, without counting as input
         for seat in self.seats:
             if seat.ctrl is not None:
                 seat.color = PLAYER_COLORS[0] if sensed.player is not None and seat.ctrl == sensed.player.id \
@@ -167,7 +206,8 @@ class Pong(Game):
             return
         index = self.left_seat if body.zone_x <= 0.5 else self.right_seat
         seat = self.seats[index]
-        seat.ctrl, seat.seen, seat.zone_x = body.id, self.t, body.zone_x
+        seat.take(body)
+        seat.seen = self.t
         seat.color = PLAYER_COLORS[0]
         if self._p1 is None:
             self._p1 = index
@@ -193,7 +233,7 @@ class Pong(Game):
             self._assigned = True
         elif self.phase != "over":
             self._walk_up(sensed)
-        self._move_paddles(found, dt)
+        self._move_paddles(sensed, found, dt)
         if self.phase == "serve":
             if self.t >= MAX_SECONDS:
                 self._finish()
@@ -211,6 +251,26 @@ class Pong(Game):
                 else:
                     self._assign(sensed)
                     self._to_serve()
+        self._update_hint(dt)
+
+    def _update_hint(self, dt: float) -> None:
+        """The hint is wanted at the first serve; a rally whose travel counts takes it away, and HINT_IDLE_SECONDS
+        in play without one bring it back. It fades towards what is wanted, and only while a human is seated."""
+        humans = [seat for seat in self.seats if seat.ctrl is not None]
+        if self.phase == "play":
+            if any(seat.travel >= self.travel_px - 1e-9 for seat in humans):
+                self._idle, self._hint = 0.0, False
+            else:
+                self._idle += dt
+                if self._idle >= HINT_IDLE_SECONDS - 1e-9:
+                    self._hint = True
+        target = 1.0 if self._shows_hint() else 0.0
+        step = dt / HINT_FADE
+        self._hint_level = min(target, self._hint_level + step) if target > self._hint_level \
+            else max(target, self._hint_level - step)
+
+    def _shows_hint(self) -> bool:
+        return self._hint and self.phase != "over" and self._humans() > 0
 
     def _set(self, phase: str) -> None:
         self.phase, self.phase_t = phase, 0.0
@@ -224,27 +284,43 @@ class Pong(Game):
     def _launch(self) -> None:
         a = math.radians(self.rng.uniform(-SERVE_SPREAD, SERVE_SPREAD))
         self.vx, self.vy = self.serve_dir * self.speed * math.cos(a), self.speed * math.sin(a)
-        for seat in self.seats:
-            seat.moved = False
+        for seat, y in self._paddles():
+            seat.rally(y)
         self._set("play")
+
+    def _paddles(self):
+        """(seat, paddle y) for the left side, then the right."""
+        return ((self.seats[self.left_seat], self.left_y), (self.seats[self.right_seat], self.right_y))
 
     def _clamp(self, y: float) -> float:
         half = self.paddle_h / 2
         return min(self.h - half, max(half, y))
 
-    def _move_paddles(self, found: dict, dt: float) -> None:
+    def _depth_y(self, v: float) -> float:
+        """The paddle's centre for a Depth value: the control's whole range is the paddle's whole travel."""
+        up = v if NEAR_IS_UP else 1.0 - v
+        return self.paddle_h / 2 + (1.0 - up) * (self.h - self.paddle_h)
+
+    def _move_paddles(self, sensed: Sensed, found: dict, dt: float) -> None:
         for side in ("left", "right"):
             seat = self.seats[self.left_seat if side == "left" else self.right_seat]
             y = self.left_y if side == "left" else self.right_y
             if seat.ctrl is None:
                 new = self._cpu_y(side, y, dt)
             else:
-                body = found.get(seat.ctrl)
-                cursor = None if body is None else body.cursor
-                new = y if cursor is None else self._clamp(cursor[1] * (self.h - 1))
-                if abs(new - y) >= 1.0 and self._synced:
-                    self._active = True
-                    seat.moved = seat.moved_ever = True
+                seat.near = seat.depth.update(found.get(seat.ctrl), sensed.t, sensed.camera_t)
+                new = y if seat.near is None else self._clamp(self._depth_y(seat.near))
+                if not self._synced or math.isnan(seat.lo):
+                    seat.rally(new)                 # a jump to a new body is not travel
+                    seat.anchor = new
+                else:
+                    if abs(new - seat.anchor) >= self.travel_px - 1e-9:
+                        self._active = True         # input, judged as C42 judges it: not a still body's jitter
+                        seat.anchor = new
+                    if self.phase == "play":
+                        seat.lo, seat.hi = min(seat.lo, new), max(seat.hi, new)
+                        if seat.travel >= self.travel_px - 1e-9:
+                            seat.travelled = True
             if side == "left":
                 self.left_y = new
             else:
@@ -299,7 +375,7 @@ class Pong(Game):
 
     def _goal(self, scorer: int, direction: int) -> None:
         seat = self.seats[scorer]
-        banked = seat.ctrl is None or seat.moved        # C41: a human's point counts only if they moved
+        banked = seat.ctrl is None or seat.travel >= self.travel_px - 1e-9     # C42: by the rally's travel
         self.serve_dir = direction              # served toward the side that conceded
         self.bx = 0.0 if direction < 0 else self.w - 1.0
         self.vx = self.vy = 0.0
@@ -316,7 +392,7 @@ class Pong(Game):
         leader = b if b.points > a.points else a
         self.winner = "left" if leader is self.seats[self.left_seat] else "right"
         self.fx.celebrate(leader.color if leader.ctrl is not None else CPU_COLOR)
-        if not self._duel and self._humans() == 1 and self._score_seat().moved_ever:
+        if not self._duel and self._humans() == 1 and self._score_seat().travelled:
             self.scores.record(self._score_seat().points)
         self._set("over")
 
@@ -332,6 +408,8 @@ class Pong(Game):
         w, h = self.w, self.h
         for y in range(0, h, 4):
             canvas.fill_rect(w // 2, y, 1, 2, NET_COLOR)
+        if self._hint_level > 0.0:
+            self._draw_hint(canvas)
         left, right = self.seats[self.left_seat], self.seats[self.right_seat]
         for seat, centre in ((left, w // 4), (right, 3 * w // 4)):
             width = canvas.text_width(seat.points, SCORE_SCALE)
@@ -342,9 +420,21 @@ class Pong(Game):
         if self.phase in ("serve", "play"):
             canvas.fill_rect(self.bx - BALL / 2, self.by - BALL / 2, BALL, BALL, BALL_COLOR)
 
+    def _draw_hint(self, canvas: Canvas) -> None:
+        """HINT_LINES, 1x, centred, as a block around three quarters of the height; a line wider than the wall is
+        left out. Faded by scaling the colour, so the low channel stays 0."""
+        color = tuple(round(c * self._hint_level) for c in HINT_COLOR)
+        top = round(self.h * 3 / 4) - (len(HINT_LINES) * (GLYPH_H + HINT_GAP) - HINT_GAP) // 2
+        for k, line in enumerate(HINT_LINES):
+            width = canvas.text_width(line) - 1      # the last glyph's cell gap is not drawn
+            if width <= self.w:
+                canvas.text((self.w - width) // 2, top + k * (GLYPH_H + HINT_GAP), line, color)
+
     def debug_state(self) -> dict:
         cpus = [side for side, i in (("left", self.left_seat), ("right", self.right_seat))
                 if self.seats[i].ctrl is None]
+        p1 = self._score_seat()
+        near = None if p1.ctrl is None or p1.near is None else round(p1.near, 2)
         cap = lambda v, top: min(max(0.0, v), top - 0.01)
         return {"phase": self.phase, "score": self._score_seat().points,
                 "left": self.seats[self.left_seat].points, "right": self.seats[self.right_seat].points,
@@ -352,27 +442,43 @@ class Pong(Game):
                 "speed": round(self.speed, 3),
                 "ball_xy": (round(cap(self.bx, self.w), 2), round(cap(self.by, self.h), 2)),
                 "left_xy": (PADDLE_W / 2, round(self.left_y, 2)),
-                "right_xy": (self.w - PADDLE_W / 2, round(self.right_y, 2))}
+                "right_xy": (self.w - PADDLE_W / 2, round(self.right_y, 2)),
+                "near": near, "hint": bool(self._shows_hint())}
 
 
-def _sweeps(person: Person, start: float = 4.0, end: float = 100.0) -> Person:
-    """The right wrist sweeping 0 to 1 and back, one sweep each way per 1.2 s."""
+STEP_NEAR, STEP_FAR = 1.28, 0.78   # the scripts' step: ratios of the size the body was first seen at
+STEP_SECONDS = 0.8                  # each way: a brisk step
+STEP_HOLD = 0.4                     # s the scripts stand at each end, so the paddle settles there
+STEP_HEIGHT = 0.7                   # the scripts' body (bots.BODY_HEIGHT): at STEP_FAR it is still in the zone
+
+
+def _steps(person: Person, start: float = 4.0, end: float = 100.0) -> Person:
+    """The body stepping in to STEP_NEAR, then between STEP_FAR and STEP_NEAR, STEP_SECONDS each way with
+    STEP_HOLD at each end, from start until end."""
     t = start
+    person.scale_to(STEP_NEAR, STEP_SECONDS, at=t)
+    t += STEP_SECONDS + STEP_HOLD
+    near = False
     while t < end:
-        person.wrist("right", 0.0, 1.0, 0.6, at=t).wrist("right", 1.0, 0.0, 0.6, at=t + 0.6)
-        t += 1.2
+        person.scale_to(STEP_NEAR if near else STEP_FAR, STEP_SECONDS, at=t)
+        near = not near
+        t += STEP_SECONDS + STEP_HOLD
     return person
 
 
+def _stepper(x: float, id: int) -> Person:
+    return Person(x, id=id, height=STEP_HEIGHT)
+
+
 def canonical():
-    """The wall empty for 2 s, then one player walks up, raises a hand at 4.5 s and sweeps from 6 s: 100 s."""
-    person = Person(0.3, id=1).arrive(2.0).raise_hand(4.5, 0.5)
-    return scene(persons=[_sweeps(person, start=6.0)], ticks=3000)
+    """The wall empty for 2 s, then one player walks up, raises a hand at 4.5 s and steps from 6 s: 100 s."""
+    person = _stepper(0.3, 1).arrive(2.0).raise_hand(4.5, 0.5)
+    return scene(persons=[_steps(person, start=6.0)], ticks=3000)
 
 
-def idle_body():
-    """One body standing, hands down, for 60 s."""
-    return scene(persons=[Person(0.3, id=1)], ticks=1800)
+def idle_body(body_id: int = 1, seconds: float = 60.0):
+    """One body standing, hands down, for 60 s (body_id and seconds let tests vary the noise and the length)."""
+    return scene(persons=[Person(0.3, id=body_id)], ticks=round(seconds / TICK))
 
 
 def nobody():
@@ -380,14 +486,15 @@ def nobody():
 
 
 def solo():
-    """One player who walks up, raises a hand at 2.5 s and then sweeps the paddle up and down."""
-    return scene(persons=[_sweeps(Person(0.3, id=1).raise_hand(2.5, 0.5))], ticks=3000)
+    """One player who walks up, raises a hand at 2.5 s and then steps the paddle up and down from 4 s."""
+    return scene(persons=[_steps(_stepper(0.3, 1).raise_hand(2.5, 0.5))], ticks=3000)
 
 
 def duel():
-    """The solo player plus a second on the right, arriving at 0.5 s and holding the paddle at mid-height."""
-    other = Person(0.7, id=2).arrive(0.5).wrist("right", 0.5, 0.5, 100.0, at=0.5)
-    return scene(persons=[_sweeps(Person(0.3, id=1).raise_hand(2.5, 0.5)), other], ticks=3000)
+    """The solo player plus a second on the right, arriving at 0.5 s, who steps on its own phase (a quarter of a
+    cycle later, so neither paddle follows the other's player), so both players' points bank (C42)."""
+    other = _steps(_stepper(0.7, 2).arrive(0.5), start=4.0 + (STEP_SECONDS + STEP_HOLD) / 2)
+    return scene(persons=[_steps(_stepper(0.3, 1).raise_hand(2.5, 0.5)), other], ticks=3000)
 
 
 Pong.SCENARIOS = MappingProxyType({"canonical": canonical, "idle_body": idle_body, "nobody": nobody,
