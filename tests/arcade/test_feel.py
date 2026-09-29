@@ -181,7 +181,7 @@ class Still(Stub):
 
 
 class Scorer(Stub):
-    """A point every 2 s, drawn white at the top left (at 2x from 2 s), hidden for the first second of every 4;
+    """A point every 2 s, drawn white at 2x at the top left, hidden for the first second of every 4;
     done after one of those 4 s (a tick past it: the done tick ends the session, so 120 ticks count)."""
 
     info = GameInfo(name="scorer", title="Scorer", verb="COUNT", icon=CROSS_ICON, needs=frozenset({"pose"}),
@@ -193,7 +193,7 @@ class Scorer(Stub):
 
     def draw(self, canvas):
         if self.t % 4.0 >= 1.0:
-            canvas.text(3, 2, self.points(), WHITE, scale=2 if self.t >= 2.0 else 1)
+            canvas.text(3, 2, self.points(), WHITE, scale=2)
 
     def debug_state(self):
         return {**super().debug_state(), "active": True, "score": self.points()}
@@ -375,7 +375,6 @@ def test_measure_refuses_an_undeclared_layout(font5x7):
         feel.report(Follower, "128x32", seeds=[1], font=font5x7)
 
 
-@pytest.mark.xfail(strict=True, reason="until I1 sets SCORE_SCALES = (2,)")
 def test_a_1x_score_is_not_visible(font5x7):
     cfg = _cfg()
     pushed, runner = run_headless(cfg, font5x7, Tiny, scene(ticks=60), trace=True)
