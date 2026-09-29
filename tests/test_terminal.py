@@ -1,4 +1,5 @@
 import os
+import signal
 import statistics
 import sys
 import time
@@ -286,3 +287,109 @@ def test_finished_or_orphaned_is_false_before_any_run(term):
 def test_kill_without_a_run_is_harmless(term):
     term.kill()
     assert not term.running and not term.finished
+
+
+# C48: the group is forgotten once it cannot hold a process of this run, and never signalled after.
+
+def spy_killpg(monkeypatch) -> list[tuple[int, int, str | None]]:
+    """Record every os.killpg as (pgid, signal, the exception's name or None); the real call is made."""
+    calls: list[tuple[int, int, str | None]] = []
+    real = os.killpg
+
+    def spy(pgid, sig):
+        try:
+            real(pgid, sig)
+        except OSError as e:
+            calls.append((pgid, sig, type(e).__name__))
+            raise
+        calls.append((pgid, sig, None))
+
+    monkeypatch.setattr(os, "killpg", spy)
+    return calls
+
+
+def run_to_true(t: Terminal, **kwargs) -> bool:
+    deadline = time.monotonic() + WAIT
+    while time.monotonic() < deadline:
+        t.pump()
+        if t.finished_or_orphaned(**kwargs):
+            return True
+        time.sleep(POLL)
+    return False
+
+
+def test_a_finished_group_is_signalled_once(term, tmp_path, monkeypatch):
+    calls = spy_killpg(monkeypatch)
+    term.run(["true"], cwd=tmp_path)
+    pgid = term.proc.pid
+    assert run_to_true(term)
+    for _ in range(3):
+        assert term.finished_or_orphaned() is True
+    term.kill()
+    print(f"killpg calls: {calls}")
+    assert [c[:2] for c in calls if c[0] == pgid] == [(pgid, signal.SIGKILL)]
+
+
+def test_run_does_not_signal_the_previous_group(term, tmp_path, monkeypatch):
+    term.run(["true"], cwd=tmp_path)
+    first = term.proc.pid
+    wait_finished(term)
+    assert term.finished
+    calls = spy_killpg(monkeypatch)
+    term.run(["true"], cwd=tmp_path)
+    print(f"killpg calls: {calls}")
+    assert all(c[0] != first for c in calls)
+
+
+def test_a_group_that_is_gone_is_forgotten(term, tmp_path, monkeypatch):
+    calls = spy_killpg(monkeypatch)
+    term.run(["true"], cwd=tmp_path)
+    pgid = term.proc.pid
+    wait_finished(term)
+    assert term.finished_or_orphaned() is True  # the leader is reaped and alone: the group is gone
+    for _ in range(3):
+        term.finished_or_orphaned()
+    term.kill()
+    print(f"killpg calls: {calls}")
+    assert calls == [(pgid, signal.SIGKILL, "ProcessLookupError")]
+
+
+# Note 2: a pty still delivering data after the exit is drained, up to drain_max.
+
+DRAIN_GRACE = 0.3
+DRAIN_MAX_TEST = 1.0
+# A session leader (no controlling tty, as ORPHAN_LEADER) that leaves a writer on the pty and exits.
+SLOW_WRITER = "for i in 1 2 3 4 5 6 7 8; do echo line $i; sleep 0.1; done; echo END"
+ENDLESS_WRITER = "while :; do echo x; sleep 0.1; done"
+
+
+def leader_leaving(writer: str) -> list[str]:
+    code = f"import subprocess; print(subprocess.Popen(['sh', '-c', {writer!r}]).pid, flush=True)"
+    return [sys.executable, "-c", code]
+
+
+def test_output_after_the_exit_is_drained_before_the_kill(term, tmp_path):
+    term.run(leader_leaving(SLOW_WRITER), cwd=tmp_path)
+    assert run_to_true(term, grace=DRAIN_GRACE)
+    lines = [line.strip() for line in term.screen.display]
+    print(f"screen at True: {[x for x in lines if x]}")
+    assert "END" in lines
+
+
+def test_a_writing_orphan_is_killed_at_drain_max(term, tmp_path):
+    term.run(leader_leaving(ENDLESS_WRITER), cwd=tmp_path)
+    line = wait_for_text(term, str.isdigit)
+    assert line is not None
+    pid = int(line)
+    deadline = time.monotonic() + WAIT
+    while term.running and time.monotonic() < deadline:
+        term.pump()
+        time.sleep(POLL)
+    assert not term.running
+    exit_seen = time.monotonic()  # the terminal first sees the exit in the next call, no sooner
+    done = run_to_true(term, drain_max=DRAIN_MAX_TEST)
+    elapsed = time.monotonic() - exit_seen
+    print(f"writing orphan: True {elapsed:.3f} s after the exit (drain_max {DRAIN_MAX_TEST} s)")
+    assert done and term.finished
+    assert DRAIN_MAX_TEST <= elapsed <= DRAIN_MAX_TEST + WAIT
+    assert wait_gone(pid)

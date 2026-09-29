@@ -25,6 +25,7 @@ import pyte.modes
 READ_CHUNK = 1024
 KILL_WAIT = 1.0  # seconds kill() waits for the shell after SIGKILL
 KILL_POLL = 0.001  # seconds between polls while kill() waits
+DRAIN_MAX = 2.0  # seconds after the exit that a pty still delivering data is drained before the kill
 
 
 class Terminal:
@@ -37,6 +38,8 @@ class Terminal:
         self.proc: subprocess.Popen | None = None
         self.master_fd: int | None = None
         self._exit_seen: float | None = None  # monotonic time finished_or_orphaned first saw the exit
+        self._last_read: float | None = None  # monotonic time pump last read a byte of this run
+        self._pgid: int | None = None  # the current run's process group; None before a run and once forgotten
 
     def feed(self, data: bytes) -> None:
         self.stream.feed(data)
@@ -55,11 +58,12 @@ class Terminal:
     def run(self, cmd: list[str], cwd: Path, env: dict | None = None, preexec=None) -> None:
         if self.running:
             raise RuntimeError("a process is already running in this terminal")
-        if self.proc is not None:
-            self._signal_group()  # orphans of the last run
+        # The last run's group is not signalled here: its number may belong to another group by now (C48).
         self._close_master()
         self.proc = None
+        self._pgid = None
         self._exit_seen = None
+        self._last_read = None
         master, slave = pty.openpty()
         try:
             fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", self.rows, self.columns, 0, 0))
@@ -76,6 +80,7 @@ class Terminal:
         os.close(slave)
         os.set_blocking(master, False)
         self.proc = proc
+        self._pgid = proc.pid  # start_new_session: the child leads its own group
         self.master_fd = master
 
     def pump(self, max_bytes: int = 4096, budget_ms: float = 8.0) -> int:
@@ -99,7 +104,9 @@ class Terminal:
                 break
             self.feed(data)
             total += len(data)
-            if time.monotonic() >= deadline:
+            now = time.monotonic()
+            self._last_read = now
+            if now >= deadline:
                 break
         return total
 
@@ -115,11 +122,14 @@ class Terminal:
     def returncode(self) -> int | None:
         return None if self.proc is None else self.proc.poll()
 
-    def finished_or_orphaned(self, grace: float = 0.5) -> bool:
-        """Finished; or exited with no pty EOF within grace s of the exit first being seen: kill() and True.
+    def finished_or_orphaned(self, grace: float = 0.5, drain_max: float = DRAIN_MAX) -> bool:
+        """Finished (EOF and exit): the group signalled once, True. Exited, and nothing read for grace s
+        since the later of the exit's first sighting and the last read, or drain_max s since that sighting:
+        kill() and True. The caller pumps between calls.
 
-        True always kills the group: on macOS the shell's exit revokes the pty (EOF at once) while orphans
-        that ignore SIGHUP live on.
+        The finished path signals the group too: on macOS the shell's exit revokes the pty (EOF at once)
+        while orphans that ignore SIGHUP live on. A pty still delivering data after the exit (Linux holds
+        about 64 KB) is drained, up to drain_max, so the output's tail reaches the screen.
         """
         if self.finished:
             self._signal_group()
@@ -129,13 +139,17 @@ class Terminal:
         now = time.monotonic()
         if self._exit_seen is None:
             self._exit_seen = now
-        if now - self._exit_seen < grace:
+        quiet_since = max(self._exit_seen, self._last_read or self._exit_seen)
+        if now - quiet_since < grace and now - self._exit_seen < drain_max:
             return False
         self.kill()
         return True
 
     def kill(self) -> None:
-        """SIGKILL to the process group (also after the shell exited: its orphans), wait, a last pump, close."""
+        """SIGKILL to the process group (also after the shell exited: its orphans), wait, a last pump, close.
+
+        The group is forgotten at the end: every member got the signal.
+        """
         if self.proc is None:
             return
         self._signal_group()
@@ -147,14 +161,26 @@ class Terminal:
             time.sleep(KILL_POLL)
         self.pump()
         self._close_master()
+        self._pgid = None
 
     def _signal_group(self) -> None:
+        """SIGKILL to the current run's group, unless forgotten (C48: its number may have been reused).
+
+        Forgotten when it is gone, and after a signal sent once the leader is reaped: every member got it
+        and none can join. Kept on EPERM (macOS: the group holds only the unreaped leader).
+        """
+        if self._pgid is None:
+            return
+        reaped = self.proc is not None and self.proc.returncode is not None
         try:
-            os.killpg(self.proc.pid, signal.SIGKILL)
+            os.killpg(self._pgid, signal.SIGKILL)
         except ProcessLookupError:  # the group is gone
-            pass
-        except PermissionError:  # macOS: the group holds only the unreaped shell (EPERM)
-            pass
+            self._pgid = None
+            return
+        except PermissionError:  # macOS: the group holds only the unreaped leader (EPERM)
+            return
+        if reaped:
+            self._pgid = None
 
     def _close_master(self) -> None:
         if self.master_fd is not None:
