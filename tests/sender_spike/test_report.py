@@ -166,9 +166,9 @@ class Sockets:
     def __init__(self):
         self.opened, self.sent, self.closed = [], [], 0
 
-    def open(self, iface, qdisc_bypass):
-        self.opened.append((iface, qdisc_bypass))
-        return self.sent.append, self.close
+    def open(self, plan):
+        self.opened.append((plan.iface, plan.qdisc_bypass))
+        return send.Plain(self.sent.append, self.close)
 
     def close(self):
         self.closed += 1
@@ -205,3 +205,32 @@ def test_the_log_flag_writes_the_file(tmp_path, capsys):
     path = tmp_path / "a.csv"
     send.main(["--dry-run", "--seconds", "1", "--log", str(path)], now=c.now, sleep=c.sleep, open_sink=s.open)
     assert len(path.read_text().splitlines()) == 2 + 120
+
+
+def test_the_command_says_what_else_the_port_sent(capsys):
+    c, s = Clock(oversleep=0, per_read=1000), Sockets()
+    counts = iter([1000, 1000 + 68 * 120 + 3])
+    send.main(["--seconds", "1"], now=c.now, sleep=c.sleep, open_sink=s.open,
+              port_counter=lambda iface: next(counts))
+    assert "the port sent 8163 packets during the run: 8160 ours, 3 not ours" in capsys.readouterr().out
+
+
+def test_a_quiet_port_is_reported_as_quiet(capsys):
+    c, s = Clock(oversleep=0, per_read=1000), Sockets()
+    counts = iter([5, 5 + 68 * 120])
+    send.main(["--seconds", "1"], now=c.now, sleep=c.sleep, open_sink=s.open,
+              port_counter=lambda iface: next(counts))
+    assert "8160 ours, 0 not ours" in capsys.readouterr().out
+
+
+def test_a_port_without_a_counter_is_not_reported(capsys):
+    c, s = Clock(oversleep=0, per_read=1000), Sockets()
+    send.main(["--seconds", "1"], now=c.now, sleep=c.sleep, open_sink=s.open, port_counter=lambda iface: None)
+    assert "the port sent" not in capsys.readouterr().out
+
+
+def test_the_port_counter_reads_the_systems_file(tmp_path):
+    (tmp_path / "eth9" / "statistics").mkdir(parents=True)
+    (tmp_path / "eth9" / "statistics" / "tx_packets").write_text("35391282\n")
+    assert send.port_counter("eth9", root=str(tmp_path)) == 35391282
+    assert send.port_counter("eth8", root=str(tmp_path)) is None

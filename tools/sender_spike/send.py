@@ -15,6 +15,7 @@ import gc
 import math
 import os
 import random
+import struct
 import sys
 import time
 from dataclasses import dataclass, field, replace
@@ -133,6 +134,7 @@ class Plan:
     iface: str = "enp5s0"
     dry_run: bool = False
     log: str = ""
+    stamp: str = ""                   # "sw": the kernel stamps each frame's first sync; "hw": the port too
 
 
 def level_byte(level):
@@ -188,6 +190,8 @@ def check(plan):
                          % (ROOM_MS, 1000 / plan.fps))
     if not 0 < plan.spin_ms <= 5:
         raise ValueError("--spin-ms is above 0 and at most 5")
+    if plan.stamp and plan.dry_run:
+        raise ValueError("a dry run has no socket to stamp")
     return plan
 
 
@@ -261,6 +265,12 @@ def parser():
                    help="hybrid: sleep, then busy-wait the last --spin-ms. spin: busy-wait all of it")
     g.add_argument("--spin-ms", type=float, default=2.0)
     g.add_argument("--qdisc-bypass", action="store_true", help="PACKET_QDISC_BYPASS: past the port's queue")
+    g.add_argument("--stamp", action="store_true",
+                   help="the kernel stamps each frame's first sync as it enters the queue and as the driver "
+                        "takes it; their intervals are printed")
+    g.add_argument("--stamp-hw", action="store_true",
+                   help="--stamp, and the port's own clock as the packet leaves (turns the port's "
+                        "time stamping on for the run; needs CAP_NET_ADMIN)")
     return a
 
 
@@ -309,7 +319,8 @@ def plan_from(argv):
         gap_ms=args.gap_ms, fps=args.fps, seconds=args.seconds, tail_seconds=args.tail_seconds,
         picture=args.picture, jitter_ms=args.jitter_ms, seed=args.seed,
         wait=args.wait, spin_ms=args.spin_ms, qdisc_bypass=args.qdisc_bypass,
-        level_field_proven=args.level_field_proven, iface=args.iface, dry_run=args.dry_run, log=args.log)
+        level_field_proven=args.level_field_proven, iface=args.iface, dry_run=args.dry_run, log=args.log,
+        stamp="hw" if args.stamp_hw else "sw" if args.stamp else "")
     plan = replace(plan, pixel=pixel_cap(plan) if args.pixel is None else args.pixel)
     return check(plan)
 
@@ -326,7 +337,8 @@ def describe(plan):
     cycle = "order %s" % plan.order + (", gap %g ms" % plan.gap_ms if plan.gap_ms else "") \
         + (", jitter 0 to %g ms (seed %d)" % (plan.jitter_ms, plan.seed) if plan.jitter_ms else "")
     timing = "wait %s" % plan.wait + (" (spin %g ms)" % plan.spin_ms if plan.wait == "hybrid" else "") \
-        + (", qdisc bypass" if plan.qdisc_bypass else "")
+        + (", qdisc bypass" if plan.qdisc_bypass else "") \
+        + {"": "", "sw": ", stamps", "hw": ", stamps with the port's clock"}[plan.stamp]
     return "%g fps for %g s, then %g s black; %s; %s; %s; row tail %s; %s at pixel %d; %s" % (
         plan.fps, plan.seconds, plan.tail_seconds, cycle, sync, bright,
         " ".join("%02x" % b for b in plan.row_tail), plan.picture, plan.pixel, timing)
@@ -380,9 +392,10 @@ def run(plan, send, now, wait):
 
     def frame(n, tick, packets):
         added = jitter.randrange(top + 1) if top else 0
-        wait(tick + added if sync_first else tick)
+        due = tick + added if sync_first else tick
+        wait(due)
         first = now()
-        if first - tick - added > LATE_NS:
+        if first - due > LATE_NS:
             log.late += 1
         if sync_first:
             at = first
@@ -491,26 +504,159 @@ def report(plan, log):
     return "\n".join(out)
 
 
-def write_log(path, plan, log):
+def write_log(path, plan, log, stamps=None):
+    """One line a frame. The loop's times count from the first tick; each stamp clock from its first stamp."""
     t0 = log.ticks[0] if log.ticks else 0
+    kinds = [k for k in ("queue", "driver", "port") if (stamps or {}).get(k)]
+    zero = {k: min(stamps[k].values()) for k in kinds}
+    if "queue" in zero and "driver" in zero:
+        zero["driver"] = zero["queue"]                    # one clock: keep the time in the queue readable
     with open(path, "w") as f:
         f.write("# %s\n" % describe(plan))
-        f.write("frame,black,tick_ns,sync_ns,added_ns,burst_ns\n")
+        f.write(",".join(["frame", "black", "tick_ns", "sync_ns", "added_ns", "burst_ns"]
+                         + [k + "_ns" for k in kinds]) + "\n")
         for n, (tick, sync, added, burst) in enumerate(zip(log.ticks, log.syncs, log.added, log.bursts)):
-            f.write("%d,%d,%d,%d,%d,%d\n" % (n, n >= log.frames, tick - t0, sync - t0, added, burst))
+            row = [n, int(n >= log.frames), tick - t0, sync - t0, added, burst]
+            row += [stamps[k][n] - zero[k] if n in stamps[k] else "" for k in kinds]
+            f.write(",".join(str(v) for v in row) + "\n")
 
 
 SOL_PACKET, PACKET_QDISC_BYPASS = 263, 20
+SOL_SOCKET, SO_TIMESTAMPING = 1, 37
+MSG_DONTWAIT, MSG_ERRQUEUE = 0x40, 0x2000
+SOF_TX_HARDWARE, SOF_TX_SOFTWARE, SOF_SOFTWARE, SOF_RAW_HARDWARE = 1 << 0, 1 << 1, 1 << 4, 1 << 6
+SOF_OPT_ID, SOF_TX_SCHED, SOF_OPT_TSONLY, SOF_OPT_TX_SWHW = 1 << 7, 1 << 8, 1 << 11, 1 << 14
+SIOCSHWTSTAMP, SIOCGHWTSTAMP, HWTSTAMP_TX_ON = 0x89B0, 0x89B1, 1
+ENOMSG, SO_EE_ORIGIN_TIMESTAMPING, SCM_TSTAMP_SND, SCM_TSTAMP_SCHED = 42, 4, 0, 1
 
 
-def open_socket(iface, qdisc_bypass):
-    """(send, close) of a raw socket on the port. Linux only; needs CAP_NET_RAW."""
+def parse_stamp(ancdata):
+    """(frame, "queue" | "driver" | "port", ns) from one message of the socket's error queue, or None.
+    queue: the packet entered the port's queue. driver: the driver took it. port: the port's clock as it left."""
+    times = key = kind = None
+    for level, option, data in ancdata:
+        if (level, option) == (SOL_SOCKET, SO_TIMESTAMPING) and len(data) >= 48:
+            t = struct.unpack("qqqqqq", data[:48])
+            times = (t[0] * 10**9 + t[1], t[4] * 10**9 + t[5])
+        elif len(data) >= 16:
+            errno, origin, _, _, _, info, value = struct.unpack("IBBBBII", data[:16])
+            if errno == ENOMSG and origin == SO_EE_ORIGIN_TIMESTAMPING:
+                kind, key = info, value
+    if times is None or key is None:
+        return None
+    software, hardware = times
+    if kind == SCM_TSTAMP_SCHED and software:
+        return key, "queue", software
+    if kind == SCM_TSTAMP_SND and hardware:
+        return key, "port", hardware
+    if kind == SCM_TSTAMP_SND and software:
+        return key, "driver", software
+    return None
+
+
+class Plain:
+    """What the loop sends through, without stamps."""
+    stamps = {}
+
+    def __init__(self, send=lambda packet: None, close=lambda: None):
+        self.send, self.close = send, close
+
+    def drain(self):
+        pass
+
+    def draining(self, wait):
+        return wait
+
+
+class Stamper:
+    """Sends through the socket; the first sync of each frame asks the kernel for its transmit stamps.
+    The kernel numbers the packets that ask, from 0: that number is the frame."""
+
+    def __init__(self, sock, hardware, close=None):
+        self.sock, self.close = sock, close or sock.close
+        self.stamps = {}
+        self.last = None
+        ask = SOF_TX_SCHED | SOF_TX_SOFTWARE | (SOF_TX_HARDWARE if hardware else 0)
+        self.ask = [(SOL_SOCKET, SO_TIMESTAMPING, struct.pack("I", ask))]
+        sock.setsockopt(SOL_SOCKET, SO_TIMESTAMPING,
+                        SOF_SOFTWARE | SOF_RAW_HARDWARE | SOF_OPT_ID | SOF_OPT_TSONLY | SOF_OPT_TX_SWHW)
+
+    def send(self, packet):
+        kind = packet[12]
+        if kind == SYNC and self.last != SYNC:
+            self.sock.sendmsg([packet], self.ask)
+        else:
+            self.sock.send(packet)
+        self.last = kind
+
+    def drain(self):
+        while True:
+            try:
+                _, ancdata, _, _ = self.sock.recvmsg(1, 512, MSG_ERRQUEUE | MSG_DONTWAIT)
+            except BlockingIOError:
+                return
+            stamp = parse_stamp(ancdata)
+            if stamp:
+                self.stamps.setdefault(stamp[1], {})[stamp[0]] = stamp[2]
+
+    def draining(self, wait):
+        """The loop's wait, with the error queue emptied before it: the idle time pays for the reading."""
+        def drain_and_wait(target):
+            self.drain()
+            wait(target)
+        return drain_and_wait
+
+
+def stamp_report(plan, frames, stamps):
+    """The intervals between the syncs of the picture by the kernel's stamps."""
+    out = []
+    period = 1e9 / plan.fps
+    for kind, where in (("driver", "at the driver"), ("port", "at the port")):
+        got = stamps.get(kind, {})
+        if not got and not (kind == "port" and plan.stamp == "hw"):
+            continue
+        out.append("send: %s: %d of %d stamps" % (kind, sum(1 for n in range(frames) if n in got), frames))
+        gaps = [got[n + 1] - got[n] for n in range(frames - 1) if n in got and n + 1 in got]
+        if len(gaps) < 2:
+            continue
+        out.append(spread_line("sync to sync %s, ms" % where, gaps, 1e6, 3))
+        out.append("send: sync to sync %s less the period of %.3f ms, us: count" % (where, 1000 / plan.fps))
+        out += ["    %-16s %6d" % row for row in histogram([g - period for g in gaps])]
+    queue, driver = stamps.get("queue", {}), stamps.get("driver", {})
+    held = [driver[n] - queue[n] for n in range(frames) if n in queue and n in driver]
+    if held:
+        out.append(spread_line("from the queue to the driver, us", held, 1e3, 1))
+    return "\n".join(out) if out else "send: no stamps came back"
+
+
+def hwtstamp(sock, iface, config=None):
+    """The port's time stamp settings (flags, tx_type, rx_filter): read, or set to `config`."""
+    import ctypes
+    import fcntl
+    cfg = ctypes.create_string_buffer(struct.pack("iii", *(config or (0, 0, 0))), 12)
+    request = struct.pack("16sP", iface.encode(), ctypes.addressof(cfg)).ljust(40, b"\0")
+    fcntl.ioctl(sock, SIOCSHWTSTAMP if config else SIOCGHWTSTAMP, request)
+    return struct.unpack("iii", cfg.raw)
+
+
+def open_socket(plan):
+    """The sink of a raw socket on the plan's port. Linux only; needs CAP_NET_RAW."""
     import socket
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
-    if qdisc_bypass:
+    if plan.qdisc_bypass:
         s.setsockopt(SOL_PACKET, PACKET_QDISC_BYPASS, 1)
-    s.bind((iface, 0))
-    return s.send, s.close
+    s.bind((plan.iface, 0))
+    if not plan.stamp:
+        return Plain(s.send, s.close)
+    close = s.close
+    if plan.stamp == "hw":
+        before = hwtstamp(s, plan.iface)
+        hwtstamp(s, plan.iface, (0, HWTSTAMP_TX_ON, before[2]))
+
+        def close():
+            hwtstamp(s, plan.iface, before)               # leave the port as it was found
+            s.close()
+    return Stamper(s, plan.stamp == "hw", close)
 
 
 def scheduling():
@@ -523,7 +669,16 @@ def scheduling():
                                         ",".join(str(c) for c in sorted(os.sched_getaffinity(0))))
 
 
-def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_socket):
+def port_counter(iface, root="/sys/class/net"):
+    """How many packets the port has sent, or None where the system does not say."""
+    try:
+        with open(os.path.join(root, iface, "statistics", "tx_packets")) as f:
+            return int(f.read())
+    except (OSError, ValueError):
+        return None
+
+
+def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_socket, port_counter=port_counter):
     argv = sys.argv[1:] if argv is None else argv
     try:
         plan = plan_from(argv)
@@ -532,16 +687,27 @@ def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_s
     print("send: %s" % describe(plan), flush=True)
     print("send: %s; scheduling: %s" % ("dry run, no socket" if plan.dry_run else "on " + plan.iface,
                                         scheduling()), flush=True)
-    send, close = (lambda packet: None, lambda: None) if plan.dry_run else open_sink(plan.iface, plan.qdisc_bypass)
+    sink = Plain() if plan.dry_run else open_sink(plan)
+    before = None if plan.dry_run else port_counter(plan.iface)
     gc.disable()
     try:
-        log = run(plan, send, now, waiter(plan.wait, int(plan.spin_ms * 1e6), now, sleep))
+        log = run(plan, sink.send, now, sink.draining(waiter(plan.wait, int(plan.spin_ms * 1e6), now, sleep)))
+        if plan.stamp:
+            sleep(0.05)                                   # the last stamps are on their way
+            sink.drain()
     finally:
         gc.enable()
-        close()
+        sink.close()
     print(report(plan, log), flush=True)
+    after = None if before is None else port_counter(plan.iface)
+    if after is not None:
+        ours = len(log.syncs) * (plan.sync_reps + plan.bright_reps + H)
+        print("send: the port sent %d packets during the run: %d ours, %d not ours"
+              % (after - before, ours, after - before - ours), flush=True)
+    if plan.stamp:
+        print(stamp_report(plan, log.frames, sink.stamps), flush=True)
     if plan.log:
-        write_log(plan.log, plan, log)
+        write_log(plan.log, plan, log, sink.stamps)
         print("send: a line a frame in %s" % plan.log, flush=True)
     return 0
 

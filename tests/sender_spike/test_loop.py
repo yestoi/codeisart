@@ -265,3 +265,14 @@ def test_run_checks_its_plan():
     with pytest.raises(ValueError, match="25"):
         send.run(plan, bench.send, bench.now, bench.wait)
     assert bench.sent == []
+
+
+@pytest.mark.parametrize("order", ["rows-sync", "sync-rows"])
+def test_late_is_counted_from_when_the_frame_was_due(order):
+    bench = Bench(per_send=240_000)                        # 68 packets take 16.3 ms: the frames fall behind
+    frames = bench.run(["--order", order, "--jitter-ms", "3", "--seconds", "1", "--tail-seconds", "0"])
+    log = bench.log
+    due = [t + (a if order == "sync-rows" else 0) for t, a in zip(log.ticks, log.added)]
+    late = sum(1 for f, d in zip(frames, due) if f[0][0] - d > 1_000_000)
+    assert 0 < late < 60
+    assert log.late == late
