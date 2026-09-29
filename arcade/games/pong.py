@@ -25,7 +25,8 @@ BALL_START = 60.0       # px/s
 BALL_GAIN = 1.08        # the speed times this on each paddle hit
 BALL_MAX = 110.0
 MAX_ANGLE = 60          # degrees off horizontal at the paddle's edge
-CPU_SPEED = 24.0        # px/s: beatable by a ball that arrives late
+CPU_SPEED = 0.75        # wall heights per second (48 px/s at 64 rows): beatable by a ball that arrives late
+SCORE_SCALE = 2         # spec 7.4: both scores 10x14, top row y 1, centred on w/4 and 3w/4
 PADDLE_W = 2
 BALL = 2
 JOIN_SECONDS = 1.0
@@ -64,11 +65,13 @@ class Seat:
         self.points = 0
         self.seen = -math.inf       # when the human's body was last seen
         self.zone_x = 0.5
+        self.moved = False          # a human moved the paddle in this rally (C41)
+        self.moved_ever = False     # ... at any time in the game
 
 
 class Pong(Game):
     info = GameInfo(name="pong", title="PONG", verb="BLOCK", icon=ICON, needs=frozenset({"pose"}),
-                    layouts=frozenset({"128x32"}), players=2, kind="score")
+                    layouts=frozenset({"128x64"}), players=2, kind="score")
     PHASES = ("serve", "play", "point", "over")
     CAPTION_KEYS = ("phase", "left", "right")
     SCENARIOS = MappingProxyType({})     # filled below, once the scripts exist
@@ -221,6 +224,8 @@ class Pong(Game):
     def _launch(self) -> None:
         a = math.radians(self.rng.uniform(-SERVE_SPREAD, SERVE_SPREAD))
         self.vx, self.vy = self.serve_dir * self.speed * math.cos(a), self.speed * math.sin(a)
+        for seat in self.seats:
+            seat.moved = False
         self._set("play")
 
     def _clamp(self, y: float) -> float:
@@ -239,6 +244,7 @@ class Pong(Game):
                 new = y if cursor is None else self._clamp(cursor[1] * (self.h - 1))
                 if abs(new - y) >= 1.0 and self._synced:
                     self._active = True
+                    seat.moved = seat.moved_ever = True
             if side == "left":
                 self.left_y = new
             else:
@@ -248,7 +254,7 @@ class Pong(Game):
     def _cpu_y(self, side: str, y: float, dt: float) -> float:
         toward = self.vx < 0 if side == "left" else self.vx > 0
         target = self.by if self.phase == "play" and toward else (self.h - 1) / 2
-        step = CPU_SPEED * dt
+        step = CPU_SPEED * self.h * dt
         return self._clamp(y + max(-step, min(step, target - y)))
 
     def _step_ball(self, dt: float) -> None:
@@ -293,21 +299,24 @@ class Pong(Game):
 
     def _goal(self, scorer: int, direction: int) -> None:
         seat = self.seats[scorer]
-        seat.points += 1
+        banked = seat.ctrl is None or seat.moved        # C41: a human's point counts only if they moved
         self.serve_dir = direction              # served toward the side that conceded
         self.bx = 0.0 if direction < 0 else self.w - 1.0
         self.vx = self.vy = 0.0
+        self._set("point")
+        if not banked:
+            return
+        seat.points += 1
         color = seat.color if seat.ctrl is not None else CPU_COLOR
         self.fx.shake(2, 0.3)
         self.fx.pop("+1", self.w // 4 if scorer == self.left_seat else 3 * self.w // 4, self.h // 2, color)
-        self._set("point")
 
     def _finish(self) -> None:
         a, b = self.seats
         leader = b if b.points > a.points else a
         self.winner = "left" if leader is self.seats[self.left_seat] else "right"
         self.fx.celebrate(leader.color if leader.ctrl is not None else CPU_COLOR)
-        if not self._duel and self._humans() == 1:
+        if not self._duel and self._humans() == 1 and self._score_seat().moved_ever:
             self.scores.record(self._score_seat().points)
         self._set("over")
 
@@ -324,8 +333,9 @@ class Pong(Game):
         for y in range(0, h, 4):
             canvas.fill_rect(w // 2, y, 1, 2, NET_COLOR)
         left, right = self.seats[self.left_seat], self.seats[self.right_seat]
-        canvas.text(w // 4 - 3, 0, left.points, self._color(left))
-        canvas.text(3 * w // 4 - 3, 0, right.points, self._color(right))
+        for seat, centre in ((left, w // 4), (right, 3 * w // 4)):
+            width = canvas.text_width(seat.points, SCORE_SCALE)
+            canvas.text(centre - width // 2, 1, seat.points, self._color(seat), SCORE_SCALE)
         ph = self.paddle_h
         canvas.fill_rect(0, self.left_y - ph / 2, PADDLE_W, ph, self._color(left))
         canvas.fill_rect(w - PADDLE_W, self.right_y - ph / 2, PADDLE_W, ph, self._color(right))

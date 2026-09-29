@@ -20,7 +20,7 @@ from arcade.runner import SessionResult
 from arcade.sources.actors import TICK, scene
 from tests.arcade.helpers import make_cfg
 
-WALL = (128, 32)
+WALL = (128, 64)
 LEAD_IN = 1.0                  # seconds of an empty wall before the scenario
 RAW_FLASH_AREA = 0.10          # spec 7.6: a game's raw output may flash at most 10 percent of the wall
 MIRROR_SECONDS = 0.5           # spec 7.3: the figure within this of arrival
@@ -199,3 +199,32 @@ def test_first_playable_keeps_the_flash_rule(duel):
     # between games, and the lobby's mirror figure follows the hand turning at the top of each sweep, so a
     # pixel or two of its arm can switch more than 3 times a second. The governor never adds a flash.
     assert flash_area(pushed, **kw) <= flash_area(raw, **kw), seed
+
+
+def test_canonical_round_from_attract_to_the_card(font5x7):
+    cfg = make_cfg(WALL)
+    lobby = RecordingLobby([Pong], cfg)
+
+    def until_the_card_is_gone(runner):
+        """Canonical's frames, stopped on the first tick after the first card has shown."""
+        carded = False
+        for frame in Pong.SCENARIOS["canonical"]():
+            yield frame
+            mode = runner.trace[-1].get("mode")
+            carded = carded or mode == "card"
+            if carded and mode != "card" and mode is not None:
+                return
+
+    _, runner = run_headless(cfg, font5x7, [Pong], until_the_card_is_gone, trace=True, lobby=lobby)
+    trace = runner.trace
+    modes = []
+    for s in trace:
+        mode = s.get("mode") if s["game"] == "lobby" else s["game"]
+        if mode is not None and (not modes or modes[-1] != mode):    # the tick a game ends on has no lobby mode
+            modes.append(mode)
+    assert modes[:5] == ["attract", "mirror", "invite", "pong", "card"], modes
+    assert len(trace) < len(list(Pong.SCENARIOS["canonical"]())), "the run was cut short only by the card ending"
+    assert len(lobby.results) == 1, lobby.results
+    last = next(s for s in reversed(trace) if s["game"] == "pong")
+    card = next(s for s in trace if s.get("mode") == "card")
+    assert card["card_game"] == "pong" and card["card_score"] == last["score"] == lobby.results[0].score, (card, last)

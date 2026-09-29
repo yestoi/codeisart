@@ -29,7 +29,7 @@ class Good:
     look) it puts the paddle's centre where the ball will cross the paddle, off the walls; else it centres."""
 
     reaction_ticks, noise = 3, 0.02
-    WALL_W, WALL_H = 128, 32
+    WALL_W, WALL_H = 128, 64
     PADDLE_X = 2.0
 
     def __init__(self):

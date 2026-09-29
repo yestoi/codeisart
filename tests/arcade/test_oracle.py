@@ -9,7 +9,7 @@ import pytest
 from arcade import bots, feel
 from arcade.games.pong import Pong
 
-LAYOUT = "128x32"
+LAYOUT = "128x64"
 SEEDS = bots.seeds(Pong, LAYOUT, 20)
 
 
