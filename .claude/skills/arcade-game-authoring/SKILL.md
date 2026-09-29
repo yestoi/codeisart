@@ -123,7 +123,7 @@ def won(state: dict) -> bool: ...        # from the last debug_state(): the huma
 
 A bot has `reaction_ticks`, `noise`, and `__call__(state, t) -> Move | None`. It sees `debug_state()` that many
 ticks late (`{}` before), so keep everything it needs in `debug_state`. `Move(x=0.5, hand="right",
-wrist_y=None)`: `x` is in **zone coordinates**, 0 to 1 across the play zone (not wall pixels); `wrist_y` is the
+wrist_y=None, near=None)`: `x` is in **zone coordinates**, 0 to 1 across the play zone (not wall pixels); `wrist_y` is the
 wrist in the reach box, 0 top to 1 hip height, None for hand down; None instead of a Move is nobody in view.
 `arcade.bots.Nobody` is the no-input bot. `play(game_cls, bot, seed, layout)` adds the reaction delay and
 seeded noise (clamped to 0..1) and stops on `done()`, or when the session ends otherwise (a game whose
@@ -150,7 +150,7 @@ control set without `round_seconds`, `fidelity` and `range`.
 
 ```toml
 [fidelity]                      # what to correlate: the actor's input against the controlled _xy axis
-input = "cursor_y"              # "cursor_x" | "cursor_y" | "zone_x", read from sensed.player
+input = "cursor_y"              # "cursor_x" | "cursor_y" | "zone_x" | "near" | "far", from sensed.player
 xy = "left_xy"                  # a *_xy key of your debug_state
 axis = 1                        # 0 = x, 1 = y
 
@@ -193,7 +193,8 @@ frames pass `square_flashes <= 6`.
   (`fx.echo(player, kind)`).
 - Camera latency is already 100 to 200 ms: use hysteresis, and never smoothing that costs a tick.
 - Map the middle half of the reach box to the full playfield (`fidelity` and `range` measure this).
-  `body.cursor` is already the wrist in the reach box; raw frame coordinates are never a cursor.
+  The wrist in the reach box comes through `Cursor` and `Glide`, the body's depth through `Depth` (Controls);
+  raw frame coordinates are never a cursor.
 - Hint within three seconds of a still body (`idle_body`).
 - Rounds of 20 to 120 s; a game ends in 45 to 90 s or on a clear result.
 - Failure and success differ in hue and motion, not just in text.
@@ -205,6 +206,34 @@ frames pass `square_flashes <= 6`.
 - The runner draws a 2 px marker in the player's colour on the bottom row under them in every game, and the
   echoes: keep that row and the glyph area free of anything the player must read.
 - Coordinates may be floats: the canvas rounds and clips.
+
+## Controls (C44)
+
+A game reads its control from `sensed.player`, through one of the helpers in `arcade/input.py`. Pick the control
+the game needs; do not invent a fourth.
+
+- **Depth** (the whole body, one axis): `Depth(grace=capture_grace(CAMERA_FPS))`, then `depth.update(body, t,
+  sensed.camera_t)` every tick gives 0 to 1, 1 nearest the camera, or None for a dropout. It reads from where the
+  player started: the first capture after `reset()` is 0.5, and the span is `DEPTH_SPAN` (0.6, ln of the size ratio
+  across the whole range; `Depth.ratio(value)` inverts it). A player pinned at an end for `RECENTRE_SECONDS` drags
+  the centre inward, so nobody is stuck at an end. Call `reset()` when another body takes the seat. Pong is the
+  worked example: a step in raises the paddle, a step back lowers it.
+- **The hand, pointing**: `Cursor.update(body, t)` gives the wrist in the reach box; pass its value through a `Glide`
+  (`glide.update(value, t, sensed.camera_t)`) so the control moves on every tick and not ten times a second (the
+  camera captures at `camera_fps`, 10 by default; a raw capture holds for three ticks). The Glide interpolates and
+  never extrapolates; it adds at most one capture period of lag.
+- **Side to side**: `zone_x`, the hips across the play zone, 0 to 1.
+- Never read `body.cursor` raw for a control: it steps at the capture rate. `Cursor` and `Glide`, or `Depth`.
+- Declare the control in `<name>_feel.toml` `[fidelity] input`: `cursor_x`, `cursor_y`, `zone_x`, `near` or `far`.
+  `near` is ln(scale) (rises as the player steps in), `far` is -ln(scale) (rises as the player steps back). Pick the
+  one whose sign matches the `_xy` axis you correlate against (Pong: `far`, with y down the wall).
+- Bots: `Move(x=..., wrist_y=..., near=...)`. `near` is a Depth value, 0 far to 1 near, None for the start size; the
+  bot's body steps at a body's pace (`BODY_RANGE_SECONDS` = 0.8 s for the whole range), so a bot cannot teleport a
+  paddle. A hand game's bot drives `wrist_y`. Scripts use `Person.scale_to(ratio, seconds)`.
+- A still body scores nothing. A point counts when the control TRAVELLED over the rally, its max minus its min at
+  least a share of the control's range (C42, Pong's `TRAVEL_SHARE`), a threshold above what `degrade(**REAL_NOISE)`
+  makes a still body jitter (a still body's Depth wanders several pixels of a 48 px travel). Judging a 1 px tick of
+  movement lets noise score. A best is stored only when the player travelled in the game (C41, C42).
 
 ## 8. The effects toolkit (`fx`, spec 8.1)
 

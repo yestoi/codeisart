@@ -1,0 +1,4 @@
+# The owner's trial on the Mac: the camera at 30 captures a second instead of 10 (C44). Every grace shrinks with it,
+# because a grace is counted in captures (capture_grace), so 0.55 s at 10 fps is 0.18 s at 30. Every other key is
+# its default. Run: .venv/bin/python -m arcade run -v --config arcade.mac.toml
+camera_fps = 30
