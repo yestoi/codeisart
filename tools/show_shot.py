@@ -7,8 +7,12 @@
     python -m tools.show_shot --entry entries/hello --look both --out sheets/hello
     python -m tools.show_shot --entry entries/hello --capture-first --build "false" --out sheets/fallback
     python -m tools.show_shot --attract entries --look both --out sheets/attract
+    python -m tools.show_shot --session presses --every-ms 1000 --look both --out sheets/presses
+    python -m tools.show_shot --strips --look both --cols 3 --out sheets/strips
 
-Scripts: strip, edges, fullscreen, cc. --entry DIR plays an entry through the show's pipeline (in a temporary
+--session presses|strobe runs the whole show (ShowLoop on a fake display, real children, hello built in a temporary
+copy) and takes the frames AFTER the flash governor, each labelled `held <n>` (the governor's held ticks so far);
+--strips draws the strip's looks under hello's playing strip. Scripts: strip, edges, fullscreen, cc. --entry DIR plays an entry through the show's pipeline (in a temporary
 copy, real time; --capture-first records the fallback with the entry's own build, then --build replaces it) and
 --attract DIR scrolls the entries' sources; both keep --seconds (default 60 and 10) and --every-ms. Writes OUT.png (or OUT-plain.png and OUT-led.png with --look both) and
 OUT-distance.png (10 m, the middle of spec 1's 15 to 40 feet), each stamped with the git sha. Exits 1 and writes
@@ -36,10 +40,15 @@ if str(ROOT) not in sys.path:          # run as a script, the repository is not 
 from arcade.look import render                                                    # noqa: E402
 from show.attract import Attract                                                  # noqa: E402
 from show.config import Config, load_config                                       # noqa: E402
+from show.audio import FakeAudio                                                  # noqa: E402
+from show.display.fake import FakeDisplay                                         # noqa: E402
 from show.entries import Entry, load_entries, load_entry                          # noqa: E402
 from show.font import CELL_H, CELL_W, Font                                              # noqa: E402
+from show.lights import FakeLights                                                # noqa: E402
+from show.main import ShowLoop                                                    # noqa: E402
 from show.pipeline import EntryPlayer, Phase                                      # noqa: E402
-from show.renderer import Renderer                                                # noqa: E402
+from show.renderer import STRIP_LOOKS, renderer_for                               # noqa: E402
+from show.state import ALTERNATE_S, NOTICE_S, SHORT_BELOW, Show, strip_chars      # noqa: E402
 from show.terminal import Terminal                                                # noqa: E402
 from tools.arcade_shot import BACKGROUND, CAP_H, INK, PAD, TITLE_H, TITLE_INK, fit_width, git_sha, save_png  # noqa: E402
 
@@ -122,8 +131,8 @@ SCRIPTS: dict[str, Callable[[], list[Step]]] = {
 }
 
 
-def _renderer(cfg: Config, font: Font) -> Renderer:
-    return Renderer(font, cfg.width, cfg.height, cfg.columns, cfg.rows, cfg.phosphor_rgb, cfg.glow, cfg.view)
+def _renderer(cfg: Config, font: Font):
+    return renderer_for(cfg, font)
 
 
 def frames_from_steps(steps: list[Step], cfg: Config, font: Font) -> list[tuple[str, np.ndarray]]:
@@ -266,6 +275,150 @@ def frames_from_attract(entries_dir: Path, cfg: Config, font: Font, seconds: flo
     return frames
 
 
+SESSIONS = ("presses", "strobe")
+PRESSES = {"presses": [(1.0, 1), (3.0, 2), (3.5, 1)], "strobe": [(1.0, 1)]}
+SESSION_SECONDS = 40.0
+STROBE_S = 3.0
+STROBE_PERIOD_S = 0.05
+STROBE_C = r"""#include <stdio.h>
+#include <unistd.h>
+int main(void)
+{
+    static char buf[65536];
+    setvbuf(stdout, buf, _IOFBF, sizeof buf);   /* a whole screen goes out in one write */
+    printf("\033[?25l\033[2J");                 /* the cursor hidden first, the screen cleared, as hello.c does */
+    fflush(stdout);
+    usleep(1100000);                            /* a second of black: the build's text is out of the governor's window */
+    for (int k = 0; k < %(n)d; k++) {
+        if (k %% 2 == 0)                        /* a reverse screen ... */
+            printf("\033[H\033[7m%%*s\033[0m", %(cells)d - 1, "");
+        else                                    /* ... and black by turns */
+            printf("\033[H\033[2J");
+        fflush(stdout);
+        usleep(%(us)d);
+    }
+    return 0;
+}
+"""
+
+
+def _session_entries(name: str, cfg: Config, dest: Path) -> None:
+    """The session's entries in dest (a temporary directory): hello at stations 1 and 2, or the strobe at 1."""
+    if name == "strobe":
+        d = dest / "strobe"
+        d.mkdir(parents=True)
+        (d / "prog.c").write_text(STROBE_C % {"n": int(STROBE_S / STROBE_PERIOD_S), "cells": (cfg.rows - 1) * cfg.columns,
+                                              "us": int(STROBE_PERIOD_S * 1e6)})
+        (d / "shown.txt").write_text("\n")         # the source typed on the wall: a blank one, no glyphs under the strobe
+        (d / "entry.toml").write_text(
+            'title = "strobe"\nauthor = "Trey"\nyear = 2026\nstation = 1\nsource = "shown.txt"\n'
+            'build = "cc -o prog prog.c"\nrun = "./prog"\nbuild_seconds = 30\nrun_seconds = 10\n')
+        return
+    src = ROOT / "entries" / "hello"
+    for slug, station in (("hello", 1), ("hello-2", 2)):
+        shutil.copytree(src, dest / slug)
+        lines = (src / "entry.toml").read_text().splitlines(keepends=True)
+        (dest / slug / "entry.toml").write_text("".join(
+            f"station = {station}\n" if line.startswith("station") else
+            f'title = "{slug}"\n' if line.startswith("title") else line for line in lines))
+
+
+def frames_from_session(name: str, cfg: Config, seconds: float = SESSION_SECONDS, every_ms: int = 500,
+                        presses: list[tuple[float, int]] | None = None
+                        ) -> tuple[list[tuple[str, np.ndarray]], list[str], int]:
+    """The show itself: a ShowLoop on a fake display, stepped at most at cfg.fps in real time (its children are
+    real), button presses put on loop.presses at their times (`presses` overrides the session's). The frames are
+    what the governor let through (the display's last push), one every every_ms and one at each press, labelled
+    `<t>s held <n>` with the governor's held ticks so far; then the strip text of each frame and the governor's
+    held_ticks at the end. Built in a temporary copy of the entries: nothing lands in the checkout."""
+    if name not in SESSIONS:
+        raise ValueError(f"session must be one of {SESSIONS}, got {name!r}")
+    todo = sorted(PRESSES[name] if presses is None else presses)
+    frames: list[tuple[str, np.ndarray]] = []
+    strips: list[str] = []
+    held_ticks = 0
+    with tempfile.TemporaryDirectory() as tmp:
+        entries = Path(tmp) / "entries"
+        _session_entries(name, cfg, entries)
+        font_path = cfg.font_path if cfg.font_path.is_absolute() else ROOT / cfg.font_path
+        display = FakeDisplay()
+        loop = ShowLoop(replace(cfg, entries_dir=entries, font_path=font_path, capture=False), display=display,
+                        notify=lambda state: None)
+        loop._devices = True                       # no GPIO, button or sound device in a sheet: fakes
+        loop.lights, loop.audio = FakeLights(), FakeAudio()
+        period = 1.0 / cfg.fps
+        try:
+            start = time.monotonic()
+            loop.start(0.0)
+            next_keep = due = 0.0
+            while True:
+                t = time.monotonic() - start
+                if t < due:
+                    time.sleep(due - t)
+                    t = time.monotonic() - start
+                if t >= seconds:
+                    break
+                pressed = False
+                while todo and todo[0][0] <= t:
+                    loop.presses.put(todo.pop(0)[1])
+                    pressed = True
+                loop.step(t)
+                due = t + period
+                if (pressed or t >= next_keep) and display.last is not None:
+                    held_ticks = loop.wall.governor.held_ticks
+                    frames.append((f"{t:.1f}s held {held_ticks}", display.last.copy()))
+                    strips.append(loop.show.strip(t) if loop.show is not None else "")
+                    if t >= next_keep:
+                        next_keep = t + every_ms / 1000.0
+            if loop.wall is not None:
+                held_ticks = loop.wall.governor.held_ticks
+        finally:
+            loop._close()
+    return frames, strips, held_ticks
+
+
+class _NoPlayer:
+    """A player that plays nothing: Show only needs one to be current."""
+    done, crowd = False, False
+
+    def __init__(self, entry, term, cfg):
+        pass
+
+    def start(self, now, crowd=False):
+        pass
+
+    def stop(self):
+        pass
+
+    def tick(self, now):
+        return []
+
+
+def playing_strips(cfg: Config) -> list[tuple[str, str]]:
+    """hello's playing strip as Show builds it once the PLAYING notice is over: one text where the whole strip
+    fits, both halves of the alternation where it does not (label suffix, text)."""
+    entry = load_entry(ROOT / "entries" / "hello")
+    show = Show(cfg, {entry.station: entry}, Terminal(cfg.columns, cfg.rows - 1), FakeLights(), FakeAudio(),
+                _NoPlayer)
+    show.press(entry.station, 0.0)
+    if strip_chars(cfg) >= SHORT_BELOW:
+        return [("", show.strip(NOTICE_S))]
+    return [(" first half", show.strip(NOTICE_S)), (" second half", show.strip(NOTICE_S + ALTERNATE_S))]
+
+
+def frames_from_strips(cfg: Config, font: Font) -> list[tuple[str, np.ndarray]]:
+    """The strip script's play screen drawn by each strip look, under hello's playing strip."""
+    play = _strip_script()[1]
+    frames = []
+    for look in STRIP_LOOKS:
+        renderer = renderer_for(replace(cfg, strip_look=look), font)
+        term = Terminal(cfg.columns, cfg.rows - 1)
+        term.feed(play.data)
+        for suffix, text in playing_strips(cfg):
+            frames.append((look + suffix, renderer.render(term.screen, True, text).copy()))
+    return frames
+
+
 def sheet(frames, look: str, scale: int, title: str, gamma: float, cols: int) -> Image.Image:
     """The frames as captioned cells, cols to a row, under a title band."""
     h, w = frames[0][1].shape[:2]
@@ -316,8 +469,10 @@ def main(argv: list[str] | None = None) -> int:
     what.add_argument("--command")
     what.add_argument("--entry", type=Path, metavar="DIR")
     what.add_argument("--attract", type=Path, metavar="DIR")
+    what.add_argument("--session", choices=SESSIONS)
+    what.add_argument("--strips", action="store_true")
     ap.add_argument("--out", required=True, metavar="STEM")
-    ap.add_argument("--seconds", type=float, help="default 3 (--command), 60 (--entry), 10 (--attract)")
+    ap.add_argument("--seconds", type=float, help="default 3 (--command), 60 (--entry), 10 (--attract), 40 (--session)")
     ap.add_argument("--every-ms", type=int, default=500)
     ap.add_argument("--look", default="plain", choices=["plain", "led", "both"])
     ap.add_argument("--gamma", type=float, default=2.2)
@@ -348,6 +503,16 @@ def main(argv: list[str] | None = None) -> int:
         if failure:
             print(f"failure: {failure}")
         what_text = f"entry {args.entry.name}"
+    elif args.session:
+        seconds = SESSION_SECONDS if args.seconds is None else args.seconds
+        frames, strips, held_ticks = frames_from_session(args.session, cfg, seconds, args.every_ms)
+        for (label, _), text in zip(frames, strips):
+            print(f"{label}  {text}")
+        print(f"held {held_ticks}")
+        what_text = f"session {args.session} held {held_ticks}"
+    elif args.strips:
+        frames = frames_from_strips(cfg, font)
+        what_text = "strips " + " ".join(STRIP_LOOKS)
     elif args.attract:
         seconds = 10.0 if args.seconds is None else args.seconds
         frames = frames_from_attract(args.attract, cfg, font, seconds, args.every_ms)

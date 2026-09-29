@@ -202,3 +202,65 @@ def test_entry_and_attract_modes_write_stamped_sheets(tmp_path):
         assert names == ["sheet-distance.png", "sheet-led.png", "sheet-plain.png"], names
         for name in names:
             assert Image.open(stem.parent / name).text["git"] == git_sha()
+
+
+# -- the show itself in the sheets (it12 T-shot) ------------------------------------------------------------------
+
+from arcade.flash import flash_area                                     # noqa: E402
+from show import state as show_state                                    # noqa: E402
+from show.renderer import STRIP_LOOKS                                   # noqa: E402
+from show.state import strip_chars                                      # noqa: E402
+
+FAST = dict(typewriter_cps=5000, min_build_seconds=0.2, dwell=0.5)
+
+
+@pytest.mark.parametrize("size, per_look", [({}, 1), (dict(width=128, height=64, view="ink"), 2)])
+def test_strips_draw_three_looks(size, per_look, real_font):
+    cfg = Config(**FAST, **size)
+    frames = ss.frames_from_strips(cfg, real_font)
+    assert len(frames) == 3 * per_look
+    by_look = [[f for label, f in frames if label.startswith(look)] for look in STRIP_LOOKS]
+    program = (cfg.rows - 1) * CELL_H if cfg.view == "text" else cfg.height - CELL_H
+    for a, b in zip(by_look[:-1], by_look[1:]):
+        for fa, fb in zip(a, b):
+            assert (fa[:program] == fb[:program]).all()            # the program rows do not change with the look
+            assert not (fa[program:] == fb[program:]).all()        # the strip rows do
+    for label, text in ss.playing_strips(cfg):
+        assert 0 < len(text) <= strip_chars(cfg)
+    if per_look == 1:
+        assert ss.playing_strips(cfg)[0][1] == "NOW: hello by Trey, 2026, Not A.I."[:strip_chars(cfg)]
+
+
+@pytest.mark.skipif(shutil.which("cc") is None, reason="needs a C compiler")
+def test_presses_session_shows_queued_and_next(monkeypatch):
+    monkeypatch.setattr(show_state, "NOTICE_S", 0.3)
+    cfg = Config(**FAST)
+    frames, strips, held = ss.frames_from_session("presses", cfg, seconds=1.1, every_ms=100,
+                                                  presses=[(0.2, 1), (0.4, 2)])
+    print(strips)
+    assert any("PLAYING" in s for s in strips) and any("QUEUED #1" in s for s in strips)
+    assert any("NEXT: hello-2" in s for s in strips)
+    assert all(label.count("held") == 1 for label, _ in frames) and held == 0
+    assert _git_status_entries() == ""
+
+
+@pytest.mark.skipif(shutil.which("cc") is None, reason="needs a C compiler")
+def test_strobe_session_is_held():
+    cfg = Config(**FAST)
+    frames, strips, held = ss.frames_from_session("strobe", cfg, seconds=3.4, every_ms=1, presses=[(0.1, 1)])
+    assert held > 0
+    assert flash_area([f for _, f in frames], fps=cfg.fps) == 0.0
+
+
+@pytest.mark.skipif(shutil.which("cc") is None, reason="needs a C compiler")
+def test_session_and_strips_write_stamped_sheets(tmp_path, monkeypatch):
+    conf = tmp_path / "fast.toml"
+    conf.write_text("typewriter_cps = 5000\nmin_build_seconds = 0.2\ndwell = 0.5\n")
+    monkeypatch.setattr(ss, "PRESSES", {**ss.PRESSES, "presses": [(0.1, 1)]})
+    for k, mode in enumerate((["--strips"], ["--session", "presses", "--seconds", "0.3", "--every-ms", "100"])):
+        stem = tmp_path / f"m{k}" / "sheet"
+        assert ss.main(mode + ["--look", "both", "--config", str(conf), "--out", str(stem)]) == 0
+        names = sorted(p.name for p in stem.parent.iterdir())
+        assert names == ["sheet-distance.png", "sheet-led.png", "sheet-plain.png"], names
+        for name in names:
+            assert Image.open(stem.parent / name).text["git"] == git_sha()
