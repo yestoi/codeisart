@@ -1,0 +1,46 @@
+# First-logon setup for the ledvision VM, run by autounattend.xml from the answer disc.
+# provision.sh fills in the SSH keys below. Log: C:\ledvision-setup.log; done marker: C:\ledvision-setup.done
+Start-Transcript -Path C:\ledvision-setup.log -Append
+
+# Never sleep, never blank the screen, no hibernation, no password expiry
+powercfg /change standby-timeout-ac 0
+powercfg /change monitor-timeout-ac 0
+powercfg /hibernate off
+net accounts /maxpwage:unlimited
+
+# Don't let Windows Update reboot us mid-job
+New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Force | Out-Null
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Name NoAutoRebootWithLoggedOnUsers -Value 1 -Type DWord
+
+# Name the adapters by the MACs libvirt assigns
+Get-NetAdapter | Where-Object MacAddress -eq '52-54-00-4C-ED-01' | Rename-NetAdapter -NewName 'NAT'
+Get-NetAdapter | Where-Object MacAddress -eq '52-54-00-4C-ED-02' | Rename-NetAdapter -NewName 'LED-Card'
+
+# Throwaway VM behind libvirt NAT (owner's call): firewall off on every profile. The card adapter has no
+# DHCP, lands on the Public profile, and LEDVision's traffic there would otherwise be filtered.
+Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled False
+
+# Remote Desktop, for a viewer with a real mouse
+Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections -Value 0
+
+# OpenSSH server needs a download. At first logon the NAT lease can still be minutes away (and never comes
+# if the host firewall drops DHCP on virbr0), so wait for the Internet first, up to 20 minutes.
+for ($i = 0; $i -lt 120; $i++) {
+    if (Test-Connection -ComputerName 1.1.1.1 -Count 1 -Quiet) { break }
+    Start-Sleep -Seconds 10
+}
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+New-Item -ItemType Directory -Force -Path C:\ProgramData\ssh | Out-Null
+$keys = @(
+@AUTHORIZED_KEYS@
+)
+Set-Content -Path C:\ProgramData\ssh\administrators_authorized_keys -Value $keys -Encoding ascii
+icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F'
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -PropertyType String -Force | Out-Null
+Set-Service -Name sshd -StartupType Automatic
+Start-Service sshd
+Get-Service sshd
+
+Get-NetAdapter | Format-Table -AutoSize Name, InterfaceDescription, MacAddress, Status, LinkSpeed
+Set-Content -Path C:\ledvision-setup.done -Value (Get-Date)
+Stop-Transcript
