@@ -44,3 +44,16 @@ def test_readme_names_the_unit_and_watchdog():
     for word in ("show.service", "RuntimeWatchdogSec", "brightness_cap",
                  "LEDVision", "overlay", "Falcon Player", "User="):
         assert word in text, word
+
+
+def test_readme_says_what_stop_and_the_watchdog_do():
+    text = (DEPLOY / "README.md").read_text()
+    for word in ("every second", "SIGTERM", "black", "network-online", "NRestarts"):
+        assert word in text, word
+    assert "every few seconds" not in text
+
+
+def test_readme_names_the_soak_and_the_pattern_tool():
+    text = (DEPLOY / "README.md").read_text()
+    assert "python -m tools.show_soak" in text
+    assert "wall_pattern.py --config show.toml" in text
