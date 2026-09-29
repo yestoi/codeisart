@@ -1,0 +1,7 @@
+I0000 00:00:1790644225.545254 55089220 init-domain.cc:132] Fiber init: default domain = pthread, concurrency = 8, prefix = pthread-default
+I0000 00:00:1790644225.568233 55089220 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 89.4), renderer: Apple M1
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1790644225.614246 55089226 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1790644225.623552 55089227 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+camera  ok  device 0: 1280x720
+pose    ok  mediapipe 1.0.0: landmarker ran in 11 ms

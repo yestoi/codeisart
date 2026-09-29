@@ -261,3 +261,93 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - Owner questions: Q26 to Q31 defaulted under the standing instruction; Q32 answered by the owner. All of Q22 to Q32 are listed in gate.md.
 - Owner items open: the first live smoke (`.venv/bin/python -m arcade run`); the 2 x 2 wiring shown with the `index` pattern at 128x64.
 - Status: done. The loop gates here on the iteration cap (Q21) and does not start iteration 8.
+
+## Iteration 8 — 2026-09-28
+- Verdict (the operator's, written after reading feel.json and the sheets and before any other step; evidence at 99e09f6,
+  which is HEAD at verify): **M4b passes at 128x64.** `feel.json`: 16 budgets, `failures: []` (response_ticks 1, response_px 28,
+  fidelity 0.994, range 0.762, lit 0.026, dim 0.153 under Pong's 0.3 override, liveliness 0.0026, flash_area_raw 0,
+  square_flashes 0, score_visible 0.974, score_legible 1.0, win good 1.0, lazy 0.55, none 0.0, round 46.6 s, phases 1.0);
+  presence_answer_seconds 0.0 is measured with no budget and prints "-" in games.md (C40).
+  What the pixels show:
+  - Canonical sheet (plain, led, distance): attract title "PONG" at 2x, the mirror figure the wall's full height with 2 px
+    strokes, the hand-up pictogram beside the raised hand, Pong with both scores at 2x over each half, a dim blue net, "+1"
+    pops, the ring burst at the end, then the card "PONG 0 / BEST! / HAND UP = AGAIN" (two lines at 2x, the prompt at 1x).
+    In the distance look the 2x scores and the card's two big lines read well; the 1x prompt line still reads.
+  - Reads wrong: the canonical player loses 0 to 5 and the card says "BEST!" with 0 points; in the walk-up sheet the second
+    and third sessions also end 0 to 5 and each says "PONG 0 BEST!" again, the fourth ends 2 to 5 with "PONG 2 BEST!". A
+    best of 0 points, and a repeat of the stored best, should not be announced. Reproduced from the repo's own canonical
+    script, so it is carried (C43), to be checked against it07's card first.
+  - The canonical script's player never wins a point in three sessions of four: the sheets show the round's phases, not a
+    good game. The oracle's good bot wins 20 of 20, so this is the script, not the game's balance.
+  - Walk-up sheet: five sessions in 100 s; Pong relaunches within a second of each card because the top of the script's
+    sweep counts as a raised hand (S2's finding, the review confirmed it). The card is on the wall about 3 s each time.
+  - Strobe check (duel, card to lobby): raw and pushed frames are the same in all 40 pairs; flash_area raw 0.000, pushed
+    0.000; concurrent_area 0.001 against 0.1; square_flashes 3 against 6; held 0 of 3000; 3000 frames, none black. The
+    duel card shows "PONG 5" with no winner named (Q23, still unanswered). Two figures, orange and blue, full height.
+  - `index-128x64.png`: seams at column 64 and row 32, a corner mark in each corner in four colours, ticks every 8 px on
+    the top and left edges. Enough for the owner's 2 x 2 wiring check.
+  - `run-default.txt`: "wall 128x64, backend sdl", exit 0.
+  - The GIF is 256x128, 52 frames; its first frame shows the figure and the pictogram.
+- After the verdict, checked: the "BEST!" line is `arcade/attract/lobby.py:298` (`r.score >= r.best`, it06's code, not
+  changed in it08 beyond its size). C43 and Q41.
+- Plan: docs/superpowers/plans/2026-09-28-it08-four-panel-wall-128x64.md (167d513), 285 lines, thin. Not a safety slice: no
+  plan review.
+- Shipped: all of M4b's must, with C38, C39, C40 and C41; 32 files, 806 lines added, 235 removed, 167d513..2e016e5.
+  - S1 (7ea99fa): `LAYOUTS = {"128x64"}`; the defaults in `arcade/config.py`, `arcade.toml` and `Juice`; `run` logs the
+    wall's size; the tick budget has a case at 8192 pixels.
+  - S2 (2f9a261): C38. `response_ticks` is latency, the new `response_px` (at least 12) is magnitude; `feel.measure`
+    launches through the small lobby; the bots play the game's one declared layout.
+  - P1 (6eff63a, 789566b): Pong at 128x64, scores at 2x (C39), the movement rule (C41), the retune.
+  - P2 (4cbf08f): the small lobby for 64 rows: title, card head and "BEST!" at 2x, the figure at full height.
+  - P3 (5b964ea): the tools default to 128x64; `wall_pattern` draws every panel seam; C40.
+  - P4 (a055266): the game guide and live-smoke.md say 128x64.
+  - I1 (2e016e5): `SCORE_SCALES = (2,)`, S2's xfail mark removed.
+- Review: APPROVED after 1 round, 0 blocking (evidence/it08/reviewer-round1.md). 20 changed assert lines, none weakened.
+  The safety files and the runner are unchanged; the protocol changes only `LAYOUTS` and a docstring. The ball passed
+  through no paddle in 1,041,120 physics cases and 200 good-bot plays.
+- Deploy: none (phase 1)
+- Verify: 7/7 items passed.
+  - Freshness: `feel.json`, `games.md`, the six stamped PNGs and head.txt read 99e09f6 = HEAD at verify (2e016e5 plus the
+    operator's workflow files), from a clean tree.
+  - Tests green; skips 0 (it07: 0); collected 723 (it07: 675); doctor: camera ok, pose ok.
+  - Evidence: docs/superpowers/workflow/evidence/it08/, README with the decision on line 1.
+- Tests: 723 collected, 723 passed, 0 skipped, 139.7 s (it07: 675 in 133.6 s).
+- Minutes: orient 3, plan 10, implement 68 (serial 27, parallel 15, integration 24, no stretch), review 17, verify and
+  report 14. About 115 from orient (18:19) to the report (20:14), against a target of 90. Where the overrun went: S2 took
+  22 minutes in the serial lane; the suite-time round took 14; verify ran its commands twice (below).
+- Loop decisions:
+  - The owner, 18:19: "yes, make 128x64 the only layout and do M4b first" (Q33). Config, roadmap and the success criteria
+    were changed before the plan; `iterations-per-run` is 1.
+  - `LAYOUTS` changed after the tag `game-protocol-v1`. The reason, as the freeze asks: it is a data value, no member of
+    the protocol changed, and the owner decided the layout (Q33). The canary test was not edited and passes.
+  - Pong's 128x32 declaration was dropped, not kept beside 128x64: a second layout needs its own tuning and 20-seed report.
+  - After P1's merge the suite took 178 s against the plan's 175. P1 was sent back once with limits (20 seeds, no weakened
+    assert, no skip or slow mark, no loosened band). It retuned Pong so that rounds end by points, not the tests; the
+    suite fell to 141 s. The round took 14 minutes against the 10 given. The faster Pong is an owner question (Q40).
+  - No budget band was loosened. `feel_budgets.toml` gained `response_px` only.
+  - I1 changed a test stub (S2's `Scorer` drew at 1x before 2 s); the assert is unchanged and the review confirmed it.
+  - P2 found and fixed a real flicker in the lobby at 128x64 (`COLUMN_SLACK`), inside its own file.
+  - Verify's first run was thrown away: the compaction hook had added a footer to state.md after the operator's commit,
+    so `arcade_shot` stamped `43c95c7+dirty`. The footer was committed (99e09f6) and every command ran again. Lesson:
+    run `git status --short` as the first line of the evidence command and stop if it prints anything.
+  - A removal in the scratchpad was refused by the harness (a shell variable in an `rm`). It was not worked around: the
+    second run wrote to a new folder.
+  - The owner asked at 19:45 what to tell the agent that flashes the Colorlight card; the brief was given in the session.
+    The memory file records the 2 x 2 wall.
+- Carried forward:
+  - C42 (new): Pong's movement rule judges single ticks; camera jitter counts as movement and a slow player loses points.
+  - C43 (new): the card says "BEST!" at 0 points and on a repeat of the best.
+  - Closed: C38, C39, C40, C41.
+- Noted, not carried:
+  - Pong's balance at the new tuning (the CPU is easy, the ball is fast): the live smoke decides.
+  - The top of a sweep counts as a raised hand; the scripts relaunch Pong within a second of the card.
+  - A walking figure trails by 1 column; Copy Me and the attract director will need the column slack.
+  - X1 (`KeypointHold` relative to the body's box) was not run.
+  - Pong at 128x32, undeclared: a duel's `score_visible` is 0.763; the scores stay legible.
+  - `test_cpu_is_beatable`'s comment names 0.5 s, the code 0.2 s.
+  - Fourteen merged worktrees are left in place.
+- Owner questions: Q34 to Q41 defaulted under the standing instruction; Q32 and Q33 answered by the owner. All open ones
+  are listed in gate.md.
+- Owner items open: the first live smoke (`.venv/bin/python -m arcade run`, now at 128x64); the 2 x 2 wiring shown with
+  the `index` pattern at 128x64; the hardware bring-up.
+- Status: done. The loop gates here (Q33) and does not start iteration 9.

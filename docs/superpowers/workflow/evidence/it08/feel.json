@@ -1,0 +1,108 @@
+{
+ "pong": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.0,
+    "response_px": 28.0,
+    "fidelity": 0.9936740956080855,
+    "range": 0.7619047619047619,
+    "lit_fraction": 0.025675806505926723,
+    "dim_fraction": 0.15325423173080863,
+    "liveliness": 0.002645735606776458,
+    "flash_area_raw": 0.0,
+    "square_flashes": 0.0,
+    "score_visible": 0.9741379310344828,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 0.0,
+    "win_good": 1.0,
+    "win_lazy": 0.55,
+    "win_none": 0.0,
+    "round_seconds": 46.63333333333333,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.3,
+     "reason": "the dashed centre net is deliberately dim (0, 0, 96) so it never competes with the ball and paddles"
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ }
+}

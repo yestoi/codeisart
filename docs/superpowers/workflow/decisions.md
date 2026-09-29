@@ -316,3 +316,10 @@ default: yes, until the owner has played it. At 128x64: `CPU_SPEED` 0.35 wall he
 deadline: the first live smoke
 answer:
 status: defaulted (standing instruction)
+
+### Q41: When does the end card say "BEST!"?
+asked: it8 (verify)
+default: only when this session set tonight's new best, and only for a score above 0. Today the card says it whenever the score is equal to or above tonight's best after the session, so a round lost 0 to 5 says "BEST!", and so does every later round that ends on the same score (evidence/it08/pong-128x64-plain.png). The change is C43 and goes through the next arcade plan; nothing was changed in it08
+deadline: the next arcade iteration
+answer:
+status: defaulted (standing instruction)
