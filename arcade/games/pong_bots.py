@@ -1,9 +1,12 @@
 """Pong's bots (spec 9.3): the human is on the left, the CPU on the right, so a bot stands at zone x 0.3.
 
-The paddle follows the cursor's reach-box height, so aiming the paddle at the ball's y is wrist_y = y / (h - 1)."""
+The paddle follows the body's Depth (arcade/input.py), nearer up: its centre is paddle_h / 2 + (1 - near) *
+(h - paddle_h), so a bot that wants the paddle's centre at y stands at near = 1 - (y - paddle_h / 2) / (h - paddle_h).
+bots.play moves near at a body's pace (BODY_RANGE_SECONDS for the whole range)."""
 from __future__ import annotations
 
 from arcade.bots import Move
+from arcade.games.pong import NEAR_IS_UP, PADDLE_SHARE, PADDLE_W
 
 HUMAN_X = 0.3
 
@@ -30,7 +33,8 @@ class Good:
 
     reaction_ticks, noise = 3, 0.02
     WALL_W, WALL_H = 128, 64
-    PADDLE_X = 2.0
+    PADDLE_X = float(PADDLE_W)
+    AIM_OFFSET = 0.6        # of the paddle's half: a return about 30 degrees off flat, away from the CPU
 
     def __init__(self):
         self._last: tuple[float, float] | None = None
@@ -49,15 +53,33 @@ class Good:
     def _wanted(self, bx: float) -> bool:
         return True
 
+    def _near(self, y: float | None) -> float:
+        """The Depth value that puts the paddle's centre at y (0.5, the middle, for None), clamped to 0..1."""
+        if y is None:
+            return 0.5
+        paddle_h = round(self.WALL_H * PADDLE_SHARE)
+        up = 1.0 - (y - paddle_h / 2) / (self.WALL_H - paddle_h)
+        return min(1.0, max(0.0, up if NEAR_IS_UP else 1.0 - up))
+
+    def _angle(self, y: float | None, state: dict) -> float | None:
+        """Where to put the paddle's centre so the ball meets it AIM_OFFSET of its half off centre, on the side
+        that sends the ball away from the CPU's paddle (a flat return is one the CPU always reaches)."""
+        if y is None or not self.AIM_OFFSET:
+            return y
+        cpu = state.get("right_xy", (0.0, self.WALL_H / 2))[1]
+        away = -1.0 if cpu >= self.WALL_H / 2 else 1.0              # the ball goes up (-) when the CPU is low
+        half = round(self.WALL_H * PADDLE_SHARE) / 2 + 1.0
+        return y - away * self.AIM_OFFSET * half
+
     def __call__(self, state: dict, t: float) -> Move:
-        y = self._aim(state)
-        return Move(x=HUMAN_X, wrist_y=0.5 if y is None else y / (self.WALL_H - 1))
+        return Move(x=HUMAN_X, near=self._near(self._angle(self._aim(state), state)))
 
 
 class Lazy(Good):
     """Slow (8 ticks) and sloppy (0.08), and only moves while the ball is in the human's half."""
 
     reaction_ticks, noise = 8, 0.08
+    AIM_OFFSET = 0.0
 
     def _wanted(self, bx: float) -> bool:
         return bx < self.WALL_W / 2

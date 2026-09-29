@@ -1,4 +1,5 @@
-"""Pong (spec 8, game 2): a paddle on each side that follows a hand, a beatable CPU, first to 5 or the leader at 90 s."""
+"""Pong (spec 8, game 2): a paddle on each side that follows a body stepping in depth, a beatable CPU, first to 5
+or the leader at 90 s."""
 import dataclasses
 import functools
 import math
@@ -12,20 +13,24 @@ import numpy as np
 import pytest
 
 from arcade.canvas import Canvas
-from arcade.flash import BUDGET, flash_area, square_flashes
+from arcade.flash import BUDGET, SMALL_AREA, concurrent_area, flash_area, square_flashes
 from arcade.attract.lobby import Lobby
 from arcade import feel
 from arcade.bots import Nobody, for_game, play, seeds
 from arcade.game import REQUIRED_SCENARIOS, reserved
 from arcade.games import get_game
-from arcade.games.pong import _sweeps, BALL_GAIN, BALL_MAX, BALL_START, GAME, MAX_SECONDS, WIN_POINTS, Pong
+from arcade.games.pong import (_steps, BALL_COLOR, BALL_GAIN, BALL_MAX, BALL_START, GAME, HINT_COLOR,
+                               HINT_IDLE_SECONDS, HINT_LINES, MAX_SECONDS, TRAVEL_SHARE, WIN_POINTS, Pong, idle_body)
 from arcade.headless import OPENING_NIGHT, run_headless
+from arcade.input import Depth
 from arcade.juice import Juice
 from arcade.scores import Scores
-from arcade.sources.actors import TICK, Person, scene
+from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
 from tests.arcade.helpers import make_cfg, run
 
 WALL = (128, 64)
+HEIGHT = 0.7                    # the scripts' body (bots.BODY_HEIGHT): stepping to 0.78 keeps it in the zone
+TRAVEL = 48                     # the paddle's range at 128x64: h - paddle_h
 
 
 def seed(layout: str, i: int) -> int:
@@ -57,11 +62,23 @@ def drive(game: Pong, frames, until=None):
             return
 
 
-def stander(x=0.3, ticks=3000, wrist=None):
-    p = Person(x, id=1)
-    if wrist is not None:
-        p.wrist("right", wrist, wrist, seconds=ticks * TICK, at=0.0)
+def stander(x=0.3, ticks=3000, near=None):
+    """A body standing still, hands down; with near, it steps (0.5 s from 0.2 s) to the size a Depth that first
+    saw it reads as near, and stays there."""
+    p = Person(x, id=1, height=HEIGHT)
+    if near is not None:
+        p.scale_to(Depth.ratio(near), 0.5, at=0.2)
     return scene(persons=[p], ticks=ticks)
+
+
+def from_first_body(frames):
+    """frames from the first one with a body in it: the runner launches a game only when someone is there, and
+    a degraded scene has no capture for its first 0.15 s."""
+    started = False
+    for f in frames:
+        started = started or bool(f.bodies)
+        if started:
+            yield f
 
 
 def advance(game, frames, phase):
@@ -77,19 +94,31 @@ def test_registered_and_declared():
     assert info.needs == frozenset({"pose"}) and info.layouts == frozenset({"128x64"})
     assert info.players == 2 and info.kind == "score"
     assert Pong.PHASES == ("serve", "play", "point", "over")
-    assert Pong.CAPTION_KEYS == ("phase", "left", "right")
+    assert Pong.CAPTION_KEYS == ("phase", "left", "right", "near")
     assert set(Pong.SCENARIOS) == {"solo", "duel", "canonical", "idle_body", "nobody"}
 
 
-@pytest.mark.parametrize("wrist", [0.1, 0.9])
-def test_paddle_follows_hand_height(font5x7, wrist):
-    _, game, _ = run(Pong, stander(wrist=wrist, ticks=45), WALL, font5x7, seed=seed("128x64", 1))
+@pytest.mark.parametrize("ratio", [1.3, 0.77])
+def test_paddle_follows_depth(font5x7, ratio):
+    """A body that steps to 1.3 of the size it was first seen at (nearer) puts the paddle at the top, to 0.77 at
+    the bottom. Settled after 1.5 s, before any recentre (2 s pinned)."""
+    p = Person(0.3, id=1, height=HEIGHT).scale_to(ratio, 0.5, at=0.5)
+    _, game, _ = run(Pong, scene(persons=[p], ticks=75), WALL, font5x7, seed=seed("128x64", 1))
     state = game.debug_state()
     y = state["left_xy"][1]
-    if wrist < 0.5:
-        assert y <= 8, state
+    if ratio > 1:
+        assert y <= 12, state
     else:
-        assert y >= 23, state
+        assert y >= 52, state
+    assert state["near"] == round(0.5 + math.log(ratio) / 0.6, 2), state
+
+
+def test_the_hand_does_not_move_the_paddle(font5x7):
+    """Q42: the raised hand only launches; a still body sweeping its wrist 0 to 1 leaves the paddle where it is."""
+    game = make()
+    p = Person(0.3, id=1, height=HEIGHT).wrist("right", 0.0, 1.0, 1.0, at=0.5).wrist("right", 1.0, 0.0, 1.0)
+    ys = [game.debug_state()["left_xy"][1] for _ in drive(game, scene(persons=[p], ticks=90))]
+    assert len(set(ys)) == 1, sorted(set(ys))
 
 
 @pytest.mark.parametrize("x, cpu", [(0.3, "right"), (0.7, "left")])
@@ -101,12 +130,15 @@ def test_solo_player_gets_the_cpu_on_the_other_side(font5x7, x, cpu):
 
 def test_cpu_is_beatable():
     game = make()
-    frames = scene(persons=[_sweeps(Person(0.3, id=1), start=0.0, end=20.0)], ticks=600)   # a moving player (C41)
+    frames = scene(persons=[_steps(Person(0.3, id=1, height=HEIGHT), start=0.0, end=20.0)], ticks=600)   # C42
     advance(game, frames, "play")
+    game.vx = game.vy = 0.0                         # the ball held while the player steps through the rally
+    for _ in drive(game, frames, until=lambda g: g.t >= 3.0):
+        pass
     game.right_y = 4.0                              # the CPU paddle parked at the top
     game.bx, game.by = 96.0, 3.0                    # at BALL_MAX, reaching the far side of the field in 0.5 s
     game.speed = BALL_MAX
-    game.vy = 90.0
+    game.vy = 70.0
     game.vx = math.sqrt(BALL_MAX ** 2 - game.vy ** 2)
     advance(game, frames, "point")
     state = game.debug_state()
@@ -185,7 +217,7 @@ def test_second_player_joins_at_the_next_serve():
 
 def test_ball_speeds_up_on_each_hit_up_to_the_max():
     game = make()
-    frames = stander(x=0.3, ticks=6000, wrist=0.5)
+    frames = stander(x=0.3, ticks=6000, near=0.5)
     advance(game, frames, "play")
     speeds = [game.speed]
     assert speeds[0] == BALL_START
@@ -206,7 +238,7 @@ def test_ball_speeds_up_on_each_hit_up_to_the_max():
 
 def test_first_to_5_goes_over_then_done():
     game = make()
-    frames = stander(x=0.3, ticks=6000, wrist=0.5)
+    frames = stander(x=0.3, ticks=6000, near=0.5)
     for n in range(1, WIN_POINTS + 1):
         advance(game, frames, "play")
         game.bx, game.vx = -5.0, -BALL_START        # out behind the human on the left: the CPU scores
@@ -222,7 +254,7 @@ def test_first_to_5_goes_over_then_done():
 
 def test_time_limit_ends_at_90s():
     game = make()
-    frames = stander(x=0.3, ticks=6000, wrist=0.5)
+    frames = stander(x=0.3, ticks=6000, near=0.5)
     advance(game, frames, "play")
     game.seats[0].points, game.seats[1].points = 1, 2           # the CPU (right) leads
     game.t = MAX_SECONDS - 0.05
@@ -233,7 +265,7 @@ def test_time_limit_ends_at_90s():
 
 def test_time_limit_tie_goes_to_player_ones_side():
     game = make()
-    frames = stander(x=0.3, ticks=6000, wrist=0.5)
+    frames = stander(x=0.3, ticks=6000, near=0.5)
     advance(game, frames, "play")
     game.seats[0].points = game.seats[1].points = 2
     game.t = MAX_SECONDS
@@ -250,7 +282,7 @@ def test_active_is_a_bool_and_true_on_input():
     assert not any(states[:60])                                  # a still player: nothing before the sweeps
     assert any(states[150:])
     still = make()
-    quiet = [still.debug_state()["active"] for _ in drive(still, stander(ticks=20, wrist=0.5))]
+    quiet = [still.debug_state()["active"] for _ in drive(still, stander(ticks=20, near=0.5))]
     assert quiet and not any(quiet[1:])
 
 
@@ -298,26 +330,31 @@ def test_canonical_drives_the_lobby_to_pong(font5x7):
     assert raised <= first <= raised + 1, (first, raised)
 
 
-def _rally_with_ball_past_the_cpu(moves: bool):
-    """A human on the left in a rally; the ball is held still, the paddle moves or not, then the ball goes out
-    behind the CPU on the right. Returns the game after the point phase began."""
+def _rally_with_ball_past_the_cpu(travel: float):
+    """A human on the left in a rally; the ball is held still while the body steps over 3 s from 1.5 s so the
+    paddle travels `travel` px (0: stands still), then the ball goes out behind the CPU on the right. Returns the
+    game after the point phase began, the frames and the rally's travel as the game measured it."""
     game = make()
-    p = Person(0.3, id=1).wrist("right", 0.5, 0.5, seconds=100.0, at=0.0)
-    if moves:
-        p.wrist("right", 0.2, 0.8, seconds=0.5, at=1.5)
+    p = Person(0.3, id=1, height=HEIGHT)
+    if travel:
+        p.scale_to(Depth.ratio(0.5 + travel / TRAVEL), 3.0, at=1.5)
     frames = scene(persons=[p], ticks=900)
     advance(game, frames, "play")
     game.vx = game.vy = 0.0
-    for _ in drive(game, frames, until=lambda g: g.t >= 2.6):
+    for _ in drive(game, frames, until=lambda g: g.t >= 5.0):
         pass
     assert game.debug_state()["phase"] == "play"
+    seat = game.seats[game.left_seat]
+    moved = seat.hi - seat.lo
     game.bx, game.vx = game.w + 5.0, BALL_START
     advance(game, frames, "point")
-    return game, frames
+    return game, frames, moved
 
 
 def test_a_still_paddle_banks_no_point():
-    game, frames = _rally_with_ball_past_the_cpu(moves=False)
+    """C42: a player who moved the paddle under TRAVEL_SHARE of its range in the rally (10 px of 48) banks nothing."""
+    game, frames, moved = _rally_with_ball_past_the_cpu(travel=10)
+    assert moved == pytest.approx(10, abs=0.1), moved
     state = game.debug_state()
     assert (state["left"], state["right"]) == (0, 0), state
     assert game.fx.debug_state()["fx_pops"] == 0                 # no "+1" for a point nobody banked
@@ -326,10 +363,161 @@ def test_a_still_paddle_banks_no_point():
 
 
 def test_a_moving_player_still_scores():
-    game, frames = _rally_with_ball_past_the_cpu(moves=True)
+    game, frames, moved = _rally_with_ball_past_the_cpu(travel=20)
+    assert moved == pytest.approx(20, abs=0.1), moved
     state = game.debug_state()
     assert (state["left"], state["right"]) == (1, 0), state
     assert game.fx.debug_state()["fx_pops"] == 1
+
+
+@pytest.mark.parametrize("travel, points", [(17, 1), (10, 0), (0, 0)])
+def test_a_slow_player_keeps_the_point(travel, points):
+    """C42: a slow player whose paddle travels 17 px over 3 s in the rally banks the point; 10 px, or none, does
+    not. The threshold is TRAVEL_SHARE of the paddle's range: 14.4 px at 128x64 (the operator's ruling, from 12)."""
+    assert TRAVEL_SHARE * TRAVEL == pytest.approx(14.4)
+    game, _, moved = _rally_with_ball_past_the_cpu(travel=travel)
+    assert moved == pytest.approx(travel, abs=0.1), moved
+    state = game.debug_state()
+    assert (state["left"], state["right"]) == (points, 0), (travel, moved, state)
+
+
+def _still_under_noise(i: int, persons: int = 1):
+    """Still bodies, hands down, for 95 s (past MAX_SECONDS) under degrade(REAL_NOISE), from the first capture;
+    body ids from the seed, so each seed has its own noise."""
+    s = seeds(Pong, "128x64", 10)[i]
+    ids = [s % 1000 + 1000 * k for k in range(persons)]
+    people = [Person(x, id=body_id) for x, body_id in zip((0.3, 0.7), ids)]
+    return s, from_first_body(degrade(scene(persons=people, ticks=round(95 / TICK)), **REAL_NOISE))
+
+
+def test_a_still_body_under_real_noise_banks_nothing():
+    """C42 under REAL_NOISE: a still body's jitter never adds up to a rally's travel. The human side scores 0 and
+    no best is stored, on 10 seeds of 10."""
+    out = {}
+    for i in range(10):
+        s, frames = _still_under_noise(i)
+        game = make(i=i)
+        worst = 0.0
+        for _ in drive(game, frames, until=lambda g: g.done()):
+            seat = game._score_seat()
+            if game.phase == "play":
+                worst = max(worst, seat.hi - seat.lo)
+        state = game.debug_state()
+        out[s] = (state["score"], state["left"], game.scores.best(), round(worst, 2))
+    assert all(v[:3] == (0, 0, None) for v in out.values()), out
+    assert all(v[3] < TRAVEL_SHARE * TRAVEL for v in out.values()), out
+
+
+def test_a_still_body_under_real_noise_is_not_input():
+    """`active` judges the paddle's movement as C42 does, so a still body's jitter never keeps a session alive
+    (the runner's STILL PLAYING? prompt): with the ball held at the centre, no tick is active; a step is."""
+    s, frames = _still_under_noise(1)
+    game = make(i=1)
+    active = []
+    for _ in drive(game, frames, until=lambda g: g.t >= 60.0):
+        game.bx, game.by, game.vx, game.vy = game.w / 2, game.h / 2, 0.0, 0.0
+        active.append(game.debug_state()["active"])
+    assert not any(active), (s, active.index(True) * TICK)
+    stepper = make(i=1)
+    p = Person(0.3, id=1, height=HEIGHT).scale_to(1.28, 0.8, at=2.0)
+    seen = [stepper.debug_state()["active"] for _ in drive(stepper, scene(persons=[p], ticks=120))]
+    assert any(seen)
+
+
+def test_a_duel_with_both_bodies_still_scores_nothing():
+    """Two still bodies under REAL_NOISE: nobody banks a point, the game runs to MAX_SECONDS and stores no best."""
+    s, frames = _still_under_noise(0, persons=2)
+    game = make()
+    for _ in drive(game, frames, until=lambda g: g.done()):
+        pass
+    state = game.debug_state()
+    assert state["humans"] == 2 and (state["left"], state["right"]) == (0, 0), (s, state)
+    assert state["phase"] == "over" and game.t >= MAX_SECONDS - TICK, (s, game.t, state)
+    assert game.scores.best() is None, s
+
+
+def _points_entered(game, frames) -> int:
+    entered, last = 0, game.debug_state()["phase"]
+    for _ in drive(game, frames, until=lambda g: g.done()):
+        phase = game.debug_state()["phase"]
+        entered += phase == "point" and last != "point"
+        last = phase
+    return entered
+
+
+def test_duel_script_banks_every_point():
+    """C42: both of the duel's players step, so every goal banks: the point phases equal left + right."""
+    game = make()
+    entered = _points_entered(game, Pong.SCENARIOS["duel"]())
+    state = game.debug_state()
+    assert game.done() and state["humans"] == 2, state
+    assert entered == state["left"] + state["right"] and entered >= 1, (entered, state)
+
+
+def test_best_needs_travel_in_the_game():
+    """Solo stores a best; a still body stores none (C41's best, judged by travel)."""
+    game = make()
+    for _ in drive(game, Pong.SCENARIOS["solo"](), until=lambda g: g.done()):
+        pass
+    assert game.done() and game.scores.best() == game.debug_state()["score"], game.debug_state()
+    still = make()
+    for _ in drive(still, stander(ticks=2800), until=lambda g: g.done()):
+        pass
+    assert still.done() and still.scores.best() is None, still.debug_state()
+
+
+def _stepping_then_still(first: float, seconds: float = 60.0, gap: float = 9.0):
+    """A body standing still until `first`, then a step in and back (1.6 s), then still for `gap`, and so on."""
+    p, t = Person(0.3, id=1, height=HEIGHT), first
+    while t < seconds:
+        p.scale_to(1.28, 0.8, at=t).scale_to(1.0, 0.8)
+        t += 1.6 + gap
+    return scene(persons=[p], ticks=round(seconds / TICK))
+
+
+def test_hint_at_first_serve_and_after_idle(font5x7):
+    game = make()
+    frames = _stepping_then_still(3.0)
+    step(game, next(frames))
+    assert game.debug_state()["hint"] is True and game.debug_state()["phase"] == "serve"
+    for _ in drive(game, frames, until=lambda g: not g.debug_state()["hint"]):
+        pass
+    counted = game.t
+    seat = game.seats[game.left_seat]
+    assert game.phase == "play" and seat.hi - seat.lo >= TRAVEL_SHARE * TRAVEL, (counted, seat.hi - seat.lo)
+    played = 0.0
+    for _ in drive(game, frames, until=lambda g: g.debug_state()["hint"]):
+        played += TICK if game.phase == "play" else 0.0
+    assert game.debug_state()["hint"] is True, game.t
+    assert HINT_IDLE_SECONDS - 2 * TICK <= played, (counted, game.t, played)
+    # The ball is drawn over the hint: put it on a lit pixel of the hint, fully faded in, and look.
+    for _ in drive(game, frames, until=lambda g: g._hint_level >= 1.0 and g.phase in ("serve", "play")):
+        pass
+    canvas = Canvas(*WALL, font5x7)
+    game.draw(canvas)
+    ys, xs = np.nonzero((canvas.frame == HINT_COLOR).all(axis=2))
+    assert len(ys), "the hint is not drawn"
+    k = len(ys) // 2
+    game.bx, game.by = xs[k] + 0.5, ys[k] + 0.5
+    canvas.clear()
+    game.draw(canvas)
+    assert tuple(canvas.frame[ys[k], xs[k]]) == BALL_COLOR
+
+
+def test_hint_fits_and_keeps_the_flash_rule(font5x7):
+    canvas = Canvas(*WALL, font5x7)
+    widths = [canvas.text_width(line) - 1 for line in HINT_LINES]
+    assert widths == [71, 95] and max(widths) <= WALL[0], widths
+    s = seed("128x64", 9)
+    _, runner = run_headless(make_cfg(WALL), font5x7, Pong, _stepping_then_still(2.0, seconds=60.0, gap=12.0),
+                             seed=s, raw=True, trace=True)
+    hints = [st.get("hint") for st in runner.trace if "hint" in st]
+    turns = sum(a != b for a, b in zip(hints, hints[1:]))
+    assert turns >= 3, (s, turns)                                  # out, back in after the idle, and out again
+    raw = runner.raw_frames
+    assert concurrent_area(raw) < SMALL_AREA, s
+    assert flash_area(raw) == 0.0, s
+    assert square_flashes(raw) <= BUDGET, s
 
 
 def test_scores_drawn_at_2x(font5x7):
@@ -446,7 +634,7 @@ def test_good_round_length_in_band():
 
 def test_feel_file_overrides_have_reasons():
     data = tomllib.loads((Path(__file__).resolve().parents[2] / "arcade/games/pong_feel.toml").read_text())
-    assert data["fidelity"] == {"input": "cursor_y", "xy": "left_xy", "axis": 1}
+    assert data["fidelity"] == {"input": "far", "xy": "left_xy", "axis": 1}
     overrides = data["budgets"]["128x64"]
     assert "dim_fraction" in overrides
     for metric, table in overrides.items():

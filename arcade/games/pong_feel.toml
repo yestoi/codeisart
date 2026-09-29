@@ -1,6 +1,7 @@
-# Pong's feel: the paddle follows the cursor's height, and the dashed net is dim on purpose.
+# Pong's feel: the paddle follows the body in depth (nearer is up, so the paddle's y follows "far"), and the dashed
+# net is dim on purpose.
 [fidelity]
-input = "cursor_y"
+input = "far"
 xy = "left_xy"
 axis = 1
 
