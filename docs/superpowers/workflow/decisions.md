@@ -442,3 +442,31 @@ default: the spec (4.3) names the phases, not the words. A shell transcript: the
 deadline: the owner's first look at `python -m show` (D3)
 answer: the owner, 2026-09-29 01:33 CDT: "yes to Q55, Q56 and Q57". The default stands: the shell transcript around an entry, as the sheets of iteration 11 show it (evidence/it11/it11-hello-plain.png, it11-hello-fallback-plain.png)
 status: answered
+
+### Q59: Is the flash governor fast enough for the full wall on the Pi 4?
+asked: it12 (the plan writer's probe)
+default: the governor costs 4 to 6 ms a 512x192 frame on the Mac (M1; the worst frame 13 ms), about 0.4 ms at 128x64. On the Pi 4 it may pass the 50 ms of a frame at 20 a second. The loop runs at the rate it reaches: the governor's window is counted in frames, so a slower loop is stricter in seconds, never laxer. D4 measures it on the Pi; a faster governor would be its own safety slice, with a plan review
+deadline: D4 (the measure on the Pi); GATE C
+answer:
+status: defaulted (standing instruction)
+
+### Q60: May the governor hold fast typing on the 128x64 ink view?
+asked: it12 (the plan writer's probe)
+default: accepted on the proof of concept. In the ink view a cell is a dot, so typing at 400 characters a second changes a large share of the picture: the governor holds something on 21 % of the frames, up to 15 % of the pixels in one frame (on the full wall at most 2 %). Attract at 3 lines a second, hello's band, the cursor and the strip's alternation are not held in either view. The governor is not loosened for it
+deadline: the owner's first look at the proof of concept on the panels
+answer:
+status: defaulted (standing instruction)
+
+### Q61: Does the attract strip alternate on the 128x64 proof of concept?
+asked: it12
+default: yes. `PRESS A BUTTON ON ANY PORTRAIT` is 30 characters and 21 fit, so on 128x64 the attract strip alternates every 3 s between `PRESS A BUTTON` and `ON ANY PORTRAIT`, as the playing strip does by Q58. The full wall's strip is unchanged
+deadline: the owner's first look at `python -m show --config show.poc.toml`
+answer:
+status: defaulted (standing instruction)
+
+### Q62: What does a press on a portrait with no entry do?
+asked: it12
+default: the press is acknowledged: the keypress cue plays and the button's ring flashes; nothing is written on the strip and nothing is queued (spec 4.5: every press is acknowledged)
+deadline: GATE C (all five stations have entries by then)
+answer:
+status: defaulted (standing instruction)
