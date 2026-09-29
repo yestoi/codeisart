@@ -386,3 +386,24 @@ default: yes, from D3 on. An entry's output is arbitrary: a program can flip the
 deadline: the plan of D3
 answer: the owner, 2026-09-28 23:17 CDT: "yes to Q50, use the flash governor." The show's main loop passes every frame through the arcade's flash governor before the push, from D3 on; adding it is a safety slice
 status: answered
+
+### Q51: How do the rows split on the Reduced tier (512x128)?
+asked: it10
+default: `rows = 16`: 80x15 for programs plus the strip on row 16, as the show spec's table in 3.1 says. `cfg.rows` counts the strip on every tier (Full: 24, the terminal 80x23). Nothing in D1 changes for it; the owner sets `height` and `rows` in show.toml when the size tier is chosen
+deadline: GATE C (the size tier)
+answer:
+status: defaulted (standing instruction)
+
+### Q52: What does the strip show before D3, and does it carry the year?
+asked: it10
+default: the renderer draws the text it is given and cuts it at 80 columns. The sheets use the spec's strings (4.4) with the year added, "NOW: <title> by <author>, <year>, Not A.I. | NEXT: ...", matching the plaque (spec 3.5 revision 2: "Created by <author>, <year>, Not A.I."; the core plan's older text has no year). D3's `strip()` builds the real text
+deadline: the plan of D3
+answer:
+status: defaulted (standing instruction)
+
+### Q53: Which wall do the show's LED sheets show, and what can the 128x64 prototype show?
+asked: it10
+default: the sheets render the full 512x192 wall: 128x64 cannot hold 80 columns of 6 px. The prototype shows a 128x64 window of the wall, 21 columns by 8 rows, in the sheets by `--crop` and on the panels by D4's test pattern. No scaled-down terminal mode is built
+deadline: GATE C
+answer:
+status: defaulted (standing instruction)
