@@ -69,6 +69,7 @@ class SessionResult:
     players: int
     best: float | None           # tonight's best after this session
     waiting: bool                # someone beyond the game's players stands in the zone
+    new_best: bool = False       # tonight's best rose in this session: there was none at launch, or it is higher (C43)
 
 
 class LobbyLike(Game, Protocol):
@@ -350,7 +351,7 @@ class Runner:
         fx = Juice(random.Random(zlib.crc32(f"{self.seed}:{name}:{self._launches}:fx".encode())), self.cfg.size)
         self.current_name, self.fx, self._state, self._crash = name, fx, {}, None
         self._session = {"start": self.t, "local": self.local_clock(), "seen": self.t, "active": self.t,
-                         "prompt": None, "players": 0}
+                         "prompt": None, "players": 0, "best": self.scores.best(name, self.cfg.layout)}
         try:
             game = self.games[name]()
             self.game = game
@@ -368,9 +369,11 @@ class Runner:
         name, info = self.current_name, self.games[self.current_name].info
         s, state = self._session, self._state
         bodies = sum(b.in_zone for b in self._bodies)
+        best, before = self.scores.best(name, self.cfg.layout), s["best"]
         result = SessionResult(game=name, layout=self.cfg.layout, reason=reason, score=_finite(state.get("score")),
-                               duration=self.t - s["start"], players=s["players"],
-                               best=self.scores.best(name, self.cfg.layout), waiting=bodies > info.players)
+                               duration=self.t - s["start"], players=s["players"], best=best,
+                               waiting=bodies > info.players,
+                               new_best=best is not None and (before is None or best > before))
         self.sessions.append(name, self.cfg.layout, s["local"], result.duration, result.players, result.score,
                              reason)
         self._lobby_call(lambda: self.lobby.end_session(result))

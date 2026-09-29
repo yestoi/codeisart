@@ -31,7 +31,8 @@ SCALE_WEIGHT = 1.0        # cost per frame unit of scale difference (people at d
 COAST_COST = 0.1          # cost per second since a track was last seen: its prediction is less sure, so a tie
                           # between two tracks (two people crossing) goes to the one seen most recently
 VELOCITY_TAU = 0.1        # s: time constant of the velocity's smoothing after its first measurement
-SCALE_TAU = 0.3           # s: time constant of the scale's smoothing
+SCALE_TAU = 0.1           # s: time constant of the scale's smoothing; input.Depth's Glide smooths the control
+                          # itself, and at 0.3 s the two smoothers in a row lagged a ramp by 0.3 s (C44)
 ONE_EURO = dict(min_cutoff=1.0, beta=4.0, d_cutoff=1.0)   # keypoints in frame units per second
 
 

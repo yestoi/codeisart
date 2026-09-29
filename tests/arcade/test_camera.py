@@ -193,6 +193,19 @@ def test_tracker_scale_and_placement():
     assert small.update([det(0.25, h=0.6)], 0.0)[0].in_zone is False
 
 
+def test_tracker_scale_follows_a_step_within_three_captures():
+    """Depth reads Body.scale and smooths it itself (its Glide): the tracker's own smoothing must be quick, or two
+    smoothers in a row lag a step (C44). At SCALE_TAU 0.3 s the third capture after a step had 63 percent of it."""
+    tr = BodyTracker()
+    before, after = Body(0, *det(0.5, h=0.5)).scale, Body(0, *det(0.5, h=0.65)).scale
+    assert after == pytest.approx(1.3 * before)
+    for i in range(10):
+        tr.update([det(0.5, h=0.5)], i / 10)
+    got = [tr.update([det(0.5, h=0.65)], 1.0 + i / 10)[0].scale for i in range(3)]
+    share = [(g - before) / (after - before) for g in got]
+    assert share == sorted(share) and share[2] >= 0.9, share
+
+
 def test_tracker_orders_largest_scale_first():
     tr = BodyTracker()
     bodies = tr.update([det(0.2, h=0.3), det(0.7, h=0.6)], 0.0)

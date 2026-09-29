@@ -973,3 +973,27 @@ def test_session_result_score_is_a_finite_float_or_none(font5x7, score, want):
     result = runner.end_session("exit")
     assert result.score == want and type(result.score) is type(want)
     assert lobby.results[-1] is result
+
+
+def test_session_result_says_new_best_only_when_the_best_rose(font5x7):
+    # C43: the end card says BEST! only for a new best. The runner reads tonight's best at launch and compares.
+    class Recorder(SpyGame):
+        info = spy("rec").info
+        plays = iter([3, 3, 4, None])                                  # one score a session; None records nothing
+
+        def reset(self, size, rng, fx):
+            super().reset(size, rng, fx)
+            score = next(self.plays)
+            if score is not None:
+                self.scores.record(score)
+
+    runner, _, lobby = make_runner(font5x7, games=(Recorder,))
+    got = []
+    for _ in range(4):
+        assert runner.launch("rec")
+        feed(runner, stand(ticks=2))
+        got.append(runner.end_session("exit"))
+    assert [r.new_best for r in got] == [True, False, True, False], got
+    assert [r.best for r in got] == [3.0, 3.0, 4.0, 4.0], got
+    assert lobby.results == got
+    assert SessionResult("g", "64x64", "done", None, 1.0, 1, None, False).new_best is False   # defaulted

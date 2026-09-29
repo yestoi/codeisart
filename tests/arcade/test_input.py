@@ -1,10 +1,12 @@
+import dataclasses
 import math
 import zlib
 
 import numpy as np
 import pytest
 
-from arcade.input import CAPTURE_GRACE, Cursor, Edge, Hold, OneEuro, capture_grace
+from arcade.input import (CAPTURE_GRACE, DEPTH_SPAN, GLIDE_BETA, GLIDE_MIN_CUTOFF, PIN, RECENTRE_RATE,
+                          RECENTRE_SECONDS, RECENTRE_TO, Cursor, Depth, Edge, Glide, Hold, OneEuro, capture_grace)
 from arcade.sensed import LEFT_HIP, LEFT_WRIST, MIN_CONF, RIGHT_HIP, RIGHT_WRIST, Body, Keypoint
 from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
 
@@ -291,3 +293,145 @@ def test_one_euro_casts_its_samples():
         capture_grace(10**400)
     with pytest.raises(ValueError):
         Hold(10**400)
+
+
+# ----- Glide and Depth (C44): a control captured at the camera's rate, given on every tick -----
+
+def captures(seconds, fps=10, start=0.0, summed=False):
+    """(t, camera_t) at 30 Hz, the camera capturing at fps: camera_t is the newest capture at or before t (no
+    latency: a capture is seen on the tick it is taken). summed adds TICK tick by tick, as the runner adds dt."""
+    out, t = [], start
+    for i in range(round(seconds / TICK)):
+        if not summed:
+            t = start + i * TICK
+        out.append((t, start + math.floor(i * TICK * fps + 1e-9) / fps))
+        if summed:
+            t += TICK
+    return out
+
+
+def test_glide_moves_on_every_tick_between_captures():
+    # At 10 fps a captured value holds for three ticks: the paddle steps ten times a second. The Glide moves it
+    # on every tick, and only towards the newest filtered capture: interpolation, never extrapolation.
+    ramp = lambda c: 0.2 + 0.4 * c
+    for summed in (False, True):
+        g, ref = Glide(), OneEuro(GLIDE_MIN_CUTOFF, GLIDE_BETA)
+        newest, last_cam, prev = None, None, None
+        for t, cam in captures(1.5, summed=summed):
+            if cam != last_cam:
+                newest, last_cam = ref(ramp(cam), cam), cam
+            v = g.update(ramp(cam), t, cam)
+            assert type(v) is float and v <= newest + 1e-12, (summed, t, v, newest)
+            assert cam == 0.0 or v > prev, (summed, t, v, prev)       # from the second capture: every tick
+            assert g.value == v
+            prev = v
+    g = Glide()
+    assert g.update(0.3, 0.0, 0.0) == 0.3                             # the first value passes through
+    assert g.update(0.3, TICK, 0.0) == 0.3 and g.update(0.9, 2 * TICK, 0.0) == 0.3   # a held capture is not new
+
+
+def test_glide_lag_is_bounded():
+    # C44's accepted lag: one capture period (the glide) plus One Euro's 1 / (2 pi fc).
+    for size in (0.25, 0.5, 1.0):
+        g, crossed = Glide(), None
+        for t, cam in captures(2.0):
+            v = g.update(0.0 if cam < 1.0 else size, t, cam)
+            if crossed is None and cam >= 1.0 and v >= 0.9 * size:
+                crossed = t
+        assert crossed is not None and crossed - 1.0 <= 0.35, (size, crossed)
+    g, worst = Glide(), 0.0
+    for t, cam in captures(2.0):
+        v = g.update(cam, t, cam)                                     # one range a second
+        worst = max(worst, t - v)
+    assert worst <= 0.25, worst
+
+
+def test_glide_holds_through_grace_then_lets_go():
+    g = Glide(grace=0.55)
+    for t, cam in captures(1.0):
+        held = g.update(0.4, t, cam)
+    last = t
+    seen = []
+    for i, bad in enumerate([None, math.nan, math.inf, None] * 6, start=1):
+        t = last + i * TICK
+        seen.append((t - last, g.update(bad, t, cam + i * TICK)))
+    assert all(v == held for dt, v in seen if dt <= 0.55), seen      # dropped for up to the grace: held
+    assert all(v is None for dt, v in seen if dt > 0.55 + 1e-6), seen
+    assert g.value is None
+    assert g.update(0.9, t + TICK, cam + 2.0) == 0.9                  # fresh: no glide from the old value
+    assert g.update(0.9, t + 2 * TICK, cam + 2.0) == 0.9
+    for bad in (-0.1, math.nan, math.inf, None, True):
+        with pytest.raises(ValueError):
+            Glide(grace=bad)
+    assert Glide().grace == capture_grace(10)
+
+
+BASE = Person(0.5, height=0.7).body_at(0.0, 1)
+
+
+def at(ratio):
+    """BASE with its scale times ratio: nearer the camera when ratio > 1."""
+    return dataclasses.replace(BASE, scale=BASE.scale * ratio)
+
+
+def depth_run(depth, ratio_at, seconds, fps=10):
+    """[(t, value)] of depth fed a body whose scale ratio is ratio_at(capture time)."""
+    return [(t, depth.update(at(ratio_at(cam)), t, cam)) for t, cam in captures(seconds, fps)]
+
+
+def settled(ratio, seconds=1.5):
+    """A fresh Depth's value after the body first seen at ratio 1 has stood at ratio for seconds (< 2: no
+    recentre), and the Depth."""
+    d = Depth()
+    return depth_run(d, lambda c: 1.0 if c < 0.2 else ratio, 0.2 + seconds)[-1][1], d
+
+
+def test_depth_starts_at_half_and_reads_the_log_ratio():
+    d = Depth()
+    assert d.update(at(1.0), 0.0, 0.0) == 0.5 and d.raw == 0.5
+    assert d.update(None, TICK, 0.0) == 0.5                            # a dropout within the grace holds
+    for ratio, want in ((1.35, 1.0), (0.741, 0.0), (1.16, 0.75)):
+        v, d = settled(ratio)
+        assert v == pytest.approx(want, abs=0.01), ratio
+        assert d.raw == pytest.approx(0.5 + math.log(ratio) / DEPTH_SPAN), ratio
+    for ratio, want in ((2.0, 1.0), (0.5, 0.0)):
+        v, d = settled(ratio)
+        assert v == pytest.approx(want, abs=1e-3) and 0.0 <= v <= 1.0, ratio   # unclamped would be 1.66 or -0.66
+        assert (d.raw > 1.0) if want else (d.raw < 0.0), (ratio, d.raw)   # raw is unclamped
+    values = [settled(r)[0] for r in (0.8, 0.9, 1.0, 1.1, 1.2)]
+    assert values == sorted(values) and len(set(values)) == 5, values   # nearer is always larger
+
+
+def test_depth_ratio_inverts_the_map():
+    assert Depth.ratio(0.5) == 1.0
+    assert Depth.ratio(1.0) == pytest.approx(1.350, abs=1e-3) and Depth.ratio(0.0) == pytest.approx(0.741, abs=1e-3)
+    for v in (0.0, 0.25, 0.5, 0.9, 1.0):
+        got, _ = settled(Depth.ratio(v))
+        assert got == pytest.approx(v, abs=0.01), v
+    assert Depth.ratio(0.75, span=1.2) == pytest.approx(math.exp(0.3))
+
+
+def test_depth_recentres_after_two_seconds_pinned():
+    # Pinned at an end (a player who stepped back past the range) for RECENTRE_SECONDS, the centre follows: the
+    # reading rises from the end at RECENTRE_RATE until the body reads RECENTRE_TO inside it, and stays.
+    assert (RECENTRE_SECONDS, RECENTRE_RATE, RECENTRE_TO, PIN) == (2.0, 0.25, 0.15, 0.02)
+    run = depth_run(Depth(), lambda c: 1.0 if c < 0.5 else 0.6, 6.0)   # at 0.6 from 0.5 s
+    v = lambda when: min(run, key=lambda e: abs(e[0] - when))[1]
+    assert all(x < 0.01 for t, x in run if 0.9 <= t <= 2.5), run      # reads 0 for 2 s
+    rise = v(2.9) - v(2.7)
+    assert rise == pytest.approx(0.2 * RECENTRE_RATE, abs=0.015), rise
+    assert all(x == pytest.approx(RECENTRE_TO, abs=0.01) for t, x in run if t >= 3.6), run
+    back = depth_run(Depth(), lambda c: 0.6 if 0.5 <= c < 2.4 else 1.0, 4.0)   # pinned 1.9 s, then back
+    assert all(x < 0.01 for t, x in back if 0.9 <= t < 2.4), back
+    assert back[-1][1] == pytest.approx(0.5, abs=0.01)                # the centre did not move
+    near = depth_run(Depth(), lambda c: 1.0 if c < 0.5 else 1.6, 6.0) # the other end: from 1 down to 0.85
+    assert near[-1][1] == pytest.approx(1.0 - RECENTRE_TO, abs=0.01)
+
+
+def test_depth_rejects_a_bad_span():
+    for bad in (0, 0.0, -0.6, math.nan, math.inf, -math.inf, None, True):
+        with pytest.raises(ValueError):
+            Depth(span=bad)
+    with pytest.raises(ValueError):
+        Depth(grace=-1.0)
+    assert Depth().span == DEPTH_SPAN == 0.6 and Depth(span=np.float32(0.5)).span == 0.5
