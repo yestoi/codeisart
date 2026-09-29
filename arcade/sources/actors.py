@@ -429,6 +429,9 @@ def degrade(frames: Iterable[Sensed], fps: float = 10, latency: float = 0.15, ke
     one the input was placed with: a captured body whose placement that calibration does not reproduce
     (a scene built with another zone, or a body never placed) raises ValueError rather than moving the
     zone silently.
+
+    Each capture's scale is measured again from its noisy keypoints (a raw capture's jitter, C44): a still body's
+    ln(scale) varies by about 0.025 SD. shake keeps the scale, so it never moves the runner's player lock.
     """
     if not fps > 0 or not latency >= 0 or not 0 <= keypoint_dropout <= 1 or not jitter >= 0:
         raise ValueError(f"degrade needs fps > 0, latency >= 0, dropout in [0, 1], jitter >= 0; got "
@@ -452,7 +455,8 @@ def degrade(frames: Iterable[Sensed], fps: float = 10, latency: float = 0.15, ke
             for old in [j for j in seen if j < src]:
                 del seen[old]
             _require_placed(shot.bodies, cal, "degrade", shot.t)
-            bodies = tuple(place(_noisy(b, src, "degrade", keypoint_dropout, jitter), cal) for b in shot.bodies)
+            bodies = tuple(place(_noisy(b, src, "degrade", keypoint_dropout, jitter, rescale=True), cal)
+                           for b in shot.bodies)
             held = (k, dataclasses.replace(shot, bodies=bodies))
         shot = held[1]
         yield dataclasses.replace(s, camera_t=shot.t, camera_fresh=fresh, camera_seq=k + 1, bodies=shot.bodies,

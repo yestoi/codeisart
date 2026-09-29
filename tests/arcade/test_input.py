@@ -428,6 +428,28 @@ def test_depth_recentres_after_two_seconds_pinned():
     assert near[-1][1] == pytest.approx(1.0 - RECENTRE_TO, abs=0.01)
 
 
+def test_depth_still_body_under_real_noise_stays_within_0_18():
+    # A still body's scale jitters from capture to capture (the nose and hips jitter and drop out; without the
+    # nose the scale is 1.5 torsos); degrade measures it from the noisy keypoints. Measured in it09 (S1, these
+    # 10 bodies, 60 s each): the raw reading ranges over 0.19 to 0.21, Depth's output over 0.10 to 0.168, which
+    # is 8.1 px of Pong's 48 px travel. The plan's 0.15 came from a probe that did not reproduce (the operator's
+    # ruling). Pong's travel threshold sits above this bound.
+    spreads = {}
+    for n in range(10):
+        seed = zlib.crc32(f"depth-still-{n}".encode())
+        body_id = seed % 1000
+        d, values = Depth(), []
+        person = Person(0.5, height=0.7, id=body_id)
+        for s in degrade(scene(persons=[person], ticks=round(60 / TICK)), **REAL_NOISE):
+            v = d.update(s.bodies[0] if s.bodies else None, s.t, s.camera_t)
+            if s.t >= 1.0:
+                values.append(v)
+        assert None not in values, f"seed {seed} (body id {body_id})"
+        spreads[f"seed {seed} (body id {body_id})"] = round(max(values) - min(values), 3)
+    assert max(spreads.values()) <= 0.18, spreads
+    assert max(spreads.values()) >= 0.05, spreads        # the noise is on: a body with no jitter proves nothing
+
+
 def test_depth_rejects_a_bad_span():
     for bad in (0, 0.0, -0.6, math.nan, math.inf, -math.inf, None, True):
         with pytest.raises(ValueError):
