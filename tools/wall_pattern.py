@@ -2,18 +2,23 @@
 
     python tools/wall_pattern.py rgb   --iface eth0                  # pixel order
     python tools/wall_pattern.py index --iface eth0                  # every panel where it should be
+    python tools/wall_pattern.py panels --iface eth0                 # each panel's row and column, "r,c"
+    python tools/wall_pattern.py grid  --iface eth0                  # alignment and tearing: lines every 8 px
     python tools/wall_pattern.py steps --iface eth0 --brightness 0.4 # the brightness packet
     python tools/wall_pattern.py gamma --iface eth0                  # who applies gamma
     python tools/wall_pattern.py rgb   --backend sdl                 # the same picture in a window
     python tools/wall_pattern.py rgb   --png rgb.png                 # or as a file, with no display
+    python tools/wall_pattern.py panels --config show.toml           # the show's wall, cap and gamma
 
 The colorlight backend needs Linux and CAP_NET_RAW (show/display/colorlight.py), so on the wall this runs
 from the Omarchy box or a Pi, after the card's one-time LEDVision setup. The default is 128x64, the four
 panels 2 x 2; `--width 128 --height 32` is one row of two panels, `--width 64 --height 64` a column.
 It runs until Ctrl-C, or for --seconds, and leaves the wall dark. Brightness is the card's brightness packet,
-0.1 unless asked, and never over CAP (0.4, what the power supplies are sized for). No pattern lights half the
-wall. Each pattern prints what to look for; write what the panel shows into
-docs/superpowers/workflow/evidence/hardware.md.
+0.1 unless asked, and never over CAP (0.4, what the power supplies are sized for) or the config's
+brightness_cap. No pattern lights half the wall (no `white`, Q64). Every frame passes the flash governor
+(show.wall.GovernedDisplay) on its way to the display, as the show's do. `--config show.toml` takes the wall
+from the show's config (backend, size, interface, DDP address, gamma, cap); a flag on the line wins. Each
+pattern prints what to look for; write what the panel shows into docs/superpowers/workflow/evidence/hardware.md.
 """
 from __future__ import annotations
 
@@ -31,14 +36,19 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:          # run as a script, the repository is not on the path
     sys.path.insert(0, str(ROOT))
 
+from show.config import load_config  # noqa: E402
 from show.display import make_display  # noqa: E402
 from show.font import CELL_H, CELL_W, Font  # noqa: E402
+from show.renderer import draw_text  # noqa: E402
+from show.wall import GAMMA_MAX, GAMMA_MIN, GovernedDisplay  # noqa: E402
 
 CAP = 0.4                     # the brightness the power supplies are sized for (arcade.toml, show.toml)
 PANEL_W, PANEL_H = 64, 32      # one panel
 LEVEL = 128                   # the byte the solid colours use
 STEP_SECONDS = 2.0            # how long `steps` holds each level
 STEPS = (0.125, 0.25, 0.5, 1.0)   # shares of --brightness, low to high
+MAX_FPS = 60.0                # the push rate the tool refuses over
+BACKENDS = ("colorlight", "sdl", "ddp")   # the displays the tool can choose; a config's `fake` is refused
 HARDWARE_MD = "docs/superpowers/workflow/evidence/hardware.md"
 FONT_PATH = ROOT / "fonts" / "5x7.bin"
 
@@ -62,6 +72,12 @@ LOOK_FOR = {
              "lighter patch (186). The checker matches the LEFT patch: the card sends bytes as they are, keep "
              "gamma = 2.2 in arcade.toml. It matches the RIGHT patch: the card applies gamma, set gamma = 1.0. "
              "Bottom: 16 grey steps from black to white; write how many of the dark ones you can tell apart.",
+    "grid": "Thin white lines every 8 pixels, across and down, the first along the top and the left edge. A line "
+            "that breaks, doubles or steps sideways at a panel edge: the panels are misaligned or the LEDVision "
+            "layout is wrong. Lines that shimmer or tear while it runs: write where.",
+    "panels": "Each panel shows its row and column, \"r,c\", in white at its top left: 0,0 top left, 0,1 to its "
+              "right, 1,0 below it. A label in the wrong place, mirrored or upside down: the panels are swapped, "
+              "rotated or chained the other way; write what each panel shows.",
 }
 
 
@@ -125,34 +141,76 @@ def steps(width: int, height: int, t: float) -> np.ndarray:
     return frame
 
 
+def grid(width: int, height: int, t: float) -> np.ndarray:
+    frame = _blank(width, height)
+    frame[::8] = WHITE
+    frame[:, ::8] = WHITE
+    return frame
+
+
+def panels(width: int, height: int, t: float) -> np.ndarray:
+    frame, font = _blank(width, height), Font.load(FONT_PATH)
+    for r in range(height // PANEL_H):
+        for c in range(width // PANEL_W):
+            draw_text(frame, c * PANEL_W + 2, r * PANEL_H + 2, f"{r},{c}", font, WHITE)
+    return frame
+
+
 PATTERNS: dict[str, Callable[[int, int, float], np.ndarray]] = {"rgb": rgb, "index": index, "steps": steps,
-                                                                "gamma": gamma}
+                                                                "gamma": gamma, "grid": grid, "panels": panels}
 
 
-def _refusal(pattern: str, brightness: float) -> str | None:
+def _number(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def governor_fps(fps: float) -> int:
+    """The governor's frames a second: never under the push rate, so its window is never under a real second."""
+    return max(2, math.ceil(fps))
+
+
+def _refusal(pattern: str, brightness: float, cap: float = CAP) -> str | None:
+    limit = min(cap, CAP)
     if pattern not in PATTERNS:
         return f"wall_pattern: unknown pattern {pattern!r}; choose from {', '.join(sorted(PATTERNS))}"
-    if not (isinstance(brightness, (int, float)) and math.isfinite(brightness) and 0.0 < brightness <= CAP):
-        return f"wall_pattern: brightness must be over 0 and at most {CAP} (the power supply cap), got {brightness!r}"
+    if not (_number(brightness) and math.isfinite(brightness) and 0.0 < brightness <= limit):
+        return (f"wall_pattern: brightness must be over 0 and at most {limit:g} (the power supply cap), "
+                f"got {brightness!r}")
+    return None
+
+
+def _rate_refusal(fps: float, gamma: float) -> str | None:
+    if not (_number(fps) and math.isfinite(fps) and 0.0 < fps <= MAX_FPS):
+        return f"wall_pattern: fps must be over 0 and at most {MAX_FPS:g}, got {fps!r}"
+    if not (_number(gamma) and GAMMA_MIN <= gamma <= GAMMA_MAX):
+        return (f"wall_pattern: gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+                f"are), got {gamma!r}")
     return None
 
 
 def run(pattern: str, display, width: int, height: int, brightness: float = 0.1, seconds: float = 0.0,
         fps: float = 20.0, clock: Callable[[], float] = time.monotonic,
-        sleep: Callable[[float], None] = time.sleep, out: Callable[[str], None] = print) -> int:
-    """Show pattern on display until seconds have passed (0: until Ctrl-C), then two black frames (the card
-    shows a frame when the next one starts) and close. Returns 0, or 2 without touching the display when the
-    pattern is unknown or the brightness is not in (0, CAP]."""
-    refusal = _refusal(pattern, brightness)
+        sleep: Callable[[float], None] = time.sleep, out: Callable[[str], None] = print,
+        gamma: float = 2.2, cap: float = CAP) -> int:
+    """Show pattern on display, every frame through the flash governor, until seconds have passed (0: until
+    Ctrl-C), then close the governed wall: two governed black frames (the card shows a frame when the next one
+    starts). Returns 0; 1 after an OSError from the display, said, the wall closed; or 2 without touching the
+    display when the pattern is unknown, the brightness is not in (0, min(cap, CAP)], the fps not in
+    (0, MAX_FPS] or the gamma not in [GAMMA_MIN, GAMMA_MAX]. The display is reached only through the wall."""
+    refusal = _refusal(pattern, brightness, cap) or _rate_refusal(fps, gamma)
     if refusal:
         out(refusal)
         return 2
+    wall = GovernedDisplay(display, height, width, governor_fps(fps), gamma)
     out(f"{pattern} at {width}x{height}, brightness {brightness:g}. Ctrl-C to stop.")
     out(LOOK_FOR[pattern])
     out(f"Write what the panel shows into {HARDWARE_MD}.")
+    # `steps` sets the device brightness, which the governor does not see: at most once every STEP_SECONDS,
+    # and never over brightness, itself at most min(cap, CAP).
     level = brightness * STEPS[0] if pattern == "steps" else brightness
+    code = 0
     try:
-        display.set_brightness(level)
+        wall.set_brightness(level)
         start = clock()
         while True:
             t = clock() - start
@@ -160,17 +218,17 @@ def run(pattern: str, display, width: int, height: int, brightness: float = 0.1,
                 break
             if pattern == "steps" and brightness * STEPS[step_of(t)] != level:
                 level = brightness * STEPS[step_of(t)]
-                display.set_brightness(level)
-            display.push(PATTERNS[pattern](width, height, t))
+                wall.set_brightness(level)
+            wall.push(PATTERNS[pattern](width, height, t))
             sleep(1.0 / fps)
     except KeyboardInterrupt:
         pass
+    except OSError as e:
+        out(f"wall_pattern: the display failed: {e}")
+        code = 1
     finally:
-        black = _blank(width, height)
-        display.push(black)
-        display.push(black)
-        display.close()
-    return 0
+        wall.close()        # the counted frame again if its send failed, then governed black, then closed
+    return code
 
 
 def save_png(pattern: str, width: int, height: int, path: str, scale: int = 8) -> None:
@@ -180,30 +238,54 @@ def save_png(pattern: str, width: int, height: int, path: str, scale: int = 8) -
     Image.fromarray(frame).resize((width * scale, height * scale), Image.NEAREST).save(path)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(defaults: bool = True) -> argparse.ArgumentParser:
+    """The flags; with defaults=False a flag not on the line is left out of the result (what --config fills)."""
+    def d(value):
+        return value if defaults else argparse.SUPPRESS
+
     p = argparse.ArgumentParser(prog="wall_pattern", description="Test patterns for the LED wall")
     p.add_argument("pattern", choices=sorted(PATTERNS))
-    p.add_argument("--backend", default="colorlight", choices=["colorlight", "sdl", "ddp"])
-    p.add_argument("--iface", default="eth0", help="the wired interface the card is on (colorlight)")
-    p.add_argument("--width", type=int, default=128)
-    p.add_argument("--height", type=int, default=64)
-    p.add_argument("--brightness", type=float, default=0.1, help=f"over 0, at most {CAP}")
-    p.add_argument("--seconds", type=float, default=0.0, help="0 runs until Ctrl-C")
-    p.add_argument("--fps", type=float, default=20.0)
-    p.add_argument("--sdl-scale", type=int, default=8)
-    p.add_argument("--ddp-host", default="127.0.0.1")
-    p.add_argument("--ddp-port", type=int, default=4048)
-    p.add_argument("--png", default="", help="save the pattern to this file and exit; no display is opened")
+    p.add_argument("--config", default=d(""), help="take the wall from this show config (show.toml); flags win")
+    p.add_argument("--backend", default=d("colorlight"), choices=list(BACKENDS))
+    p.add_argument("--iface", default=d("eth0"), help="the wired interface the card is on (colorlight)")
+    p.add_argument("--width", type=int, default=d(128))
+    p.add_argument("--height", type=int, default=d(64))
+    p.add_argument("--brightness", type=float, default=d(0.1), help=f"over 0, at most {CAP} and the config's cap")
+    p.add_argument("--seconds", type=float, default=d(0.0), help="0 runs until Ctrl-C")
+    p.add_argument("--fps", type=float, default=d(20.0), help=f"over 0, at most {MAX_FPS:g}")
+    p.add_argument("--gamma", type=float, default=d(2.2),
+                   help=f"the governor's light model, {GAMMA_MIN} to {GAMMA_MAX}")
+    p.add_argument("--sdl-scale", type=int, default=d(8))
+    p.add_argument("--ddp-host", default=d("127.0.0.1"))
+    p.add_argument("--ddp-port", type=int, default=d(4048))
+    p.add_argument("--png", default=d(""), help="save the pattern to this file and exit; no display is opened")
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    cap = CAP
+    if args.config:
+        try:
+            cfg = load_config(Path(args.config))
+        except (OSError, ValueError) as e:
+            print(f"wall_pattern: cannot load {args.config}: {e}")
+            return 2
+        given = vars(build_parser(defaults=False).parse_args(argv))
+        for name, value in (("backend", cfg.backend), ("width", cfg.width), ("height", cfg.height),
+                            ("iface", cfg.colorlight_iface), ("ddp_host", cfg.ddp_host),
+                            ("ddp_port", cfg.ddp_port), ("gamma", cfg.gamma)):
+            if name not in given:
+                setattr(args, name, value)
+        cap = min(CAP, cfg.brightness_cap)
     if args.png:
         save_png(args.pattern, args.width, args.height, args.png)
         print(f"wall_pattern: saved {args.pattern} to {args.png}")
         return 0
-    refusal = _refusal(args.pattern, args.brightness)
+    if args.backend not in BACKENDS:
+        print(f"wall_pattern: the tool has no {args.backend!r} display; choose --backend from {', '.join(BACKENDS)}")
+        return 2
+    refusal = _refusal(args.pattern, args.brightness, cap) or _rate_refusal(args.fps, args.gamma)
     if refusal:
         print(refusal)
         return 2
@@ -216,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wall_pattern: cannot open the {args.backend} display: {e}")
         return 1
     return run(args.pattern, display, args.width, args.height, brightness=args.brightness,
-               seconds=args.seconds, fps=args.fps, sleep=time.sleep)
+               seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap)
 
 
 if __name__ == "__main__":
