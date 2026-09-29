@@ -36,7 +36,7 @@ report, not in code.
 
 `arcade/game.py` at the tag: `GameInfo`'s ten fields and their validation; `Game`'s `info`, `scores`,
 `SCENARIOS`, `CAPTION_KEYS`, `PHASES`, `reset(size, rng, fx)`, `update(sensed, dt)`, `draw(canvas)`, `done()`,
-`debug_state()`; `REQUIRED_SCENARIOS`, `INPUTS`, `KINDS`, `LAYOUTS`, `RUNNER_KEYS`, `reserved()`,
+`debug_state()`; `REQUIRED_SCENARIOS`, `INPUTS`, `KINDS`, `LAYOUTS` (a data value, `{"128x64"}` since Q33), `RUNNER_KEYS`, `reserved()`,
 `icon_from_rows`. A canary test (`test_protocol_members_are_the_frozen_set` in `tests/arcade/test_game.py`) holds
 the list; a game never needs it changed. Known later changes, each with a journaled reason: M5's `Blob.id`, `vx`,
 `vy` and per-input availability (C35) in `Sensed`.
@@ -47,8 +47,10 @@ the list; a game never needs it changed. Known later changes, each with a journa
   opening pictogram. `icon`: `icon_from_rows([...])`, 16 rows of 16 characters, `#` on and `.` off, 2 px strokes.
 - `needs`: a subset of `INPUTS` = `pose`, `blobs`, `motion`, `audio`. Declare what the game reads, no more: a game
   whose needs the sources cannot give is never offered. No game a stranger meets first depends on `audio`.
-- `layouts`: a subset of `LAYOUTS` = `128x32`, `64x64` (default both). Every declared layout gets full feel
-  budgets; the other is only run and checked for legibility.
+- `layouts`: a subset of `LAYOUTS` = `{"128x64"}` (the default), the design layout: four 64x32 panels, 2 x 2
+  (Q32, Q33). A game declares it and still runs at any size (the soak adds 96x48, only run and checked for
+  legibility). Every declared layout gets full feel budgets; `feel.measure` raises `ValueError` for a layout the
+  game does not declare.
 - `players`: 1 or 2. `exit_gesture`: False only when play itself needs both hands up.
 - `kind`: `control`, `toy` or `score` (one of `KINDS`). It picks the feel budget set (section 7).
 - `abandon_seconds`: None (use the config's `leave_seconds`) or a finite number over 0.
@@ -102,8 +104,13 @@ the generic tests and the bots check it.
 - `canonical`: **2 s of an empty wall** (attract shows, feel and the evidence GIF start from here), a walk-up
   (`Person(x, id=1)` arrives), the raised hand that launches the game from the lobby (`raise_hand`), then play
   as a player would. Its input events are what response latency and fidelity are measured on. About 100 s.
-- `idle_body`: one `Person` standing in the zone without moving (about 60 s). The game must score nothing and
-  hint within three seconds.
+  `feel.measure` launches it through `run_headless(..., lobby=Lobby([game_cls], cfg))`, the small lobby, so
+  without the walk-up and the raised hand nothing launches, and the game's name must be in
+  `arcade.attract.lobby.MENU_ORDER` (the list in `arcade.games`) or `measure` raises `ValueError` ("<name>
+  never launched from the lobby").
+- `idle_body`: one `Person` standing in the zone without moving (about 60 s). The game must score nothing, store no
+  best (`scores.best(name, "128x64")` stays None) and hint within three seconds. C41: points need movement in the
+  round, and a best needs movement in the game; an idle body earns neither.
 - `nobody`: an empty wall (about 30 s).
 - Other scripts (Pong's `solo` and `duel`) are yours. Winning and losing are not scripts: bots judge them.
 
@@ -121,7 +128,7 @@ wrist in the reach box, 0 top to 1 hip height, None for hand down; None instead 
 `arcade.bots.Nobody` is the no-input bot. `play(game_cls, bot, seed, layout)` adds the reaction delay and
 seeded noise (clamped to 0..1) and stops on `done()`, or when the session ends otherwise (a game whose
 `done()` never fires ends at the leave or inactive rule, or at `MAX_PLAY_SECONDS` = 180).
-`bots.seeds(game_cls, layout, n)` gives `zlib.crc32(f"{name}:{layout}:{i}".encode())`.
+`play` and `win_rate` default the layout to the game's one declared layout. `bots.seeds(game_cls, layout, n)` gives `zlib.crc32(f"{name}:{layout}:{i}".encode())`.
 
 Difficulty bands (win rate over 20 seeds, per `score` kind): `good` at least 0.7; `lazy` 0.1 to 0.7 and fewer
 than `good`; no input at most 0.05. Round length under `good`: a median of 20 to 120 s. Tune the game's own
@@ -132,7 +139,9 @@ speeds and bot skill to sit inside the bands. Never loosen a band: that is the o
 `arcade/feel.py` (`measure`, `judge`, `report`) computes the metrics through `run_headless`; `budgets(game_cls,
 layout)` layers the kind's defaults, then the kind's layout table, then your file's `[budgets."<WxH>"]`.
 
-Default metrics: `response_ticks` (max 2), `fidelity` (min 0.8), `range` (min 0.6), `lit_fraction` (0.01 to 0.5),
+Default metrics: `response_ticks` (max 2; latency: the first tick after a probe on which any pixel differs),
+`response_px` (min 12; magnitude: the pixels that differ `LATENCY_TICKS` = 2 ticks after the probe; a clamped
+control is no probe), `fidelity` (min 0.8), `range` (min 0.6), `lit_fraction` (0.01 to 0.5),
 `dim_fraction` (max 0.1), `liveliness` (min 0.001), `flash_area_raw` (max 0.1), `square_flashes` (max 6),
 `phases_reached` (1.0), `round_seconds` (20 to 120); `score` also `win_good`, `win_lazy`, `win_none`. `toy` is the
 control set without `round_seconds`, `fidelity` and `range`.
@@ -145,7 +154,7 @@ input = "cursor_y"              # "cursor_x" | "cursor_y" | "zone_x", read from 
 xy = "left_xy"                  # a *_xy key of your debug_state
 axis = 1                        # 0 = x, 1 = y
 
-[budgets."128x32"]              # per-layout overrides; Pong's file (arcade/games/pong_feel.toml, P3) is the
+[budgets."128x64"]              # per-layout overrides; Pong's file (arcade/games/pong_feel.toml, P3) is the
 dim_fraction = ...              # model for the exact shape, and arcade/feel.py's `budgets` docstring is its law
 ```
 
@@ -179,8 +188,8 @@ frames pass `square_flashes <= 6`.
 
 ## 7. Feel guidance (spec 11)
 
-- No sound, so every event needs a visible response within two ticks and at least 12 lit pixels
-  (`response_ticks` <= 2, `RESPONSE_PX` = 12). Acknowledge a gesture on the tick it is recognised
+- No sound, so every event needs a visible response within two ticks and at least 12 pixels changed
+  (`response_ticks` <= 2 is latency, `response_px` >= 12 is magnitude, `RESPONSE_PX` = 12). Acknowledge a gesture on the tick it is recognised
   (`fx.echo(player, kind)`).
 - Camera latency is already 100 to 200 ms: use hysteresis, and never smoothing that costs a tick.
 - Map the middle half of the reach box to the full playfield (`fidelity` and `range` measure this).
@@ -188,7 +197,8 @@ frames pass `square_flashes <= 6`.
 - Hint within three seconds of a still body (`idle_body`).
 - Rounds of 20 to 120 s; a game ends in 45 to 90 s or on a clear result.
 - Failure and success differ in hue and motion, not just in text.
-- Legible from 2 to 10 m: 2 px strokes for anything that must read at distance, text at 2x for scores, no dark
+- Legible from 2 to 10 m: 2 px strokes for anything that must read at distance, text at 2x for scores (spec 7.4; `feel.SCORE_SCALES` is `(1, 2)` today and becomes `(2,)` after Pong's 2x
+  lands, so the oracle then finds only 2x scores), no dark
   greys (a lit pixel with every channel under 140 is dim, and `dim_fraction` counts it). Colours saturated with
   the low channels at 0 (`(255, 120, 0)`, `(0, 200, 0)`, `(255, 255, 255)`): gamma is unknown. One colour per
   game apart from players (`PLAYER_COLORS`: amber, then blue). Light fewer pixels late at night.
@@ -259,7 +269,7 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /Users/trey/dev/codeisart/.venv/bin/
 ```
 
 Say what your game adds to the suite time (a task adds at most 20 s of CPU). The feel table for one game:
-`arcade.feel.report(GameCls, "128x32", seeds=arcade.bots.seeds(GameCls, "128x32", 20))` gives
+`arcade.feel.report(GameCls, "128x64", seeds=arcade.bots.seeds(GameCls, "128x64", 20))` gives
 `{"metrics", "budgets", "failures"}`.
 
 The evidence package, from the repo root (the operator runs it in verify; writes `feel.json`, `games.md`, and per
