@@ -16,3 +16,13 @@ owner, 19:45: is flashing the Colorlight card in a Windows VM with another agent
 rules: config.md "Loop rules" (2026-09-28) override the workflow-loop skill and its sub-skills. Never `cd` in a Bash command
 times: it06 15:03 to 16:15 CDT (72 minutes); it07 16:15 to 18:14 CDT (119 minutes); it08 orient 18:19-18:22; plan 18:22-18:32; implement 18:33-19:41 (68 minutes: serial 27, parallel 15, integration 24); review 19:42-19:59; verify from 20:00
 last_compaction: 2026-09-28T22:55:53Z at iteration 7 phase review (auto)
+
+## Compaction footer 2026-09-29T00:59:28Z
+- trigger: auto
+- head: 43c95c7
+- last journal entry: ## Iteration 7 — 2026-09-28
+- gate.md: absent
+- git status --short (up to 20 lines):
+```
+(clean)
+```
