@@ -8,6 +8,7 @@ clock is checked often (spec 4.6).
 from __future__ import annotations
 
 import fcntl
+import logging
 import os
 import pty
 import select
@@ -21,6 +22,8 @@ from typing import Callable
 
 import pyte
 import pyte.modes
+
+log = logging.getLogger(__name__)
 
 READ_CHUNK = 1024
 KILL_WAIT = 1.0  # seconds kill() waits for the shell after SIGKILL
@@ -148,20 +151,31 @@ class Terminal:
     def kill(self) -> None:
         """SIGKILL to the process group (also after the shell exited: its orphans), wait, a last pump, close.
 
-        The group is forgotten at the end: every member got the signal.
+        The group is forgotten at the end: every member got the signal. A pump that raises (the screen
+        refuses a sequence, C49) is logged once and not retried: the master is closed, so the dying child
+        never waits on a reader, and the wait goes on unpumped. The master is closed and the group
+        forgotten whatever happens.
         """
         if self.proc is None:
             return
-        self._signal_group()
-        # Wait, reading the master meanwhile: on macOS a child killed with a full pty output queue sits in
-        # close() until the queue drains (about 0.6 s otherwise).
-        deadline = time.monotonic() + KILL_WAIT
-        while self.proc.poll() is None and time.monotonic() < deadline:
-            self.pump()
-            time.sleep(KILL_POLL)
-        self.pump()
-        self._close_master()
-        self._pgid = None
+        try:
+            self._signal_group()
+            # Wait, reading the master meanwhile: on macOS a child killed with a full pty output queue sits
+            # in close() until the queue drains (about 0.6 s otherwise).
+            deadline = time.monotonic() + KILL_WAIT
+            try:
+                while self.proc.poll() is None and time.monotonic() < deadline:
+                    self.pump()
+                    time.sleep(KILL_POLL)
+                self.pump()
+            except Exception:
+                log.exception("the pump raised while killing; the rest of the output is dropped")
+                self._close_master()
+                while self.proc.poll() is None and time.monotonic() < deadline:
+                    time.sleep(KILL_POLL)
+        finally:
+            self._pgid = None
+            self._close_master()
 
     def _signal_group(self) -> None:
         """SIGKILL to the current run's group, unless forgotten (C48: its number may have been reused).

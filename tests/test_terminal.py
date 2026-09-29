@@ -1,3 +1,4 @@
+import logging
 import os
 import signal
 import statistics
@@ -393,3 +394,25 @@ def test_a_writing_orphan_is_killed_at_drain_max(term, tmp_path):
     assert done and term.finished
     assert DRAIN_MAX_TEST <= elapsed <= DRAIN_MAX_TEST + WAIT
     assert wait_gone(pid)
+
+
+# C49: a pump that raises inside kill() (pyte on a malformed escape) is logged once; the master is still
+# closed and the group forgotten.
+
+ESCAPE_THEN_SLEEP = ["sh", "-c", "printf '\\033[?3A'; sleep 30"]  # pyte raises on the private CUU
+UNPUMPED = 0.3  # seconds the escape waits in the pty, no pump reading it
+
+
+def test_kill_closes_the_master_when_the_pump_raises(term, tmp_path, caplog):
+    term.run(ESCAPE_THEN_SLEEP, cwd=tmp_path)
+    pid = term.proc.pid
+    time.sleep(UNPUMPED)
+    with caplog.at_level(logging.ERROR, logger="show.terminal"):
+        term.kill()
+    logged = [r for r in caplog.records if r.name == "show.terminal"]
+    print(f"logged: {[r.getMessage() for r in logged]}")
+    assert term.master_fd is None
+    assert term._pgid is None
+    assert term.proc.poll() is not None
+    assert wait_gone(pid)
+    assert len(logged) == 1
