@@ -15,9 +15,37 @@ Nothing here is installed by the repo. The owner installs it by hand on the Pi.
 9. Check: `journalctl -u show -f`.
 
 The unit never gives up (`StartLimitIntervalSec=0`, `Restart=always`) and the daemon
-pings systemd's watchdog every few seconds (`WatchdogSec=15`); a hung daemon is
+pings systemd's watchdog (`WATCHDOG=1`) every second (`WatchdogSec=15`); a hung daemon is
 killed and restarted. `ProtectSystem=strict` makes the system read-only; only
 `entries/` and a private `/tmp` are writable.
+
+## Stop, and a broken config
+
+`systemctl stop show` sends SIGTERM. The daemon sends two governed black frames and turns
+the lights off, then exits. The entries die with the unit's cgroup (the default
+`KillMode`, which the unit does not change).
+
+A broken `show.toml` puts the error frame on the file's own display, at the lower of the
+file's brightness and the default. If the file is not valid TOML the display is `sdl`;
+read `journalctl -u show` for the reason.
+
+With no carrier the start waits for `network-online.target` (the wait-online timeout),
+then runs anyway. The unit stays ordered after `network-online.target` (Q63).
+
+## Soak and test pattern
+
+Stop the unit first (`sudo systemctl stop show`); the soak and the pattern tool need the
+wall to themselves. The overnight soak and the GATE C soak:
+
+    .venv/bin/python -m tools.show_soak --minutes 600 --press-every 180 --real-devices
+
+While it runs, watch the CPU temperature (`while sleep 10; do vcgencmd measure_temp; done`).
+Afterwards, with the unit running again, `systemctl show show -p NRestarts` must say
+`NRestarts=0`.
+
+The test pattern goes through the governor, capped:
+
+    .venv/bin/python tools/wall_pattern.py --config show.toml
 
 ## Hardware watchdog
 
