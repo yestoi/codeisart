@@ -14,17 +14,18 @@ import pytest
 from arcade.canvas import Canvas
 from arcade.flash import BUDGET, flash_area, square_flashes
 from arcade.attract.lobby import Lobby
+from arcade import feel
 from arcade.bots import Nobody, for_game, play, seeds
 from arcade.game import REQUIRED_SCENARIOS, reserved
 from arcade.games import get_game
-from arcade.games.pong import BALL_GAIN, BALL_MAX, BALL_START, GAME, MAX_SECONDS, WIN_POINTS, Pong
+from arcade.games.pong import _sweeps, BALL_GAIN, BALL_MAX, BALL_START, GAME, MAX_SECONDS, WIN_POINTS, Pong
 from arcade.headless import OPENING_NIGHT, run_headless
 from arcade.juice import Juice
 from arcade.scores import Scores
 from arcade.sources.actors import TICK, Person, scene
 from tests.arcade.helpers import make_cfg, run
 
-WALL = (128, 32)
+WALL = (128, 64)
 
 
 def seed(layout: str, i: int) -> int:
@@ -73,7 +74,7 @@ def test_registered_and_declared():
     assert get_game("pong") is Pong and GAME is Pong
     info = Pong.info
     assert (info.name, info.title, info.verb) == ("pong", "PONG", "BLOCK")
-    assert info.needs == frozenset({"pose"}) and info.layouts == frozenset({"128x32"})
+    assert info.needs == frozenset({"pose"}) and info.layouts == frozenset({"128x64"})
     assert info.players == 2 and info.kind == "score"
     assert Pong.PHASES == ("serve", "play", "point", "over")
     assert Pong.CAPTION_KEYS == ("phase", "left", "right")
@@ -82,7 +83,7 @@ def test_registered_and_declared():
 
 @pytest.mark.parametrize("wrist", [0.1, 0.9])
 def test_paddle_follows_hand_height(font5x7, wrist):
-    _, game, _ = run(Pong, stander(wrist=wrist, ticks=45), WALL, font5x7, seed=seed("128x32", 1))
+    _, game, _ = run(Pong, stander(wrist=wrist, ticks=45), WALL, font5x7, seed=seed("128x64", 1))
     state = game.debug_state()
     y = state["left_xy"][1]
     if wrist < 0.5:
@@ -93,19 +94,19 @@ def test_paddle_follows_hand_height(font5x7, wrist):
 
 @pytest.mark.parametrize("x, cpu", [(0.3, "right"), (0.7, "left")])
 def test_solo_player_gets_the_cpu_on_the_other_side(font5x7, x, cpu):
-    _, game, _ = run(Pong, stander(x=x, ticks=45), WALL, font5x7, seed=seed("128x32", 2))
+    _, game, _ = run(Pong, stander(x=x, ticks=45), WALL, font5x7, seed=seed("128x64", 2))
     state = game.debug_state()
     assert state["cpu"] == cpu and state["humans"] == 1, state
 
 
 def test_cpu_is_beatable():
     game = make()
-    frames = stander(x=0.3, ticks=600)
+    frames = scene(persons=[_sweeps(Person(0.3, id=1), start=0.0, end=20.0)], ticks=600)   # a moving player (C41)
     advance(game, frames, "play")
     game.right_y = 4.0                              # the CPU paddle parked at the top
-    game.bx, game.by = 64.0, 3.0                    # midfield, at BALL_MAX, reaching the bottom corner in 0.6 s
+    game.bx, game.by = 96.0, 3.0                    # at BALL_MAX, reaching the far side of the field in 0.5 s
     game.speed = BALL_MAX
-    game.vy = 43.0
+    game.vy = 90.0
     game.vx = math.sqrt(BALL_MAX ** 2 - game.vy ** 2)
     advance(game, frames, "point")
     state = game.debug_state()
@@ -127,7 +128,7 @@ def test_phase_leaves_play_after_every_point():
 
 @pytest.mark.parametrize("name", ["solo", "duel"])
 def test_duel_and_solo_scenarios_reach_a_result(font5x7, name):
-    s = seed("128x32", 3)
+    s = seed("128x64", 3)
     _, game, _ = run(Pong, Pong.SCENARIOS[name](), WALL, font5x7, seed=s)
     state = game.debug_state()
     assert game.done(), f"{name} seed {s}: {state}"
@@ -136,7 +137,7 @@ def test_duel_and_solo_scenarios_reach_a_result(font5x7, name):
 
 def test_scenarios_have_the_right_humans(font5x7):
     for name, humans in (("solo", 1), ("duel", 2)):
-        _, game, _ = run(Pong, Pong.SCENARIOS[name](), WALL, font5x7, seed=seed("128x32", 4))
+        _, game, _ = run(Pong, Pong.SCENARIOS[name](), WALL, font5x7, seed=seed("128x64", 4))
         assert game.debug_state()["humans"] == humans, name       # the duel's second body joins at a serve
 
 
@@ -161,7 +162,7 @@ def test_runs_and_stays_legible_on_64x64(font5x7):
 
 
 def test_own_drawing_keeps_the_flash_rule(font5x7):
-    s = seed("128x32", 5)
+    s = seed("128x64", 5)
     _, runner = run_headless(make_cfg(WALL), font5x7, Pong, Pong.SCENARIOS["duel"](), seed=s, raw=True)
     raw = runner.raw_frames
     assert len(raw) > 300
@@ -254,9 +255,9 @@ def test_active_is_a_bool_and_true_on_input():
 
 
 def test_seeded_runs_repeat(font5x7):
-    a, _, _ = run(Pong, Pong.SCENARIOS["duel"](), WALL, font5x7, ticks=400, seed=seed("128x32", 6))
-    b, _, _ = run(Pong, Pong.SCENARIOS["duel"](), WALL, font5x7, ticks=400, seed=seed("128x32", 6))
-    c, _, _ = run(Pong, Pong.SCENARIOS["duel"](), WALL, font5x7, ticks=400, seed=seed("128x32", 7))
+    a, _, _ = run(Pong, Pong.SCENARIOS["duel"](), WALL, font5x7, ticks=400, seed=seed("128x64", 6))
+    b, _, _ = run(Pong, Pong.SCENARIOS["duel"](), WALL, font5x7, ticks=400, seed=seed("128x64", 6))
+    c, _, _ = run(Pong, Pong.SCENARIOS["duel"](), WALL, font5x7, ticks=400, seed=seed("128x64", 7))
     assert all(np.array_equal(x, y) for x, y in zip(a, b))
     assert any(not np.array_equal(x, y) for x, y in zip(a, c))
 
@@ -297,8 +298,78 @@ def test_canonical_drives_the_lobby_to_pong(font5x7):
     assert raised <= first <= raised + 1, (first, raised)
 
 
+def _rally_with_ball_past_the_cpu(moves: bool):
+    """A human on the left in a rally; the ball is held still, the paddle moves or not, then the ball goes out
+    behind the CPU on the right. Returns the game after the point phase began."""
+    game = make()
+    p = Person(0.3, id=1).wrist("right", 0.5, 0.5, seconds=100.0, at=0.0)
+    if moves:
+        p.wrist("right", 0.2, 0.8, seconds=0.5, at=1.5)
+    frames = scene(persons=[p], ticks=900)
+    advance(game, frames, "play")
+    game.vx = game.vy = 0.0
+    for _ in drive(game, frames, until=lambda g: g.t >= 2.6):
+        pass
+    assert game.debug_state()["phase"] == "play"
+    game.bx, game.vx = game.w + 5.0, BALL_START
+    advance(game, frames, "point")
+    return game, frames
+
+
+def test_a_still_paddle_banks_no_point():
+    game, frames = _rally_with_ball_past_the_cpu(moves=False)
+    state = game.debug_state()
+    assert (state["left"], state["right"]) == (0, 0), state
+    assert game.fx.debug_state()["fx_pops"] == 0                 # no "+1" for a point nobody banked
+    advance(game, frames, "serve")
+    assert game.debug_state()["phase"] == "serve"
+
+
+def test_a_moving_player_still_scores():
+    game, frames = _rally_with_ball_past_the_cpu(moves=True)
+    state = game.debug_state()
+    assert (state["left"], state["right"]) == (1, 0), state
+    assert game.fx.debug_state()["fx_pops"] == 1
+
+
+def test_scores_drawn_at_2x(font5x7):
+    game = make()
+    game.seats[game.left_seat].points, game.seats[game.right_seat].points = 3, 5
+    canvas = Canvas(*WALL, font5x7)
+    game.draw(canvas)
+    for points, centre in ((3, WALL[0] / 4), (5, 3 * WALL[0] / 4)):
+        found = feel.find_text(canvas.frame, font5x7, str(points), scales=(2,))
+        assert found is not None, points
+        x, y, mask = found
+        assert mask.shape == (14, 10) and y == 1, (points, mask.shape, y)
+        assert abs(x + mask.shape[1] / 2 - centre) <= 1, (points, x)
+        assert feel.find_text(canvas.frame, font5x7, str(points), scales=(1,)) is None, points
+
+
+def test_cpu_speed_follows_the_height():
+    steps = {}
+    for size in ((128, 32), (128, 64)):
+        game = make(size)
+        game.phase, game.vx = "play", BALL_START
+        game.by = size[1] - 2.0
+        y = game.right_y
+        steps[size[1]] = game._cpu_y("right", y, TICK) - y
+    assert steps[64] == pytest.approx(2 * steps[32]) and steps[32] > 0, steps
+
+
+def test_idle_body_scores_nothing_over_seeds():
+    for i, s in enumerate(seeds(Pong, "128x64", 10)):
+        game = make(i=i)
+        for _ in drive(game, stander(ticks=2800), until=lambda g: g.done()):
+            pass
+        state = game.debug_state()
+        assert state["phase"] == "over", (s, state)
+        assert state["score"] == 0 and state["left"] == 0, (s, state)
+        assert game.scores.best() is None, (s, game.scores.best())
+
+
 def test_idle_body_scores_nothing(font5x7):
-    s = seed("128x32", 8)
+    s = seed("128x64", 8)
     _, game, runner = run(Pong, Pong.SCENARIOS["idle_body"](), WALL, font5x7, seed=s)
     state = game.debug_state()
     assert state["humans"] == 1 and state["phase"] == "over", (s, state)
@@ -316,7 +387,7 @@ def test_a_walk_up_takes_a_cpu_seat_at_once(x, side):
     for _ in drive(game, frames, until=lambda g: g.t >= 2.3):
         pass
     state = game.debug_state()
-    assert state["humans"] == 1 and state["cpu"] == ("right" if side == "left" else "left"), (seed("128x32", 3), state)
+    assert state["humans"] == 1 and state["cpu"] == ("right" if side == "left" else "left"), (seed("128x64", 3), state)
     assert game.seats[game.left_seat if side == "left" else game.right_seat].ctrl == 1
     assert game._p1 == (game.left_seat if side == "left" else game.right_seat)
     seated = (game.left_seat, game.right_seat)
@@ -361,13 +432,13 @@ def bot_play(name: str, s: int):
 
 
 def test_good_beats_lazy_beats_nobody():
-    ss = seeds(Pong, "128x32", 5)
+    ss = seeds(Pong, "128x64", 5)
     wins = {name: sum(bot_play(name, s).won for s in ss) for name in ("good", "lazy", "none")}
     assert wins["good"] >= 4 and wins["none"] == 0 and wins["lazy"] < wins["good"], (ss, wins)
 
 
 def test_good_round_length_in_band():
-    plays = [bot_play("good", s) for s in seeds(Pong, "128x32", 5)]
+    plays = [bot_play("good", s) for s in seeds(Pong, "128x64", 5)]
     lengths = [p.seconds for p in plays if p.done]
     assert len(lengths) >= 4, [(p.seed, p.seconds, p.done) for p in plays]
     assert 20 <= statistics.median(lengths) <= 120, ([p.seed for p in plays], lengths)
@@ -376,7 +447,7 @@ def test_good_round_length_in_band():
 def test_feel_file_overrides_have_reasons():
     data = tomllib.loads((Path(__file__).resolve().parents[2] / "arcade/games/pong_feel.toml").read_text())
     assert data["fidelity"] == {"input": "cursor_y", "xy": "left_xy", "axis": 1}
-    overrides = data["budgets"]["128x32"]
+    overrides = data["budgets"]["128x64"]
     assert "dim_fraction" in overrides
     for metric, table in overrides.items():
         assert table.get("reason", "").strip(), metric
