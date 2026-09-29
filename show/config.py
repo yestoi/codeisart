@@ -25,7 +25,7 @@ class Config:
     phosphor: str = "green"
     glow: bool = False
     view: str = "text"       # text | ink (one dot a cell, for a wall smaller than the terminal: the 128x64 PoC)
-    strip_look: str = "reverse"   # the strip's look (Q54); show.toml carries the pick
+    strip_look: str = "bright-on-field"   # the strip's look (Q54, the loop's reading)
     gamma: float = 2.2            # the governor's light model: 1.0 (the card applies gamma) to 2.2 (bytes as they are)
     entries_dir: Path = Path("entries")
     audio_dir: Path = Path("audio")

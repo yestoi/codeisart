@@ -17,7 +17,7 @@ def test_defaults_when_file_missing(tmp_path):
     assert cfg.lightbox_pins == [17, 22, 23, 24, 27]
     assert cfg.fps == 20 and cfg.volume == 0.6 and cfg.pump_bytes == 4096
     assert not hasattr(cfg, "matrix_multiplexing")
-    assert cfg.strip_look == "reverse" and cfg.gamma == 2.2
+    assert cfg.strip_look == "bright-on-field" and cfg.gamma == 2.2
 
 
 def test_values_from_file(tmp_path):
@@ -74,3 +74,9 @@ def test_strip_look_gamma_and_fps_are_checked(tmp_path):
         assert load_config(p).strip_look == look
     p.write_text("gamma = 1.0\n")
     assert load_config(p).gamma == 1.0
+
+
+def test_the_default_strip_look_is_the_loop_s_reading_everywhere():
+    assert Config().strip_look == "bright-on-field"
+    for name in ("show.toml", "show.poc.toml"):
+        assert load_config(ROOT / name).strip_look == "bright-on-field", name
