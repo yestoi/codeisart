@@ -22,6 +22,7 @@ from arcade.input import Depth, capture_grace
 from arcade.juice import PLAYER_COLORS
 from arcade.sensed import Sensed
 from arcade.sources.actors import TICK, Person, scene
+from show.font import CELL_H
 
 WIN_POINTS = 5
 MAX_SECONDS = 90.0
@@ -128,6 +129,7 @@ class Pong(Game):
         self.serve_dir = rng.choice((-1, 1))
         self.winner: str | None = None
         self._hint = True                       # wanted: at the first serve, and after HINT_IDLE_SECONDS idle
+        self._mask_key, self._mask = None, {}   # draw's cached masks, and the canvas they were drawn for
         self._hint_level = 0.0                  # shown: fades towards wanted at 1 / HINT_FADE a second
         self._idle = 0.0                        # seconds in play since a rally's travel last counted
         self._assigned = False
@@ -404,26 +406,47 @@ class Pong(Game):
     def _color(self, seat: Seat):
         return seat.color if seat.ctrl is not None else CPU_COLOR
 
+    def _masks(self, canvas: Canvas) -> dict:
+        """The net's and the hint's lit pixels on this canvas, drawn once (a bool mask each); the scores' by text.
+        draw lights them in their colours, pixel for pixel what fill_rect and text would draw each tick."""
+        key = (canvas.width, canvas.height, id(canvas.font), self.w, self.h)
+        if self._mask_key != key:
+            scratch = Canvas(canvas.width, canvas.height, canvas.font)
+            for y in range(0, self.h, 4):
+                scratch.fill_rect(self.w // 2, y, 1, 2, (255, 255, 255))
+            net = scratch.frame.any(axis=2)
+            scratch.clear()
+            self._draw_hint(scratch, (255, 255, 255))
+            self._mask_key, self._mask = key, {"net": net, "hint": scratch.frame.any(axis=2), "score": {}}
+        return self._mask
+
+    def _score_mask(self, canvas: Canvas, masks: dict, text: str):
+        if text not in masks["score"]:
+            scratch = Canvas(canvas.text_width(text, SCORE_SCALE), CELL_H * SCORE_SCALE, canvas.font)
+            scratch.text(0, 0, text, (255, 255, 255), SCORE_SCALE)
+            masks["score"][text] = scratch.frame.any(axis=2)
+        return masks["score"][text]
+
     def draw(self, canvas: Canvas) -> None:
-        w, h = self.w, self.h
-        for y in range(0, h, 4):
-            canvas.fill_rect(w // 2, y, 1, 2, NET_COLOR)
+        w = self.w
+        masks = self._masks(canvas)
+        canvas.frame[masks["net"]] = NET_COLOR
         if self._hint_level > 0.0:
-            self._draw_hint(canvas)
+            canvas.frame[masks["hint"]] = tuple(round(c * self._hint_level) for c in HINT_COLOR)
         left, right = self.seats[self.left_seat], self.seats[self.right_seat]
         for seat, centre in ((left, w // 4), (right, 3 * w // 4)):
-            width = canvas.text_width(seat.points, SCORE_SCALE)
-            canvas.text(centre - width // 2, 1, seat.points, self._color(seat), SCORE_SCALE)
+            text = str(seat.points)
+            width = canvas.text_width(text, SCORE_SCALE)
+            canvas.blit(self._score_mask(canvas, masks, text), centre - width // 2, 1, self._color(seat))
         ph = self.paddle_h
         canvas.fill_rect(0, self.left_y - ph / 2, PADDLE_W, ph, self._color(left))
         canvas.fill_rect(w - PADDLE_W, self.right_y - ph / 2, PADDLE_W, ph, self._color(right))
         if self.phase in ("serve", "play"):
             canvas.fill_rect(self.bx - BALL / 2, self.by - BALL / 2, BALL, BALL, BALL_COLOR)
 
-    def _draw_hint(self, canvas: Canvas) -> None:
+    def _draw_hint(self, canvas: Canvas, color) -> None:
         """HINT_LINES, 1x, centred, as a block around three quarters of the height; a line wider than the wall is
-        left out. Faded by scaling the colour, so the low channel stays 0."""
-        color = tuple(round(c * self._hint_level) for c in HINT_COLOR)
+        left out. draw fades it by scaling the colour, so the low channel stays 0."""
         top = round(self.h * 3 / 4) - (len(HINT_LINES) * (GLYPH_H + HINT_GAP) - HINT_GAP) // 2
         for k, line in enumerate(HINT_LINES):
             width = canvas.text_width(line) - 1      # the last glyph's cell gap is not drawn
