@@ -33,6 +33,7 @@ COAST_COST = 0.1          # cost per second since a track was last seen: its pre
 VELOCITY_TAU = 0.1        # s: time constant of the velocity's smoothing after its first measurement
 SCALE_TAU = 0.1           # s: time constant of the scale's smoothing; input.Depth's Glide smooths the control
                           # itself, and at 0.3 s the two smoothers in a row lagged a ramp by 0.3 s (C44)
+RATIO_TAU = 1.0           # s: time constant of the smoothing of a track's learned scale per shoulder width (Q48)
 ONE_EURO = dict(min_cutoff=1.0, beta=4.0, d_cutoff=1.0)   # keypoints in frame units per second
 
 
@@ -118,6 +119,8 @@ class _Track:
     vx: float = 0.0
     vy: float = 0.0
     moved: bool = False           # vx, vy measured at least once
+    measured: bool = False        # a capture with a confident nose and a hip seen (_measured) at least once
+    per_width: float = 0.0        # this person's measured scale per shoulder width, 0.0 until learned
 
     def predict(self, t: float) -> tuple[float, float]:
         dt = t - self.seen
@@ -129,11 +132,31 @@ def _anchor(body: Body) -> tuple[float, float]:
     return (a.x, a.y) if a is not None else body.center
 
 
+def _measured(raw: Body) -> bool:
+    """raw.scale is the nose-to-mid-hip length, not the fallback from the shoulder width."""
+    return raw.nose.conf >= MIN_CONF and raw.hip_mid is not None
+
+
+def _reading(tr: _Track, raw: Body) -> float | None:
+    """The scale this capture reads for tr (Q48), None to hold tr's. The fallback from the shoulder width reads
+    short on a real person (0.62 of the measure in the owner's spike), so a track once measured reads its own
+    learned scale per shoulder width instead, and holds without both shoulders; a track never measured reads the
+    fallback, as a body always did."""
+    if _measured(raw) or not tr.measured:
+        return raw.scale
+    width = raw.shoulder_width
+    if tr.per_width > 0.0 and width > 0.0:
+        return tr.per_width * width
+    return None
+
+
 class BodyTracker:
     """spec 5: anchors on the shoulder midpoint (then nose, then hips), predicts with constant velocity from capture
     times, assigns globally on distance plus scale difference, coasts a missed track for COAST_SECONDS (emitting
     seen_ago), drops it after DROP_SECONDS, and never reuses an id. Keypoints are One Euro filtered; a keypoint under
-    MIN_CONF passes through raw and restarts its filter. A coasting body holds its last keypoints and box.
+    MIN_CONF passes through raw and restarts its filter. A coasting body holds its last keypoints and box. The
+    scale is smoothed by SCALE_TAU; a track once measured with its hips reads its learned scale per shoulder width
+    when they drop out, and holds its scale without both shoulders (Q48, _reading).
 
     update() takes the detections of one capture, keypoints already mirrored, and returns the bodies placed
     against the calibration, largest scale first."""
@@ -171,8 +194,9 @@ class BodyTracker:
             for raw in raws:
                 ax, ay = _anchor(raw)
                 c = math.hypot(ax - px, ay - py)
-                if tr.scale > 0.0 and raw.scale > 0.0:
-                    c += SCALE_WEIGHT * abs(raw.scale - tr.scale)
+                scale = _reading(tr, raw)       # the same rule as _refresh: a hip dropout costs nothing
+                if tr.scale > 0.0 and scale is not None and scale > 0.0:
+                    c += SCALE_WEIGHT * abs(scale - tr.scale)
                 row.append(c + COAST_COST * (t - tr.seen) if c <= MAX_COST else math.inf)
             cost.append(row)
         big = 1e6   # linear_sum_assignment and the exhaustive sum both need finite costs
@@ -184,12 +208,14 @@ class BodyTracker:
         filters = [(OneEuro(**ONE_EURO), OneEuro(**ONE_EURO)) for _ in raw.keypoints]
         tr = _Track(self._next_id, ax, ay, t, raw.scale, raw.box, raw.keypoints, filters)
         self._next_id += 1
+        self._learn(tr, raw, 0.0)
         tr.keypoints = self._smooth(tr, raw, t)
         return tr
 
     def _refresh(self, tr: _Track, raw: Body, t: float) -> None:
         ax, ay = _anchor(raw)
         dt = t - tr.seen
+        scale = _reading(tr, raw)
         if dt > 0.0:
             mx, my = (ax - tr.x) / dt, (ay - tr.y) / dt
             if tr.moved:
@@ -197,11 +223,28 @@ class BodyTracker:
                 tr.vx, tr.vy = tr.vx + a * (mx - tr.vx), tr.vy + a * (my - tr.vy)
             else:
                 tr.vx, tr.vy, tr.moved = mx, my, True
-            if raw.scale > 0.0:
-                tr.scale = raw.scale if tr.scale <= 0.0 else \
-                    tr.scale + (1.0 - math.exp(-dt / SCALE_TAU)) * (raw.scale - tr.scale)
+            if scale is not None and scale > 0.0:
+                tr.scale = scale if tr.scale <= 0.0 else \
+                    tr.scale + (1.0 - math.exp(-dt / SCALE_TAU)) * (scale - tr.scale)
+        self._learn(tr, raw, dt)
         tr.x, tr.y, tr.seen, tr.box = ax, ay, t, raw.box
         tr.keypoints = self._smooth(tr, raw, t)
+
+    @staticmethod
+    def _learn(tr: _Track, raw: Body, dt: float) -> None:
+        """A measured capture teaches tr its scale per shoulder width: the first at once, then smoothed by
+        RATIO_TAU so one bad capture does not move it far."""
+        if not _measured(raw):
+            return
+        tr.measured = True
+        width = raw.shoulder_width
+        if width <= 0.0 or raw.scale <= 0.0:
+            return
+        ratio = raw.scale / width
+        if tr.per_width <= 0.0:
+            tr.per_width = ratio
+        elif dt > 0.0:
+            tr.per_width += (1.0 - math.exp(-dt / RATIO_TAU)) * (ratio - tr.per_width)
 
     @staticmethod
     def _smooth(tr: _Track, raw: Body, t: float) -> tuple[Keypoint, ...]:
