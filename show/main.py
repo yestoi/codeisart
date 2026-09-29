@@ -125,7 +125,7 @@ class ShowLoop:
         self._devices = False                      # lights, buttons and audio made
         self._next_retry = self._next_rescan = 0.0
         self._last_pet: float | None = None
-        self._push_failed = False                  # the last push raised: the last governed frame goes again
+        self._now = 0.0                            # the step's time: the wall's clock for its hold (C51)
         self._failures = 0
         self._fail_since: float | None = None      # the first of this run of failures (or of no wall)
         self._dark = False                         # lights all off until a push is good again
@@ -136,6 +136,7 @@ class ShowLoop:
 
     def start(self, now: float) -> None:
         """Setup, the show's start, READY=1. Pushes nothing; never raises."""
+        self._now = now
         try:
             self._setup(now)
         except Exception:
@@ -185,7 +186,8 @@ class ShowLoop:
         cfg, raw = self.cfg, None
         try:
             self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
-                cfg, on_key=lambda i: self.presses.put(i + 1))), cfg.height, cfg.width, cfg.fps, cfg.gamma)
+                cfg, on_key=lambda i: self.presses.put(i + 1))), cfg.height, cfg.width, cfg.fps, cfg.gamma,
+                from_dark=True, clock=lambda: self._now)
         except Exception as exc:
             if raw is None:
                 log.exception("the display could not be opened")
@@ -195,7 +197,7 @@ class ShowLoop:
             self._static, self._wall_retry = True, False
             self._fixed.append(f"flash governor: {exc}")
             try:
-                self.wall = GovernedDisplay(raw, cfg.height, cfg.width)
+                self.wall = GovernedDisplay(raw, cfg.height, cfg.width, from_dark=True, clock=lambda: self._now)
             except Exception as exc2:
                 log.exception("no flash governor can be built; the display is closed and the wall stays dark")
                 self._fixed.append(f"flash governor (defaults): {exc2}")
@@ -234,6 +236,7 @@ class ShowLoop:
     def step(self, now: float) -> None:
         """Presses, tick, lights, rescan, render, push, watchdog. Never raises (but KeyboardInterrupt: the window
         was closed)."""
+        self._now = now
         try:
             if now >= self._next_retry and ((self.show is None and not self._static)
                                             or (self.wall is None and self._wall_retry)):
@@ -302,19 +305,19 @@ class ShowLoop:
         if frame is None:
             return
         try:
-            if self._push_failed:
-                self.wall.repush()                    # the frame the governor counted, before the next
-            self.wall.push(frame)
+            sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
         except Exception:
-            self._push_failed = True
             self._failures += 1
             if self._failures == 1 or self._failures % FAILURE_LOG_EVERY == 0:
                 log.exception("the push failed (%d in a row); the show goes on", self._failures)
             self._failing(now)
             return
+        if sent is None:                              # held: nothing reached the wall this step
+            self._failing(now)
+            return
         if self._failures:
             log.info("the push works again after %d failures", self._failures)
-        self._push_failed, self._failures, self._fail_since = False, 0, None
+        self._failures, self._fail_since = 0, None
         if self._dark:
             self._dark = False
             if self.show is not None:

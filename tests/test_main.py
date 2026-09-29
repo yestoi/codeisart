@@ -286,18 +286,23 @@ class FailingPushes(Recorder):
         super().push(frame)
 
 
-def test_after_a_failed_push_the_last_governed_frame_goes_again(tmp_path):
+def test_after_a_failed_push_the_wall_holds_then_sends_the_counted_frame(tmp_path):
+    """C51 (Q65, Q66): replaces it13's test of this place, which governed a new frame 0.05 s after the failure."""
     inner = FailingPushes({3})
-    loop = playing_loop(tmp_path, inner)                          # call 1
-    loop.step(0.10)                                               # call 2
-    loop.step(0.15)                                               # call 3 fails: its frame was governed
-    governed = loop.wall.governed
-    third = loop.rendered.copy()
-    loop.step(0.20)                                               # calls 4 (the repush) and 5
-    assert inner.count == 4 and governed == 2 and loop.wall.governed == 3
-    assert np.array_equal(inner.pushed[2], third) and np.array_equal(inner.pushed[3], loop.rendered)
-    loop.step(0.25)
-    assert inner.count == 5                                       # one push a step again
+    loop = playing_loop(tmp_path, inner)                          # call 1 at 0.05
+    loop.step(0.25)                                               # call 2
+    loop.step(0.5)                                                # call 3 fails: its frame was governed
+    counted = loop.wall.last.copy()
+    assert inner.count == 2 and loop.wall.governed == 2 and loop.wall.holding
+    for t, count in ((1.0, 2), (1.5, 3), (2.0, 3), (2.5, 4), (3.0, 4)):
+        loop.step(t)                                              # still; the counted frame at 1.5 and 2.5
+        assert inner.count == count and loop.wall.governed == 2, t
+    assert np.array_equal(inner.pushed[2], counted) and np.array_equal(inner.pushed[3], counted)
+    loop.step(3.5)                                                # new frames again
+    assert inner.count == 5 and loop.wall.governed == 3 and not loop.wall.holding
+    assert np.array_equal(inner.pushed[4], loop.wall.last)        # the step's own governed frame
+    loop.step(3.75)
+    assert inner.count == 6                                       # one push a step again
 
 
 def test_a_failing_push_darkens_the_lights_after_10_s_and_relights(tmp_path):

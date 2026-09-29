@@ -201,7 +201,7 @@ def run(pattern: str, display, width: int, height: int, brightness: float = 0.1,
     if refusal:
         out(refusal)
         return 2
-    wall = GovernedDisplay(display, height, width, governor_fps(fps), gamma)
+    wall = GovernedDisplay(display, height, width, governor_fps(fps), gamma, from_dark=True)   # no clock: no hold
     out(f"{pattern} at {width}x{height}, brightness {brightness:g}. Ctrl-C to stop.")
     out(LOOK_FOR[pattern])
     out(f"Write what the panel shows into {HARDWARE_MD}.")
