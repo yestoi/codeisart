@@ -1,3 +1,10 @@
+import os
+import re
+import shutil
+import subprocess
+import time
+from pathlib import Path
+
 import pytest
 
 from show.entries import REQUIRED, Entry, EntryError, load_entries, load_entry, rescan
@@ -143,3 +150,67 @@ def test_rescan_keeps_current_when_the_directory_is_empty_or_gone(tmp_path):
     empty.mkdir()
     assert rescan(empty, current) is current
     assert rescan(tmp_path / "gone", current) is current
+
+
+# ---- the sample entry entries/hello (T-hello) ----
+
+HELLO_DIR = Path(__file__).resolve().parents[1] / "entries" / "hello"
+NEEDS_CC = pytest.mark.skipif(shutil.which("cc") is None, reason="no C compiler")
+
+
+def test_sample_entry_loads():
+    e = load_entry(HELLO_DIR)
+    assert e.slug == "hello"
+    assert e.station == 6
+    assert e.plaque == "Created by Trey, 2026, Not A.I."
+    assert e.fallback is None
+    assert e.full_screen is False
+    words = e.build.split()
+    assert "-Wall" in words
+    assert "-w" not in words
+
+
+def _built_copy(tmp_path):
+    dst = tmp_path / "hello"
+    shutil.copytree(HELLO_DIR, dst)
+    entry = load_entry(dst)
+    env = {**os.environ, "LC_ALL": "C"}
+    proc = subprocess.run(entry.build, shell=True, cwd=dst, env=env,
+                          capture_output=True, text=True, timeout=30)
+    return entry, dst, proc
+
+
+@NEEDS_CC
+def test_sample_entry_builds_with_one_warning(tmp_path):
+    entry, dst, proc = _built_copy(tmp_path)
+    print("build stderr:", proc.stderr)
+    assert proc.returncode == 0
+    warnings = [ln for ln in proc.stderr.splitlines() if "warning:" in ln]
+    assert len(warnings) == 1, warnings
+    print("warning line:", warnings[0])
+    assert "unused variable" in warnings[0]
+    assert "-Wunused-variable" in warnings[0]
+
+
+@NEEDS_CC
+def test_sample_entry_runs_with_large_motion(tmp_path):
+    entry, dst, proc = _built_copy(tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    env = {**os.environ, "LINES": "23", "COLUMNS": "80"}
+    t0 = time.monotonic()
+    run = subprocess.run(entry.run, shell=True, cwd=dst, env=env,
+                         stdin=subprocess.DEVNULL, capture_output=True,
+                         text=True, timeout=entry.run_seconds)
+    secs = time.monotonic() - t0
+    assert run.returncode == 0
+    assert secs < entry.run_seconds
+    assert run.stdout.rstrip().endswith("hello, world")
+    frames = [f for f in run.stdout.split("\x1b[H") if "#" in f]
+    cols = []
+    for f in frames:
+        first = next(r for r in f.split("\n") if "#" in r)
+        cols.append(first.index("#"))
+    print(f"run {secs:.2f}s, frames {len(frames)}, band columns {min(cols)}..{max(cols)}")
+    assert len(frames) >= 40
+    assert max(cols) - min(cols) >= 20
+    assert not re.search(r"[^\x20-\x7e\n\x1b]", run.stdout)
