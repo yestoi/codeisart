@@ -1,0 +1,138 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Points 2 and 3 on the REAL show.wall and show.main: the re-init in place (identity, spy, held_ticks, the wall's
+own h/w/gamma/fps), the priming apply unsent, a failed first push, a failed first push after the hold, a failed
+counted send, private fields touched, and the loop's clock and lights."""
+import numpy as np
+import show.wall as W
+from show.wall import GovernedDisplay, HOLD_S, SETTLE_SENDS
+from arcade.flash import FlashGovernor
+
+H, Wd = 64, 128
+LIT = np.array((51, 255, 51), np.uint8)
+
+
+class Rec:
+    def __init__(self, fail, clock):
+        self.fail, self.clock, self.calls, self.sent = set(fail), clock, 0, []
+
+    def push(self, f):
+        self.calls += 1
+        if self.calls in self.fail:
+            raise OSError("x")
+        self.sent.append((self.clock(), f.copy()))
+
+    def set_brightness(self, l):
+        pass
+
+    def close(self):
+        pass
+
+
+def frames(n):
+    return [np.broadcast_to(LIT if k % 2 == 0 else np.zeros(3, np.uint8), (H, Wd, 3)).copy() for k in range(n)]
+
+
+# 1. re-init in place, the wall's own arguments, held_ticks carried, the priming apply unsent
+now = [0.0]
+inner = Rec({5}, lambda: now[0])
+wall = GovernedDisplay(inner, H, Wd, fps=20, gamma=1.0, from_dark=True, clock=lambda: now[0])
+gov0 = wall.governor
+calls = []
+orig = gov0.apply
+gov0.apply = lambda f: calls.append((now[0], f.copy())) or orig(f)
+inits = []
+real_init = FlashGovernor.__init__
+def spy_init(self, *a, **k):
+    inits.append((a, k))
+    return real_init(self, *a, **k)
+FlashGovernor.__init__ = spy_init
+fr = frames(200)
+for k, f in enumerate(fr):
+    now[0] = k / 20
+    before = wall.governor.held_ticks
+    try:
+        out = wall.push(f)
+    except OSError:
+        pass
+FlashGovernor.__init__ = real_init
+print("1. same object:", wall.governor is gov0, "| spy kept (applies seen):", len(calls),
+      "| re-inits:", inits, "| gamma/fps after:", wall.governor.gamma, wall.governor.fps,
+      "| held_ticks now:", wall.governor.held_ticks)
+# the priming apply at the hold's end: the counted frame, at the same time as the new frame's apply, unsent
+times = [t for t, _ in calls]
+dups = sorted({t for t in times if times.count(t) > 1})
+print("   times with two applies:", dups, "| sends at those times:", [t for t, _ in inner.sent if t in dups])
+t_end = dups[0]
+two = [f for t, f in calls if t == t_end]
+print("   priming frame == counted (last before the hold):", np.array_equal(two[0], fr[4]) or "see below",
+      "| sent frames at", t_end, ":", sum(1 for t, _ in inner.sent if t == t_end))
+
+# 1b. held_ticks carried through the re-init (force a nonzero count first)
+now = [0.0]
+inner = Rec({31}, lambda: now[0])
+wall = GovernedDisplay(inner, H, Wd, fps=20, from_dark=True, clock=lambda: now[0])
+hts = []
+for k, f in enumerate(frames(200)):
+    now[0] = k / 20
+    try:
+        wall.push(f)
+    except OSError:
+        pass
+    hts.append(wall.governor.held_ticks)
+print("1b. held_ticks never falls:", all(b >= a for a, b in zip(hts, hts[1:])), "| max", max(hts))
+
+# 2. a failed first push (from dark): the hold with the counted first frame
+now = [0.0]
+inner = Rec({1}, lambda: now[0])
+wall = GovernedDisplay(inner, H, Wd, fps=20, from_dark=True, clock=lambda: now[0])
+fr = frames(100)
+res = []
+for k, f in enumerate(fr):
+    now[0] = k / 20
+    try:
+        res.append(wall.push(f) is not None)
+    except OSError:
+        res.append("raised")
+print("2. failed first push: last set before send:", wall.last is not None, "| sends at",
+      [t for t, _ in inner.sent][:4], "| first counted == frame 0:", np.array_equal(inner.sent[0][1], fr[0]))
+
+# 3. the first push after the hold fails too (call 4 = first new frame) and a counted send fails (call 2)
+for fail, name in (({1, 4}, "first new frame fails"), ({1, 2}, "counted send 1 fails"), ({1, 3}, "counted send 2 fails")):
+    now = [0.0]
+    inner = Rec(fail, lambda: now[0])
+    wall = GovernedDisplay(inner, H, Wd, fps=20, from_dark=True, clock=lambda: now[0])
+    for k, f in enumerate(frames(260)):
+        now[0] = k / 20
+        try:
+            wall.push(f)
+        except OSError:
+            pass
+    ts = [round(t, 3) for t, _ in inner.sent][:6]
+    print(f"3. {name}: failed {wall.failed}, sends at {ts}, holding {wall.holding}")
+
+# 4. private fields of the governor used by the wall
+import ast, inspect
+src = inspect.getsource(W)
+priv = sorted({n.attr for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Attribute)
+               and isinstance(n.value, ast.Attribute) and n.value.attr == "governor"})
+print("4. governor attributes the wall touches:", priv)
+
+# 5. a bad-shape frame in a hold is dropped (not checked); after the hold a bad frame raises and holding ended?
+now = [0.0]
+inner = Rec({2}, lambda: now[0])
+wall = GovernedDisplay(inner, H, Wd, fps=20, from_dark=True, clock=lambda: now[0])
+wall.push(frames(1)[0])
+now[0] = 0.05
+try:
+    wall.push(frames(1)[0])
+except OSError:
+    pass
+now[0] = 3.1
+wall.push(frames(1)[0]); now[0] = 4.2; wall.push(frames(1)[0])     # the two counted sends
+now[0] = 5.3
+try:
+    wall.push(np.zeros((2, 2, 3), np.uint8))
+except ValueError as e:
+    print("5. a bad frame at the hold's end:", type(e).__name__, "| holding", wall.holding, "| failed", wall.failed)
+nxt = wall.push(frames(2)[1])
+print("   next push governs:", nxt is not None, "sends", len(inner.sent))

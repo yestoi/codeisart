@@ -1,0 +1,78 @@
+fps | model | picture | worst sq (area) at (tears, n, split) | cases
+20 | card | rev rows b16 ph0 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | rev rows b16 ph1 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+20 | card | rev rows b32 ph0 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | rev rows b32 ph1 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | rev rows b48 ph0 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+20 | card | rev rows b48 ph1 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | rev rows b32 ph1 5Hz | 6 (0.000) at ('run of 4', 12, 8) | 45
+20 | card | rev rows b24 ph1 5Hz | 6 (0.000) at ('run of 4', 12, 8) | 45
+20 | card | rev cols ph0 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | rev cols ph1 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | checks off0 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | checks off0 5Hz ph1 | 6 (0.000) at ('run of 4', 12, 8) | 45
+20 | card | checks off16 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | card | checks off16 5Hz ph1 | 6 (0.000) at ('run of 4', 12, 8) | 45
+20 | card | block strobe 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+20 | card | block strobe 5Hz ph1 | 6 (0.000) at ('run of 4', 12, 8) | 45
+20 | card | scroll 1 row | 1 (0.000) at ('every 3rd', None, 8) | 45
+20 | card | scroll 3 rows | 1 (0.000) at ('every 3rd', None, 8) | 45
+20 | card | hash band | 0 (0.000) at ('every 2nd', None, 8) | 45
+20 | probe | rev rows b16 ph0 10Hz | 6 (0.000) at ('run of 4', 6, 33) | 45
+20 | probe | rev rows b16 ph1 10Hz | 6 (0.000) at ('run of 4', 7, 33) | 45
+20 | probe | rev rows b32 ph0 10Hz | 6 (0.000) at ('run of 4', 6, 56) | 45
+20 | probe | rev rows b32 ph1 10Hz | 6 (0.000) at ('run of 4', 6, 8) | 45
+20 | probe | rev rows b48 ph0 10Hz | 6 (0.000) at ('run of 4', 7, 8) | 45
+20 | probe | rev rows b48 ph1 10Hz | 6 (0.000) at ('run of 4', 6, 8) | 45
+20 | probe | rev rows b32 ph1 5Hz | 6 (0.000) at ('run of 4', 11, 8) | 45
+20 | probe | rev rows b24 ph1 5Hz | 6 (0.000) at ('run of 4', 11, 8) | 45
+20 | probe | rev cols ph0 10Hz | 6 (0.000) at ('run of 4', 6, 8) | 45
+20 | probe | rev cols ph1 10Hz | 6 (0.000) at ('run of 4', 6, 8) | 45
+20 | probe | checks off0 10Hz | 6 (0.000) at ('run of 4', 6, 8) | 45
+20 | probe | checks off0 5Hz ph1 | 6 (0.000) at ('run of 4', 11, 8) | 45
+20 | probe | checks off16 10Hz | 6 (0.000) at ('run of 4', 6, 33) | 45
+20 | probe | checks off16 5Hz ph1 | 6 (0.000) at ('run of 4', 11, 33) | 45
+20 | probe | block strobe 10Hz | 6 (0.000) at ('run of 4', 7, 33) | 45
+20 | probe | block strobe 5Hz ph1 | 6 (0.000) at ('run of 4', 11, 33) | 45
+20 | probe | scroll 1 row | 1 (0.000) at ('every 3rd', None, 8) | 45
+20 | probe | scroll 3 rows | 1 (0.000) at ('every 3rd', None, 8) | 45
+20 | probe | hash band | 0 (0.000) at ('every 2nd', None, 8) | 45
+30 | card | rev rows b16 ph0 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | rev rows b16 ph1 10Hz | 6 (0.000) at ('run of 4', 11, 8) | 45
+30 | card | rev rows b32 ph0 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | rev rows b32 ph1 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | rev rows b48 ph0 10Hz | 6 (0.000) at ('run of 4', 11, 8) | 45
+30 | card | rev rows b48 ph1 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | rev rows b32 ph1 5Hz | 4 (0.000) at ('run of 4', 10, 8) | 45
+30 | card | rev rows b24 ph1 5Hz | 4 (0.000) at ('run of 4', 10, 8) | 45
+30 | card | rev cols ph0 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | rev cols ph1 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | checks off0 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | checks off0 5Hz ph1 | 4 (0.000) at ('run of 4', 10, 8) | 45
+30 | card | checks off16 10Hz | 6 (0.000) at ('run of 4', 9, 8) | 45
+30 | card | checks off16 5Hz ph1 | 4 (0.000) at ('run of 4', 10, 8) | 45
+30 | card | block strobe 10Hz | 6 (0.000) at ('run of 4', 11, 8) | 45
+30 | card | block strobe 5Hz ph1 | 4 (0.000) at ('run of 4', 10, 8) | 45
+30 | card | scroll 1 row | 1 (0.000) at ('every 3rd', None, 8) | 45
+30 | card | scroll 3 rows | 1 (0.000) at ('every 3rd', None, 8) | 45
+30 | card | hash band | 0 (0.000) at ('every 2nd', None, 8) | 45
+30 | probe | rev rows b16 ph0 10Hz | 6 (0.000) at ('run of 4', 8, 33) | 45
+30 | probe | rev rows b16 ph1 10Hz | 6 (0.000) at ('run of 4', 10, 33) | 45
+30 | probe | rev rows b32 ph0 10Hz | 6 (0.000) at ('run of 4', 8, 56) | 45
+30 | probe | rev rows b32 ph1 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+30 | probe | rev rows b48 ph0 10Hz | 6 (0.000) at ('run of 4', 10, 8) | 45
+30 | probe | rev rows b48 ph1 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+30 | probe | rev rows b32 ph1 5Hz | 5 (0.000) at ('run of 4', 12, 8) | 45
+30 | probe | rev rows b24 ph1 5Hz | 5 (0.000) at ('run of 4', 12, 8) | 45
+30 | probe | rev cols ph0 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+30 | probe | rev cols ph1 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+30 | probe | checks off0 10Hz | 6 (0.000) at ('run of 4', 8, 8) | 45
+30 | probe | checks off0 5Hz ph1 | 5 (0.000) at ('run of 4', 12, 8) | 45
+30 | probe | checks off16 10Hz | 6 (0.000) at ('run of 4', 8, 33) | 45
+30 | probe | checks off16 5Hz ph1 | 5 (0.000) at ('run of 4', 12, 33) | 45
+30 | probe | block strobe 10Hz | 6 (0.000) at ('run of 4', 10, 33) | 45
+30 | probe | block strobe 5Hz ph1 | 5 (0.000) at ('run of 4', 12, 33) | 45
+30 | probe | scroll 1 row | 1 (0.000) at ('every 3rd', None, 8) | 45
+30 | probe | scroll 3 rows | 1 (0.000) at ('every 3rd', None, 8) | 45
+30 | probe | hash band | 0 (0.000) at ('every 2nd', None, 8) | 45
+seconds 343

@@ -1,0 +1,65 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Point 5, fair: p5 found 24 cases where the new close reads 8 and b83045d's reads 7 (a tear at call 6, the close
+2-13 ticks later, all inside the first second, where b83045d's unprimed first frame adds its own C52 count). Here the
+start is taken out two ways: (A) b83045d's wall primed with black by hand (governor.apply(black), unsent), tear at
+call 3..12; (B) both walls as shipped, the tear at call 25..34 (after the first second). Splits 8/33. Close 1..20 ticks later."""
+import numpy as np
+from rlib import Torn, measure
+from r1pics import PICS
+import wall_b83045d as OLD
+from show.wall import GovernedDisplay as NEW
+
+H, W, FPS = 64, 128, 20
+
+
+def run(kind, pic, model, n, split, j, prime_old):
+    d = Torn(H, W, lambda c, n=n: split if c == n else 0, split, model, fps=FPS)
+    if kind == "new":
+        wall = NEW(d, H, W, fps=FPS, from_dark=True, clock=lambda d=d: d.tick / FPS)
+    else:
+        wall = OLD.GovernedDisplay(d, H, W, fps=FPS)
+        if prime_old:
+            wall.governor.apply(np.zeros((H, W, 3), np.uint8))
+    failed = False
+    end = n - 1 + j
+    for k in range(end):
+        d.tick = k
+        try:
+            if kind == "old" and failed:
+                wall.repush()
+            wall.push(pic(k, FPS))
+            failed = False
+        except OSError:
+            failed = True
+    d.tick = end
+    orig = d.push
+    def push(frame, d=d, orig=orig):
+        try:
+            orig(frame)
+        finally:
+            d.tick += 1
+    d.push = push
+    try:
+        wall.close()
+    except OSError:
+        pass
+    assert d.closed
+    return measure(d, d.tick + 25, FPS)[::-1]
+
+
+for label, ns, prime in (("A: old primed, tear 3..12", range(3, 13), True),
+                         ("B: as shipped, tear 25..34", range(25, 35), False)):
+    for name in ("rev rows b32 ph1 10Hz", "checks off16 10Hz"):
+        for model in ("card", "probe"):
+            worse, wo, wn = [], (0, 0), (0, 0)
+            for n in ns:
+                for split in (8, 33):
+                    for j in range(1, 21):
+                        o = run("old", PICS[name], model, n, split, j, prime)
+                        nw = run("new", PICS[name], model, n, split, j, prime)
+                        wo, wn = max(wo, o), max(wn, nw)
+                        if nw > o:
+                            worse.append((n, split, j, o, nw))
+            print(f"{label} | {name} | {model} | worst old {wo} new {wn} | new worse in {len(worse)}: {worse[:4]}",
+                  flush=True)

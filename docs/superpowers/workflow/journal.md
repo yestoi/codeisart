@@ -878,3 +878,116 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   command is in `deploy/README.md` and is the owner's to run.
 - Status: done
 
+## Iteration 14 — 2026-09-29
+- Verdict on the sheets (written 07:57 CDT, before any other tool call after the reading; the sheets are stamped da20a3a clean, made from a detached checkout of da20a3a; read with the Read tool: `it14-strobe.png`, `it14-presses-led-p1.png`, `it14-presses-poc-led-p1.png`, `it14-panels.png`): PASS on the pictures; one number is open and is measured again on an idle machine (the last point).
+  - The strobe (sampled every 150 ms): attract, the press at 1.0 s, the entry's card and its two commands, the screen black with the strip from 3.0 s. The first lit frame stands at 4.3 s (square flashes 5), then five cells in a row are black (4.4 s to 5.1 s, held rising 1, 2, 4, 6, 8, square flashes 6), two cells are lit (5.3 s and 5.4 s, square flashes 5 and 3), then three are black (5.6 s to 5.9 s, held 9, 11, 12, square flashes 6). Every label reads area 0.0000 and at most 6. The total: held 13, area 0.0000, squares 6 (it13: held 10, the same area and squares). The strobe is held, as in it13. The lit frame fills the terminal's field; the strip stays under it; the cursor's cell is the dark notch at the lower right.
+  - The show, full wall, the led look: attract (`CODE IS ART, A.I. IS NOT`, the cursor under it, `PRESS A BUTTON ON ANY PORTRAIT`), the press at 1.1 s (`hello`, `Created by Trey, 2026, Not A.I.`, `$ cat hello.c`), the source typed with the cursor at the end of the typed text, `QUEUED #1` at 3.0 s. The strip is bright letters on a dim field. Nothing looks different from it13's sheets: the dark start changes no picture, the first frame is attract as before. The session's total: held 0, area 0.0272, squares 4 (it13: held 0, area 0.0214, squares 4): the plan's bound (held 0, at most 4) holds.
+  - 128x64, the led look: the ink view of the source, the band as a diagonal of dots, the short strip that alternates (`PLAYING`, `QUEUED #1`, `Not A.I.`, `Trey, 2026`, `PRESS A BUTTON`, `ON ANY PORTRAIT`). Square flashes at most 3, as in it13.
+  - The pattern tool: `panels` at 512x192 shows 48 labels, `0,0` to `5,7`, grey, one at the top left of each panel, as in it13.
+  - Open: on 128x64 the governor held 24 frames (13 after the first play, 24 after the second) where it13 read 20 (12, then 20), and the flash area's largest value is 0.0560 where it13 read 0.0422. The plan asks for "Q60's holds as it13's". The sheets were made while the reviewer's probes and sweeps ran on the machine, and the session runs in real time, so the numbers move with the load; the dark start can also count one transition more in the first second. The operator runs the session again on an idle machine, on da20a3a and on the code before the slice (b83045d), and judges the number then.
+  - The open number, measured again at 08:07 on the idle machine (load 1.7), two runs a commit, in turn (`presses-poc-idle.txt`): da20a3a held 20 and 21, area 0.0536 and 0.0529; b83045d (before the slice) held 21 and 18, area 0.0553 and 0.0570; square flashes 3 in all four. The number moves from run to run by about 3 and the slice did not move it: "Q60's holds as it13's" holds. The 24 of the first run was made under the reviewer's sweeps.
+- The short soaks (fake display, fake lights and sound, presses every 5 s, seed 0; `it14-soak/`, `it14-soak-poc/`), both exit 0 with no failure named:
+
+  | Wall | Minutes | Steps | Governed | Presses | Plays | Push failures | Errors | Children left | Held | Area max | Squares max | Step ms median, p95, worst | Governor ms median, p95, worst | fds first, last | rss first, last |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | 512x192 | 2 | 2199 | 2201 | 24 | 1 of 1 ended | 0 | 0 | 0 | 0 | 0.0119 | 4 | 6.8, 13.3, 31.4 | 6.1, 10.7, 31.3 | 4, 4 | 37728, 137888 |
+  | 128x64 | 2 | 2201 | 2203 | 24 | 1 of 1 ended | 0 | 0 | 0 | 7 | 0.0568 | 3 | 0.4, 0.9, 21.0 | 0.3, 0.4, 17.7 | 4, 4 | 37024, 40320 |
+
+  Governed is two over the steps (the two black frames of the close): the priming at birth and a counted send raise no count. it13's 128x64 soak read held 7, area 0.0551, squares 3: the same. With fakes no push fails, so the hold never shows in a soak or on a sheet; the tests and the review's sweeps are its evidence.
+- Stop: `python -m show --backend fake`, SIGTERM after 5 s: exit 0, 0.06 s after the signal (`stop.txt`), as in it13.
+- The arcade's gamma, through `load_config` on a copy of `arcade.toml`: 0.22 and 22.0 refused with the bound's message, 1.0 and 2.2 taken; `arcade.toml` loads with gamma 2.2 (`show-shot.txt`).
+- Plan: docs/superpowers/plans/2026-09-29-it14-governor-gaps.md (282416e, fixed in b83045d), 296 lines, thin, a SAFETY
+  SLICE (`show/wall.py`, `show/main.py`'s push, the arcade's gamma). The plan phase took 82 minutes (06:02 to 07:24)
+  against the rule's 30: the writer needed 43 (the torn push had to be probed before it could be planned), the plan
+  review and its fix 38.
+  - The writer's probes overturned two things. The operator's guess at C51's cause (a delayed half of a change
+    moved into the window, and double entries in the probe's list) was wrong: the seventh transition is real, a
+    32x32 square that straddles the tear overshoots and returns, in real time, 8 of 8 cases. And Q65's default
+    (resend the counted frame every tick) does not close it: one tear on the budget's last change still reads 7.
+    The hold that is built is quiet (Q66).
+  - The plan review (evidence/it14/plan-review.md, 23 minutes) BLOCKED on two findings, both fixed in the plan
+    before any code and confirmed in round 2 (plan-review-round2.md, 4 minutes, no new finding). B1: the quiet
+    hold did not keep the budget once it ended; the tear leaves a square's direction on the wall opposite to the
+    governor's, so the governor's next move was free for it and a transition on the wall: 7 in a second in 8 of
+    19 pictures. The fix: at the hold's end the governor is made again in place and primed with the counted
+    frame, not sent. B2: the exact torn-push tests ended before the hold did, so a wall with the re-init and no
+    priming passed all 77; the tests now run past the hold's end, with a second tear position.
+  - The writer dropped the case (5 Hz, fps 20) from one exact test for time; the reviewer restored it against
+    ten walls and none fails there.
+- Shipped: the governor's three gaps; b83045d..da20a3a, the slice's own commits 1c9b723, 2038301 and the merge
+  da20a3a: 7 files, 356 insertions, 26 deletions. `arcade/flash.py`, `arcade/brightness.py` and
+  `show/display/colorlight.py` are unchanged since 0dae849; `arcade/runner.py` and `deploy/` are unchanged.
+  - I0 (1c9b723), C50: `arcade/config.py` refuses a `gamma` outside 1.0 to 2.2, as the show's config does since
+    it12; six tests, test first.
+  - T-wall (2038301, merged da20a3a), C51 and the show's half of C52: `GovernedDisplay` takes `from_dark` and a
+    `clock`. With `from_dark=True` the governor is primed with black at birth, unsent, so the first frame counts
+    against the dark wall; every wall of the show and the tools is made so (an AST test holds it). With a clock, a
+    send that raises starts the hold: nothing is sent for 1 s, the counted frame goes, 1 s, it goes again, 1 s,
+    then the governor starts again from the counted frame and new frames go; a failed counted send starts the
+    hold again from 0. The loop's `_push` no longer resends by itself; a held step counts toward the dark lights
+    and logs nothing. `tests/test_wall_hold.py`, 69 tests, the plan's exact ones among them.
+  - The one replaced test: `tests/test_main.py`'s `test_after_a_failed_push_the_last_governed_frame_goes_again`
+    (it asserted a resend and a new frame 0.05 s after a failure, which any hold changes) became the plan's exact
+    `test_after_a_failed_push_the_wall_holds_then_sends_the_counted_frame`. Its three asserts are the only
+    removed lines holding `assert` under `tests/`; the plan review and the review judged the replacement to keep
+    the old safety properties.
+- Review: APPROVED after 1 round, no blocking finding (evidence/it14/reviewer.md, 23 files in review-probes/; 18
+  minutes, 07:49 to 08:07).
+  - C51 holds on the real wall: the plan review's sweep, unchanged, 19 pictures x 120 tear cases x 2 display
+    models at fps 20 and 30, and the repeated tears (every 2nd, every 3rd, every call, a run of four): at most 6
+    square transitions and flash area 0.000, but for the `#` band's 0.063 and 0.094, which read the same with no
+    tear (Q13's small area).
+  - The re-init is in place (the same object, a spy saw all 142 applies), once a hold, with the wall's own
+    arguments, `held_ticks` carried; the wall reads no private field of the governor.
+  - C52: from dark a strobe and a reversal read 6 and area 0.000; without `from_dark` 7 and 1.000 or 0.500.
+  - C50: 0.999, 2.2000001, 0.22, 22.0, nan, inf, 0, a bool and a string refused; 1.0 and 2.2 taken.
+  - Every path to a display is governed: `_send(` has two call sites, `display.push` one; the close's old alias
+    is gone.
+  - The exact tests equal the plan's text in every assert, input and number.
+  - The close got WORSE, inside C53's second: see Carried forward.
+- Deploy: none (never deployed by the loop; nothing under `deploy/` installed or run).
+- Verify: 7 of 7 of the show daemon's checklist (item 5 dropped, as before). 1 freshness: the sheets are stamped
+  da20a3a, clean, from a clean detached checkout; `git status` there was clean after every command. 2 the suite
+  is green. 3 skips stay at 1 (`tests/test_sandbox.py:153`). 4 collected rose from 1140 to 1231 (6 from I0, 69
+  from T-wall, 16 from the owner's PR 1). 6 evidence/it14/, the decision on the README's line 1. 7 the verdict
+  above.
+- Tests: 1231 collected, 1230 passed, 1 skipped, 234.60 s on the idle machine (08:10 to 08:14; limit 250 s). The
+  operator's first run took 298.35 s beside the reviewer's sweeps (three sweeps of 331 s, 443 s and 343 s ran
+  then); the orchestrator's run 242.13 s; its worktree's run 274.55 s. Read as machine load; the limit is not
+  raised. The new file takes 8.0 s of the 9.5 s allowed.
+- Minutes: about 139, from 05:59 to 08:15 CDT plus the commit: plan 43, plan review and its fix 38, implement 24
+  (I0 4.5, T-wall 12, integration 6), review 18 with verify beside it, the idle runs 8, report 10. Over the
+  target of 90: the plan phase.
+- Loop decisions and deviations:
+  - The owner's PR 1 (the LEDVision VM kit, 15 new files, 16 tests) was merged on GitHub by the operator at the
+    owner's word (07:33, 56b97dd), after a check in a scratch checkout (a clean merge, its tests green, no
+    secret found). Someone pushed main to 1c9b723 at 07:30:50 and pulled the merge into the main checkout at
+    07:35:11, in the middle of the build: not the operator and not an agent of the loop (the guard refuses a push
+    from this session); read as the owner's. The pull was a fast-forward; T-wall's merge went on top. The
+    review's range held the PR's files and the reviewer left them out.
+  - The full wall's 10 m pages are not committed, as in it13; show-shot.txt's commands make them again.
+  - The orchestrator's two commits (1c9b723, da20a3a) end in a trailer that names Claude Opus 5.5, its own model;
+    the plan names Fable 5.1, which the implementer's commit carries. Left as it is; the owner is told.
+  - The plan's allowance for new tests was raised from 8 s to 10 s in the plan's fix (B2's longer drives), inside
+    the suite's limit, which was not raised.
+  - The implementer took nine smallest readings of a silent plan (evidence/it14/orchestrator-report.md); the
+    reviewer judged each sound. Only one has a safety effect: the close is today's close, which is C53.
+  - Iteration 15 (the run's last) has two lanes on separate files: C53 as a small safety task with its plan
+    review, and the arcade's return: C47, C45, C46 and M7a's first games. If the plan does not fit the rules,
+    games are cut before the safety task. Decided by the loop: C53 is a gap this iteration widened, in the piece
+    with the install date.
+- Carried forward:
+  - C53 (a safety gap; `show/wall.py`'s `close`; WIDENED by this iteration): a close 1 to 14 ticks (0.05 to 0.7 s)
+    after a torn push reads 7 to 8 square transitions on a reversal at the budget; at b83045d only a close 1 tick
+    after the tear did (evidence/it14/review-probes/p5b_close_fair.txt, p5c_close_shipped.txt). The wall closes
+    only when the show stops. The text the operator wrote at 07:13 ("it13's close, not changed by it14") was
+    wrong and is corrected in roadmap.md.
+  - C52, the arcade's half, waits on Q67 (the runner's governor is not primed; one assert would change).
+  - Closed: C50, C51, C52's show half (roadmap.md, "Closed").
+- Noted, not carried (roadmap.md, "it14"): a frame of another shape is dropped in a hold where the docstring says
+  it raises; a push that fails every few seconds freezes the show and only the log says so; a crash restart can
+  leave one transition uncounted once; the 512x192 wall was not swept; an autouse fixture imported into the new
+  test file; the LEDVision kit reaches the card outside the governor (the owner's setup tool).
+- Owner questions: Q66 (the quiet hold; its check on the real panels is a SAFETY GATE) and Q67 (the arcade's
+  runner), both defaulted; Q65's default is replaced by Q66's.
+- Status: done

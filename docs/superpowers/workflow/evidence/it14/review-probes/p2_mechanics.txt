@@ -1,0 +1,11 @@
+1. same object: True | spy kept (applies seen): 142 | re-inits: [((64, 128, 1.0), {'fps': 20})] | gamma/fps after: 1.0 20 | held_ticks now: 48
+   times with two applies: [3.2] | sends at those times: [3.2]
+   priming frame == counted (last before the hold): True | sent frames at 3.2 : 1
+1b. held_ticks never falls: True | max 50
+2. failed first push: last set before send: True | sends at [1.0, 2.0, 3.0, 3.05] | first counted == frame 0: True
+3. first new frame fails: failed 2, sends at [1.0, 2.0, 4.0, 5.0, 6.0, 6.05], holding False
+3. counted send 1 fails: failed 2, sends at [2.0, 3.0, 4.0, 4.05, 4.1, 4.15], holding False
+3. counted send 2 fails: failed 2, sends at [1.0, 3.0, 4.0, 5.0, 5.05, 5.1], holding False
+4. governor attributes the wall touches: ['__init__', 'apply', 'held_ticks', 'shape']
+5. a bad frame at the hold's end: ValueError | holding False | failed 1
+   next push governs: True sends 4

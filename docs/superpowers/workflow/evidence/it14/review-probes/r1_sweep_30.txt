@@ -1,0 +1,40 @@
+fps | model | picture | worst sq (area) at (kind, n, j, split) | cases
+30 | card | rev rows b16 ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev rows b16 ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev rows b32 ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev rows b32 ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev rows b48 ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev rows b48 ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev rows b32 ph1 5Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev rows b24 ph1 5Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev cols ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | rev cols ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | checks off0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | checks off0 5Hz ph1 | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | checks off16 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | checks off16 5Hz ph1 | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | block strobe 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | block strobe 5Hz ph1 | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | card | scroll 1 row | 2 (0.000) at ('one', 1, None, 8) | 120
+30 | card | scroll 3 rows | 4 (0.000) at ('one', 1, None, 8) | 120
+30 | card | hash band | 0 (0.094) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b16 ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b16 ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b32 ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b32 ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b48 ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b48 ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b32 ph1 5Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev rows b24 ph1 5Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev cols ph0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | rev cols ph1 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | checks off0 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | checks off0 5Hz ph1 | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | checks off16 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | checks off16 5Hz ph1 | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | block strobe 10Hz | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | block strobe 5Hz ph1 | 6 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | scroll 1 row | 2 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | scroll 3 rows | 4 (0.000) at ('one', 1, None, 8) | 120
+30 | probe | hash band | 0 (0.094) at ('one', 1, None, 8) | 120
+seconds 443

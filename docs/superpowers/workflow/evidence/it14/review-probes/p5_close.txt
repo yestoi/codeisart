@@ -1,0 +1,42 @@
+rev rows b32 ph1 10Hz | card: worst old (8, 0.0) new (8, 0.0)
+rev rows b32 ph1 10Hz | probe: worst old (8, 0.0) new (8, 0.0)
+rev rows b24 ph1 5Hz | card: worst old (7, 0.375) new (6, 0.0)
+rev rows b24 ph1 5Hz | probe: worst old (7, 0.375) new (6, 0.0)
+checks off16 10Hz | card: worst old (7, 0.5) new (6, 0.0)
+checks off16 10Hz | probe: worst old (7, 0.5) new (6, 0.0)
+block strobe 10Hz | card: worst old (6, 0.0) new (6, 0.0)
+block strobe 10Hz | probe: worst old (6, 0.0) new (6, 0.0)
+rev rows b32 ph1 10Hz | card | worst old sq 8 area 0.000 | worst new sq 8 area 0.000
+rev rows b32 ph1 10Hz | probe | worst old sq 8 area 0.000 | worst new sq 8 area 0.000
+rev rows b24 ph1 5Hz | card | worst old sq 7 area 0.375 | worst new sq 6 area 0.000
+rev rows b24 ph1 5Hz | probe | worst old sq 7 area 0.375 | worst new sq 6 area 0.000
+checks off16 10Hz | card | worst old sq 7 area 0.500 | worst new sq 6 area 0.000
+checks off16 10Hz | probe | worst old sq 7 area 0.500 | worst new sq 6 area 0.000
+block strobe 10Hz | card | worst old sq 6 area 0.000 | worst new sq 6 area 0.000
+block strobe 10Hz | probe | worst old sq 6 area 0.000 | worst new sq 6 area 0.000
+cases where new > old: 38
+of which new over budget (sq > 6 or area > 0): 24
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 2, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 3, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 4, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 5, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 6, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 7, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 8, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 9, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 10, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 11, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 12, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'card', 6, 33, 13, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 2, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 3, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 4, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 5, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 6, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 7, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 8, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 9, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 10, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 11, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 12, (7, 0.5), (8, 0.0))
+   ('rev rows b32 ph1 10Hz', 'probe', 6, 33, 13, (7, 0.5), (8, 0.0))

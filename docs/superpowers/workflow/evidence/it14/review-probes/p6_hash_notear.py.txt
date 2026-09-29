@@ -1,0 +1,13 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""The hash band's flash area with no tear at all (the REAL wall): is the sweep's 0.063/0.094 the hold's or Q13's?"""
+from r1pics import PICS
+from rlib import Torn, drive, measure
+
+for fps in (20, 30):
+    for model in ("card", "probe"):
+        ticks = 4 * fps + 30
+        d = Torn(64, 128, lambda c: 0, 0, model, fps=fps)
+        drive([PICS["hash band"](k, fps) for k in range(ticks)], d, fps)
+        a, sq = measure(d, ticks, fps)
+        print(f"fps {fps} {model}: no tear: area {a:.3f} sq {sq}")

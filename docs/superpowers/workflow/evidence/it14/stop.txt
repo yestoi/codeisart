@@ -1,0 +1,23 @@
+$ python -m show --backend fake   (SIGTERM after 5 s)
+2026-09-29 07:56:22,330 show.lights ERROR lights unavailable, using fake lights
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-verify-checkout/show/lights.py", line 90, in make_lights
+    return GpioLights(ring_pins, lightbox_pins)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-verify-checkout/show/lights.py", line 67, in __init__
+    from gpiozero import PWMLED
+ModuleNotFoundError: No module named 'gpiozero'
+2026-09-29 07:56:22,331 show.input ERROR buttons unavailable, running without them
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-verify-checkout/show/input.py", line 47, in make_buttons
+    return ButtonInput(pins, presses)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-verify-checkout/show/input.py", line 29, in __init__
+    from gpiozero import Button
+ModuleNotFoundError: No module named 'gpiozero'
+2026-09-29 07:56:22,402 show INFO the show runs at 20 fps
+2026-09-29 07:56:27,230 show INFO closing: the wall goes black, the lights off
+2026-09-29 07:56:27,243 show INFO stopped by SIGTERM, seen 1 times (the later ones ignored)
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.13)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+[exit 0, 0.06 s after SIGTERM, 5.1 s in all; git status after: clean]

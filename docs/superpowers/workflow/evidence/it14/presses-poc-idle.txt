@@ -1,0 +1,173 @@
+The 128x64 presses session on an idle machine, the code before the slice (b83045d) and after it (da20a3a), two runs each, in turn. Load average at the start: (1.72216796875, 2.95654296875, 4.27978515625)
+
+da20a3a run 1: held 20 area 0.0536 squares 3  [exit 0, 40.8 s]
+    0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+    1.0s held 0 area 0.0000 sq 0  PLAYING
+    2.0s held 0 area 0.0000 sq 1  PLAYING
+    3.0s held 0 area 0.0195 sq 1  QUEUED #1
+    3.5s held 8 area 0.0314 sq 1  PLAYING
+    4.1s held 13 area 0.0148 sq 1  PLAYING
+    5.1s held 13 area 0.0000 sq 1  PLAYING
+    6.1s held 13 area 0.0000 sq 3  Not A.I.
+    7.1s held 13 area 0.0000 sq 3  Trey, 2026
+    8.2s held 13 area 0.0000 sq 2  Trey, 2026
+    9.2s held 13 area 0.0000 sq 2  Trey, 2026
+    10.2s held 13 area 0.0000 sq 3  Trey, 2026
+    11.2s held 13 area 0.0000 sq 3  Trey, 2026
+    12.3s held 14 area 0.0536 sq 1  Trey, 2026
+    13.3s held 20 area 0.0366 sq 2  Not A.I.
+    14.3s held 20 area 0.0150 sq 2  Not A.I.
+    15.3s held 20 area 0.0000 sq 2  Not A.I.
+    16.3s held 20 area 0.0000 sq 3  Trey, 2026
+    17.4s held 20 area 0.0000 sq 2  Trey, 2026
+    18.4s held 20 area 0.0000 sq 3  Trey, 2026
+    19.4s held 20 area 0.0000 sq 2  Not A.I.
+    20.4s held 20 area 0.0000 sq 2  Not A.I.
+    21.5s held 20 area 0.0000 sq 0  Not A.I.
+    22.5s held 20 area 0.0000 sq 1  Trey, 2026
+    23.5s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    24.5s held 20 area 0.0000 sq 0  PRESS A BUTTON
+    25.5s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    26.5s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+    27.5s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+    28.5s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+    29.5s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    30.5s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    31.6s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    32.6s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+    33.6s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+    34.6s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+    35.7s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    36.7s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    37.7s held 20 area 0.0000 sq 1  PRESS A BUTTON
+    38.7s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+    39.7s held 20 area 0.0000 sq 1  ON ANY PORTRAIT
+b83045d run 1: held 21 area 0.0553 squares 3  [exit 0, 41.0 s]
+    0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+    1.0s held 0 area 0.0000 sq 0  PLAYING
+    2.0s held 0 area 0.0000 sq 1  PLAYING
+    3.0s held 0 area 0.0052 sq 1  QUEUED #1
+    3.1s held 0 area 0.0161 sq 1  QUEUED #1
+    3.5s held 9 area 0.0161 sq 1  PLAYING
+    4.1s held 13 area 0.0104 sq 1  PLAYING
+    5.1s held 13 area 0.0005 sq 1  PLAYING
+    6.1s held 13 area 0.0000 sq 3  Not A.I.
+    7.2s held 13 area 0.0000 sq 3  Trey, 2026
+    8.2s held 13 area 0.0000 sq 3  Trey, 2026
+    9.2s held 13 area 0.0000 sq 3  Trey, 2026
+    10.2s held 13 area 0.0000 sq 3  Trey, 2026
+    11.3s held 13 area 0.0195 sq 1  Trey, 2026
+    12.3s held 14 area 0.0553 sq 1  Not A.I.
+    13.3s held 21 area 0.0361 sq 2  Not A.I.
+    14.3s held 21 area 0.0007 sq 1  Not A.I.
+    15.3s held 21 area 0.0000 sq 3  Trey, 2026
+    16.4s held 21 area 0.0000 sq 3  Trey, 2026
+    17.4s held 21 area 0.0000 sq 3  Trey, 2026
+    18.4s held 21 area 0.0000 sq 2  Not A.I.
+    19.5s held 21 area 0.0000 sq 2  Not A.I.
+    20.5s held 21 area 0.0000 sq 2  Not A.I.
+    21.5s held 21 area 0.0000 sq 1  Trey, 2026
+    22.5s held 21 area 0.0000 sq 1  Trey, 2026
+    23.5s held 21 area 0.0000 sq 0  PRESS A BUTTON
+    24.5s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    25.6s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    26.6s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    27.6s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    28.6s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    29.6s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    30.7s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    31.7s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    32.7s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    33.7s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    34.7s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    35.7s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    36.8s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    37.8s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    38.8s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    39.8s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+da20a3a run 2: held 21 area 0.0529 squares 3  [exit 0, 40.7 s]
+    0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+    1.0s held 0 area 0.0000 sq 0  PLAYING
+    2.0s held 0 area 0.0000 sq 1  PLAYING
+    3.0s held 0 area 0.0129 sq 1  QUEUED #1
+    3.1s held 0 area 0.0233 sq 1  QUEUED #1
+    3.5s held 7 area 0.0430 sq 1  PLAYING
+    4.1s held 12 area 0.0209 sq 1  PLAYING
+    5.1s held 12 area 0.0000 sq 1  PLAYING
+    6.1s held 12 area 0.0000 sq 3  Not A.I.
+    7.2s held 12 area 0.0000 sq 3  Trey, 2026
+    8.2s held 12 area 0.0000 sq 3  Trey, 2026
+    9.3s held 12 area 0.0000 sq 3  Trey, 2026
+    10.3s held 12 area 0.0000 sq 3  Trey, 2026
+    11.3s held 12 area 0.0208 sq 1  Trey, 2026
+    12.3s held 14 area 0.0529 sq 1  Not A.I.
+    13.3s held 21 area 0.0312 sq 2  Not A.I.
+    14.3s held 21 area 0.0000 sq 1  Not A.I.
+    15.4s held 21 area 0.0000 sq 3  Trey, 2026
+    16.4s held 21 area 0.0000 sq 3  Trey, 2026
+    17.4s held 21 area 0.0000 sq 3  Trey, 2026
+    18.5s held 21 area 0.0000 sq 3  Not A.I.
+    19.5s held 21 area 0.0000 sq 2  Not A.I.
+    20.5s held 21 area 0.0000 sq 0  Not A.I.
+    21.5s held 21 area 0.0000 sq 1  Trey, 2026
+    22.5s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    23.5s held 21 area 0.0000 sq 0  PRESS A BUTTON
+    24.5s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    25.6s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    26.6s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    27.6s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    28.6s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    29.6s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    30.6s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    31.6s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    32.7s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    33.7s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    34.7s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    35.7s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    36.7s held 21 area 0.0000 sq 1  PRESS A BUTTON
+    37.7s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    38.8s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+    39.8s held 21 area 0.0000 sq 1  ON ANY PORTRAIT
+b83045d run 2: held 18 area 0.0570 squares 3  [exit 0, 40.8 s]
+    0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+    1.0s held 0 area 0.0000 sq 0  PLAYING
+    2.0s held 0 area 0.0000 sq 1  PLAYING
+    3.0s held 0 area 0.0055 sq 1  QUEUED #1
+    3.1s held 0 area 0.0164 sq 1  QUEUED #1
+    3.5s held 9 area 0.0164 sq 1  PLAYING
+    4.1s held 13 area 0.0099 sq 1  PLAYING
+    5.1s held 13 area 0.0000 sq 1  PLAYING
+    6.1s held 13 area 0.0000 sq 3  Not A.I.
+    7.2s held 13 area 0.0000 sq 3  Trey, 2026
+    8.2s held 13 area 0.0000 sq 3  Trey, 2026
+    9.2s held 13 area 0.0000 sq 3  Trey, 2026
+    10.3s held 13 area 0.0000 sq 3  Trey, 2026
+    11.3s held 13 area 0.0007 sq 2  Trey, 2026
+    12.3s held 13 area 0.0570 sq 1  Trey, 2026
+    13.3s held 18 area 0.0553 sq 2  Not A.I.
+    14.3s held 18 area 0.0000 sq 1  Not A.I.
+    15.4s held 18 area 0.0000 sq 3  Not A.I.
+    16.4s held 18 area 0.0000 sq 3  Trey, 2026
+    17.4s held 18 area 0.0000 sq 2  Trey, 2026
+    18.4s held 18 area 0.0000 sq 3  Not A.I.
+    19.5s held 18 area 0.0000 sq 2  Not A.I.
+    20.5s held 18 area 0.0000 sq 2  Not A.I.
+    21.5s held 18 area 0.0000 sq 1  Trey, 2026
+    22.5s held 18 area 0.0000 sq 1  Trey, 2026
+    23.5s held 18 area 0.0000 sq 0  PRESS A BUTTON
+    24.6s held 18 area 0.0000 sq 1  PRESS A BUTTON
+    25.6s held 18 area 0.0000 sq 1  PRESS A BUTTON
+    26.6s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    27.6s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    28.6s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    29.6s held 18 area 0.0000 sq 1  PRESS A BUTTON
+    30.7s held 18 area 0.0000 sq 1  PRESS A BUTTON
+    31.7s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    32.7s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    33.7s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    34.8s held 18 area 0.0000 sq 1  PRESS A BUTTON
+    35.8s held 18 area 0.0000 sq 1  PRESS A BUTTON
+    36.8s held 18 area 0.0000 sq 1  PRESS A BUTTON
+    37.8s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    38.8s held 18 area 0.0000 sq 1  ON ANY PORTRAIT
+    39.8s held 18 area 0.0000 sq 1  ON ANY PORTRAIT

@@ -1,0 +1,75 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Point 5: close() j ticks after a tear, the REAL show.wall (da20a3a, from dark, the loop's clock) against
+b83045d's wall driven as b83045d's loop drove it (after a failure: repush, then push; no hold, unprimed). Card and
+probe models, fps 20; a tear at call n (3, 6, 8, 11), split 8/33, close j = 1..20 and 25..70 ticks later (the whole hold and past).
+Close's sends go back to back, one tick each (as the plan review's r6). Worst square count and area per case;
+every case where the new wall is worse than the old."""
+import numpy as np
+from rlib import Torn, measure
+from r1pics import PICS
+import wall_b83045d as OLD
+from show.wall import GovernedDisplay as NEW
+assert NEW.__module__ == "show.wall"
+
+H, W, FPS = 64, 128, 20
+
+
+def run(kind, pic, model, n, split, j):
+    d = Torn(H, W, lambda c, n=n: split if c == n else 0, split, model, fps=FPS)
+    if kind == "new":
+        wall = NEW(d, H, W, fps=FPS, from_dark=True, clock=lambda d=d: d.tick / FPS)
+    else:
+        wall = OLD.GovernedDisplay(d, H, W, fps=FPS)
+    failed = False
+    end = n - 1 + j
+    for k in range(end):
+        d.tick = k
+        try:
+            if kind == "old" and failed:
+                wall.repush()
+            wall.push(pic(k, FPS))
+            failed = False
+        except OSError:
+            failed = True
+    d.tick = end
+    orig = d.push
+    def push(frame, d=d, orig=orig):
+        try:
+            orig(frame)
+        finally:
+            d.tick += 1
+    d.push = push
+    try:
+        wall.close()
+    except OSError:
+        pass
+    assert d.closed
+    ticks = d.tick + 25
+    a, sq = measure(d, ticks, FPS)
+    return sq, a
+
+
+worse, worst = [], {}
+JS = [*range(1, 21), 25, 30, 39, 40, 41, 45, 50, 59, 60, 61, 62, 65, 70]
+for name in ("rev rows b32 ph1 10Hz", "rev rows b24 ph1 5Hz", "checks off16 10Hz", "block strobe 10Hz"):
+    pic = PICS[name]
+    for model in ("card", "probe"):
+        for n in (3, 6, 8, 11):
+            for split in (8, 33):
+                for j in JS:
+                    o = run("old", pic, model, n, split, j)
+                    nw = run("new", pic, model, n, split, j)
+                    key = (name, model)
+                    w = worst.setdefault(key, [(-1, 0), (-1, 0)])
+                    w[0], w[1] = max(w[0], o), max(w[1], nw)
+                    if nw > o:
+                        worse.append((name, model, n, split, j, o, nw))
+        print(f"{name} | {model}: worst old {worst[key][0]} new {worst[key][1]}", flush=True)
+for (name, model), (o, nw) in worst.items():
+    print(f"{name} | {model} | worst old sq {o[0]} area {o[1]:.3f} | worst new sq {nw[0]} area {nw[1]:.3f}")
+print("cases where new > old:", len(worse))
+over = [w for w in worse if w[6][0] > 6 or w[6][1] > 0]
+print("of which new over budget (sq > 6 or area > 0):", len(over))
+for w in over[:40]:
+    print("  ", w)

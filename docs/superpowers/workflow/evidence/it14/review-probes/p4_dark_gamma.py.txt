@@ -1,0 +1,80 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 4: from dark on the REAL show.wall, full-screen strobe and reversal top and bottom first, 10/5 Hz, fps
+20/30, and a bright first frame; nothing sent at birth. Point 7: arcade gamma bound through load_config."""
+import tempfile
+from pathlib import Path
+import numpy as np
+from arcade.flash import BUDGET, flash_area, square_flashes
+from show.wall import GovernedDisplay
+
+H, W = 64, 128
+LIT = np.array((51, 255, 51), np.uint8)
+DARK = np.zeros((H, W, 3), np.uint8)
+
+
+class Rec:
+    def __init__(self):
+        self.sent = []
+
+    def push(self, f):
+        self.sent.append(f.copy())
+
+    def set_brightness(self, l):
+        pass
+
+    def close(self):
+        pass
+
+
+def reversal(hz, fps, n, top_first):
+    out = []
+    for k in range(n):
+        f = DARK.copy()
+        if (round(k / fps * 2 * hz) % 2 == 0) != top_first:
+            f[H // 2:] = LIT
+        else:
+            f[:H // 2] = LIT
+        out.append(f)
+    return out
+
+
+def strobe(hz, fps, n, first_lit=True):
+    return [np.broadcast_to(LIT if (round(k / fps * 2 * hz) % 2 == 0) == first_lit else DARK[0, 0], (H, W, 3)).copy()
+            for k in range(n)]
+
+
+white = np.full((H, W, 3), 255, np.uint8)
+print("point 4 | picture | fps | hz | from_dark True: area sq sent-at-birth | from_dark False: area sq")
+for name, make in (("strobe lit first", lambda hz, fps: strobe(hz, fps, 3 * fps)),
+                   ("strobe dark first", lambda hz, fps: strobe(hz, fps, 3 * fps, False)),
+                   ("reversal bottom first", lambda hz, fps: reversal(hz, fps, 3 * fps, False)),
+                   ("reversal top first", lambda hz, fps: reversal(hz, fps, 3 * fps, True)),
+                   ("white then 10Hz strobe", lambda hz, fps: [white] + strobe(hz, fps, 3 * fps))):
+    for fps in (20, 30):
+        for hz in (10, 5):
+            row = []
+            for fd in (True, False):
+                r = Rec()
+                wall = GovernedDisplay(r, H, W, fps=fps, from_dark=fd)
+                born = len(r.sent)
+                for f in make(hz, fps):
+                    wall.push(f)
+                shown = [DARK] + r.sent
+                row.append(f"{flash_area(shown, fps=fps):.3f} {square_flashes(shown, fps=fps)} {born}")
+            print(f"  {name} | {fps} | {hz} | {row[0]} | {row[1]}")
+
+from arcade.config import load_config
+print("point 7 | gamma text | result")
+with tempfile.TemporaryDirectory() as d:
+    for g in ("1.0", "2.2", "1", "2", "0.999", "2.2000001", "0.22", "22.0", "nan", "inf", "-inf", "0", "true",
+              "false", '"2.2"', "1e0"):
+        p = Path(d) / "a.toml"
+        p.write_text(f"gamma = {g}\n")
+        try:
+            c = load_config(p)
+            print(f"  {g} | taken {c.gamma!r} ({type(c.gamma).__name__})")
+        except Exception as e:
+            print(f"  {g} | {type(e).__name__}: {e}")
+root = Path("/Users/trey/dev/codeisart")
+for name in ("arcade.toml", "arcade.mac.toml"):
+    print(f"  {name} | {load_config(root / name).gamma!r}")

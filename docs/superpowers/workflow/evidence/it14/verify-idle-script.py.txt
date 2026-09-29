@@ -1,0 +1,20 @@
+import os, subprocess, time
+S = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad"
+PY = "/Users/trey/dev/codeisart/.venv/bin/python"
+EV = S + "/it14-ev"
+ENV = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+with open(EV + "/presses-poc-idle.txt", "w") as log:
+    log.write("The 128x64 presses session on an idle machine, the code before the slice (b83045d) and after it (da20a3a), "
+              "two runs each, in turn. Load average at the start: %s\n\n" % (os.getloadavg(),))
+    for n in (1, 2):
+        for sha, co in (("da20a3a", S + "/it14-verify-checkout"), ("b83045d", S + "/it14-before-checkout")):
+            out = f"{S}/it14-idle-out/{sha}-{n}"
+            t = time.time()
+            r = subprocess.run([PY, "-m", "tools.show_shot", "--config", "show.poc.toml", "--session", "presses",
+                                "--every-ms", "1000", "--look", "plain", "--out", out], cwd=co, env=ENV,
+                               capture_output=True, text=True, timeout=300)
+            lines = r.stdout.strip().split("\n")
+            first = [l for l in lines if l.startswith(("0.0s", "1.0s", "1.1s", "2.0s", "2.1s"))]
+            log.write(f"{sha} run {n}: {lines[-1]}  [exit {r.returncode}, {time.time() - t:.1f} s]\n")
+            log.write("".join("    " + l + "\n" for l in lines[:-1]))
+            print(sha, n, lines[-1], r.returncode)

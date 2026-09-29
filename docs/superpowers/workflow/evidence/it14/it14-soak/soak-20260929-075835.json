@@ -1,0 +1,135 @@
+{
+  "steps": 2199,
+  "governed": 2201,
+  "push_failures": 0,
+  "held_ticks": 0,
+  "presses": 24,
+  "plays_started": 1,
+  "plays_ended": 1,
+  "returns_to_attract": 1,
+  "errors_logged": 0,
+  "errors_at_setup": 0,
+  "errors": [],
+  "step_ms": {
+    "count": 2199,
+    "median": 6.8,
+    "p95": 13.3,
+    "worst": 31.412
+  },
+  "governor_ms": {
+    "count": 2201,
+    "median": 6.1,
+    "p95": 10.7,
+    "worst": 31.313
+  },
+  "governor": {
+    "held_ticks": 0,
+    "fps": 20
+  },
+  "meter": {
+    "frames": 2199,
+    "area_max": 0.011861165364583334,
+    "squares_max": 4,
+    "budget": 6
+  },
+  "windows": [
+    {
+      "t": 60.051,
+      "steps": 1104,
+      "governed": 1104,
+      "frames": 1104,
+      "area_max": 0.0,
+      "squares_max": 2,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 137888
+    },
+    {
+      "t": 120.024,
+      "steps": 2199,
+      "governed": 2201,
+      "frames": 1095,
+      "area_max": 0.011861,
+      "squares_max": 4,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 137888
+    }
+  ],
+  "fds": {
+    "first": 4,
+    "last": 4
+  },
+  "rss_kb": {
+    "first": 37728,
+    "last": 137888
+  },
+  "children_left": 0,
+  "run_ended_early": 0,
+  "sha": "da20a3a",
+  "config": {
+    "backend": "fake",
+    "width": 512,
+    "height": 192,
+    "brightness": 0.15,
+    "brightness_cap": 0.4,
+    "sdl_scale": 2,
+    "columns": 80,
+    "rows": 24,
+    "phosphor": "green",
+    "glow": false,
+    "view": "text",
+    "strip_look": "bright-on-field",
+    "gamma": 2.2,
+    "entries_dir": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-verify-checkout/entries",
+    "audio_dir": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-verify-checkout/audio",
+    "font_path": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-verify-checkout/fonts/5x7.bin",
+    "button_pins": [
+      5,
+      6,
+      13,
+      19,
+      26
+    ],
+    "light_pins": [
+      12,
+      16,
+      20,
+      21,
+      25
+    ],
+    "lightbox_pins": [
+      17,
+      22,
+      23,
+      24,
+      27
+    ],
+    "ddp_host": "127.0.0.1",
+    "ddp_port": 4048,
+    "colorlight_iface": "eth0",
+    "dwell": 4.0,
+    "error_hold": 3.0,
+    "typewriter_cps": 400,
+    "attract_lps": 3.0,
+    "fps": 20,
+    "capture": false,
+    "volume": 0.6,
+    "quiet_hours": "",
+    "crowd_run_seconds": 10.0,
+    "idle_run_seconds": 40.0,
+    "attract_autoplay_minutes": 5.0,
+    "min_build_seconds": 1.5,
+    "pump_bytes": 4096,
+    "pump_ms": 8.0
+  },
+  "times": {
+    "started_at": "2026-09-29T07:56:35",
+    "elapsed_s": 120.036,
+    "minutes": 2.0,
+    "press_every": 5.0,
+    "seed": 0,
+    "window_s": 60.0
+  },
+  "failures": []
+}

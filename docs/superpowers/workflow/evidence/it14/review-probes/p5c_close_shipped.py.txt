@@ -1,0 +1,65 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Point 5, as shipped, the start cut off: both walls as shipped (b83045d driven by its loop's repush), the reversal
+top first 10 Hz at fps 20, a tear at call n (25..34), split 8/33/56, close() j = 1..40 ticks later; the wall measured
+from tick 22 on (after the first second, so b83045d's unprimed start is out). Also the hold's timeline for n=28, split 33."""
+import numpy as np
+import rlib
+from rlib import Torn, seq
+from r1pics import PICS
+from arcade.flash import flash_area, square_flashes
+import wall_b83045d as OLD
+from show.wall import GovernedDisplay as NEW
+H, W, FPS = 64, 128, 20
+
+def run(kind, pic, model, n, split, j, prime_old):
+    d = Torn(H, W, lambda c, n=n: split if c == n else 0, split, model, fps=FPS)
+    if kind == "new":
+        wall = NEW(d, H, W, fps=FPS, from_dark=True, clock=lambda d=d: d.tick / FPS)
+    else:
+        wall = OLD.GovernedDisplay(d, H, W, fps=FPS)
+        if prime_old:
+            wall.governor.apply(np.zeros((H, W, 3), np.uint8))
+    failed = False
+    end = n - 1 + j
+    for k in range(end):
+        d.tick = k
+        try:
+            if kind == "old" and failed:
+                wall.repush()
+            wall.push(pic(k, FPS))
+            failed = False
+        except OSError:
+            failed = True
+    d.tick = end
+    orig = d.push
+    def push(frame, d=d, orig=orig):
+        try:
+            orig(frame)
+        finally:
+            d.tick += 1
+    d.push = push
+    try:
+        wall.close()
+    except OSError:
+        pass
+    assert d.closed
+    s = seq(d, d.tick + 25)[23:]
+    return square_flashes(s, fps=FPS), flash_area(s, fps=FPS)
+
+
+pic = PICS["rev rows b32 ph1 10Hz"]
+for model in ("card", "probe"):
+    worse, wo, wn, cnt = [], (0, 0), (0, 0), 0
+    for n in range(25, 35):
+        for split in (8, 33, 56):
+            for j in range(1, 41):
+                o = run("old", pic, model, n, split, j, False)
+                nw = run("new", pic, model, n, split, j, False)
+                cnt += 1
+                wo, wn = max(wo, o), max(wn, nw)
+                if nw > o:
+                    worse.append((n, split, j, o, nw))
+    js = sorted({w[2] for w in worse})
+    print(f"{model}: {cnt} cases | worst old {wo} new {wn} | new worse in {len(worse)} | new over 6 while old <= 6: "
+          f"{sum(1 for w in worse if w[4][0] > 6 and w[3][0] <= 6)} | j where worse: {js} | first: {worse[:3]}", flush=True)

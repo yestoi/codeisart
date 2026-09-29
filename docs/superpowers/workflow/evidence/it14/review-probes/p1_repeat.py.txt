@@ -1,0 +1,31 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Point 1, repeated tears on the REAL show.wall: every 2nd, every 3rd, a run of four starting at call 1..12, a
+tear at every call; splits 8/33/56; the 19 pictures; card and probe; fps 20 and 30. Worst square count, area."""
+import time
+import sys as _s
+from r1pics import PICS
+from rlib import Torn, drive, measure
+
+H, W = 64, 128
+FPSES = [int(a) for a in _s.argv[1].split(",")] if len(_s.argv) > 1 else [20, 30]
+TEARS = [("every 2nd", None, lambda c: c % 2 == 0), ("every 3rd", None, lambda c: c % 3 == 0),
+         ("every call", None, lambda c: True)]
+TEARS += [("run of 4", n, (lambda c, n=n: n <= c < n + 4)) for n in range(1, 13)]
+t0 = time.time()
+print("fps | model | picture | worst sq (area) at (tears, n, split) | cases")
+for fps in FPSES:
+    for model in ("card", "probe"):
+        for name, pic in PICS.items():
+            worst, cases = (-1, 0.0, None), 0
+            for kind, n, t in TEARS:
+                for split in (8, 33, 56):
+                    ticks = 6 * fps + 20 if n is None else n + 4 * fps + 30
+                    d = Torn(H, W, (lambda c, t=t, s=split: s if t(c) else 0), split, model, fps=fps)
+                    drive([pic(k, fps) for k in range(ticks)], d, fps)
+                    a, sq = measure(d, ticks, fps)
+                    cases += 1
+                    if (sq, a) > (worst[0], worst[1]):
+                        worst = (sq, a, (kind, n, split))
+            print(f"{fps} | {model} | {name} | {worst[0]} ({worst[1]:.3f}) at {worst[2]} | {cases}", flush=True)
+print(f"seconds {time.time() - t0:.0f}")

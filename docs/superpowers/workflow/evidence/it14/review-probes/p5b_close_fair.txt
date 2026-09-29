@@ -1,0 +1,8 @@
+A: old primed, tear 3..12 | rev rows b32 ph1 10Hz | card | worst old (8, 0.0) new (8, 0.0) | new worse in 13: [(6, 33, 2, (6, 0.0), (8, 0.0)), (6, 33, 3, (6, 0.0), (8, 0.0)), (6, 33, 4, (6, 0.0), (8, 0.0)), (6, 33, 5, (6, 0.0), (8, 0.0))]
+A: old primed, tear 3..12 | rev rows b32 ph1 10Hz | probe | worst old (8, 0.0) new (8, 0.0) | new worse in 13: [(6, 33, 2, (6, 0.0), (8, 0.0)), (6, 33, 3, (6, 0.0), (8, 0.0)), (6, 33, 4, (6, 0.0), (8, 0.0)), (6, 33, 5, (6, 0.0), (8, 0.0))]
+A: old primed, tear 3..12 | checks off16 10Hz | card | worst old (6, 0.0) new (6, 0.0) | new worse in 0: []
+A: old primed, tear 3..12 | checks off16 10Hz | probe | worst old (6, 0.0) new (6, 0.0) | new worse in 0: []
+B: as shipped, tear 25..34 | rev rows b32 ph1 10Hz | card | worst old (7, 0.5) new (8, 0.0) | new worse in 13: [(28, 33, 1, (7, 0.5), (8, 0.0)), (28, 33, 2, (7, 0.5), (8, 0.0)), (28, 33, 3, (7, 0.5), (8, 0.0)), (28, 33, 4, (7, 0.5), (8, 0.0))]
+B: as shipped, tear 25..34 | rev rows b32 ph1 10Hz | probe | worst old (7, 0.5) new (8, 0.0) | new worse in 13: [(28, 33, 1, (7, 0.5), (8, 0.0)), (28, 33, 2, (7, 0.5), (8, 0.0)), (28, 33, 3, (7, 0.5), (8, 0.0)), (28, 33, 4, (7, 0.5), (8, 0.0))]
+B: as shipped, tear 25..34 | checks off16 10Hz | card | worst old (7, 0.5) new (6, 0.0) | new worse in 0: []
+B: as shipped, tear 25..34 | checks off16 10Hz | probe | worst old (7, 0.5) new (6, 0.0) | new worse in 0: []

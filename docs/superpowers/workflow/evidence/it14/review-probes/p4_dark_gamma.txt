@@ -1,0 +1,40 @@
+point 4 | picture | fps | hz | from_dark True: area sq sent-at-birth | from_dark False: area sq
+  strobe lit first | 20 | 10 | 0.000 6 0 | 1.000 7 0
+  strobe lit first | 20 | 5 | 0.000 6 0 | 1.000 7 0
+  strobe lit first | 30 | 10 | 0.000 6 0 | 1.000 7 0
+  strobe lit first | 30 | 5 | 0.000 6 0 | 1.000 7 0
+  strobe dark first | 20 | 10 | 0.000 6 0 | 0.000 6 0
+  strobe dark first | 20 | 5 | 0.000 6 0 | 0.000 6 0
+  strobe dark first | 30 | 10 | 0.000 6 0 | 0.000 6 0
+  strobe dark first | 30 | 5 | 0.000 6 0 | 0.000 6 0
+  reversal bottom first | 20 | 10 | 0.000 6 0 | 0.500 7 0
+  reversal bottom first | 20 | 5 | 0.000 6 0 | 0.500 7 0
+  reversal bottom first | 30 | 10 | 0.000 6 0 | 0.500 7 0
+  reversal bottom first | 30 | 5 | 0.000 6 0 | 0.500 7 0
+  reversal top first | 20 | 10 | 0.000 6 0 | 0.500 7 0
+  reversal top first | 20 | 5 | 0.000 6 0 | 0.500 7 0
+  reversal top first | 30 | 10 | 0.000 6 0 | 0.500 7 0
+  reversal top first | 30 | 5 | 0.000 6 0 | 0.500 7 0
+  white then 10Hz strobe | 20 | 10 | 0.000 6 0 | 1.000 7 0
+  white then 10Hz strobe | 20 | 5 | 0.000 6 0 | 1.000 7 0
+  white then 10Hz strobe | 30 | 10 | 0.000 6 0 | 1.000 7 0
+  white then 10Hz strobe | 30 | 5 | 0.000 6 0 | 1.000 7 0
+point 7 | gamma text | result
+  1.0 | taken 1.0 (float)
+  2.2 | taken 2.2 (float)
+  1 | taken 1.0 (float)
+  2 | taken 2.0 (float)
+  0.999 | ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.999
+  2.2000001 | ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 2.2000001
+  0.22 | ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.22
+  22.0 | ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 22.0
+  nan | ValueError: gamma must be greater than 0, got nan
+  inf | ValueError: gamma must be finite, got inf
+  -inf | ValueError: gamma must be greater than 0, got -inf
+  0 | ValueError: gamma must be greater than 0, got 0.0
+  true | ValueError: gamma must be float, got True
+  false | ValueError: gamma must be float, got False
+  "2.2" | ValueError: gamma must be float, got '2.2'
+  1e0 | taken 1.0 (float)
+  arcade.toml | 2.2
+  arcade.mac.toml | 2.2

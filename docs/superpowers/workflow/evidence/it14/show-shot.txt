@@ -1,0 +1,162 @@
+$ python -m tools.show_shot --session strobe --seconds 6 --every-ms 150 --look plain --scale 1 --cols 4 --out it14-strobe
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.2s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.3s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.5s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.7s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.8s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+1.0s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.2s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.3s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.5s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.7s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.8s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.0s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.2s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.3s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.5s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.6s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.8s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+3.0s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+3.1s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.3s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.5s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.6s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.8s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.9s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+4.1s held 0 area 0.0000 sq 2  NOW: strobe by Trey, 2026, Not A.I.
+4.3s held 0 area 0.0000 sq 5  NOW: strobe by Trey, 2026, Not A.I.
+4.4s held 1 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+4.6s held 2 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+4.8s held 4 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+4.9s held 6 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.1s held 8 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.3s held 9 area 0.0000 sq 5  NOW: strobe by Trey, 2026, Not A.I.
+5.4s held 9 area 0.0000 sq 3  NOW: strobe by Trey, 2026, Not A.I.
+5.6s held 9 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.8s held 11 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.9s held 12 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+held 13 area 0.0000 squares 6
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 11.0 s; git status after: clean]
+
+$ python -m tools.show_shot --session presses --every-ms 1000 --look both --out it14-presses
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+1.1s held 0 area 0.0000 sq 0  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+2.1s held 0 area 0.0000 sq 1  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+3.0s held 0 area 0.0008 sq 2  NOW: hello by Trey, 2026, Not A.I. | QUEUED #1
+3.1s held 0 area 0.0035 sq 2  NOW: hello by Trey, 2026, Not A.I. | QUEUED #1
+3.5s held 0 area 0.0272 sq 3  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+4.2s held 0 area 0.0214 sq 3  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+5.2s held 0 area 0.0002 sq 3  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+6.2s held 0 area 0.0000 sq 4  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+7.3s held 0 area 0.0000 sq 4  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+8.3s held 0 area 0.0000 sq 4  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+9.4s held 0 area 0.0000 sq 3  NOW: hello-2 by Trey, 2026, Not A.I.
+10.4s held 0 area 0.0000 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+11.5s held 0 area 0.0009 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+12.5s held 0 area 0.0060 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+13.5s held 0 area 0.0088 sq 3  NOW: hello-2 by Trey, 2026, Not A.I.
+14.6s held 0 area 0.0001 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+15.6s held 0 area 0.0000 sq 4  NOW: hello-2 by Trey, 2026, Not A.I.
+16.6s held 0 area 0.0000 sq 4  NOW: hello-2 by Trey, 2026, Not A.I.
+17.7s held 0 area 0.0000 sq 4  NOW: hello-2 by Trey, 2026, Not A.I.
+18.7s held 0 area 0.0000 sq 3  NOW: hello-2 by Trey, 2026, Not A.I.
+19.7s held 0 area 0.0000 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+20.8s held 0 area 0.0000 sq 0  NOW: hello-2 by Trey, 2026, Not A.I.
+21.8s held 0 area 0.0000 sq 0  NOW: hello-2 by Trey, 2026, Not A.I.
+22.9s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+23.9s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+25.0s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+26.0s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+27.0s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+28.1s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+29.1s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+30.1s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+31.2s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+32.2s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+33.3s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+34.3s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+35.4s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+36.4s held 0 area 0.0000 sq 2  PRESS A BUTTON ON ANY PORTRAIT
+37.5s held 0 area 0.0000 sq 2  PRESS A BUTTON ON ANY PORTRAIT
+38.5s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+39.5s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+held 0 area 0.0272 squares 4
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 50.9 s; git status after: clean]
+
+$ python -m tools.show_shot --config show.poc.toml --session presses --every-ms 1000 --look both --out it14-presses-poc
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.0s held 0 area 0.0000 sq 1  PLAYING
+3.0s held 0 area 0.0193 sq 1  QUEUED #1
+3.5s held 8 area 0.0311 sq 1  PLAYING
+4.1s held 13 area 0.0051 sq 1  PLAYING
+5.1s held 13 area 0.0000 sq 1  PLAYING
+6.1s held 13 area 0.0000 sq 3  Not A.I.
+7.1s held 13 area 0.0000 sq 3  Trey, 2026
+8.2s held 13 area 0.0000 sq 3  Trey, 2026
+9.2s held 13 area 0.0000 sq 2  Trey, 2026
+10.2s held 13 area 0.0000 sq 3  Trey, 2026
+11.2s held 13 area 0.0062 sq 1  Trey, 2026
+12.3s held 16 area 0.0560 sq 1  Not A.I.
+13.3s held 24 area 0.0221 sq 2  Not A.I.
+14.3s held 24 area 0.0010 sq 1  Not A.I.
+15.4s held 24 area 0.0000 sq 3  Trey, 2026
+16.4s held 24 area 0.0000 sq 3  Trey, 2026
+17.5s held 24 area 0.0000 sq 3  Trey, 2026
+18.5s held 24 area 0.0000 sq 3  Not A.I.
+19.5s held 24 area 0.0000 sq 2  Not A.I.
+20.5s held 24 area 0.0000 sq 0  Not A.I.
+21.6s held 24 area 0.0000 sq 1  Trey, 2026
+22.6s held 24 area 0.0000 sq 1  PRESS A BUTTON
+23.6s held 24 area 0.0000 sq 0  PRESS A BUTTON
+24.7s held 24 area 0.0000 sq 1  PRESS A BUTTON
+25.7s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+26.7s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+27.8s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+28.8s held 24 area 0.0000 sq 1  PRESS A BUTTON
+29.8s held 24 area 0.0000 sq 1  PRESS A BUTTON
+30.9s held 24 area 0.0000 sq 1  PRESS A BUTTON
+31.9s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+32.9s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+34.0s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+35.0s held 24 area 0.0000 sq 1  PRESS A BUTTON
+36.0s held 24 area 0.0000 sq 1  PRESS A BUTTON
+37.0s held 24 area 0.0000 sq 1  PRESS A BUTTON
+38.1s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+39.1s held 24 area 0.0000 sq 1  ON ANY PORTRAIT
+held 24 area 0.0560 squares 3
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 41.2 s; git status after: clean]
+
+$ python tools/wall_pattern.py panels --config show.toml --png it14-panels.png
+wall_pattern: saved panels to /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-ev/it14-panels.png
+[exit 0, 0.2 s; git status after: clean]
+
+$ python -c from arcade.config import load_config as l; print(l(__import__('pathlib').Path('arcade.toml')))
+ArcadeConfig(width=128, height=64, backend='sdl', sdl_scale=8, iface='eth0', ddp_host='127.0.0.1', ddp_port=4048, camera='mediapipe', camera_index=0, camera_fps=10, audio='sounddevice', audio_device='', scenario='', mirror=True, brightness=0.4, apl_cap_day=0.12, apl_cap_night=0.06, night_start='01:00', night_end='06:00', night_lux=5.0, gamma=2.2, look='led', dwell_seconds=1.2, present_on_seconds=1.0, present_off_seconds=3.0, player_lost_seconds=0.5, leave_seconds=8.0, inactive_seconds=30.0, max_session_seconds=180.0, exit_seconds=3.0, allow_record=False, data_dir=PosixPath('data'), font_path=PosixPath('fonts/5x7.bin'), fps=30)
+[exit 0, 0.1 s; git status after: clean]
+
+$ python -c import pathlib, tempfile
+from arcade.config import load_config
+src = pathlib.Path('arcade.toml').read_text()
+assert 'gamma = 2.2' in src
+for g in ('0.22', '22.0', '1.0', '2.2'):
+    d = pathlib.Path(tempfile.mkdtemp()) / 'a.toml'
+    d.write_text(src.replace('gamma = 2.2', 'gamma = ' + g))
+    try:
+        print(g, 'taken', load_config(d).gamma)
+    except ValueError as e:
+        print(g, 'refused:', e)
+
+0.22 refused: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.22
+22.0 refused: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 22.0
+1.0 taken 1.0
+2.2 taken 2.2
+[exit 0, 0.0 s; git status after: clean]
+

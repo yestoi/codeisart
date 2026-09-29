@@ -1,0 +1,4 @@
+fps 20 card: no tear: area 0.063 sq 0
+fps 20 probe: no tear: area 0.063 sq 0
+fps 30 card: no tear: area 0.094 sq 0
+fps 30 probe: no tear: area 0.094 sq 0
