@@ -13,6 +13,9 @@ from show.font import CELL_H, CELL_W, Font
 NORMAL = 0.7            # normal text at 70 % of the phosphor, bold at 100 %
 QUESTION = ord("?")     # stands in for anything outside Latin-1
 VIEWS = ("text", "ink")
+# the strip's looks (Q54): (field, letters), each a share of the phosphor
+STRIP_LOOKS: dict[str, tuple[float, float]] = {
+    "reverse": (0.70, 0.0), "dim-reverse": (0.35, 0.0), "bright-on-field": (0.25, 1.0)}
 
 
 def _code(ch: str) -> int:
@@ -22,7 +25,10 @@ def _code(ch: str) -> int:
 
 class Renderer:
     def __init__(self, font: Font, width: int, height: int, columns: int, rows: int,
-                 phosphor: tuple[int, int, int], glow: bool = False, view: str = "text"):
+                 phosphor: tuple[int, int, int], glow: bool = False, view: str = "text",
+                 strip_look: str = "reverse"):
+        if strip_look not in STRIP_LOOKS:
+            raise ValueError(f"strip_look must be one of {tuple(STRIP_LOOKS)}, got {strip_look!r}")
         if view not in VIEWS:
             raise ValueError(f"view must be one of {VIEWS}, got {view!r}")
         if view == "text" and (columns * CELL_W > width or rows * CELL_H > height):
@@ -30,7 +36,7 @@ class Renderer:
         if view == "ink" and height <= CELL_H:
             raise ValueError(f"the ink view needs more than {CELL_H} rows of pixels, got {height}")
         self.width, self.height, self.columns, self.rows = width, height, columns, rows
-        self.glow, self.view = glow, view
+        self.glow, self.view, self.strip_look = glow, view, strip_look
         self.x0 = max(0, (width - columns * CELL_W) // 2)
         self.y0 = max(0, (height - rows * CELL_H) // 2)
         self._font = font
@@ -43,6 +49,10 @@ class Renderer:
         self._phosphor = bold_rgb
         # palette index 0 black, 1 normal, 2 bold
         self._palette = np.array([(0, 0, 0), bold_rgb * NORMAL, bold_rgb], dtype=np.float64).astype(np.uint8)
+        field_share, letter_share = STRIP_LOOKS[strip_look]
+        field = bold_rgb * field_share
+        # the strip's palette: index 0 a letter pixel, 1 and 2 the field
+        self._strip_palette = np.array([bold_rgb * letter_share, field, field], dtype=np.float64).astype(np.uint8)
         self._frame: np.ndarray | None = None
         self._screen: pyte.Screen | None = None
         self._key: tuple | None = None
@@ -100,7 +110,10 @@ class Renderer:
         index = masks * level[:, :, None, None]
         index = index.transpose(0, 2, 1, 3).reshape(rows * CELL_H, columns * CELL_W)
         frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        frame[self.y0 : self.y0 + rows * CELL_H, self.x0 : self.x0 + columns * CELL_W] = self._palette[index]
+        pixels = self._palette[index]
+        if show_strip:
+            pixels[-CELL_H:] = self._strip_palette[index[-CELL_H:]]
+        frame[self.y0 : self.y0 + rows * CELL_H, self.x0 : self.x0 + columns * CELL_W] = pixels
         if self.glow:
             frame = apply_glow(frame)
         return frame
@@ -124,8 +137,15 @@ class Renderer:
         """The strip in the font on the bottom text row, reverse video as in the text view, cut to the width."""
         fits = self.width // CELL_W
         y = self.height - CELL_H
-        frame[y:] = self._palette[1]
-        draw_text(frame, (self.width - fits * CELL_W) // 2, y, strip[:fits], self._font, (0, 0, 0))
+        frame[y:] = self._strip_palette[1]
+        draw_text(frame, (self.width - fits * CELL_W) // 2, y, strip[:fits], self._font,
+                  tuple(int(c) for c in self._strip_palette[0]))
+
+
+def renderer_for(cfg, font: Font) -> Renderer:
+    """Every Renderer from a Config: size, phosphor, glow, view and the strip's look."""
+    return Renderer(font, cfg.width, cfg.height, cfg.columns, cfg.rows, cfg.phosphor_rgb,
+                    glow=cfg.glow, view=cfg.view, strip_look=cfg.strip_look)
 
 
 def apply_glow(frame: np.ndarray, amount: float = 0.3) -> np.ndarray:

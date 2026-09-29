@@ -402,3 +402,95 @@ def test_unknown_view_rejected(font):
 def test_text_view_still_refuses_the_128x64_wall(font):
     with pytest.raises(ValueError):
         Renderer(font, PW, PH, COLS, ROWS, GREEN)
+
+
+# The strip's three looks (Q54)
+
+LOOKS = ("reverse", "dim-reverse", "bright-on-field")
+FIELD_LETTERS = {"reverse": (0.70, 0.0), "dim-reverse": (0.35, 0.0), "bright-on-field": (0.25, 1.0)}
+INK_STRIP_X0 = (PW - (PW // 6) * 6) // 2               # 4: 21 characters fit 128 px
+
+
+def look_renderer(font: Font, view: str, look: str) -> Renderer:
+    if view == "ink":
+        return Renderer(font, PW, PH, COLS, ROWS, GREEN, view="ink", strip_look=look)
+    return Renderer(font, W, H, COLS, ROWS, GREEN, strip_look=look)
+
+
+def strip_cells(frame: np.ndarray, view: str) -> np.ndarray:
+    """The strip's text row, (8, width, 3), cut to the columns the terminal (or the font) covers."""
+    if view == "ink":
+        return frame[-8:]
+    return frame[-8:, X0 : X0 + 480]
+
+
+def shade(share: float) -> tuple:
+    return tuple((np.array(GREEN, dtype=np.float64) * share).astype(np.uint8))
+
+
+def colors(region: np.ndarray) -> set:
+    return {tuple(p) for p in region.reshape(-1, 3)}
+
+
+def test_strip_look_names_match_the_config():
+    from show import config, renderer as renderer_module
+    assert set(renderer_module.STRIP_LOOKS) == set(config.STRIP_LOOKS)
+    assert dict(renderer_module.STRIP_LOOKS) == FIELD_LETTERS
+
+
+def test_unknown_strip_look_rejected(font):
+    with pytest.raises(ValueError):
+        Renderer(font, W, H, COLS, ROWS, GREEN, strip_look="neon")
+
+
+@pytest.mark.parametrize("view", ["text", "ink"])
+def test_reverse_is_the_present_strip(font, view):
+    default = (ink_renderer(font) if view == "ink" else renderer(font)).render(make_screen(), strip="A")
+    reverse = look_renderer(font, view, "reverse").render(make_screen(), strip="A")
+    assert np.array_equal(default, reverse)
+    assert colors(strip_cells(reverse, view)) == {(0, 0, 0), DIM}
+
+
+@pytest.mark.parametrize("view", ["text", "ink"])
+def test_dim_reverse_is_a_35_percent_field_with_dark_letters(font, view):
+    frame = look_renderer(font, view, "dim-reverse").render(make_screen(), strip="A")
+    assert colors(strip_cells(frame, view)) == {(0, 0, 0), shade(0.35)}
+    x0 = INK_STRIP_X0 if view == "ink" else X0
+    lit = frame[-8:, x0 : x0 + 6].any(axis=2)
+    assert (lit == ~mask(font, "A")).all()
+
+
+@pytest.mark.parametrize("view", ["text", "ink"])
+def test_bright_on_field_is_full_letters_on_a_25_percent_field(font, view):
+    frame = look_renderer(font, view, "bright-on-field").render(make_screen(), strip="A")
+    assert colors(strip_cells(frame, view)) == {shade(0.25), GREEN}
+    x0 = INK_STRIP_X0 if view == "ink" else X0
+    letters = (frame[-8:, x0 : x0 + 6] == np.array(GREEN)).all(axis=2)
+    assert (letters == mask(font, "A")).all()
+
+
+@pytest.mark.parametrize("view", ["text", "ink"])
+def test_program_rows_are_the_same_in_every_look(font, view):
+    screen = make_screen("A\x1b[1mA\x1b[0m\x1b[7mA" * 10)
+    frames = [look_renderer(font, view, look).render(screen, strip="NOW") for look in LOOKS]
+    assert frames[0][:-8].any()
+    for frame in frames[1:]:
+        assert np.array_equal(frame[:-8], frames[0][:-8])
+
+
+@pytest.mark.parametrize("view", ["text", "ink"])
+@pytest.mark.parametrize("look", LOOKS)
+def test_an_empty_strip_is_lit_in_every_look(font, view, look):
+    frame = look_renderer(font, view, look).render(make_screen(), strip="")
+    assert colors(strip_cells(frame, view)) == {shade(FIELD_LETTERS[look][0])}
+
+
+@pytest.mark.parametrize("view", ["text", "ink"])
+def test_renderer_for_passes_view_and_look(font, view):
+    from show.config import Config
+    from show.renderer import renderer_for
+    cfg = Config(view=view, strip_look="bright-on-field", glow=True,
+                 width=PW if view == "ink" else W, height=PH if view == "ink" else H)
+    r = renderer_for(cfg, font)
+    assert (r.view, r.strip_look, r.glow) == (view, "bright-on-field", True)
+    assert (r.width, r.height, r.columns, r.rows) == (cfg.width, cfg.height, cfg.columns, cfg.rows)
