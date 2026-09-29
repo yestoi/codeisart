@@ -389,7 +389,7 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - Tests: 762 collected, 762 passed, 0 skipped, 172.8 s at load 2.0 (the orchestrator's run: 169.2 s; it08: 723 in 139.7 s;
   the plan's limit: 175 s).
 - Minutes: orient 2, plan 12, implement 114 (serial 56: S1 37 and S2 19; parallel 34; integration and P1's time fix 24),
-  review 8, verify 6 (inside the review's time), report 12. About 150 from orient (20:51) to the report (23:20), against a
+  review 8, verify 6 (inside the review's time), report 3. About 140 from orient (20:51) to the report (23:11), against a
   target of 90. Where the overrun went: the machine was loaded by the owner's spike session until about 22:30 (load
   average up to 14; suites of 150 to 280 s, the governor's timing test failing under load at the base too); S1 ran the
   whole suite several times under that load; two rulings waited 20 to 25 minutes because the orchestrator reads its
