@@ -1,0 +1,2 @@
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+1 failed, 9 passed in 23.26s

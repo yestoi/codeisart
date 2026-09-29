@@ -1,0 +1,111 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""C47, C46, C45 through the tracker, Depth and Cursor (no model, no camera)."""
+import math
+from arcade.input import Cursor, Depth
+from arcade.sensed import (Body, Keypoint, LEFT_HIP, LEFT_SHOULDER, NOSE, RIGHT_HIP, RIGHT_SHOULDER, RIGHT_WRIST)
+from arcade.sources.camera import BodyTracker
+from arcade.sources.pose_mediapipe import merge_duplicates
+from tests.arcade.test_camera import spike_det
+
+
+def run(dets_at, seconds=4.0):
+    """dets_at(capture index) -> detections; 10 captures a second, 30 ticks; returns per-tick (value, body)."""
+    tr, depth = BodyTracker(), Depth()
+    out, body, cam = [], None, 0.0
+    for i in range(round(seconds * 30)):
+        t = i / 30
+        if i % 3 == 0:
+            cam = t
+            bodies = tr.update(dets_at(i // 3), cam)
+            body = bodies[0] if bodies else None
+        out.append((depth.update(body, t, cam), body))
+    return out
+
+
+def paddle(vals):
+    return [(1 - v) * 48 for v in vals if v is not None]
+
+
+print("A. the plan's probe after E1: still body, hips from 1 s")
+o = run(lambda c: [spike_det(hips=c >= 10)])
+p = paddle([v for v, _ in o])
+print(f"   paddle before {p[29]:.2f} after {p[45]:.2f} travel after the hips {max(p[30:]) - min(p[30:]):.3f} px; "
+      f"measured flags {[b.measured for _, b in o[27:33:3]]}")
+
+print("B. a real step (x1.3) taken on the very capture the hips arrive, then a second step (x1.3) at 2 s")
+o = run(lambda c: [spike_det(hips=c >= 10, grow=1.0 if c < 10 else 1.3 if c < 20 else 1.69)])
+v = [x for x, _ in o]
+print(f"   value before {v[29]:.3f}, 0.5 s after the first step {v[45]:.3f}, 1 s after the second {v[95]:.3f}")
+o2 = run(lambda c: [spike_det(hips=True, grow=1.0 if c < 10 else 1.3 if c < 20 else 1.69)])
+v2 = [x for x, _ in o2]
+print(f"   (a body measured from the start: {v2[29]:.3f} -> {v2[45]:.3f} -> {v2[95]:.3f})")
+
+print("C. hips flicker every capture from 1 s (measured, not, measured ...)")
+o = run(lambda c: [spike_det(hips=c >= 10 and c % 2 == 0)])
+v = [x for x, _ in o[30:]]
+print(f"   value range after 1 s: {min(v):.4f} .. {max(v):.4f}; scales "
+      f"{sorted({round(b.scale, 3) for _, b in o[30:]})[:6]}")
+
+print("D. C46: the first measured capture side-on (shoulder width x0.15), then frontal with hips 0.5 s, hips then drop")
+
+
+def sideways(c):
+    box, kps = spike_det(hips=c < 6)
+    if c == 0:
+        kps = list(kps)
+        mx = (kps[LEFT_SHOULDER].x + kps[RIGHT_SHOULDER].x) / 2
+        for i in (LEFT_SHOULDER, RIGHT_SHOULDER):
+            kps[i] = Keypoint(mx + (kps[i].x - mx) * 0.15, kps[i].y, kps[i].conf)
+        kps = tuple(kps)
+    # a wrist 0.2 above the shoulders
+    kps = list(kps)
+    sy = kps[LEFT_SHOULDER].y
+    kps[RIGHT_WRIST] = Keypoint(kps[RIGHT_SHOULDER].x + 0.05, sy - 0.2, 1.0)
+    return [(box, tuple(kps))]
+
+
+tr, cur = BodyTracker(), Cursor()
+good = Body(0, *spike_det())
+for c in range(20):
+    b = tr.update(sideways(c), c / 10)[0]
+    if c in (0, 1, 5, 6, 10, 19):
+        cv = cur.update(b, c / 10)
+        print(f"   capture {c:2d}: hips {'yes' if c < 6 else 'no '} torso_per_width {b.torso_per_width:.3f} torso "
+              f"{b.torso:.3f} raise_line {b.raise_line:.3f} (shoulders {b.shoulder_mid.y:.3f}) cursor v "
+              f"{None if cv is None else round(cv[1], 3)} raised {b.raised_wrist is not None}")
+print(f"   a true body: torso {good.torso:.3f}, torso/width {good.torso / good.shoulder_width:.3f}")
+
+print("E. C45: the model's duplicate, 0.015 apart, the kept copy alternating every capture (hip conf 0.9 vs 0.8)")
+
+
+def dup(c, shift=0.015):
+    a = spike_det()
+    box, kps = spike_det(cx=0.5 + shift)
+    hc = (0.9, 0.8) if c % 2 else (0.8, 0.9)
+    k1 = list(a[1]); k2 = list(kps)
+    for i in (LEFT_HIP, RIGHT_HIP):
+        k1[i] = Keypoint(k1[i].x, k1[i].y, hc[0]); k2[i] = Keypoint(k2[i].x, k2[i].y, hc[1])
+    return merge_duplicates([(a[0], tuple(k1)), (box, tuple(k2))])
+
+
+tr = BodyTracker()
+xs, zs, ids, n = [], [], set(), []
+for c in range(40):
+    bodies = tr.update(dup(c), c / 10)
+    n.append(len(bodies))
+    ids |= {b.id for b in bodies}
+    xs.append(bodies[0].shoulder_mid.x)
+    zs.append(bodies[0].zone_x)
+steps = [abs(b - a) for a, b in zip(xs[10:], xs[11:])]
+print(f"   bodies per capture {set(n)}, ids {ids}, shoulder x step per capture after 1 s: max {max(steps):.4f} "
+      f"mean {sum(steps) / len(steps):.4f}; zone_x range {min(zs[10:]):.4f} .. {max(zs[10:]):.4f}")
+
+print("F. C45: two real people, shoulders touching, heads level (2 m width 0.128, 3 m width 0.087)")
+for w in (0.128, 0.087):
+    a = spike_det(cx=0.5)
+    b = spike_det(cx=0.5 + w)
+    print(f"   width {w}: out {len(merge_duplicates([a, b]))}")
+print("   one directly behind the other (2 m and 3 m), noses aligned: shoulders offsets")
+front = Body(0, *spike_det(cx=0.5))
+nose = front.keypoints[NOSE]
+print(f"   front shoulder-to-nose dy {front.shoulder_mid.y - nose.y:.3f}")

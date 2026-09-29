@@ -1,0 +1,6 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close")
+sys.argv = ["x", "A"]
+import time
+exec(open(sys.path[0] + "/sweep.py").read().split("t0 = time.time()")[0])
+t = time.time(); r = sweep("rev rows b32 ph1 10Hz", 20, True, "one", 41, 33); print(time.time() - t, max(x[1] for x in r))

@@ -1,0 +1,9 @@
+1.73s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+1.58s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+1.55s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+1.34s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.02s call     ::test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget
+0.01s call     ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+2 failed, 10 passed in 6.38s

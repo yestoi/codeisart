@@ -1,0 +1,93 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 3: the loop's close in a hold, the wall's clock fixed during the close (self._now is set once), the loop's
+sleep counted (it never moves the clock, as time.sleep never moves self._now). Planned close vs a close that re-reads
+the wall's clock in a loop (whileclock): the latter never ends (stopped here after 50 sleeps). Then a real process:
+the planned close with the real time.sleep, a second SIGTERM in the wait (Sigterm counts it, the sleep goes on), and
+a Ctrl-C (KeyboardInterrupt) in the wait (nothing sent, the display closed)."""
+import os
+import signal
+import threading
+import time
+
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+import logging  # noqa: E402
+logging.disable(logging.CRITICAL)
+import plug  # noqa: E402,F401  (show.wall, show.main: the scratch copies)
+import show.wall as wall_p  # noqa: E402
+from tests.test_main import FailingPushes, playing_loop  # noqa: E402
+import tempfile, pathlib  # noqa: E401,E402
+import pytest  # noqa: E402,F401
+
+
+class Stop(Exception):
+    pass
+
+
+for mode in ("plan", "whileclock"):
+    wall_p.MODE = mode
+    with tempfile.TemporaryDirectory() as d:
+        inner = FailingPushes({3})
+        loop = playing_loop(pathlib.Path(d), inner)
+        loop.step(0.10)
+        loop.step(0.15)                       # call 3 fails: the hold from 0.15
+        slept = []
+
+        def sleep(s):
+            slept.append(round(s, 3))
+            if len(slept) >= 50:
+                raise Stop("50 sleeps: the close does not end")
+        loop.clock, loop.sleep = (lambda: 0.2), sleep
+        try:
+            loop._close()
+            out = "ended"
+        except Stop as e:
+            out = str(e)
+        print(f"{mode:10s} loop._close: {out}; sleeps {len(slept)} first {slept[:3]}; sends {inner.count}; "
+              f"closed {inner.closed}")
+
+# A real process: the planned close, real time.sleep, the show's Sigterm handler already seen once (the stop).
+from show.main import Sigterm  # noqa: E402
+from tests.test_wall_hold import Clocked, H, W, strobe  # noqa: E402
+
+wall_p.MODE = "plan"
+handler = Sigterm()
+handler.seen = 1                                   # the first SIGTERM started the close
+signal.signal(signal.SIGTERM, handler)
+now = [0.0]
+inner = Clocked({3}, lambda: now[0])
+wall = wall_p.GovernedDisplay(inner, H, W, fps=16, from_dark=True, clock=lambda: now[0])   # default: time.sleep
+fr = strobe(1, 16, 3)
+wall.push(fr[0]), wall.push(fr[1])
+now[0] = 2 / 16
+try:
+    wall.push(fr[2])
+except OSError:
+    pass
+now[0] = 3 / 16
+threading.Timer(0.3, lambda: os.kill(os.getpid(), signal.SIGTERM)).start()
+t0 = time.monotonic()
+wall.close()
+print(f"second SIGTERM in the wait: close took {time.monotonic() - t0:.2f} s (planned 15/16 + 1 = 1.94), "
+      f"seen {handler.seen}, calls {inner.calls}, closed {inner.closed}, last black {not inner.sent[-1][1].any()}")
+
+signal.signal(signal.SIGINT, signal.default_int_handler)
+inner = Clocked({3}, lambda: now[0])
+wall = wall_p.GovernedDisplay(inner, H, W, fps=16, from_dark=True, clock=lambda: now[0])
+now[0] = 0.0
+wall.push(fr[0]), wall.push(fr[1])
+now[0] = 2 / 16
+try:
+    wall.push(fr[2])
+except OSError:
+    pass
+now[0] = 3 / 16
+threading.Timer(0.3, lambda: os.kill(os.getpid(), signal.SIGINT)).start()
+t0 = time.monotonic()
+try:
+    wall.close()
+    r = "no raise"
+except KeyboardInterrupt:
+    r = "KeyboardInterrupt"
+print(f"Ctrl-C in the wait: {r} after {time.monotonic() - t0:.2f} s, calls {inner.calls} (3: nothing after the "
+      f"tear), closed {inner.closed}, the wall left as the tear left it")

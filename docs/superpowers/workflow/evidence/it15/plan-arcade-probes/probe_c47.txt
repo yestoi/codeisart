@@ -1,0 +1,3 @@
+scales per capture around the hips' arrival: [0.24, 0.24, 0.3348, 0.3697, 0.3825, 0.3873, 0.389, 0.3896]
+paddle y before: 24.0 after 0.5 s: 0.1 min/max after: 0.0 18.0 travel: 24.0
+scale ratio measured / fallback: 1.594 value jump: 0.777

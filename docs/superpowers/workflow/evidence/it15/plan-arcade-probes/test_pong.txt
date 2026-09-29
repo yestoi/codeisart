@@ -1,0 +1,18 @@
+..............................................                           [100%]
+============================= slowest 15 durations =============================
+14.30s call     tests/arcade/test_pong.py::test_good_beats_lazy_beats_nobody
+3.10s call     tests/arcade/test_pong.py::test_scenarios_have_the_right_humans
+2.78s call     tests/arcade/test_pong.py::test_own_drawing_keeps_the_flash_rule
+2.07s call     tests/arcade/test_pong.py::test_hint_fits_and_keeps_the_flash_rule
+1.94s call     tests/arcade/test_pong.py::test_canonical_drives_the_lobby_to_pong
+1.68s call     tests/arcade/test_pong.py::test_duel_and_solo_scenarios_reach_a_result[duel]
+1.47s call     tests/arcade/test_pong.py::test_duel_and_solo_scenarios_reach_a_result[solo]
+1.14s call     tests/arcade/test_pong.py::test_a_still_body_under_real_noise_banks_nothing
+0.93s call     tests/arcade/test_pong.py::test_idle_body_scores_nothing
+0.78s call     tests/arcade/test_pong.py::test_idle_body_scores_nothing_over_seeds
+0.70s call     tests/arcade/test_pong.py::test_seeded_runs_repeat
+0.62s call     tests/arcade/test_pong.py::test_required_scenarios_start_with_an_empty_wall
+0.56s call     tests/arcade/test_pong.py::test_a_duel_with_both_bodies_still_scores_nothing
+0.21s call     tests/arcade/test_pong.py::test_a_still_body_under_real_noise_is_not_input
+0.20s call     tests/arcade/test_pong.py::test_runs_and_stays_legible_on_64x64
+46 passed in 33.29s

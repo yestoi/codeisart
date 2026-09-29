@@ -1,0 +1,10 @@
+mode plan fps 20 models both tearsets ['one'] splits [33] calls 20-30
+  full strobe 10Hz         probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  full strobe 10Hz         card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  full strobe 5Hz ph1      probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  full strobe 5Hz ph1      card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 1100 distinct 343 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 24.0

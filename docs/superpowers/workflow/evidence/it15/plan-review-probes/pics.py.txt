@@ -1,0 +1,108 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Q1: the planned quiet hold (the writer's scratch wall, mode quiet) against pictures and tears the writer did not
+try: other boundaries, a left/right reversal, 32x32 checks at two offsets, a partial strobe, a slow scroll, a
+scrolling '#' band; one tear at call n (1..22) at splits 8/20/33/40/56; two tears (n, n+j), j = 1..4 (a tear on a
+counted send and on the first new frame); fps 20 and 30; card and probe models. The worst square count and area."""
+import itertools
+import sys as _s
+import time
+import numpy as np
+LIT = __import__("numpy").array((51, 255, 51), __import__("numpy").uint8)
+
+H, W = 64, 128
+FPSES = [20, 30]
+
+
+def per(fps, hz, k):
+    return round(k / fps * 2 * hz) % 2
+
+
+def rev_rows(b, hz, phase):
+    def f(k, fps):
+        x = np.zeros((H, W, 3), np.uint8)
+        if per(fps, hz, k) ^ phase:
+            x[:b] = LIT
+        else:
+            x[b:] = LIT
+        return x
+    return f
+
+
+def rev_cols(hz, phase):
+    def f(k, fps):
+        x = np.zeros((H, W, 3), np.uint8)
+        if per(fps, hz, k) ^ phase:
+            x[:, :W // 2] = LIT
+        else:
+            x[:, W // 2:] = LIT
+        return x
+    return f
+
+
+def checks(off, hz, phase):
+    yy, xx = np.mgrid[0:H, 0:W]
+    m = (((yy + off) // 32 + (xx + off) // 32) % 2).astype(bool)
+    def f(k, fps):
+        x = np.zeros((H, W, 3), np.uint8)
+        x[m if per(fps, hz, k) ^ phase else ~m] = LIT
+        return x
+    return f
+
+
+def block_strobe(hz, phase):
+    def f(k, fps):
+        x = np.zeros((H, W, 3), np.uint8)
+        if per(fps, hz, k) ^ phase:
+            x[8:56, 40:88] = LIT
+        return x
+    return f
+
+
+def scroll(step):
+    def f(k, fps):
+        x = np.zeros((H, W, 3), np.uint8)
+        y = (k * step) % (H + 8) - 8
+        x[max(0, y):max(0, y + 8)] = LIT
+        return x
+    return f
+
+
+def hashes(k, fps):
+    x = np.zeros((H, W, 3), np.uint8)
+    yy, xx = np.mgrid[0:8, 0:W]
+    m = ((xx + k) % 6 < 3) & (yy % 4 != 3)       # a band of '#'-like marks scrolling 1 px a tick
+    x[28:36][m] = LIT
+    return x
+
+
+PICS = {}
+for b in (16, 32, 48):
+    for ph in (0, 1):
+        PICS[f"rev rows b{b} ph{ph} 10Hz"] = rev_rows(b, 10, ph)
+PICS["rev rows b32 ph1 5Hz"] = rev_rows(32, 5, 1)
+PICS["rev rows b24 ph1 5Hz"] = rev_rows(24, 5, 1)
+for ph in (0, 1):
+    PICS[f"rev cols ph{ph} 10Hz"] = rev_cols(10, ph)
+for off in (0, 16):
+    PICS[f"checks off{off} 10Hz"] = checks(off, 10, 0)
+    PICS[f"checks off{off} 5Hz ph1"] = checks(off, 5, 1)
+PICS["block strobe 10Hz"] = block_strobe(10, 0)
+PICS["block strobe 5Hz ph1"] = block_strobe(5, 1)
+PICS["scroll 1 row"] = scroll(1)
+PICS["scroll 3 rows"] = scroll(3)
+PICS["hash band"] = hashes
+SEVENS = ["rev rows b32 ph1 10Hz", "rev rows b48 ph1 10Hz", "rev rows b24 ph1 5Hz", "checks off16 10Hz"]
+
+
+def full_strobe(hz, phase):
+    def f(k, fps):
+        x = np.zeros((H, W, 3), np.uint8)
+        if per(fps, hz, k) ^ phase:
+            x[:] = LIT
+        return x
+    return f
+
+
+PICS["full strobe 10Hz"] = full_strobe(10, 0)     # 19: not in it14's 19 pictures (added here)
+PICS["full strobe 5Hz ph1"] = full_strobe(5, 1)   # 20

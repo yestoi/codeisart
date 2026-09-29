@@ -1,0 +1,60 @@
+mode plan fps 20 models both tearsets ['one'] splits [33] calls 1-22
+  scroll 3 rows            probe worst squares 4 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 3 rows            card  worst squares 4 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  hash band                probe worst squares 0 area 0.063 held close ends lit False all closed True longest sleep 1.950
+  hash band                card  worst squares 0 area 0.078 held close ends lit False all closed True longest sleep 1.950
+closes measured 2200 distinct 1450 flagged 264
+flagged by picture/model/tearset: [(('hash band', 'card', 'one'), 132), (('hash band', 'probe', 'one'), 132)]
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 147.1
+mode plan fps 20 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  scroll 3 rows            probe worst squares 4 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 3 rows            card  worst squares 4 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  hash band                probe worst squares 0 area 0.063 held close ends lit False all closed True longest sleep 1.950
+  hash band                card  worst squares 0 area 0.078 held close ends lit False all closed True longest sleep 1.950
+closes measured 2400 distinct 1061 flagged 288
+flagged by picture/model/tearset: [(('hash band', 'card', 'one'), 144), (('hash band', 'probe', 'one'), 144)]
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 120.3
+mode plan fps 20 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  scroll 3 rows            probe worst squares 4 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 3 rows            card  worst squares 4 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  hash band                probe worst squares 0 area 0.078 held close ends lit False all closed True longest sleep 1.950
+  hash band                card  worst squares 0 area 0.094 held close ends lit False all closed True longest sleep 1.950
+closes measured 2592 distinct 2122 flagged 368
+flagged by picture/model/tearset: [(('hash band', 'card', 'c1'), 64), (('hash band', 'card', 'c2'), 72), (('hash band', 'card', 'new'), 48), (('hash band', 'probe', 'c1'), 64), (('hash band', 'probe', 'c2'), 72), (('hash band', 'probe', 'new'), 48)]
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 244.7
+mode plan fps 30 models both tearsets ['one'] splits [33] calls 1-22
+  scroll 3 rows            probe worst squares 5 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 3 rows            card  worst squares 5 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  hash band                probe worst squares 0 area 0.094 held close ends lit False all closed True longest sleep 1.967
+  hash band                card  worst squares 0 area 0.094 held close ends lit False all closed True longest sleep 1.967
+closes measured 3064 distinct 2206 flagged 704
+flagged by picture/model/tearset: [(('hash band', 'card', 'one'), 352), (('hash band', 'probe', 'one'), 352)]
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 227.2
+mode plan fps 30 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  scroll 3 rows            probe worst squares 5 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 3 rows            card  worst squares 5 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  hash band                probe worst squares 0 area 0.094 held close ends lit False all closed True longest sleep 1.967
+  hash band                card  worst squares 0 area 0.094 held close ends lit False all closed True longest sleep 1.967
+closes measured 3336 distinct 1480 flagged 768
+flagged by picture/model/tearset: [(('hash band', 'card', 'one'), 384), (('hash band', 'probe', 'one'), 384)]
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 131.6
+mode plan fps 30 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  scroll 3 rows            probe worst squares 5 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 3 rows            card  worst squares 5 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  hash band                probe worst squares 0 area 0.094 held close ends lit False all closed True longest sleep 1.967
+  hash band                card  worst squares 0 area 0.094 held close ends lit False all closed True longest sleep 1.967
+closes measured 3528 distinct 2308 flagged 764
+flagged by picture/model/tearset: [(('hash band', 'card', 'c1'), 128), (('hash band', 'card', 'c2'), 128), (('hash band', 'card', 'new'), 126), (('hash band', 'probe', 'c1'), 128), (('hash band', 'probe', 'c2'), 128), (('hash band', 'probe', 'new'), 126)]
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 143.1

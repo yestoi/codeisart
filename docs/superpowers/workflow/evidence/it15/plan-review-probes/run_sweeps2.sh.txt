@@ -1,0 +1,13 @@
+#!/bin/bash
+P="/Users/trey/dev/codeisart/.venv/bin/python /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review/sweep.py"
+export SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+G=("0,1,2" "3,4,5" "6,7,8" "9,10" "11,12" "13,14" "15,16" "17,18")
+for i in 0 1 2 3 4 5 6 7; do
+  ( for fps in 20 30; do
+      $P plan $fps both one 33 1-22 ${G[$i]}
+      $P plan $fps both one 8,20,56 15-22 ${G[$i]}
+      $P plan $fps both c1,c2,new 33 15-22 ${G[$i]}
+    done > /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review/sw2_plan_g$i.txt 2>&1 ) &
+done
+wait
+echo done

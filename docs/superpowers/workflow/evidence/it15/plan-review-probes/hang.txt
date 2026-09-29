@@ -1,0 +1,6 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.13)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+plan       loop._close: ended; sleeps 2 first [0.95, 1.0]; sends 5; closed True
+whileclock loop._close: ended; sleeps 50 first [0.95, 0.95, 0.95]; sends 2; closed True
+second SIGTERM in the wait: close took 1.96 s (planned 15/16 + 1 = 1.94), seen 2, calls 6, closed True, last black True
+Ctrl-C in the wait: KeyboardInterrupt after 0.30 s, calls 3 (3: nothing after the tear), closed True, the wall left as the tear left it

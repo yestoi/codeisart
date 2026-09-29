@@ -1,0 +1,18 @@
+1.81s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+1.73s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.13s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+0.09s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+0.04s call     ::test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget
+0.02s call     ::test_close_after_the_counted_frame_went_waits_once_then_black
+0.01s call     ::test_a_close_in_the_hold_reads_the_clock_once
+0.01s call     ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+0.01s call     ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+0.01s call     ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([] == approx...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+7 failed, 5 passed in 3.96s

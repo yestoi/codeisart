@@ -1,0 +1,56 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""The sweep's 7s: all at a close NOT in a hold, 1 s + 2 ticks after the hold's end (the last tick swept). Reproduce
+one with the repository's wall (today's close; the plan leaves it as it is), whole run measured, and with no tear at
+all; print the worst square's transitions by tick. fps 20, 'rev rows b32 ph1 5Hz', probe, split 33."""
+import logging
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+logging.disable(logging.CRITICAL)
+import numpy as np  # noqa: E402
+import pics  # noqa: E402
+from arcade.flash import _counted, square_flashes  # noqa: E402
+from show.wall import GovernedDisplay  # noqa: E402
+from tests.test_wall_hold import TornDisplay, in_time  # noqa: E402
+
+fps, pic = 20, pics.PICS["rev rows b32 ph1 5Hz"]
+
+
+def run(tears, kc, card=False):
+    inner = TornDisplay(lambda c: c in tears, split=33, card=card)
+    wall = GovernedDisplay(inner, 64, 128, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
+    for k in range(kc):
+        inner.tick = k
+        try:
+            wall.push(pic(k, fps))
+        except OSError:
+            pass
+    inner.tick = kc
+    holding = wall.holding
+    wall.close()
+    seq, n = in_time(inner.shown, fps)
+    return seq, n, holding, inner
+
+
+for tears, label in (({12}, "tear at call 12"), (set(), "no tear")):
+    worst = []
+    for kc in range(20, 110):
+        seq, n, holding, inner = run(tears, kc)
+        worst.append((square_flashes(seq, fps=n), kc, holding))
+    over = [(kc, h) for s, kc, h in worst if s > 6]
+    print(f"{label}: close at tick 20..109 (today's close): max squares {max(w[0] for w in worst)}; over 6 at ticks "
+          f"{over}")
+seq, n, holding, inner = run({12}, 93)
+k = n // fps
+flips = [f.any(axis=0) for f, up, w in _counted(seq, 2.2, n, 0.1, squares=32)]
+tot = np.array(flips)                       # (slots-1, squares)
+best = None
+for end in range(len(tot)):
+    c = tot[max(0, end - n + 1):end + 1].sum(axis=0)
+    if best is None or c.max() > best[0]:
+        best = (int(c.max()), end, np.unravel_index(c.argmax(), c.shape))
+print("close at tick 93, tear at call 12: slots per tick", k, "worst", best[0], "window ending at slot", best[1],
+      "(tick", best[1] // k, ") square", best[2])
+sq = best[2]
+ticks = [(i + 1) // k for i in range(len(tot)) if tot[i][sq] and best[1] - n < i <= best[1]]
+print("that square's transitions in the window, by tick:", ticks)
+print("calls by tick near the end:", {t: sum(1 for tt, _ in inner.shown if tt == t) for t in range(70, 94)})

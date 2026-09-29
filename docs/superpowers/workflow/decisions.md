@@ -549,3 +549,31 @@ default: it keeps the paddle where it is: the new centre is taken so that the re
 deadline: the owner's next live smoke
 answer:
 status: defaulted (standing instruction)
+
+### Q68: May a stop within 3 s of a failed push take up to 2 s to darken the wall?
+asked: it15 (the close's plan writer; docs/superpowers/plans/2026-09-29-it15-close-in-a-hold.md)
+default: yes. While the wall holds after a failed push, the close waits until the hold's next send is due (at most 1 s, nothing sent), sends the counted frame if the hold has not sent it yet and waits 1 s more, makes the governor again from the counted frame, and then sends two governed black frames; the display is closed in every case. Without a failed push the stop is as fast as before (about 0.06 s). This replaces Q66's line "The close is never held". Why (C53): a close right behind a torn push read 7 to 8 square transitions against the budget of 6. The service's stop limit is systemd's default of 90 s. `deploy/README.md`'s "Stop" text (two black frames, then exit) is not changed by the loop: the owner's. Ctrl-C during the wait ends the close at once: the display is closed and the wall stays as the tear left it
+deadline: the first run of the show on the real panels with people in front of it
+answer:
+status: defaulted (standing instruction)
+
+### Q69: May the close go black after the first quiet second, without the counted frame (1 s at most, not 2)?
+asked: it15 (the close's plan writer; docs/superpowers/plans/2026-09-29-it15-close-in-a-hold.md)
+default: no, the counted frame stays: the quiet second, the counted frame, a quiet second, black. Going straight to black also read at most 6 and flash area 0.000 in the plan writer's probes, and is 1 s faster, but it changes an existing assert (`tests/test_wall_close.py:69`, the loop's close after a failed push sends the counted frame first), which the loop does not change without the owner's word
+deadline: the first run of the show on the real panels with people in front of it
+answer:
+status: defaulted (standing instruction)
+
+### Q76: Does Quick Draw keep its full-wall white flash on the signal?
+asked: it15 (the operator, from the sheets; measured by the arcade's reviewer, evidence/it15/reviewer-arcade.md, point 5b)
+default: yes, as built, until the owner has seen it on the wall. On DRAW the game asks `fx.flash` for white, 0.15 s: the raw frame is the whole wall white for 5 ticks; the limiter pushes it at level 0.502 (its floor of 0.5; every channel 128), which is 4.2 times the day's cap on average light and 8.4 times the night's, for 0.17 s. It is inside the flash rules: at most one such flash in any 4.5 s, the governor holds nothing, square transitions 4 of 6, flash area 0.000. It is the arcade's first full-field flash. Its cost: the limiter lets the light back slowly, so `DRAW!` and the bars stand at 51 to 71 percent light for the first 0.67 s after the signal, which is the time the player reacts in. The other choice: no flash, the word `DRAW!` turning white is the signal (a change to the game and its tests, for a plan)
+deadline: the owner's first play of Quick Draw on the panels
+answer:
+status: defaulted (standing instruction)
+
+### Q77: May Dodge return to main if the suite with it reads under its limit on an idle machine?
+asked: it15 (the operator; the orchestrator cut Dodge by the plan's cut order when a suite run read 334.84 s against 330 s under load)
+default: yes. The limit is the loop's own number and is not raised. The run that cut Dodge was made at a load of 2.4 to 4.3 with other sessions on the machine; the run before it, with Dodge, read 321.11 s. The operator times the suite with Dodge on the idle machine; under 330 s Dodge returns by a revert of 16dbb91, else it stays cut and whole on commit c49d902. The arcade's review found nothing else that blocks it
+deadline: iteration 15's report
+answer:
+status: defaulted (standing instruction)

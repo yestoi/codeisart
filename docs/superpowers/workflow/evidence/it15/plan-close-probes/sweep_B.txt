@@ -1,0 +1,22 @@
+x
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close/wall15.py", line 130, in close
+    self.repush()
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close/wall15.py", line 113, in repush
+    self._send(self._last)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close/wall15.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+x
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close/wall15.py", line 130, in close
+    self.repush()
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close/wall15.py", line 113, in repush
+    self._send(self._last)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close/wall15.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn

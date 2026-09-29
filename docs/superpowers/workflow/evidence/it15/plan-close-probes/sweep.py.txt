@@ -1,0 +1,85 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Close j ticks after a tear, j = 1 .. 3*fps+10, both models, fps 20/30, pictures at the budget; one tear at call n
+(split 8/33) and a tear followed by a failed counted send (n, n+1) and (n, n+2). argv[1]: today or a wall15 MODE."""
+import copy, math, time, logging
+logging.disable(logging.CRITICAL)
+import numpy as np
+from arcade.flash import BUDGET, flash_area, square_flashes
+from tests.test_wall_hold import TornDisplay, in_time, DARK
+import pics
+MODE = sys.argv[1]
+if MODE == "today":
+    from show.wall import GovernedDisplay
+else:
+    import wall15
+    wall15.MODE = MODE
+    GovernedDisplay = wall15.GovernedDisplay
+H, W = 64, 128
+NAMES = ["rev rows b32 ph1 10Hz", "rev rows b32 ph0 10Hz", "rev rows b32 ph1 5Hz", "checks off16 10Hz",
+         "block strobe 10Hz"]
+TEARSETS = {"one": lambda n: {n}, "counted1 fails": lambda n: {n, n + 1}, "counted2 fails": lambda n: {n, n + 2}}
+
+
+def sweep(name, fps, card, tearset, n, split):
+    pic = pics.PICS[name]
+    fails = TEARSETS[tearset](n)
+    inner = TornDisplay(lambda c: c in fails, split=split, card=card)
+    slept = [0.0]
+    def sleep(s):
+        slept[0] += s
+        inner.tick += math.ceil(s * fps - 1e-9)
+    kw = {} if MODE == "today" else {"sleep": sleep}
+    wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=lambda: inner.tick / fps, **kw)
+    out = []
+    tear_tick = n - 1
+    jmax = 3 * fps + 5
+    for k in range(tear_tick + jmax + 1):
+        inner.tick = k
+        j = k - tear_tick
+        if 1 <= j <= jmax:
+            w2 = copy.deepcopy(wall)
+            i2 = w2.display
+            if MODE != "today":
+                w2._sleep = lambda s, i2=i2: (slept.__setitem__(0, s), setattr(i2, "tick", i2.tick + math.ceil(s * fps - 1e-9)))
+            slept[0] = 0.0
+            try:
+                w2.close()
+            except OSError:
+                pass
+            start = max(0, tear_tick - fps)
+            shown = [(t - start, f) for t, f in i2.shown if t >= start]
+            seq, m = in_time(shown, fps)
+            seq = seq[m // fps:]     # in_time pads a dark tick at the start; cut it: begin at the wall's state
+            end = i2.screen
+            out.append((j, square_flashes(seq, fps=m), flash_area(seq, fps=m), bool(end.any()), i2.closed, slept[0]))
+        try:
+            wall.push(pic(k, fps))
+        except OSError:
+            pass
+    return out
+
+
+t0 = time.time()
+worst = {}
+over = []
+for fps in (int(sys.argv[2]),):
+    for card in (sys.argv[3] == 'card',):
+        for name in NAMES:
+            for tearset in TEARSETS:
+                for n in range(2 * fps + 1, 2 * fps + 3):
+                    for split in ((8, 33) if tearset == 'one' else (33,)):
+                        for j, sq, area, lit, closed, slept in sweep(name, fps, card, tearset, n, split):
+                            key = (fps, "card" if card else "probe")
+                            w = worst.get(key, (0, 0.0, False, True, 0.0))
+                            worst[key] = (max(w[0], sq), max(w[1], area), w[2] or lit, w[3] and closed, max(w[4], slept))
+                            if sq > BUDGET or area > 0:
+                                over.append((fps, key[1], name, tearset, n, split, j, sq, area))
+for k, v in worst.items():
+    print(k, "worst squares", v[0], "area", v[1], "ends lit", v[2], "all closed", v[3], "longest wait", round(v[4], 3))
+print("cases over 6 or area>0:", len(over))
+from collections import Counter
+print("j over:", sorted(Counter(o[6] for o in over).items()))
+print("by fps/model/picture/tearset:", sorted(Counter(o[:4] for o in over).items()))
+print("first:", over[:8])
+print("secs", round(time.time() - t0, 1))

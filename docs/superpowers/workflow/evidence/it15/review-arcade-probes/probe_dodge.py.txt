@@ -1,0 +1,29 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart/.claude/worktrees/agent-a1975312e3ec27257")
+"""Dodge (c49d902, read-only worktree first on sys.path): the flash rule through the real runner on canonical and a
+still body under REAL_NOISE (score, best, active)."""
+import arcade
+assert "agent-a1975312e3ec27257" in arcade.__file__, arcade.__file__
+from arcade.bots import ROOT, _font
+from arcade.flash import concurrent_area, flash_area, square_flashes
+from arcade.games.dodge import GAME, canonical, idle_body
+from arcade.headless import run_headless
+from arcade.sources.actors import REAL_NOISE, degrade
+from tests.arcade.helpers import make_cfg
+
+cfg = make_cfg((128, 64))
+font = _font(ROOT / cfg.font_path)
+
+frames, runner = run_headless(cfg, font, GAME, canonical(), seed=7, raw=True, trace=True)
+raw = runner.raw_frames
+print(f"canonical: ticks {len(frames)} held {runner.governor.held_ticks} limiter scaled {runner.limiter.scaled_ticks}")
+print(f"  raw: square_flashes {square_flashes(raw)} flash_area {flash_area(raw):.4f} concurrent {concurrent_area(raw):.4f}")
+print(f"  pushed: square_flashes {square_flashes(frames)} flash_area {flash_area(frames):.4f} "
+      f"concurrent {concurrent_area(frames):.4f}")
+st = runner.trace[-1]
+print(f"  last state phase {st.get('phase')} score {st.get('score')} survived {st.get('survived')}")
+for s in (11, 22):
+    frames, runner = run_headless(cfg, font, GAME, degrade(idle_body(body_id=s), **REAL_NOISE), seed=s, trace=True)
+    act = [t.get("active") for t in runner.trace]
+    g = runner.game
+    print(f"idle under REAL_NOISE seed {s}: phase {g.debug_state()['phase']} score {g.score} best {g.scores.best()} "
+          f"active ticks {sum(bool(a) for a in act)} held {runner.governor.held_ticks}")

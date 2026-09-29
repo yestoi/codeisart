@@ -1,0 +1,7 @@
+import os, sys
+sys.path.insert(0, "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close")
+mode = os.environ.get("WALL_MODE")
+if mode:
+    import wall15
+    wall15.MODE = mode
+    sys.modules["show.wall"] = wall15

@@ -1,0 +1,480 @@
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 122, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 133, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_wall_hold.py", line 39, in push
+    raise OSError("torn")
+OSError: torn

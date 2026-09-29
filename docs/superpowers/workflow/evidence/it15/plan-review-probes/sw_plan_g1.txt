@@ -1,0 +1,72 @@
+mode plan fps 20 models both tearsets ['one'] splits [33] calls 1-22
+  rev rows b32 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b32 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 3300 distinct 393 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 34.1
+mode plan fps 20 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  rev rows b32 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b32 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 3600 distinct 170 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 29.3
+mode plan fps 20 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  rev rows b32 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b32 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 3888 distinct 361 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 40.9
+mode plan fps 30 models both tearsets ['one'] splits [33] calls 1-22
+  rev rows b32 ph1 10Hz    probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b32 ph1 10Hz    card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph1 10Hz    probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph1 10Hz    card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 4596 distinct 1200 flagged 12
+flagged by picture/model/tearset: [(('rev rows b32 ph1 10Hz', 'card', 'one'), 3), (('rev rows b32 ph1 10Hz', 'probe', 'one'), 3), (('rev rows b48 ph1 10Hz', 'card', 'one'), 3), (('rev rows b48 ph1 10Hz', 'probe', 'one'), 3)]
+flagged over 6: [('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 11, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 33, 11, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 33, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 33, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'probe', 'one', 33, 11, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'probe', 'one', 33, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'probe', 'one', 33, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'card', 'one', 33, 11, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'card', 'one', 33, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'card', 'one', 33, 20, 122, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 137.5
+mode plan fps 30 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  rev rows b32 ph1 10Hz    probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b32 ph1 10Hz    card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph1 10Hz    probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph1 10Hz    card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 5004 distinct 549 flagged 24
+flagged by picture/model/tearset: [(('rev rows b32 ph1 10Hz', 'card', 'one'), 6), (('rev rows b32 ph1 10Hz', 'probe', 'one'), 6), (('rev rows b48 ph1 10Hz', 'card', 'one'), 6), (('rev rows b48 ph1 10Hz', 'probe', 'one'), 6)]
+flagged over 6: [('rev rows b32 ph1 10Hz', 'probe', 'one', 8, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'one', 8, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'one', 20, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'one', 20, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'one', 56, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'one', 56, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 8, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 8, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 20, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 20, 20, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 56, 17, 122, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'one', 56, 20, 122, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 74.5
+mode plan fps 30 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  rev rows b32 ph1 10Hz    probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b32 ph1 10Hz    card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph1 10Hz    probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  rev rows b48 ph1 10Hz    card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 5292 distinct 1047 flagged 16
+flagged by picture/model/tearset: [(('rev rows b32 ph1 10Hz', 'card', 'c1'), 2), (('rev rows b32 ph1 10Hz', 'card', 'c2'), 2), (('rev rows b32 ph1 10Hz', 'probe', 'c1'), 2), (('rev rows b32 ph1 10Hz', 'probe', 'c2'), 2), (('rev rows b48 ph1 10Hz', 'card', 'c1'), 2), (('rev rows b48 ph1 10Hz', 'card', 'c2'), 2), (('rev rows b48 ph1 10Hz', 'probe', 'c1'), 2), (('rev rows b48 ph1 10Hz', 'probe', 'c2'), 2)]
+flagged over 6: [('rev rows b32 ph1 10Hz', 'probe', 'c1', 33, 17, 152, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'c1', 33, 20, 152, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'c2', 33, 17, 182, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'probe', 'c2', 33, 20, 182, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'c1', 33, 17, 152, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'c1', 33, 20, 152, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'c2', 33, 17, 182, 7, 0.0, False, True, 0, None, False), ('rev rows b32 ph1 10Hz', 'card', 'c2', 33, 20, 182, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'probe', 'c1', 33, 17, 152, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'probe', 'c1', 33, 20, 152, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'probe', 'c2', 33, 17, 182, 7, 0.0, False, True, 0, None, False), ('rev rows b48 ph1 10Hz', 'probe', 'c2', 33, 20, 182, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 117.2

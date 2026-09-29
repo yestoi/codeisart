@@ -1,0 +1,60 @@
+mode plan fps 20 models both tearsets ['one'] splits [33] calls 1-22
+  block strobe 5Hz ph1     probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  block strobe 5Hz ph1     card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 1 row             probe worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 1 row             card  worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 2200 distinct 1462 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 148.1
+mode plan fps 20 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  block strobe 5Hz ph1     probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  block strobe 5Hz ph1     card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 1 row             probe worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 1 row             card  worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 2400 distinct 899 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 99.7
+mode plan fps 20 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  block strobe 5Hz ph1     probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  block strobe 5Hz ph1     card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 1 row             probe worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  scroll 1 row             card  worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 2592 distinct 1513 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 180.2
+mode plan fps 30 models both tearsets ['one'] splits [33] calls 1-22
+  block strobe 5Hz ph1     probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  block strobe 5Hz ph1     card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 1 row             probe worst squares 2 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 1 row             card  worst squares 2 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 3064 distinct 2126 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 256.1
+mode plan fps 30 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  block strobe 5Hz ph1     probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  block strobe 5Hz ph1     card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 1 row             probe worst squares 2 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 1 row             card  worst squares 2 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 3336 distinct 1229 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 109.3
+mode plan fps 30 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  block strobe 5Hz ph1     probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  block strobe 5Hz ph1     card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 1 row             probe worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  scroll 1 row             card  worst squares 3 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 3528 distinct 2049 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 148.9

@@ -1,0 +1,146 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""A close j ticks after a tear, the scratch wall (wall_p, MODE from argv), one tick = one push of the loop, the close's
+sleeps moving the tick on (rounded up). j from 1 to the last hold's end + 1 s + 2 ticks. Held closes in the same phase
+of the hold send the same thing at the same ticks, so each is measured once (key: the sends' ticks and bytes).
+Measured: square_flashes and flash_area over the wall in real time from 1 s before the close's first send to its end
+(earlier windows are the hold's own); the wall black and closed at the end; the sleeps.
+argv: mode fps model(probe|card|both) tearsets(one,c1,c2,new) splits(8,20,33,56) calls(a-b) pics(all|i,j,..)"""
+import copy
+import hashlib
+import logging
+import math
+import os
+import time
+
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+logging.disable(logging.CRITICAL)
+import numpy as np  # noqa: E402
+
+import wall_p  # noqa: E402
+import pics  # noqa: E402
+from arcade.flash import BUDGET, THRESHOLD, _counted  # noqa: E402
+
+
+def after(seq, m, start):
+    """square_flashes and flash_area, only the windows that end at slot `start` or later (the tracker warmed up
+    on the second before them: a tracker started cold on a slice can count a swing the whole run does not)."""
+    sq, area = 0, 0.0
+    for i, (flip, up, c) in enumerate(_counted(seq, 2.2, m, THRESHOLD, squares=32)):
+        if i + 1 >= start:
+            sq = max(sq, int((c.count - c.ring[c.i] + flip.any(axis=0)).max()))
+    for i, (flip, up, c) in enumerate(_counted(seq, 2.2, m, THRESHOLD)):
+        if i + 1 >= start:
+            area = max(area, float(((c.count - c.ring[c.i] + flip.any(axis=0)) > BUDGET).mean()))
+    return sq, area
+from tests.test_wall_hold import DARK, TornDisplay, in_time  # noqa: E402
+
+mode, fps = sys.argv[1], int(sys.argv[2])
+wall_p.MODE = mode
+models = {"probe": [False], "card": [True], "both": [False, True]}[sys.argv[3]]
+tearsets = sys.argv[4].split(",")
+splits = [int(s) for s in sys.argv[5].split(",")]
+a, b = (int(x) for x in sys.argv[6].split("-"))
+names = list(pics.PICS) if sys.argv[7] == "all" else [list(pics.PICS)[int(i)] for i in sys.argv[7].split(",")]
+TEARS = {"one": (0,), "c1": (0, 1), "c2": (0, 2), "new": (0, 3)}   # the counted sends are calls n+1, n+2; n+3 new
+EXTRA = {"one": 0, "c1": 1, "c2": 2, "new": 3}
+
+
+class Ticks:
+    def __init__(self, inner):
+        self.inner, self.slept = inner, []
+
+    def __call__(self):
+        return self.inner.tick / fps
+
+    def sleep(self, s):
+        self.slept.append(s)
+        self.inner.tick += math.ceil(s * fps - 1e-9)
+
+
+def measure(w, t):
+    d = w.display
+    before = len(d.shown)
+    raised = None
+    try:
+        w.close()
+    except BaseException as e:  # noqa: B036
+        raised = type(e).__name__
+    new = d.shown[before:]
+    lit = bool(d.screen.any() or d.rows.any())
+    if not new:
+        return None, (0, 0.0, lit, d.closed, sum(t.slept), raised)
+    s0 = max(0, new[0][0] - 2 * fps)
+    prior = DARK
+    for tk, f in d.shown:
+        if tk < s0:
+            prior = f
+    ents = [(0, prior)] + [(tk - s0 + 1, f) for tk, f in d.shown if tk >= s0]
+    h = hashlib.md5(repr([tk for tk, _ in ents]).encode())
+    for _, f in ents:
+        h.update(f.tobytes())
+    key = h.hexdigest()
+    if key in CACHE:
+        sq, area = CACHE[key]
+    else:
+        seq, m = in_time(ents, fps)
+        seq = seq[m // fps:]
+        sq, area = after(seq, m, (new[0][0] - s0 + 1) * (m // fps))
+        CACHE[key] = (sq, area)
+    return key, (sq, area, lit, d.closed, sum(t.slept), raised)
+
+
+CACHE = {}
+worst = {}
+over = []
+measured = 0
+t0 = time.time()
+for name in names:
+    pic = pics.PICS[name]
+    for card in models:
+        for ts in tearsets:
+            for split in splits:
+                for n in range(a, b + 1):
+                    fails = {n + d for d in TEARS[ts]}
+                    inner = TornDisplay(lambda c, fails=fails: c in fails, split=split, card=card)
+                    ticks = Ticks(inner)
+                    wall = wall_p.GovernedDisplay(inner, 64, 128, fps=fps, from_dark=True, clock=ticks,
+                                                  sleep=ticks.sleep)
+                    T0 = n - 1
+                    end = T0 + (4 + EXTRA[ts]) * fps + 2
+                    last = None
+                    for k in range(end + 1):
+                        inner.tick = k
+                        if k > T0:
+                            state = (wall.holding, wall._since, wall._settled, wall.failed, wall.governed, inner.calls)
+                            if not (wall.holding and state == last):
+                                last = state
+                                inner.shown = [e for e in inner.shown if e[0] >= k - 3 * fps - 2]
+                                w, t = copy.deepcopy((wall, ticks))
+                                w.display.tears = ((lambda c, c0=inner.calls + 1: c == c0) if os.environ.get('CLOSE_TEAR') else (lambda c: False))
+                                held = wall.holding
+                                key, (sq, area, lit, closed, slept, raised) = measure(w, t)
+                                lit = lit and held       # a close not in a hold may be held lit (known, it13)
+                                measured += 1
+                                wk = (name, "card" if card else "probe")
+                                o = worst.get(wk, (0, 0.0, False, True, 0.0))
+                                worst[wk] = (max(o[0], sq), max(o[1], area), o[2] or lit, o[3] and closed,
+                                             max(o[4], slept))
+                                if sq > BUDGET or area > 0 or lit or not closed or slept > 2 + 1e-9 or raised:
+                                    over.append((name, wk[1], ts, split, n, k - T0, sq, round(area, 3), lit, closed,
+                                                 round(slept, 3), raised, held))
+                        try:
+                            wall.push(pic(k, fps))
+                        except OSError:
+                            pass
+print(f"mode {mode} fps {fps} models {sys.argv[3]} tearsets {tearsets} splits {splits} calls {a}-{b}")
+for wk, v in worst.items():
+    print(f"  {wk[0]:24s} {wk[1]:5s} worst squares {v[0]} area {v[1]:.3f} held close ends lit {v[2]} all closed {v[3]} "
+          f"longest sleep {v[4]:.3f}")
+print("closes measured", measured, "distinct", len(CACHE), "flagged", len(over))
+from collections import Counter  # noqa: E402
+print("flagged by picture/model/tearset:", sorted(Counter(o[:3] for o in over).items()))
+print("flagged over 6:", [o for o in over if o[6] > BUDGET][:12])
+print("flagged ends lit / not closed / sleep>2 / raised:", [o for o in over if o[8] or not o[9] or o[10] > 2 + 1e-9
+                                                            or o[11]][:6])
+print("secs", round(time.time() - t0, 1))

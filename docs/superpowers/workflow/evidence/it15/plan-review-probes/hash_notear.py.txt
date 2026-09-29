@@ -1,0 +1,23 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""The '#' band with no tear, no hold: flash_area of the governed run, whole, and after a close at several ticks."""
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+import pics  # noqa: E402
+from arcade.flash import flash_area  # noqa: E402
+from show.wall import GovernedDisplay  # noqa: E402
+from tests.test_wall_hold import TornDisplay, in_time  # noqa: E402
+for fps in (20, 30):
+    for card in (False, True):
+        worst = 0.0
+        for kc in range(fps, 5 * fps, 7):
+            inner = TornDisplay(lambda c: False, card=card)
+            wall = GovernedDisplay(inner, 64, 128, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
+            for k in range(kc):
+                inner.tick = k
+                wall.push(pics.PICS["hash band"](k, fps))
+            inner.tick = kc
+            wall.close()
+            seq, n = in_time(inner.shown, fps)
+            worst = max(worst, flash_area(seq, fps=n))
+        print(f"fps {fps} {'card' if card else 'probe'}: no tear, closes at ticks {fps}..{5 * fps} step 7: "
+              f"area {worst:.3f}")

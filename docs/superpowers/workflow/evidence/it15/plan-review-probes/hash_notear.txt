@@ -1,0 +1,4 @@
+fps 20 probe: no tear, closes at ticks 20..100 step 7: area 0.063
+fps 20 card: no tear, closes at ticks 20..100 step 7: area 0.078
+fps 30 probe: no tear, closes at ticks 30..150 step 7: area 0.094
+fps 30 card: no tear, closes at ticks 30..150 step 7: area 0.094

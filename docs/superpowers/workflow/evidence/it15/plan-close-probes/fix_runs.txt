@@ -1,0 +1,105 @@
+== B
+0.76s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.75s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.61s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+12 passed in 2.81s
+== today
+0.61s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.60s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.03s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([] == approx...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+8 failed, 4 passed in 1.39s
+== A
+0.70s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.62s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.51s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([0.9375] == ...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+2 failed, 10 passed in 2.41s
+== Bprime
+0.70s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.69s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.58s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([0.9375] == ...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+2 failed, 10 passed in 2.63s
+== early
+E         comparison failed. Mismatched elements: 1 / 1:
+0.65s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.62s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.51s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([0.5] == app...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+3 failed, 9 passed in 2.36s
+== nowait
+0.57s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.56s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.45s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([] == approx...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+5 failed, 7 passed in 2.13s
+== ungoverned
+0.61s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.61s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.49s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([0.9375] == ...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+2 failed, 10 passed in 2.30s
+== noreset
+0.75s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.69s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.59s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget
+1 failed, 11 passed in 2.66s
+== whileclock
+0.69s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.69s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.56s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - AssertionError: the ...
+1 failed, 11 passed in 2.59s
+== leakopen
+E         comparison failed. Mismatched elements: 0 / 1:
+0.07s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.07s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+0.06s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+FAILED ::test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([0.9375] == ...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+FAILED ::test_a_close_without_a_clock_never_waits - assert (6 == 6 and False)
+FAILED ::test_a_close_that_is_not_holding_never_waits - assert (3 == 3 and Fa...
+12 failed in 0.39s
+== earlyc
+E         comparison failed. Mismatched elements: 1 / 2:
+E         comparison failed. Mismatched elements: 1 / 2:
+E         comparison failed. Mismatched elements: 1 / 1:
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([0.5, 1.0] =...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+4 failed, 8 passed in 2.04s
+== nowaitc
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - assert ([1.0] == app...
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+6 failed, 6 passed in 1.88s

@@ -1,0 +1,4 @@
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+3 failed, 7 passed in 19.83s

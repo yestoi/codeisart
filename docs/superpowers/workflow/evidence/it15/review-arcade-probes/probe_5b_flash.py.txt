@@ -1,0 +1,67 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""5b: Quick Draw's DRAW flash through the real runner (limiter, governor, push)."""
+import numpy as np
+from arcade.bots import ROOT, _font
+from arcade.brightness import apl
+from arcade.flash import concurrent_area, flash_area, square_flashes
+from arcade.games.quickdraw import GAME, canonical, duel, early, idle_body
+from arcade.headless import run_headless
+from tests.arcade.helpers import make_cfg
+
+cfg = make_cfg((128, 64))
+font = _font(ROOT / cfg.font_path)
+
+
+def go(name, records, seed=0):
+    frames, runner = run_headless(cfg, font, GAME, records, seed=seed, raw=True, trace=True)
+    raw = runner.raw_frames
+    tr = runner.trace
+    gs = []   # per tick game state
+    draws = []
+    prev = None
+    for i, st in enumerate(tr):
+        sig = st.get("game", {}).get("signal") if isinstance(st.get("game"), dict) else None
+        gs.append(sig)
+    # find signal from game debug via trace keys
+    keys = list(tr[0].keys())
+    print(f"== {name}: ticks {len(frames)}; trace keys {keys[:12]}")
+    raw_apl = [apl(f, cfg.gamma) for f in raw]
+    push_apl = [apl(f, cfg.gamma) for f in frames]
+    white = [i for i, a in enumerate(raw_apl) if a > 0.9]
+    sig = [st.get('signal') for st in tr]
+    ph = [st.get('phase') for st in tr]
+    dr = [i for i in range(1, len(sig)) if sig[i] == 'draw' and sig[i-1] != 'draw']
+    print(f'  DRAW signal ticks: {dr}; phases seen {sorted(set(map(str, ph)))}; final {tr[-1].get("left")}-{tr[-1].get("right")} humans {tr[-1].get("humans")} cpu {tr[-1].get("cpu")}')
+    print(f'  min raw pixel on the flash ticks: {[int(raw[i].min()) for i in [j for j, a in enumerate(raw_apl) if a > 0.9][:6]]}')
+    runs = []
+    for i in white:
+        if runs and i == runs[-1][-1] + 1:
+            runs[-1].append(i)
+        else:
+            runs.append([i])
+    starts = [r[0] for r in runs]
+    print(f"  full-white raw runs: {[(r[0], len(r)) for r in runs]}")
+    gaps = [b - a for a, b in zip(starts, starts[1:])]
+    print(f"  ticks between flash starts: {gaps} (min {min(gaps) if gaps else None} = "
+          f"{(min(gaps) / 30 if gaps else 0):.2f} s)")
+    for r in runs[:2]:
+        a, b = r[0] - 2, r[-1] + 22
+        print("  tick  rawAPL  pushAPL  pushmax  factor-est")
+        for i in range(max(0, a), min(len(raw), b)):
+            print(f"  {i:5d}  {raw_apl[i]:.3f}  {push_apl[i]:.3f}  {int(frames[i].max()):3d}  "
+                  f"{(push_apl[i] / raw_apl[i] if raw_apl[i] else 1):.3f}")
+    print(f"  held ticks (governor): {runner.governor.held_ticks}; limiter scaled ticks: {runner.limiter.scaled_ticks}")
+    print(f"  raw:    square_flashes {square_flashes(raw)}  flash_area {flash_area(raw):.4f}  "
+          f"concurrent_area {concurrent_area(raw):.4f}")
+    print(f"  pushed: square_flashes {square_flashes(frames)}  flash_area {flash_area(frames):.4f}  "
+          f"concurrent_area {concurrent_area(frames):.4f}")
+    print(f"  max pushed APL {max(push_apl):.3f} (cap day {cfg.apl_cap_day}); max raw APL {max(raw_apl):.3f}")
+    # shortest distance: at most how many flash starts in any 30-tick window
+    worst = max((sum(1 for s in starts if i <= s < i + 30) for i in range(len(raw))), default=0)
+    print(f"  most flash starts in any 30 ticks: {worst}")
+    return runner
+
+
+go("canonical", canonical())
+go("duel", duel())
+go("early", early())

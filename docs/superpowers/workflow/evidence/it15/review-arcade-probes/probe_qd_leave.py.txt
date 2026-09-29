@@ -1,0 +1,51 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Quick Draw: a solo player who has drawn and won 2 rounds walks out of view (no body at all) during `result`.
+Does the CPU that takes seat a win rounds for player 1, and is a best recorded before the runner's leave rule?"""
+import zlib
+from arcade import bots
+from arcade.bots import ROOT, _font, _sensed
+from arcade.calibration import Calibration
+from arcade.config import ArcadeConfig
+from arcade.games.quickdraw import GAME
+from arcade.games.quickdraw_bots import Good
+from arcade.headless import RecordingDisplay, run_headless
+from arcade.sources.actors import TICK
+
+cfg = ArcadeConfig(128, 64, backend="fake", camera="none", audio="none")
+font = _font(ROOT / cfg.font_path)
+
+
+def one(seed, leave_at_rounds=2):
+    bot = Good()
+    states = []
+    log = {"left_at": None}
+
+    def feed(runner):
+        cal, before = Calibration(), None
+        gone = False
+        for i in range(round(90 / TICK)):
+            k = i - 1 - bot.reaction_ticks
+            st = states[k] if k >= 0 else {}
+            now = states[-1] if states else {}
+            if not gone and now.get("score", 0) >= leave_at_rounds and now.get("phase") == "result":
+                gone, log["left_at"] = True, i * TICK
+            move = None if gone else bot(st, i * TICK)
+            sensed, before = _sensed(i, move, before, cal)
+            yield sensed
+            states.append(dict(runner.game.debug_state()))
+            if runner.current_name != "quickdraw":
+                log["ended_at"] = i * TICK
+                return
+
+    frames, runner = run_headless(cfg, font, GAME, feed, seed=seed, display=RecordingDisplay(keep_all=False))
+    game = runner.game
+    last = states[-1]
+    results = getattr(runner.current if runner.current_name != "quickdraw" else None, "results", None)
+    print(f"seed {seed}: left at {log['left_at']:.2f} s, ended at {log.get('ended_at')}, "
+          f"final phase {last['phase']} left {last['left']} right {last['right']} humans {last['humans']} "
+          f"cpu {last['cpu']} best {game.scores.best()} won() {bots.for_game(GAME)[1](last)} "
+          f"session result {results[-1] if results else None}")
+
+
+for i in range(5):
+    one(zlib.crc32(f"quickdraw:128x64:{i}".encode()))

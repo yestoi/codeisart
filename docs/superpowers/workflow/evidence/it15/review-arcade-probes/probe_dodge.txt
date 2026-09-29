@@ -1,0 +1,6 @@
+canonical: ticks 1650 held 0 limiter scaled 0
+  raw: square_flashes 1 flash_area 0.0000 concurrent 0.0000
+  pushed: square_flashes 1 flash_area 0.0000 concurrent 0.0000
+  last state phase None score None survived None
+idle under REAL_NOISE seed 11: phase over score 0 best None active ticks 0 held 0
+idle under REAL_NOISE seed 22: phase over score 0 best None active ticks 0 held 0

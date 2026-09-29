@@ -1,0 +1,23 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Is the sweep's 7 at its last tick the slice's artifact? The same close (tick 93) measured whole and as the sweep
+slices it (from 1 s before the first send, the state before as tick 0)."""
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+import logging; logging.disable(logging.CRITICAL)
+from tail7 import run, fps  # noqa: E402  (runs tail7's prints first)
+from arcade.flash import square_flashes  # noqa: E402
+from tests.test_wall_hold import DARK, in_time  # noqa: E402
+for kc in (92, 93):
+    seq, n, holding, inner = run({12}, kc)
+    before = [e for e in inner.shown if e[0] < kc]
+    s0 = kc - fps
+    prior = DARK
+    for tk, f in inner.shown:
+        if tk < s0:
+            prior = f
+    ents = [(0, prior)] + [(tk - s0 + 1, f) for tk, f in inner.shown if tk >= s0]
+    sseq, m = in_time(ents, fps)
+    sseq = sseq[m // fps:]
+    trimmed = [e for e in inner.shown if e[0] >= kc - 2 * fps - 2]
+    print(kc, "whole", square_flashes(seq, fps=n), "slice", square_flashes(sseq, fps=m),
+          "first shown tick", inner.shown[0][0], "entries", len(inner.shown))

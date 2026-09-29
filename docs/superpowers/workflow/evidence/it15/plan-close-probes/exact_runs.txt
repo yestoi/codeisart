@@ -1,0 +1,48 @@
+== B
+10 passed in 10.58s
+== today
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+8 failed, 2 passed in 0.20s
+== A
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+1 failed, 9 passed in 8.22s
+== Bprime
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+1 failed, 9 passed in 8.84s
+== early
+E         comparison failed. Mismatched elements: 1 / 1:
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+2 failed, 8 passed in 7.44s
+== nowait
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+4 failed, 6 passed in 5.95s
+== ungoverned
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+1 failed, 9 passed in 7.06s
+== noreset
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+1 failed, 9 passed in 7.29s
+== leakopen
+E         comparison failed. Mismatched elements: 0 / 1:
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+FAILED ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+FAILED ::test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black
+FAILED ::test_close_after_the_counted_frame_went_waits_once_then_black - asse...
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[KeyboardInterrupt]
+FAILED ::test_a_wait_that_raises_sends_nothing_and_still_closes_the_display[OSError]
+FAILED ::test_a_close_without_a_clock_never_waits - assert (6 == 6 and False)
+FAILED ::test_a_close_that_is_not_holding_never_waits - assert (3 == 3 and Fa...
+10 failed in 0.27s

@@ -1,0 +1,12 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+import importlib.util
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+import show  # the package
+def _load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+show.wall = _load("show.wall", R + "/wall_p.py")
+show.main = _load("show.main", R + "/main_p.py")

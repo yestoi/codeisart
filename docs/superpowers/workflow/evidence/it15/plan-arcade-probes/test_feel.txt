@@ -1,0 +1,18 @@
+.........................                                                [100%]
+============================= slowest 15 durations =============================
+2.94s call     tests/arcade/test_feel.py::test_response_ticks_does_not_depend_on_the_probe_count[creeper]
+2.39s call     tests/arcade/test_feel.py::test_response_ticks_does_not_depend_on_the_probe_count[follower]
+1.83s call     tests/arcade/test_feel.py::test_good_plays_are_reused
+1.54s call     tests/arcade/test_feel.py::test_measure_repeats_under_seeds
+1.50s setup    tests/arcade/test_feel.py::test_follower_passes_fidelity_and_response
+1.44s call     tests/arcade/test_feel.py::test_dim_fraction_counts_dim_lit_pixels
+1.40s call     tests/arcade/test_feel.py::test_screensaver_fails_both
+1.11s setup    tests/arcade/test_feel.py::test_score_visibility_counts_the_ticks_it_is_shown
+0.99s call     tests/arcade/test_feel.py::test_a_clamped_control_is_not_probed
+0.87s call     tests/arcade/test_feel.py::test_depth_follower_passes_fidelity_and_response
+0.45s call     tests/arcade/test_feel.py::test_measure_launches_through_the_lobby
+0.17s call     tests/arcade/test_feel.py::test_presence_answer_times_the_first_answer_to_a_present_body
+0.15s call     tests/arcade/test_feel.py::test_measure_needs_canonical_to_launch_the_game
+0.04s call     tests/arcade/test_feel.py::test_a_1x_score_is_not_visible
+0.02s call     tests/arcade/test_feel.py::test_legibility_passes_a_bright_score_at_5m_and_fails_one_in_glare_or_far
+25 passed in 17.02s

@@ -1,0 +1,15 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+import time
+from arcade import bots
+from arcade.games.pong import Pong
+facts, won = bots.for_game(Pong)
+seeds = bots.seeds(Pong, "128x64", 20)
+tot_s = tot_c = 0.0
+for name in ("good", "lazy"):
+    for s in seeds[:4]:
+        c0 = time.thread_time(); p = bots.play(Pong, facts[name](), s); c = time.thread_time() - c0
+        tot_s += p.seconds; tot_c += c
+        print(name, s, f"{p.seconds:.1f} s sim, {c:.2f} s cpu, won {p.won}")
+c0 = time.thread_time(); p = bots.play(Pong, bots.Nobody(), seeds[0]); c = time.thread_time() - c0
+print("nobody", f"{p.seconds:.1f} s sim, {c:.2f} s cpu")
+print(f"cpu per simulated second: {tot_c / tot_s * 1000:.1f} ms")

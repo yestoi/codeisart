@@ -1,0 +1,16 @@
+probe [(1, 28, 67, 40, True), (2, 47, 47, 1, False)] COVERED
+probe [(1, 68, 87, 20, True)] COVERED
+probe [(1, 88, 88, 1, True)] COVERED
+probe [(1, 89, 89, 1, True)] COVERED
+card [(1, 28, 67, 40, True), (2, 47, 47, 1, False)] COVERED
+card [(1, 68, 87, 20, True)] COVERED
+card [(1, 88, 88, 1, True)] COVERED
+card [(1, 89, 89, 1, True)] COVERED
+probe [(2, 48, 87, 40, True)] COVERED
+probe [(2, 88, 107, 20, True)] COVERED
+probe [(2, 108, 108, 1, True)] COVERED
+probe [(2, 109, 109, 1, True)] COVERED
+card [(2, 48, 87, 40, True)] COVERED
+card [(2, 88, 107, 20, True)] COVERED
+card [(2, 108, 108, 1, True)] COVERED
+card [(2, 109, 109, 1, True)] COVERED

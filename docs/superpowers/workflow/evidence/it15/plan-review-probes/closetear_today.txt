@@ -1,0 +1,8 @@
+rev rows b32 ph0 10Hz  earlier tear None split 33 probe: worst squares 7 (close at tick 128)
+rev rows b32 ph0 10Hz  earlier tear None split 33 card: worst squares 7 (close at tick 128)
+rev rows b32 ph0 10Hz  earlier tear 20 split 33 probe: worst squares 7 (close at tick 141)
+rev rows b32 ph0 10Hz  earlier tear 20 split 33 card: worst squares 7 (close at tick 142)
+full strobe 10Hz       earlier tear None split 33 probe: worst squares 6 (close at tick 100)
+full strobe 10Hz       earlier tear None split 33 card: worst squares 6 (close at tick 100)
+full strobe 10Hz       earlier tear 20 split 33 probe: worst squares 6 (close at tick 116)
+full strobe 10Hz       earlier tear 20 split 33 card: worst squares 6 (close at tick 118)

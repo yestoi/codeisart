@@ -1,0 +1,40 @@
+"""Two tests the reviewer asks for (B1, B2), tried on the scratch wall's closes."""
+import pytest
+
+from show.wall import HOLD_S, GovernedDisplay
+from tests.test_wall_hold import H, W, Clocked, TornDisplay, strobe
+from test_exact import Ticks
+
+
+def test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget():
+    fps = 20
+    inner = TornDisplay(lambda n: n == 22, split=33, card=True)   # 5 Hz strobe, the tear at call 22 (tick 21)
+    ticks = Ticks(inner, fps)
+    wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=ticks, sleep=ticks.sleep)
+    for k, f in enumerate(strobe(5, fps, 22)):
+        inner.tick = k
+        try:
+            wall.push(f)
+        except OSError:
+            pass
+    inner.tick = 22
+    wall.close()
+    assert inner.closed and not inner.screen.any() and not inner.rows.any()
+
+
+def test_a_close_in_the_hold_reads_the_clock_once():
+    now, slept = [0.0], []
+    inner = Clocked({3}, lambda: now[0])
+
+    def sleep(s):                                   # the loop's: it never moves the wall's clock (self._now)
+        slept.append(s)
+        assert len(slept) <= 2, "the close waits on a clock that never moves"
+    wall = GovernedDisplay(inner, H, W, fps=16, from_dark=True, clock=lambda: now[0], sleep=sleep)
+    frames = strobe(1, 16, 3)
+    wall.push(frames[0]), wall.push(frames[1])
+    now[0] = 2 / 16
+    with pytest.raises(OSError):
+        wall.push(frames[2])
+    now[0] = 3 / 16
+    wall.close()
+    assert slept == pytest.approx([15 / 16, HOLD_S]) and inner.calls == 6 and inner.closed

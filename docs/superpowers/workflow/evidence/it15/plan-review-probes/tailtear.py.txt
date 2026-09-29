@@ -1,0 +1,35 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""The 7 found with CLOSE_TEAR (fps 30, 'rev rows b32 ph0 10Hz', tear at call 20 or 23, a close 1 s + 2 ticks after
+the hold's end whose first black send tears): is it the plan's? The same wall with NO close, the loop's own push
+tearing at that call instead (it14's hold, as shipped), measured over the whole run."""
+import logging
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+logging.disable(logging.CRITICAL)
+import pics  # noqa: E402
+from arcade.flash import flash_area, square_flashes  # noqa: E402
+from show.wall import GovernedDisplay  # noqa: E402  (the repository's wall: no close involved)
+from tests.test_wall_hold import TornDisplay, in_time  # noqa: E402
+
+fps, pic = 30, pics.PICS["rev rows b32 ph0 10Hz"]
+for n in (20, 23):
+    for split in (8, 33):
+        for card in (False, True):
+            T0 = n - 1
+            k_close = T0 + 122                      # the flagged close's tick
+            # calls: the tear n; counted n+1, n+2; new frames from tick T0 + 3 fps (call n+3), one a tick
+            m = n + 3 + (k_close - (T0 + 3 * fps))
+            res = []
+            for tears in ({n}, {n, m}):
+                inner = TornDisplay(lambda c, t=tears: c in t, split=split, card=card)
+                wall = GovernedDisplay(inner, 64, 128, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
+                for k in range(k_close + 3 * fps):
+                    inner.tick = k
+                    try:
+                        wall.push(pic(k, fps))
+                    except OSError:
+                        pass
+                seq, s = in_time(inner.shown, fps)
+                res.append((sorted(tears), square_flashes(seq, fps=s), round(flash_area(seq, fps=s), 3)))
+            print(f"n {n} split {split} {'card' if card else 'probe'}: no close, the loop's push tears at call {m}"
+                  f" (tick {k_close}): {res}")

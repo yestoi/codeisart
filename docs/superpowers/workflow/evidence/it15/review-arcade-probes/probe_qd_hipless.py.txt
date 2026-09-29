@@ -1,0 +1,50 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Quick Draw with a body whose hips are under MIN_CONF but whose wrists are seen (the orchestrator's finding: without
+hips Cursor can switch to a hanging hand). The player raises the right hand 0.3 s after DRAW, lowers it in ready."""
+import dataclasses
+import random
+from arcade.games.quickdraw import Quickdraw
+from arcade.headless import OPENING_NIGHT
+from arcade.juice import Juice
+from arcade.scores import Scores
+from arcade.sensed import Body, Keypoint, LEFT_HIP, RIGHT_HIP
+from arcade.sources.actors import TICK, body_box, make_keypoints, scene
+
+
+def game_for(i):
+    g = Quickdraw()
+    g.scores = Scores(None, lambda: OPENING_NIGHT).for_game("quickdraw", "128x64")
+    g.reset((128, 64), random.Random(1000 + i), Juice(random.Random(1), (128, 64)))
+    return g
+
+
+def play(hip_conf, i, which_first="left"):
+    g = game_for(i)
+    draw_t = None
+    tops = []
+    for n, f in enumerate(scene(ticks=round(40 / TICK))):
+        st = g.debug_state()
+        if st["signal"] == "draw" and st["phase"] == "play":
+            draw_t = draw_t if draw_t is not None else g.t
+        else:
+            draw_t = None
+        up = draw_t is not None and g.t - draw_t >= 0.3
+        kps = list(make_keypoints(0.3, 0.55, 0.6, right_up=up))
+        for k in (LEFT_HIP, RIGHT_HIP):
+            kps[k] = Keypoint(kps[k].x, kps[k].y, hip_conf)
+        body = Body(1, body_box(kps), tuple(kps))
+        f = dataclasses.replace(f, bodies=(body,), player=body, camera_t=f.camera_t)
+        g.update(f, TICK)
+        tops.append(g.debug_state()["hand_xy"][1])
+        if g.done():
+            break
+    st = g.debug_state()
+    return st["left"], st["right"], st["phase"], min(tops), g.scores.best()
+
+
+for hc in (1.0, 0.1):
+    for i in range(3):
+        print(f"hips conf {hc} seed {i}: (human rounds, cpu rounds, phase, highest bar y, best) = {play(hc, i)}")
+kps = make_keypoints(0.3, 0.55, 0.6, right_up=True)
+b = Body(1, body_box(kps), tuple(Keypoint(k.x, k.y, 0.1) if j in (LEFT_HIP, RIGHT_HIP) else k for j, k in enumerate(kps)))
+print("hipless body, right hand up: shoulder_mid", b.shoulder_mid, "left wrist", kps[9], "right wrist", kps[10])

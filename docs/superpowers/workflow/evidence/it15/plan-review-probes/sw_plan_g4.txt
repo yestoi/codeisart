@@ -1,0 +1,60 @@
+mode plan fps 20 models both tearsets ['one'] splits [33] calls 1-22
+  checks off0 5Hz ph1      probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off0 5Hz ph1      card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 2200 distinct 525 flagged 12
+flagged by picture/model/tearset: [(('checks off0 5Hz ph1', 'card', 'one'), 6), (('checks off0 5Hz ph1', 'probe', 'one'), 6)]
+flagged over 6: [('checks off0 5Hz ph1', 'probe', 'one', 33, 12, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 33, 13, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 33, 16, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 33, 17, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 33, 20, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 33, 21, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 12, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 13, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 16, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 17, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 20, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 21, 82, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 36.2
+mode plan fps 20 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  checks off0 5Hz ph1      probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off0 5Hz ph1      card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 2400 distinct 308 flagged 24
+flagged by picture/model/tearset: [(('checks off0 5Hz ph1', 'card', 'one'), 12), (('checks off0 5Hz ph1', 'probe', 'one'), 12)]
+flagged over 6: [('checks off0 5Hz ph1', 'probe', 'one', 8, 16, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 8, 17, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 8, 20, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 8, 21, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 20, 16, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 20, 17, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 20, 20, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 20, 21, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 56, 16, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 56, 17, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 56, 20, 82, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 56, 21, 82, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 31.5
+mode plan fps 20 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  checks off0 5Hz ph1      probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off0 5Hz ph1      card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 2592 distinct 506 flagged 16
+flagged by picture/model/tearset: [(('checks off0 5Hz ph1', 'card', 'c1'), 4), (('checks off0 5Hz ph1', 'card', 'c2'), 4), (('checks off0 5Hz ph1', 'probe', 'c1'), 4), (('checks off0 5Hz ph1', 'probe', 'c2'), 4)]
+flagged over 6: [('checks off0 5Hz ph1', 'probe', 'c1', 33, 16, 102, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c1', 33, 17, 102, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c1', 33, 20, 102, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c1', 33, 21, 102, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c2', 33, 16, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c2', 33, 17, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c2', 33, 20, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c2', 33, 21, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c1', 33, 16, 102, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c1', 33, 17, 102, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c1', 33, 20, 102, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c1', 33, 21, 102, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 43.7
+mode plan fps 30 models both tearsets ['one'] splits [33] calls 1-22
+  checks off0 5Hz ph1      probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off0 5Hz ph1      card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off16 10Hz        probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off16 10Hz        card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 3064 distinct 1034 flagged 12
+flagged by picture/model/tearset: [(('checks off0 5Hz ph1', 'card', 'one'), 3), (('checks off0 5Hz ph1', 'probe', 'one'), 3), (('checks off16 10Hz', 'card', 'one'), 3), (('checks off16 10Hz', 'probe', 'one'), 3)]
+flagged over 6: [('checks off0 5Hz ph1', 'probe', 'one', 33, 18, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 33, 19, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 33, 22, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 18, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 19, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 33, 22, 122, 7, 0.0, False, True, 0, None, False), ('checks off16 10Hz', 'probe', 'one', 33, 11, 122, 7, 0.0, False, True, 0, None, False), ('checks off16 10Hz', 'probe', 'one', 33, 17, 122, 7, 0.0, False, True, 0, None, False), ('checks off16 10Hz', 'probe', 'one', 33, 20, 122, 7, 0.0, False, True, 0, None, False), ('checks off16 10Hz', 'card', 'one', 33, 11, 122, 7, 0.0, False, True, 0, None, False), ('checks off16 10Hz', 'card', 'one', 33, 17, 122, 7, 0.0, False, True, 0, None, False), ('checks off16 10Hz', 'card', 'one', 33, 20, 122, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 101.5
+mode plan fps 30 models both tearsets ['one'] splits [8, 20, 56] calls 15-22
+  checks off0 5Hz ph1      probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off0 5Hz ph1      card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off16 10Hz        probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off16 10Hz        card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 3336 distinct 572 flagged 30
+flagged by picture/model/tearset: [(('checks off0 5Hz ph1', 'card', 'one'), 9), (('checks off0 5Hz ph1', 'probe', 'one'), 9), (('checks off16 10Hz', 'card', 'one'), 6), (('checks off16 10Hz', 'probe', 'one'), 6)]
+flagged over 6: [('checks off0 5Hz ph1', 'probe', 'one', 8, 18, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 8, 19, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 8, 22, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 20, 18, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 20, 19, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 20, 22, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 56, 18, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 56, 19, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'one', 56, 22, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 8, 18, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 8, 19, 122, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'one', 8, 22, 122, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 75.7
+mode plan fps 30 models both tearsets ['c1', 'c2', 'new'] splits [33] calls 15-22
+  checks off0 5Hz ph1      probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off0 5Hz ph1      card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off16 10Hz        probe worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+  checks off16 10Hz        card  worst squares 7 area 0.000 held close ends lit False all closed True longest sleep 1.967
+closes measured 3528 distinct 897 flagged 20
+flagged by picture/model/tearset: [(('checks off0 5Hz ph1', 'card', 'c1'), 3), (('checks off0 5Hz ph1', 'card', 'c2'), 3), (('checks off0 5Hz ph1', 'probe', 'c1'), 3), (('checks off0 5Hz ph1', 'probe', 'c2'), 3), (('checks off16 10Hz', 'card', 'c1'), 2), (('checks off16 10Hz', 'card', 'c2'), 2), (('checks off16 10Hz', 'probe', 'c1'), 2), (('checks off16 10Hz', 'probe', 'c2'), 2)]
+flagged over 6: [('checks off0 5Hz ph1', 'probe', 'c1', 33, 18, 152, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c1', 33, 19, 152, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c1', 33, 22, 152, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c2', 33, 18, 182, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c2', 33, 19, 182, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'probe', 'c2', 33, 22, 182, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c1', 33, 18, 152, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c1', 33, 19, 152, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c1', 33, 22, 152, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c2', 33, 18, 182, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c2', 33, 19, 182, 7, 0.0, False, True, 0, None, False), ('checks off0 5Hz ph1', 'card', 'c2', 33, 22, 182, 7, 0.0, False, True, 0, None, False)]
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 97.5

@@ -1,0 +1,8 @@
+mode today fps 20 models both tearsets ['one'] splits [33] calls 28-28
+  rev rows b32 ph1 10Hz    probe worst squares 8 area 0.000 ends lit True all closed True longest sleep 0.000
+  rev rows b32 ph1 10Hz    card  worst squares 8 area 0.000 ends lit True all closed True longest sleep 0.000
+closes measured 50 distinct 47 flagged 31
+flagged by picture/model/tearset: [(('rev rows b32 ph1 10Hz', 'card', 'one'), 16), (('rev rows b32 ph1 10Hz', 'probe', 'one'), 15)]
+flagged over 6: [('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 28, 1, 8, 0.0, False, True, 0, None), ('rev rows b32 ph1 10Hz', 'card', 'one', 33, 28, 1, 8, 0.0, False, True, 0, None)]
+flagged ends lit / not closed / sleep>2 / raised: [('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 28, 67, 6, 0.0, True, True, 0, None), ('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 28, 68, 6, 0.0, True, True, 0, None), ('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 28, 69, 6, 0.0, True, True, 0, None), ('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 28, 70, 6, 0.0, True, True, 0, None), ('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 28, 71, 6, 0.0, True, True, 0, None), ('rev rows b32 ph1 10Hz', 'probe', 'one', 33, 28, 72, 6, 0.0, True, True, 0, None)]
+secs 1.1

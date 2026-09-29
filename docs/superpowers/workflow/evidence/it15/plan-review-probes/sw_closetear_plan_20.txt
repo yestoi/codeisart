@@ -1,0 +1,20 @@
+mode plan fps 20 models both tearsets ['one'] splits [8, 33] calls 18-26
+  rev rows b32 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  rev rows b32 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  rev rows b32 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  rev rows b32 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  rev rows b48 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  checks off16 10Hz        probe worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  checks off16 10Hz        card  worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  block strobe 10Hz        probe worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  block strobe 10Hz        card  worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  full strobe 10Hz         probe worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  full strobe 10Hz         card  worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  full strobe 5Hz ph1      probe worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+  full strobe 5Hz ph1      card  worst squares 6 area 0.000 held close ends lit True all closed True longest sleep 1.950
+closes measured 6300 distinct 1276 flagged 6048
+flagged by picture/model/tearset: [(('block strobe 10Hz', 'card', 'one'), 432), (('block strobe 10Hz', 'probe', 'one'), 432), (('checks off16 10Hz', 'card', 'one'), 432), (('checks off16 10Hz', 'probe', 'one'), 432), (('full strobe 10Hz', 'card', 'one'), 432), (('full strobe 10Hz', 'probe', 'one'), 432), (('full strobe 5Hz ph1', 'card', 'one'), 432), (('full strobe 5Hz ph1', 'probe', 'one'), 432), (('rev rows b32 ph0 10Hz', 'card', 'one'), 432), (('rev rows b32 ph0 10Hz', 'probe', 'one'), 432), (('rev rows b32 ph1 10Hz', 'card', 'one'), 432), (('rev rows b32 ph1 10Hz', 'probe', 'one'), 432), (('rev rows b48 ph1 10Hz', 'card', 'one'), 432), (('rev rows b48 ph1 10Hz', 'probe', 'one'), 432)]
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: [('rev rows b32 ph0 10Hz', 'probe', 'one', 8, 18, 21, 0, 0.0, False, True, 0.95, 'OSError', True), ('rev rows b32 ph0 10Hz', 'probe', 'one', 8, 18, 41, 0, 0.0, False, True, 0.95, 'OSError', True), ('rev rows b32 ph0 10Hz', 'probe', 'one', 8, 18, 61, 2, 0.0, False, True, 0, 'OSError', False), ('rev rows b32 ph0 10Hz', 'probe', 'one', 8, 18, 62, 2, 0.0, False, True, 0, 'OSError', False), ('rev rows b32 ph0 10Hz', 'probe', 'one', 8, 18, 63, 4, 0.0, False, True, 0, 'OSError', False), ('rev rows b32 ph0 10Hz', 'probe', 'one', 8, 18, 64, 4, 0.0, False, True, 0, 'OSError', False)]
+secs 80.0

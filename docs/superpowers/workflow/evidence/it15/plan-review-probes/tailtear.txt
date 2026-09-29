@@ -1,0 +1,8 @@
+n 20 split 8 probe: no close, the loop's push tears at call 55 (tick 141): [([20], 6, 0.0), ([20, 55], 6, 0.0)]
+n 20 split 8 card: no close, the loop's push tears at call 55 (tick 141): [([20], 6, 0.0), ([20, 55], 6, 0.0)]
+n 20 split 33 probe: no close, the loop's push tears at call 55 (tick 141): [([20], 6, 0.0), ([20, 55], 6, 0.0)]
+n 20 split 33 card: no close, the loop's push tears at call 55 (tick 141): [([20], 6, 0.0), ([20, 55], 6, 0.0)]
+n 23 split 8 probe: no close, the loop's push tears at call 58 (tick 144): [([23], 6, 0.0), ([23, 58], 6, 0.0)]
+n 23 split 8 card: no close, the loop's push tears at call 58 (tick 144): [([23], 6, 0.0), ([23, 58], 6, 0.0)]
+n 23 split 33 probe: no close, the loop's push tears at call 58 (tick 144): [([23], 6, 0.0), ([23, 58], 6, 0.0)]
+n 23 split 33 card: no close, the loop's push tears at call 58 (tick 144): [([23], 6, 0.0), ([23, 58], 6, 0.0)]

@@ -1,0 +1,33 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Does phases() leave out a tick whose close sends differently? The exact budget test's two drives, a close at every
+tick of round 1's range, each close's sends (ticks and bytes) hashed; each distinct send list must have a phases tick
+(the counted-send-tears case: or the one-tear case's, whose drive is the same to tick 47)."""
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+import hashlib, logging  # noqa: E401
+logging.disable(logging.CRITICAL)
+import plug  # noqa: F401
+import test_exact2 as t  # noqa: E402
+from tests.test_wall_hold import TornDisplay, reversal  # noqa: E402
+
+fps, TEAR = 20, t.TEAR
+seen = {}
+for torn in ((TEAR,), (TEAR, TEAR + 1)):
+    for card in (False, True):
+        end = (TEAR - 1) + (len(torn) + 2) * fps + 2
+        first = TEAR if len(torn) == 1 else TEAR + fps - 1        # round 1's range
+        at = t.phases(TEAR - 1, fps) if len(torn) == 1 else t.phases(TEAR - 1 + fps, fps)
+        inner = TornDisplay(lambda n, torn=torn: n in torn, split=33, card=card)
+        frames = reversal(10, fps, end + 1, top_first=True)
+        groups = {}
+        for k, shown, slept in t.closes(frames, inner, fps, set(range(first, end + 1))):
+            h = hashlib.md5(repr([tk for tk, _ in shown.shown]).encode())
+            for _, f in shown.shown:
+                h.update(f.tobytes())
+            groups.setdefault(h.hexdigest(), []).append(k)
+        for key, ks in groups.items():
+            seen.setdefault((card, key), []).append((torn, ks, bool(set(ks) & at)))
+for (card, key), rows in seen.items():
+    covered = any(c for _, _, c in rows)
+    print("card" if card else "probe", [(len(tr), ks[0], ks[-1], len(ks), c) for tr, ks, c in rows],
+          "COVERED" if covered else "NOT COVERED")

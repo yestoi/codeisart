@@ -1,0 +1,46 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""The CLOSE_TEAR 7 with the repository's wall (today's close, no hold at the close): a stream at the budget, a close
+whose first governed black tears (split 8/33). Whole run measured. With and without an earlier tear (the hold)."""
+import logging
+R = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-review"
+sys.path.insert(0, R)
+logging.disable(logging.CRITICAL)
+import pics  # noqa: E402
+from arcade.flash import flash_area, square_flashes  # noqa: E402
+from show.wall import GovernedDisplay  # noqa: E402
+from tests.test_wall_hold import TornDisplay, in_time  # noqa: E402
+
+fps = 30
+out = {}
+for name in ("rev rows b32 ph0 10Hz",):
+    pic = pics.PICS[name]
+    for early in (None, 20):
+        for split in (33,):
+            for card in (False, True):
+                worst = (0, None)
+                for kc in range(120, 150):
+                    tears = {early} if early else set()
+                    inner = TornDisplay(lambda c, t=tears: c in t, split=split, card=card)
+                    wall = GovernedDisplay(inner, 64, 128, fps=fps, from_dark=True,
+                                           clock=(lambda: inner.tick / fps) if early else None)
+                    for k in range(kc):
+                        inner.tick = k
+                        try:
+                            wall.push(pic(k, fps))
+                        except OSError:
+                            pass
+                    if wall.holding:
+                        continue
+                    inner.tick = kc
+                    c0 = inner.calls + 1
+                    inner.tears = lambda c, c0=c0: c == c0
+                    try:
+                        wall.close()
+                    except OSError:
+                        pass
+                    seq, s = in_time(inner.shown, fps)
+                    sq = square_flashes(seq, fps=s)          # the whole run
+                    if sq > worst[0]:
+                        worst = (sq, kc)
+                print(f"{name:22s} earlier tear {early} split {split} {'card' if card else 'probe'}: "
+                      f"worst squares {worst[0]} (close at tick {worst[1]})", flush=True)

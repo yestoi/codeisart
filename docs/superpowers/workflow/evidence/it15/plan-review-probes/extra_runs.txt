@@ -1,0 +1,12 @@
+== plan
+2 passed in 0.07s
+== noreset
+FAILED ::test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget
+1 failed, 1 passed in 0.07s
+== whileclock
+FAILED ::test_a_close_in_the_hold_reads_the_clock_once - AssertionError: the ...
+1 failed, 1 passed in 0.09s
+== reset_noprime
+2 passed in 0.11s
+== noquiet_on_fail
+2 passed in 0.06s

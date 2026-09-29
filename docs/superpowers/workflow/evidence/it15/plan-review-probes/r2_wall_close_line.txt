@@ -1,0 +1,6 @@
+0.33s call     ::test_close_after_a_failed_push_sends_the_counted_frame_before_black
+0.04s call     ::test_close_after_a_mended_failure_is_the_clean_close
+0.03s call     ::test_close_when_the_repush_fails_still_darkens_and_closes
+7 passed in 0.62s
+FAILED ::test_the_loop_s_close_after_a_failed_push_sends_the_counted_frame_first
+1 failed, 6 deselected in 0.16s

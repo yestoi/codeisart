@@ -1,0 +1,14 @@
+mode noreset fps 20 models both tearsets ['one'] splits [33] calls 20-30
+  rev rows b32 ph0 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b32 ph0 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b32 ph1 10Hz    probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  rev rows b32 ph1 10Hz    card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  checks off16 10Hz        card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  block strobe 10Hz        probe worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+  block strobe 10Hz        card  worst squares 6 area 0.000 held close ends lit False all closed True longest sleep 1.950
+closes measured 2200 distinct 508 flagged 0
+flagged by picture/model/tearset: []
+flagged over 6: []
+flagged ends lit / not closed / sleep>2 / raised: []
+secs 37.3

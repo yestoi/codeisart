@@ -1,0 +1,45 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-plan-close")
+"""Today's close (wall15 mode given) j = 1..16 ticks after one tear at call n (21..34), split 33/8, fps 20, both models,
+three pictures; in_time over the whole run from dark (the test helpers). Prints the cases over 6 or area > 0."""
+import copy, math, logging
+logging.disable(logging.CRITICAL)
+from arcade.flash import BUDGET, flash_area, square_flashes
+from tests.test_wall_hold import TornDisplay, in_time, reversal, strobe
+import wall15
+wall15.MODE = sys.argv[1]
+H, W, fps = 64, 128, 20
+PICS = {"rev top 10": lambda n: reversal(10, fps, n, top_first=True), "rev bottom 10": lambda n: reversal(10, fps, n),
+        "rev top 5": lambda n: reversal(5, fps, n, top_first=True), "strobe 10": lambda n: strobe(10, fps, n)}
+over = []
+for name, pic in PICS.items():
+    for card in (False, True):
+        for split in (33, 8):
+            for n in range(24, 31):
+                inner = TornDisplay(lambda c, n=n: c == n, split=split, card=card)
+                def sl(s, inner=inner):
+                    inner.tick += math.ceil(s * fps - 1e-9)
+                wall = wall15.GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=lambda: inner.tick / fps, sleep=sl)
+                frames = pic(n + 3 * fps + 3)
+                for k, f in enumerate(frames):
+                    inner.tick = k
+                    j = k - (n - 1)
+                    if 1 <= j <= 3 * fps + 2:
+                        w2 = copy.deepcopy(wall)
+                        i2 = w2.display
+                        w2._sleep = lambda s, i2=i2: setattr(i2, "tick", i2.tick + math.ceil(s * fps - 1e-9))
+                        i2.tears = lambda c: False
+                        w2.close()
+                        seq, m = in_time(i2.shown, fps)
+                        sq, ar = square_flashes(seq, fps=m), flash_area(seq, fps=m)
+                        if sq > BUDGET or ar > 0:
+                            over.append((name, "card" if card else "probe", split, n, j, sq, ar))
+                    try:
+                        wall.push(f)
+                    except OSError:
+                        pass
+from collections import Counter
+print(sys.argv[1], "over:", len(over))
+print(sorted(Counter(o[:4] for o in over).items()))
+print("j:", sorted(Counter(o[4] for o in over).items()))
+print("worst:", max(over, key=lambda o: o[5]) if over else None)

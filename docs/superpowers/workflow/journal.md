@@ -991,3 +991,75 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - Owner questions: Q66 (the quiet hold; its check on the real panels is a SAFETY GATE) and Q67 (the arcade's
   runner), both defaulted; Q65's default is replaced by Q66's.
 - Status: done
+
+## Iteration 15 — 2026-09-29
+- Verdict on the arcade's sheets, an EARLY read (written before any other tool call after the reading; the clock
+  read 10:14:13 CDT right after the writing). The sheets are stamped 83fe13a clean, made from a detached checkout
+  of 83fe13a (both games merged) while lane B was not yet built; the final head differs, so the evidence is made
+  again at the final head and this read is checked against it. Read with the Read tool: `games.md`, `feel.json`,
+  `arcade.txt`, `it15-quickdraw.png`, `it15-quickdraw-raw-vs-pushed.png`, `quickdraw-128x64-led.png`,
+  `quickdraw-128x64-distance.png`, `it15-dodge.png`, `dodge-128x64-led.png`.
+  - The feel table: every metric of the three games is in its band, `failures` is empty for each. No game
+    overrides a budget (Pong's `dim_fraction` 0.3 with its reason is it09's). Pong's row equals it09's in every
+    number (response_px 12.0, fidelity 0.9947, range 0.6287, lit 0.039, dim 0.1147, liveliness 0.0035, flash area
+    0.0, square flashes 0.0, win 1.0, 0.25, 0.0, round 66.07 s): E1 and E2 did not move Pong.
+  - Quick Draw, PASS on the pictures with two points to follow. The lobby shows the title `DRAW!`, the mirror
+    figure, the green pictogram with its hand up. In the game: two scores (amber left for the player, green right
+    for the CPU), `- - WAIT - -`, the hint `HAND UP ON DRAW!`, a bar for each hand at the bottom. A hand raised
+    early reads `TOO SOON` in red and the point goes to the other side. On the signal `DRAW!` stands in white
+    with the reaction time under it (0.36, 0.75, 0.55). The card reads `DRAW! 0`, `HAND UP = AGAIN`. At 10 m
+    (the distance sheet) the scores, WAIT and DRAW! read; the hint is small but reads.
+    - Point 1, for the reviewer and the owner: on the signal the game's raw frame is the WHOLE wall white for 5
+      ticks (ticks 855 to 859 of the raw-vs-pushed sheet); the pushed frame is mid grey for those ticks, and the
+      pushed picture stays dimmer than the raw one for at least 15 ticks after. The numbers pass: held 0 of 1800,
+      flash area 0.000 raw and pushed, concurrent area 0.001, square flashes 4 of 6 (2.0 in the feel table): one
+      flash a round, rounds at least 2 s apart. It is inside the flash rules, but it is a full-field flash, the
+      first in the arcade. The operator asks the reviewer to measure it and puts it to the owner as a question.
+    - Point 2, a flaw seen on the sheet: when a round's result comes while the hint line still shows, the reaction
+      time is drawn over the hint (`HAND U0.55 DRAW!`, ticks 871 to 874; also at 17.5 s and at 59.5 s). It reads
+      badly for those ticks. Reproduced on the sheet: a Carried fix, small.
+    - The canonical actor never wins a round (0:3, 0:3, then 0:2 at the sheet's end), so no sheet shows a round the
+      player wins or a best banked. `round_seconds` reads 20.98 against the band's floor of 20.0: near the edge.
+  - Dodge, PASS on the pictures (for the record: Dodge was taken off main after this checkout, see Shipped): the
+    title `DODGE`, `STEP SIDE TO SIDE`, the player an amber block on the floor, cyan rocks falling, a bar at the
+    top, the score in white at the top right; a hit shows the block red, then `DODGE 1`, `BEST!`,
+    `HAND UP = AGAIN`. Held 0 of 1650, flash area 0.005, concurrent area 0.026, square flashes 5 of 6 on the
+    sheet's run (0.0 in the feel table). The canonical play is short: the first hit comes after 6 s of play and
+    ends the game; the rest of the sheet is the lobby's invite. The wall is sparse (lit 0.033) but reads.
+  - `python -m arcade doctor` in the detached checkout: exit 1, camera ok, mic ok, pose UNAVAILABLE because
+    `models/` is not in git and so not in that checkout. Not a finding; it is run again from the main checkout.
+- Verdict on the show's sheets (written before any other tool call after the reading; the sheets were made 10:34
+  to 10:36 CDT). They are stamped 01bfd95 clean, made from a detached checkout of 01bfd95 (T-close merged);
+  `git status` there was clean after every command. Read with the Read tool: `it15-strobe.png`,
+  `it15-presses-led-p1.png`, `it15-presses-poc-led-p1.png`; the numbers from `show-shot.txt` and `stop.txt`.
+  PASS: the close's change moves no picture and no number of a run without a failed push.
+  - The strobe (sampled every 150 ms): attract with the cursor, the press at 1.0 s, the entry's card, its two
+    commands and `$ ./prog`, the screen black with the strip from 3.1 s. The first lit frame stands at 4.1 s
+    (square flashes 1, then 3), lit to 4.7 s (5), black at 4.9 s and 5.1 s (held 1, then 3, square flashes 6),
+    lit from 5.2 s to 5.9 s (held 5 to 8, square flashes 6). Every label reads area 0.0000 and at most 6. The
+    total: held 9, area 0.0000, squares 6 (it14: held 13; it13: held 10; the same area and squares). The strobe
+    is held. The lit frame fills the terminal's field, the strip stays under it, the cursor's cell is the dark
+    notch at the lower right.
+  - The show, full wall, the led look: attract (`CODE IS ART, A.I. IS NOT`, the cursor, `PRESS A BUTTON ON ANY
+    PORTRAIT`), the press at 1.0 s (`hello`, `Created by Trey, 2026, Not A.I.`, `$ cat hello.c`), the source
+    typed with the cursor at the end of the typed text, `QUEUED #1` at 3.0 s. The strip is bright letters on a
+    dim field. Nothing looks different from it14's sheet. The session's total: held 0, area 0.0209, squares 4
+    (it14: held 0, area 0.0272, squares 4): the plan's bound (held 0, at most 4) holds.
+  - 128x64, the led look: the ink view of the source, the band as a diagonal of dots, the short strip that
+    alternates (`PRESS A BUTTON`, `PLAYING`, `QUEUED #1`, `Not A.I.`, `Trey, 2026`). The total: held 22 (13 after
+    the first play), area 0.0536, squares 3. it14's runs read held 18 to 24, area 0.0529 to 0.0570, squares 3:
+    inside the run-to-run spread measured then.
+  - Stop: `python -m show --backend fake`, SIGTERM after 5 s: exit 0, 0.06 s after the signal (`stop.txt`), as in
+    it13 and it14: with no failed push the close does not wait.
+  - With fakes no push fails, so the close's wait never shows on a sheet or in a soak; its evidence is the 16
+    tests and the review's sweeps of the real wall.
+- The short soaks at 01bfd95 (fake display, fake lights and sound, presses every 5 s, seed 0; `it15-soak/`,
+  `it15-soak-poc/`; 10:35:56 to 10:39:57), both exit 0 with no failure named, `git status` clean after each:
+
+  | Wall | Minutes | Steps | Governed | Presses | Plays | Push failures | Errors | Children left | Held | Area max | Squares max | Step ms median, p95, worst | Governor ms median, p95, worst | fds first, last | rss first, last |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | 512x192 | 2 | 2196 | 2198 | 24 | 1 of 1 ended | 0 | 0 | 0 | 0 | 0.0082 | 4 | 7.0, 12.6, 21.8 | 6.0, 10.3, 16.9 | 4, 4 | 35968, 133136 |
+  | 128x64 | 2 | 2203 | 2205 | 24 | 1 of 1 ended | 0 | 0 | 0 | 9 | 0.0417 | 3 | 0.4, 0.9, 7.6 | 0.3, 0.4, 2.4 | 4, 4 | 36032, 41904 |
+
+  Governed is two over the steps (the two black frames of the close), as in it14: without a hold the close sends
+  what it sent before. it14's soaks read held 0 and 7, area 0.0119 and 0.0568, squares 4 and 3.

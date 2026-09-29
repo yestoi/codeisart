@@ -1,0 +1,21 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+import math
+from arcade.sources.camera import BodyTracker
+from arcade.input import Depth
+from tests.arcade.test_camera import spike_det
+tr, depth = BodyTracker(), Depth()
+vals, scales = [], []
+body, cam = None, 0.0
+for i in range(120):                     # 1 s without hips, then hips; 10 captures a second, 30 ticks
+    t = i / 30
+    if i % 3 == 0:
+        cam = t
+        (body,) = tr.update([spike_det(hips=i >= 30)], cam)
+        scales.append(round(body.scale, 4))
+    vals.append(depth.update(body, t, cam))
+print("scales per capture around the hips' arrival:", scales[8:16])
+paddle = [None if v is None else (1 - v) * 48 for v in vals]   # Pong: 64 - 16 px travel, near is up
+print("paddle y before:", round(paddle[29], 1), "after 0.5 s:", round(paddle[45], 1), "min/max after:",
+      round(min(paddle[30:]), 1), round(max(paddle[30:]), 1), "travel:", round(max(paddle) - min(paddle), 1))
+ratio = scales[12] / scales[9]
+print("scale ratio measured / fallback:", round(ratio, 3), "value jump:", round(math.log(ratio) / 0.6, 3))

@@ -1,0 +1,11 @@
+........................................................................ [ 46%]
+........................................................................ [ 92%]
+...........                                                              [100%]
+============================= slowest 6 durations ==============================
+10.27s call     tests/test_wall.py::test_strobes_over_3_hz_are_held_and_under_are_not
+4.82s call     tests/test_main.py::test_the_loop_holds_a_strobing_entry
+4.76s call     tests/test_main.py::test_play_one_entry_headless_and_exit
+4.06s call     tests/test_main.py::test_the_loop_s_own_display_is_governed
+3.48s call     tests/test_wall.py::test_typing_is_barely_held
+3.37s call     tests/test_wall.py::test_a_10_hz_full_screen_strobe_is_held_to_the_budget
+155 passed in 83.52s (0:01:23)

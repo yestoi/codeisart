@@ -1,0 +1,8 @@
+1.67s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-probe]
+1.58s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-probe]
+1.51s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[one tear-card]
+1.36s call     ::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-card]
+0.02s call     ::test_a_close_in_the_hold_ends_black_when_the_governor_is_at_the_budget
+0.01s call     ::test_a_close_in_the_hold_reads_the_clock_once
+0.01s call     ::test_a_close_without_a_clock_never_waits
+12 passed in 6.34s

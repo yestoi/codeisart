@@ -1,0 +1,146 @@
+== canonical: ticks 1800; trace keys ['phase', 'signal', 'round', 'score', 'left', 'right', 'cpu', 'humans', 'active', 'hint', 'hand_xy', 'left_xy']
+  DRAW signal ticks: [171, 318, 510, 682]; phases seen ['None', 'over', 'play', 'ready', 'result']; final None-None humans None cpu None
+  min raw pixel on the flash ticks: [0, 0, 0, 0, 0, 0]
+  full-white raw runs: [(171, 5), (318, 5), (510, 5), (682, 5)]
+  ticks between flash starts: [147, 192, 172] (min 147 = 4.90 s)
+  tick  rawAPL  pushAPL  pushmax  factor-est
+    169  0.023  0.023  255  1.000
+    170  0.023  0.023  255  1.000
+    171  1.000  0.502  128  0.502
+    172  1.000  0.502  128  0.502
+    173  1.000  0.502  128  0.502
+    174  1.000  0.502  128  0.502
+    175  1.000  0.502  128  0.502
+    176  0.046  0.023  130  0.510
+    177  0.046  0.024  133  0.521
+    178  0.046  0.024  135  0.530
+    179  0.046  0.025  138  0.541
+    180  0.046  0.025  140  0.549
+    181  0.046  0.026  143  0.561
+    182  0.051  0.029  145  0.569
+    183  0.051  0.030  148  0.580
+    184  0.051  0.030  150  0.588
+    185  0.051  0.031  153  0.600
+    186  0.051  0.031  156  0.612
+    187  0.051  0.032  158  0.620
+    188  0.051  0.032  161  0.631
+    189  0.051  0.033  163  0.639
+    190  0.051  0.033  166  0.651
+    191  0.051  0.033  168  0.659
+    192  0.051  0.034  171  0.670
+    193  0.051  0.034  173  0.679
+    194  0.051  0.035  176  0.690
+    195  0.051  0.036  179  0.702
+    196  0.051  0.036  181  0.710
+  tick  rawAPL  pushAPL  pushmax  factor-est
+    316  0.036  0.036  255  1.000
+    317  0.036  0.036  255  1.000
+    318  1.000  0.502  128  0.502
+    319  1.000  0.502  128  0.502
+    320  1.000  0.502  128  0.502
+    321  1.000  0.502  128  0.502
+    322  1.000  0.502  128  0.502
+    323  0.059  0.030  130  0.510
+    324  0.059  0.031  133  0.521
+    325  0.059  0.031  135  0.530
+    326  0.059  0.032  138  0.541
+    327  0.059  0.032  140  0.549
+    328  0.059  0.033  143  0.560
+    329  0.062  0.035  145  0.569
+    330  0.061  0.035  148  0.581
+    331  0.060  0.035  150  0.588
+    332  0.059  0.035  153  0.600
+    333  0.057  0.035  156  0.611
+    334  0.056  0.035  158  0.620
+    335  0.055  0.035  161  0.631
+    336  0.054  0.034  163  0.639
+    337  0.052  0.034  166  0.651
+    338  0.052  0.034  168  0.659
+    339  0.052  0.035  171  0.670
+    340  0.052  0.035  173  0.679
+    341  0.052  0.036  176  0.690
+    342  0.052  0.037  179  0.702
+    343  0.052  0.037  181  0.710
+  held ticks (governor): 0; limiter scaled ticks: 216
+  raw:    square_flashes 4  flash_area 0.0002  concurrent_area 0.0010
+  pushed: square_flashes 4  flash_area 0.0001  concurrent_area 0.0010
+  max pushed APL 0.502 (cap day 0.12); max raw APL 1.000
+  most flash starts in any 30 ticks: 1
+== duel: ticks 1500; trace keys ['phase', 'signal', 'round', 'score', 'left', 'right', 'cpu', 'humans', 'active', 'hint', 'hand_xy', 'left_xy']
+  DRAW signal ticks: []; phases seen ['None', 'over', 'play', 'ready', 'result']; final None-None humans None cpu None
+  min raw pixel on the flash ticks: []
+  full-white raw runs: []
+  ticks between flash starts: [] (min None = 0.00 s)
+  held ticks (governor): 0; limiter scaled ticks: 0
+  raw:    square_flashes 2  flash_area 0.0000  concurrent_area 0.0000
+  pushed: square_flashes 2  flash_area 0.0000  concurrent_area 0.0000
+  max pushed APL 0.037 (cap day 0.12); max raw APL 0.037
+  most flash starts in any 30 ticks: 0
+== early: ticks 600; trace keys ['phase', 'signal', 'round', 'score', 'left', 'right', 'cpu', 'humans', 'active', 'hint', 'hand_xy', 'left_xy']
+  DRAW signal ticks: [200, 392]; phases seen ['None', 'over', 'play', 'ready', 'result']; final None-None humans None cpu None
+  min raw pixel on the flash ticks: [0, 0, 0, 0, 0, 0]
+  full-white raw runs: [(200, 5), (392, 5)]
+  ticks between flash starts: [192] (min 192 = 6.40 s)
+  tick  rawAPL  pushAPL  pushmax  factor-est
+    198  0.037  0.037  255  1.000
+    199  0.037  0.037  255  1.000
+    200  1.000  0.502  128  0.502
+    201  1.000  0.502  128  0.502
+    202  1.000  0.502  128  0.502
+    203  1.000  0.502  128  0.502
+    204  1.000  0.502  128  0.502
+    205  0.060  0.031  130  0.510
+    206  0.060  0.031  133  0.521
+    207  0.060  0.032  135  0.530
+    208  0.060  0.033  138  0.541
+    209  0.060  0.033  140  0.549
+    210  0.060  0.034  143  0.560
+    211  0.065  0.037  145  0.569
+    212  0.064  0.037  148  0.581
+    213  0.063  0.037  150  0.588
+    214  0.062  0.037  153  0.600
+    215  0.060  0.037  156  0.611
+    216  0.059  0.037  158  0.620
+    217  0.058  0.037  161  0.631
+    218  0.057  0.036  163  0.639
+    219  0.055  0.036  166  0.651
+    220  0.055  0.036  168  0.659
+    221  0.055  0.037  171  0.670
+    222  0.055  0.037  173  0.679
+    223  0.055  0.038  176  0.690
+    224  0.055  0.039  179  0.702
+    225  0.055  0.039  181  0.710
+  tick  rawAPL  pushAPL  pushmax  factor-est
+    390  0.038  0.038  255  1.000
+    391  0.038  0.038  255  1.000
+    392  1.000  0.502  128  0.502
+    393  1.000  0.502  128  0.502
+    394  1.000  0.502  128  0.502
+    395  1.000  0.502  128  0.502
+    396  1.000  0.502  128  0.502
+    397  0.061  0.031  130  0.510
+    398  0.061  0.032  133  0.521
+    399  0.061  0.032  135  0.530
+    400  0.061  0.033  138  0.541
+    401  0.061  0.033  140  0.549
+    402  0.061  0.034  143  0.560
+    403  0.061  0.035  145  0.568
+    404  0.061  0.035  148  0.581
+    405  0.061  0.036  150  0.589
+    406  0.061  0.037  153  0.600
+    407  0.061  0.037  156  0.611
+    408  0.061  0.038  158  0.619
+    409  0.061  0.038  161  0.632
+    410  0.061  0.039  163  0.640
+    411  0.061  0.040  166  0.651
+    412  0.061  0.040  168  0.659
+    413  0.061  0.041  171  0.670
+    414  0.065  0.044  173  0.679
+    415  0.064  0.044  176  0.690
+    416  0.063  0.044  179  0.702
+    417  0.061  0.044  181  0.710
+  held ticks (governor): 0; limiter scaled ticks: 108
+  raw:    square_flashes 2  flash_area 0.0002  concurrent_area 0.0010
+  pushed: square_flashes 2  flash_area 0.0001  concurrent_area 0.0010
+  max pushed APL 0.502 (cap day 0.12); max raw APL 1.000
+  most flash starts in any 30 ticks: 1
