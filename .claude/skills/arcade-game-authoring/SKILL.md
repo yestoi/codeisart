@@ -218,6 +218,8 @@ the game needs; do not invent a fourth.
   across the whole range; `Depth.ratio(value)` inverts it). A player pinned at an end for `RECENTRE_SECONDS` drags
   the centre inward, so nobody is stuck at an end. Call `reset()` when another body takes the seat. Pong is the
   worked example: a step in raises the paddle, a step back lowers it.
+- `Body.measured` is False while the tracker has never seen the track's nose and a hip (its scale is the shoulder
+  fallback); `Depth` takes the first measured capture without a jump (C47), so a game does nothing about it.
 - **The hand, pointing**: `Cursor.update(body, t)` gives the wrist in the reach box; pass its value through a `Glide`
   (`glide.update(value, t, sensed.camera_t)`) so the control moves on every tick and not ten times a second (the
   camera captures at `camera_fps`, 10 by default; a raw capture holds for three ticks). The Glide interpolates and
