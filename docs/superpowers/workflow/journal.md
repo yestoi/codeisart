@@ -503,3 +503,45 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - Owner questions: Q51 (rows on the Reduced tier), Q52 (the strip's text and the year), Q53 (the sheets show the full
   wall), Q54 (the strip's legibility in reverse video), all defaulted.
 - Status: done
+
+## Iteration 11 — 2026-09-29
+- Verdict on the sheets (the operator, read with the Read tool at 01:28 CDT, before any other tool call): D2 shows one
+  entry end to end on the wall, for real. The sheets come from a clean detached checkout of 72f0654 (the stamp on the
+  128x64 sheet reads "72f0654 clean"). Accepted, with three notes for D3 below.
+  - `it11-hello` (plain and led): the title `hello` and the plaque `Created by Trey, 2026, Not A.I.`, then
+    `$ cat hello.c` and the source typed and scrolling, the cursor a block at the end of the last line; then
+    `$ cc -Wall -o hello hello.c` and the compiler's own words, `hello.c:21:9: warning: unused variable 'leftover'
+    [-Wunused-variable]`, straight quotes, `1 warning generated.`; then `$ ./hello`, the band of `#` as a slanted
+    stripe; then `hello, world` with the cursor under it for the dwell. Phases from show-shot.txt: source 0.00, build
+    3.48, run 5.01, dwell 9.07, done 13.12 s: the build is on the wall 1.53 s (the floor is 1.5 s), the dwell 4.05 s.
+    The strip is on row 24 in reverse in every frame: `NOW: hello by Trey, 2026, Not A.I. | NEXT: -`. The text is
+    legible at the led look at the sheet's scale; the strip is dimmer there than the text (Q54 stands, D3 draws the
+    three variants).
+  - `it11-hello-fallback`: `$ cc -Wall -Werror -o hello hello.c`, the warning as `error: unused variable 'leftover'
+    [-Werror,-Wunused-variable]`, `1 error generated.`, then `*** build failed (exit 1) ***`, held 3.0 s (error_hold
+    5.02 to 8.02), then `$ ./hello   (recording)` and the recorded band replayed, then `hello, world`. The tool's
+    last line: `failure: build failed (exit 1)`.
+  - `it11-attract`: the banner `CODE IS ART. A.I. IS NOT` with `Press the button on any portrait to compile and run
+    it.`, the strip `PRESS A BUTTON ON ANY PORTRAIT` in reverse; then `---- hello -- Created by Trey, 2026, Not A.I.
+    ----` and the source scrolling from the bottom; the banner again after 40 lines, then the entry once more.
+  - `it11-hello-poc` (128x64, ink view, led look): a cell is a dot, the source is blocks of dots with the indents
+    showing, the band is a moving stripe, no cursor, and the strip reads `NOW: hello by Trey, 2` in reverse, large
+    and legible. Phases: source 0.00, build 3.44, run 4.96, dwell 8.73, done 12.77 s.
+  - Note 1, the sample entry: on the band's way back (8.0 s in each sheet) the stripe leaves a filled wedge behind
+    it. The terminal is right: `hello.c` homes the cursor and writes each row again without erasing to the end of the
+    line, so a row that gets shorter keeps its old `#`. The entry's own comment says a band sweeps. The fix is in the
+    entry (`\033[K` after each row's band), for D3's plan; `entries/hello` is not on the festival wall (Q56).
+  - Note 2, attract: the banner comes every 40 lines wherever the source stands, so it cuts a function in two (in
+    the sheet between `usleep(50000);`, `}` and the last `printf`s). It is as the plan says (`BANNER_EVERY = 40`);
+    whether the banner should wait for the end of an entry or a blank line is for D3's plan.
+  - Note 3: a source line over 80 columns wraps as `cat` would (`... a moving rippl` / `e */`), and the compiler cuts
+    its own long quote with `...`. Both are what a real terminal shows; nothing to fix, the festival's entries are
+    narrow.
+  - On the Mac every run prints `no unshare: entries run without network isolation`, as planned; the Linux path waits
+    for GATE C.
+  - The distance look (10 m), read 01:29 after the verdict: on the full wall the terminal's text holds its shape
+    (the source, the warning and `hello, world` can be read at the sheet's scale), the band and the wedge are plain,
+    and the strip is a pale bar whose letters are hard to make out: Q54 as in it10. On the 128x64 sheet the dots
+    merge into bars, the band is a clean stripe, and the strip's thin letters thin out in reverse (`hello` reads
+    `he l o`, `NOW:` and `Trey` hold): one more reason for D3's three strip variants to be drawn on the 128x64 wall
+    too.

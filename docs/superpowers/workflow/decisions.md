@@ -426,19 +426,19 @@ status: answered
 asked: it11
 default: 12 V through a MOSFET each, on the PWM pins [17, 22, 23, 24, 27] (`lightbox_pins`, a new key in show.toml; no pin shared with the buttons or the rings, none on I2C, SPI or UART). Level 0.4 when idle or queued, 1.0 while that station plays. The button rings stay on `light_pins`. show.toml changes when the owner's boards are built
 deadline: GATE C (the hardware)
-answer:
-status: defaulted (standing instruction)
+answer: the owner, 2026-09-29 01:33 CDT: "yes to Q55, Q56 and Q57". The default stands: 12 V through a MOSFET each on the PWM pins [17, 22, 23, 24, 27] (`lightbox_pins`), 0.4 when idle or queued, 1.0 while that station plays; show.toml changes when the boards are built
+status: answered
 
 ### Q56: Does `entries/hello` play on the festival wall?
 asked: it11
 default: no. It stays in `entries/` for tests, demos and the sheets (station 6, no portrait). Once any entry on stations 1 to 5 is loaded, D3's attract mode and autoplay leave out stations above 5
 deadline: the plan of D3
-answer:
-status: defaulted (standing instruction)
+answer: the owner, 2026-09-29 01:33 CDT: "yes to Q55, Q56 and Q57". The default stands: `entries/hello` is not on the festival wall (station 6, no portrait); once an entry on stations 1 to 5 is loaded, D3's attract mode and autoplay leave out stations above 5
+status: answered
 
 ### Q57: What does the wall print around an entry?
 asked: it11
 default: the spec (4.3) names the phases, not the words. A shell transcript: the title, the plaque, a blank line, `$ cat <source>` and the source typed, `$ <build>` and the compiler's real output, `$ <run>` and the program. On a failure `*** <reason> ***`, then `$ <run>   (recording)` over the replay of the fallback
 deadline: the owner's first look at `python -m show` (D3)
-answer:
-status: defaulted (standing instruction)
+answer: the owner, 2026-09-29 01:33 CDT: "yes to Q55, Q56 and Q57". The default stands: the shell transcript around an entry, as the sheets of iteration 11 show it (evidence/it11/it11-hello-plain.png, it11-hello-fallback-plain.png)
+status: answered
