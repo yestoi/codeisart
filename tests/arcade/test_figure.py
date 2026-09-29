@@ -13,6 +13,12 @@ from arcade.sources.actors import body_box, make_keypoints
 AMBER = PLAYER_COLORS[0]
 
 
+@pytest.fixture(params=[(128, 64), (128, 32), (64, 64)], ids=["128x64", "128x32", "64x64"])
+def size(request) -> tuple[int, int]:
+    """conftest's sizes plus the wall's own: every sized figure test also runs at 128x64."""
+    return request.param
+
+
 def standing(cx=0.5, cy=0.55, h=0.6, zone_x=0.5) -> Body:
     kps = make_keypoints(cx, cy, h)
     return Body(1, body_box(kps), kps, zone_x=zone_x)
@@ -39,37 +45,35 @@ def test_to_wall_is_uniform():
     assert all(isinstance(v, int) for v in base)
 
 
-def test_figure_rect_follows_zone_x_and_fills_the_height():
-    for size in ((128, 32), (64, 64)):
-        w, h = size
-        for zone_x in (0.0, 0.25, 0.5, 0.8, 1.0):
-            x, y, rw, rh = figure_rect(standing(zone_x=zone_x), size)
-            assert (y, rw, rh) == (0, h, h), (size, zone_x)
-            column = zone_x * (w - 1)
-            assert abs(x + (rw - 1) / 2 - column) <= 1.0, (size, zone_x, x)
+def test_figure_rect_follows_zone_x_and_fills_the_height(size):
+    w, h = size
+    for zone_x in (0.0, 0.25, 0.5, 0.8, 1.0):
+        x, y, rw, rh = figure_rect(standing(zone_x=zone_x), size)
+        assert (y, rw, rh) == (0, h, h), (size, zone_x)
+        column = zone_x * (w - 1)
+        assert abs(x + (rw - 1) / 2 - column) <= 1.0, (size, zone_x, x)
     left, right = figure_rect(standing(zone_x=0.2), (128, 32)), figure_rect(standing(zone_x=0.8), (128, 32))
     assert right[0] - left[0] == round(0.8 * 127) - round(0.2 * 127)
 
 
-def test_mirror_draws_2px_figure_in_player_colour(font5x7):
+def test_mirror_draws_2px_figure_in_player_colour(font5x7, size):
     assert STROKE == 2
-    for size in ((128, 32), (64, 64)):
-        canvas = Canvas(*size, font5x7)
-        body = standing()
-        rect = figure_rect(body, size)
-        draw_figure(canvas, body, rect, AMBER)
-        frame = canvas.frame
-        on = frame.any(axis=2)
-        assert on.sum() > 20, size
-        assert {tuple(int(v) for v in px) for px in frame[on]} == {AMBER}, size
-        f = to_wall(body, rect)
-        top = max(f(body.keypoints[k].x, body.keypoints[k].y)[1] for k in (LEFT_KNEE, RIGHT_KNEE)) + 1
-        bottom = min(f(body.keypoints[k].x, body.keypoints[k].y)[1] for k in (LEFT_ANKLE, RIGHT_ANKLE)) - 1
-        assert bottom - top >= 3, size
-        for row in range(top, bottom + 1):                             # the shins: two runs of exactly 2 px
-            cols = np.flatnonzero(on[row])
-            runs = np.split(cols, np.flatnonzero(np.diff(cols) > 1) + 1)
-            assert [len(r) for r in runs] == [2, 2], (size, row, cols)
+    canvas = Canvas(*size, font5x7)
+    body = standing()
+    rect = figure_rect(body, size)
+    draw_figure(canvas, body, rect, AMBER)
+    frame = canvas.frame
+    on = frame.any(axis=2)
+    assert on.sum() > 20, size
+    assert {tuple(int(v) for v in px) for px in frame[on]} == {AMBER}, size
+    f = to_wall(body, rect)
+    top = max(f(body.keypoints[k].x, body.keypoints[k].y)[1] for k in (LEFT_KNEE, RIGHT_KNEE)) + 1
+    bottom = min(f(body.keypoints[k].x, body.keypoints[k].y)[1] for k in (LEFT_ANKLE, RIGHT_ANKLE)) - 1
+    assert bottom - top >= 3, size
+    for row in range(top, bottom + 1):                                 # the shins: two runs of exactly 2 px
+        cols = np.flatnonzero(on[row])
+        runs = np.split(cols, np.flatnonzero(np.diff(cols) > 1) + 1)
+        assert [len(r) for r in runs] == [2, 2], (size, row, cols)
 
 
 def test_low_confidence_limbs_skipped(font5x7):

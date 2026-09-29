@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from arcade.attract.lobby import (BREATH_LOW, CARD_SECONDS, HAND_UP, MODES, PICTOGRAM_COLOR, PICTOGRAM_SECONDS,
-                                  TEXT_COLOR, TITLE_COLOR, Lobby)
+from arcade.attract.lobby import (BIG_ROWS, BIG_SCALE, BREATH_LOW, CARD_SECONDS, COLUMN_SLACK, HAND_UP, MODES,
+                                  PICTOGRAM_COLOR, PICTOGRAM_SECONDS, TEXT_COLOR, TITLE_COLOR, Lobby)
 from arcade.canvas import Canvas
 from arcade.flash import BUDGET, SMALL_AREA, concurrent_area, flash_area, square_flashes
 from arcade.game import reserved
@@ -10,13 +10,19 @@ from arcade.games import MENU_ORDER
 from arcade.headless import run_headless
 from arcade.juice import PLAYER_COLORS
 from arcade.runner import LobbyLike, SessionResult
-from arcade.sensed import Sensed
-from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
+from arcade.sensed import Body, Sensed
+from arcade.sources.actors import REAL_NOISE, TICK, Person, body_box, degrade, make_keypoints, scene
 from tests.arcade.helpers import make_cfg, spy
 
 AMBER, BLUE = PLAYER_COLORS
 KEYS = {"mode", "near", "pictogram", "figures", "featured", "card_game", "card_score", "card_reason", "card_waiting",
         "figure_xy", "pictogram_xy"}
+
+
+@pytest.fixture(params=[(128, 64), (128, 32), (64, 64)], ids=["128x64", "128x32", "64x64"])
+def size(request) -> tuple[int, int]:
+    """conftest's sizes plus the wall's own: every sized lobby test also runs at 128x64."""
+    return request.param
 
 
 def lobby_run(font, games, persons, seconds, size=(128, 32), lobby=None, strict=True, setup=None):
@@ -253,7 +259,6 @@ def test_lobby_frames_keep_the_flash_rule(font5x7, size):
     assert square_flashes(raw) <= BUDGET
 
 
-@pytest.mark.parametrize("size", [(128, 32), (64, 64)])
 def test_mirror_under_real_noise_keeps_the_area_rule(font5x7, size):
     # C37, the input of evidence/it06/reviewer-notes.md: before the hold, 64x64 reached 0.131 to 0.151.
     cfg = make_cfg(size)
@@ -278,3 +283,102 @@ def test_debug_keys_are_not_reserved(font5x7):
             assert KEYS <= set(s) and s["mode"] in MODES
             for key in ("figure_xy", "pictogram_xy"):
                 assert s[key] is None or (len(s[key]) == 2 and all(isinstance(v, int) for v in s[key]))
+
+
+# ----- laid out for 64 rows (iteration 8, P2) -----
+
+def bands(frame) -> list[int]:
+    """The heights of the runs of lit rows, top to bottom: one per line of text."""
+    rows = np.flatnonzero(frame.any(axis=(1, 2)))
+    runs = np.split(rows, np.flatnonzero(np.diff(rows) > 1) + 1)
+    return [len(r) for r in runs]
+
+
+def card_lobby(font, size, games, **result):
+    """(frame, lobby): the card of a SessionResult for games[0] (result overrides), drawn at size."""
+    cfg = make_cfg(size)
+    lobby = Lobby(games, cfg)
+    name = games[0].info.name
+    lobby.end_session(SessionResult(**({"game": name, "layout": cfg.layout, "reason": "done", "score": 3.0,
+                                        "duration": 5.0, "players": 1, "best": None, "waiting": False} | result)))
+    lobby.update(Sensed(1.0), TICK)
+    canvas = Canvas(*size, font)
+    lobby.draw(canvas)
+    return canvas.frame, lobby
+
+
+def test_attract_title_is_2x_on_a_tall_wall_and_1x_on_128x32(font5x7, size):
+    assert (BIG_ROWS, BIG_SCALE) == (48, 2)
+    _, runner = lobby_run(font5x7, [spy("pong")], [], 1.0, size)
+    frames = runner.raw_frames
+    assert len(frames) >= 30 and all(np.array_equal(f, frames[0]) for f in frames)    # static over 30 ticks
+    tall = size[1] >= BIG_ROWS                                   # "PONG" is 48 px wide at 2x: it fits 64 columns
+    assert bands(frames[0]) == [7 * BIG_SCALE if tall else 7], size
+    rows = np.flatnonzero(frames[0].any(axis=(1, 2)))
+    assert abs((rows[0] + rows[-1]) / 2 - (size[1] - 1) / 2) <= 1, (size, rows)
+
+
+def test_card_fits_64_rows_with_best(font5x7):
+    frame, lobby = card_lobby(font5x7, (128, 64), [spy("pong")], best=3.0)
+    assert colours(frame) == {TEXT_COLOR}
+    assert bands(frame) == [7 * BIG_SCALE, 7 * BIG_SCALE, 7]         # "PONG 3" and "BEST!" at 2x, the prompt at 1x
+    rows, cols = np.flatnonzero(frame.any(axis=(1, 2))), np.flatnonzero(frame.any(axis=(0, 2)))
+    assert 0 < rows[0] and rows[-1] < 63 and 0 < cols[0] and cols[-1] < 127, (rows, cols)
+    assert abs((rows[0] + rows[-1]) / 2 - 31.5) <= 1 and abs((cols[0] + cols[-1]) / 2 - 63.5) <= 1, (rows, cols)
+    state = lobby.debug_state()
+    assert set(state) == KEYS
+    assert (state["mode"], state["card_game"], state["card_score"], state["card_reason"], state["card_waiting"]) == \
+        ("card", "pong", 3.0, "done", False)
+
+
+def test_card_falls_back_to_1x_when_2x_does_not_fit(font5x7):
+    long = spy("pong", info={"title": "PONG CHAMPIONSHIP"})            # 204 px at 2x, 102 at 1x
+    frame, _ = card_lobby(font5x7, (128, 64), [long])
+    assert bands(frame) == [7, 7]                                     # "PONG CHAMPIONSHIP 3", then the prompt
+    frame, _ = card_lobby(font5x7, (128, 64), [long], best=3.0)
+    assert bands(frame) == [7, 7 * BIG_SCALE, 7]                      # BEST! still fits at 2x
+    _, runner = lobby_run(font5x7, [long], [], 0.2, (128, 64))
+    assert bands(runner.raw_frames[-1]) == [7]                        # the attract title too
+
+
+@pytest.mark.parametrize("x", [0.3, 0.7])
+def test_pictogram_beside_a_full_height_figure_on_128x64(font5x7, x):
+    _, runner = lobby_run(font5x7, [spy("pong")], [Person(x, id=1)], 2.5, (128, 64))
+    first = next(i for i, s in enumerate(runner.trace) if s["pictogram"])
+    assert len(runner.trace) - first >= 15
+    for s, frame in zip(runner.trace[first:], runner.raw_frames[first:]):
+        icon = (frame[..., 1] > 0) & (frame[..., 0] == 0) & (frame[..., 2] == 0)
+        figure = (frame == AMBER).all(axis=2)
+        assert icon.sum() == HAND_UP.sum()                               # all of it inside the wall
+        fr, fc = np.flatnonzero(figure.any(axis=1)), np.flatnonzero(figure.any(axis=0))
+        ic = np.flatnonzero(icon.any(axis=0))
+        assert fr[-1] - fr[0] + 1 >= 56, fr                               # the figure fills the wall's height
+        assert ic[-1] < fc[0] or ic[0] > fc[-1], (ic, fc)                 # not over the figure's box
+        px, py = s["pictogram_xy"]
+        assert 8 <= px <= 128 - 8 and 8 <= py <= 64 - 8
+
+
+def test_lobby_holds_no_tick_at_128x64(font5x7):
+    game = spy("pong", finish_after=60, extra={"score": 2})
+    person = Person(0.45, id=1).arrive(0.5).raise_hand(at=3.5, seconds=0.5)
+    _, runner = lobby_run(font5x7, [game], [person], 10.0, (128, 64))
+    assert {"attract", "mirror", "invite", "card"} <= {s.get("mode") for s in runner.trace}
+    assert max(s["flash_held_ticks"] for s in runner.trace) == 0
+
+
+def test_a_column_jitter_does_not_step_the_figure():
+    # At 128 columns the camera's zone_x jitter moved the whole figure a column most captures, and the mirror
+    # under REAL_NOISE reached concurrent_area 0.1006 at 128x64. The figure's column keeps COLUMN_SLACK px of play.
+    assert COLUMN_SLACK == 1
+    lobby = Lobby([spy("pong")], make_cfg((128, 64)))
+    kps = make_keypoints(0.5, 0.55, 0.6)
+
+    def figure_x(column: float, t: float) -> int:
+        lobby.update(Sensed(t, player=Body(1, body_box(kps), kps, zone_x=column / 127)), TICK)
+        return lobby.debug_state()["figure_xy"][0]
+
+    still = {figure_x(50.4 if i % 2 else 50.6, i * TICK) for i in range(30)}       # columns 50 and 51 in turn
+    assert len(still) == 1, still
+    moved = figure_x(60.0, 1.0)
+    assert moved - still.pop() == 60 - 51 - COLUMN_SLACK                             # it follows a real move
+    assert figure_x(59.4, 1.1) == moved

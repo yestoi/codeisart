@@ -2,10 +2,13 @@
 
 Modes, one per tick (MODES):
 
-- attract, nobody near: the featured game's title at 1x, centred, static and dim; nothing when none fits.
+- attract, nobody near: the featured game's title, centred, static and dim; nothing when none fits.
 - mirror: the locked player's figure (and player 2's) in its colour, from the tick the runner locks them.
 - invite, after PICTOGRAM_SECONDS near: the HAND_UP pictogram breathes beside the player's figure.
 - card, for CARD_SECONDS after a session: the result, then "HAND UP = AGAIN" or "NEXT: RAISE A HAND".
+
+On a wall at least BIG_ROWS tall the title, the card's head line and "BEST!" are drawn at BIG_SCALE where each
+fits the width on one line; everything else, and everything on a shorter wall, at 1x in lines that fit.
 
 A raised hand (the player's rising edge) in mirror or invite requests the featured game: the first MENU_ORDER
 name among the lobby's games that is available, fits the layout and needs only inputs the sources give. The edge
@@ -14,8 +17,10 @@ itself; it has to come down and go up again. Blobs and the body centre never sta
 
 A player who drops out for up to capture_grace(cfg.camera_fps) keeps their figure and the invite, so a missed
 capture never flickers the mode; a keypoint that drops out keeps its last place as long (KeypointHold, C37), so
-a missed joint never blinks a limb. The lobby's own drawing keeps the flash rule: mode changes are single steps,
-the pictogram breathes at 1 Hz, and nothing fills the field.
+a missed joint never blinks a limb. A figure's column (figure_rect's) keeps COLUMN_SLACK px of play, so zone_x
+jitter never steps the whole figure a column and back (on the widest wall it did most captures). The lobby's own
+drawing keeps the flash rule: mode changes are single steps, the pictogram breathes at 1 Hz, and nothing fills
+the field.
 """
 from __future__ import annotations
 
@@ -40,6 +45,9 @@ TITLE_COLOR = (120, 60, 0)   # dim amber: the attract title
 TEXT_COLOR = (255, 160, 0)   # the card
 PICTOGRAM_COLOR = (0, 200, 0)
 GAP = 2                      # px between the figure and the pictogram
+COLUMN_SLACK = 1             # px a figure's column may jitter without moving it
+BIG_ROWS = 48                # a wall at least this tall draws the lobby's big text at 2x
+BIG_SCALE = 2
 MODES = ("attract", "mirror", "invite", "card")
 
 HAND_UP = icon_from_rows([
@@ -62,25 +70,35 @@ HAND_UP = icon_from_rows([
 ])
 
 
-def _lines(text: str, width: int, canvas: Canvas) -> list[str]:
-    """text in lines that fit width at 1x, split between words, and inside a word too long for a line."""
-    per_line = max(1, width // canvas.text_width("M"))
+def _lines(text: str, width: int, canvas: Canvas, scale: int = 1) -> list[str]:
+    """text in lines that fit width at scale, split between words, and inside a word too long for a line."""
+    per_line = max(1, width // canvas.text_width("M", scale))
     lines: list[str] = []
     for word in text.split():
         while len(word) > per_line:
             lines.append(word[:per_line])
             word = word[per_line:]
-        if lines and canvas.text_width(lines[-1] + " " + word) <= width:
+        if lines and canvas.text_width(lines[-1] + " " + word, scale) <= width:
             lines[-1] += " " + word
         else:
             lines.append(word)
     return lines
 
 
-def _centred(canvas: Canvas, lines: list[str], color) -> None:
-    top = (canvas.height - CELL_H * len(lines)) // 2
-    for i, line in enumerate(lines):
-        canvas.text((canvas.width - canvas.text_width(line)) // 2, top + i * CELL_H, line, color)
+def _big(text: str, canvas: Canvas) -> list[tuple[str, int]]:
+    """text as (line, scale): one line at BIG_SCALE on a wall at least BIG_ROWS tall where it fits the width,
+    else in lines at 1x."""
+    if canvas.height >= BIG_ROWS and canvas.text_width(text, BIG_SCALE) <= canvas.width:
+        return [(text, BIG_SCALE)]
+    return [(line, 1) for line in _lines(text, canvas.width, canvas)]
+
+
+def _centred(canvas: Canvas, lines: list[tuple[str, int]], color) -> None:
+    """(text, scale) per line, drawn as one block centred on the canvas."""
+    y =(canvas.height - CELL_H * sum(scale for _, scale in lines)) // 2
+    for text, scale in lines:
+        canvas.text((canvas.width - canvas.text_width(text, scale)) // 2, y, text, color, scale)
+        y += CELL_H * scale
 
 
 def _score(score: float) -> str:
@@ -133,7 +151,7 @@ class Lobby:
         self.size = tuple(size)
         self.t = 0.0
         self.request = None
-        self._slots: list[tuple[Body, float] | None] = [None, None]   # (body, last seen) for player and player2
+        self._slots: list[tuple[Body, float, int] | None] = [None, None]   # (body, last seen, rect x): player, player2
         self._keypoints = [KeypointHold(self.grace), KeypointHold(self.grace)]   # C37: one per figure
         self._hold = Hold(PICTOGRAM_SECONDS, grace=self.grace)
         self._edge = Edge(self.grace)
@@ -157,7 +175,10 @@ class Lobby:
         for i, body in enumerate((player, sensed.player2)):
             held = self._keypoints[i].update(body, t)
             if held is not None:
-                self._slots[i] = (held, t)
+                x, slot = figure_rect(held, self.size)[0], self._slots[i]
+                if slot is not None and slot[0].id == held.id:              # the same person: x with backlash
+                    x = min(max(slot[2], x - COLUMN_SLACK), x + COLUMN_SLACK)
+                self._slots[i] = (held, t, x)
         self._hold.update(player is not None, t)
         if player is not None and player.id != self._player_id:
             self._player_id = player.id
@@ -177,11 +198,11 @@ class Lobby:
         elif mode == "attract":
             name = self.featured()
             if name is not None:
-                _centred(canvas, _lines(self.games[name].info.title, canvas.width, canvas), TITLE_COLOR)
+                _centred(canvas, _big(self.games[name].info.title, canvas), TITLE_COLOR)
         else:
             for body, color in zip(self._figures(), PLAYER_COLORS):     # player 2 is drawn over player 1
                 if body is not None:
-                    draw_figure(canvas, body, figure_rect(body, self.size), color)
+                    draw_figure(canvas, body, self._rect(body), color)
             if self._icon_at is not None:
                 canvas.blit(HAND_UP, *self._icon_at, self._breath_color())
 
@@ -222,12 +243,18 @@ class Lobby:
         return [None if slot is None or self.t - slot[1] > self.grace + EPSILON else slot[0]
                 for slot in self._slots]
 
+    def _rect(self, body: Body) -> tuple[int, int, int, int]:
+        """figure_rect(body, size) at its slot's held x (COLUMN_SLACK): body is one _figures() gave."""
+        x = next(slot[2] for slot in self._slots if slot is not None and slot[0] is body)
+        _, y, w, h = figure_rect(body, self.size)
+        return x, y, w, h
+
     def _near(self) -> float:
         start = self._hold.start
         return 0.0 if start is None else self.t - start
 
     def _head(self, body: Body) -> tuple[int, int]:
-        f = to_wall(body, figure_rect(body, self.size))
+        f = to_wall(body, self._rect(body))
         if body.nose.conf >= MIN_CONF:
             return f(body.nose.x, body.nose.y)
         x0, y0, x1, _ = body.box
@@ -243,7 +270,7 @@ class Lobby:
         if self._pictogram_since is None:
             self._pictogram_since = t
         w, h = self.size
-        f = to_wall(body, figure_rect(body, self.size))
+        f = to_wall(body, self._rect(body))
         x0, y0, x1, y1 = body.box
         left, right = f(x0, y0)[0], f(x1, y0)[0]
         room = {-1: left - GAP, 1: w - 1 - right - GAP}
@@ -267,8 +294,9 @@ class Lobby:
         game = self.games.get(r.game)
         title = game.info.title if game is not None else str(r.game).upper()
         head = title if r.score is None else f"{title} {_score(r.score)}"
-        lines = _lines(head, canvas.width, canvas)
+        lines = _big(head, canvas)
         if r.score is not None and r.best is not None and r.score >= r.best:
-            lines.append("BEST!")
-        lines += _lines("NEXT: RAISE A HAND" if r.waiting else "HAND UP = AGAIN", canvas.width, canvas)
+            lines += _big("BEST!", canvas)
+        prompt = "NEXT: RAISE A HAND" if r.waiting else "HAND UP = AGAIN"
+        lines += [(line, 1) for line in _lines(prompt, canvas.width, canvas)]
         _centred(canvas, lines, TEXT_COLOR)
