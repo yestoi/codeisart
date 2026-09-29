@@ -1,8 +1,35 @@
 # Hardware bring-up: Colorlight 5A-75E and the four P5 panels
 
-**Status (2026-09-28): in progress. The card is detected and partly configured in LEDVision, but nothing has
-been saved to it; its flash still holds the factory settings.** The `wall_pattern.py` checks have not run yet.
-How to continue: `.claude/skills/ledvision-card-setup/SKILL.md`. Screenshots: `hardware/`.
+**Status (2026-09-29, 11:20): in progress. Card 1's flash still holds the factory settings: read back at
+08:53, its `.rcvbp` was byte for byte the factory file (same sha256).** Guides 1 to 7 of the wizard were
+answered again and checked on the wall; Guide 8 has no point clicked yet. The `wall_pattern.py` checks have
+not run yet. How to continue: `.claude/skills/ledvision-card-setup/SKILL.md`, from the worktree
+`/Users/trey/dev/codeisart-ledvision` (branch `ledvision-card1`). Screenshots: `hardware/`.
+
+### Where the last session stopped (2026-09-29, 11:20)
+
+- The VM is running. LEDVision is open: the Gray Test window at value 0 with Hide Gray Value (parked at the
+  bottom right), and LED Screen Settings on Receiver Parameters, adapter #2 selected, card 1 detected.
+- Entered in LEDVision, not saved to the card: preset "14- full-color eight scan", Normal 32 groups, cabinet
+  128 x 64, From Right to Left, module 64 x 32 (check the Intelligent Module Setting map again; the wizard was
+  cancelled twice), **Brightness Level 1 (10%)**. That level was sent to the card after the owner reset the
+  wall, so the card's RAM holds it; a power cycle sends the card back to its factory 81%.
+- The wizard is closed. Next: rerun it from Guide 1 (answers in the skill), then Guide 8 in a dimmed room with
+  `wall_cam --flash`. The laptop has to be put back facing the wall, and the owner asked for the lowest
+  brightness for the mapping.
+
+### What the 2026-09-29 session found
+
+- The wizard runs at the card's own Brightness Level, not at LEDVision's 40%. At level 8 (the factory
+  setting) Guide 2's band was full white; the owner confirmed level 3 (31%) was dimmer. Level 1 is 10%, and
+  LEDVision warns "Minimum OE is 0" (the darkest grey step is lost; the mapping is not affected).
+- Guide 6: the band is rows 1 to 16 of the top panels (96 px on the photo at 5.7 px a row): 16.
+- Guide 7: four lines, rows 1-2, 5-6, 9-10 and 13-14, each two rows thick: answer 2
+  (`hardware/07-guide7-lines-rows-1-2-5-6-9-10-13-14.png`).
+- Guide 8: at its start the top-left panel keeps Guide 7's four lines and the point on the top-right panel
+  blinks (`hardware/08-guide8-start-daylight.png`: in daylight the camera cannot see it). The owner saw point 1
+  on the far-right column of the top-right panel, not at row 9, column 1 as the 2026-09-28 notes below say.
+  Unresolved until the camera or the owner confirms it.
 
 ## Hardware
 
