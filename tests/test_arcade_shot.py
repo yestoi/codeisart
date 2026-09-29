@@ -174,7 +174,8 @@ def test_header_has_provenance(tmp_path, monkeypatch):
 
     monkeypatch.setattr(shot, "contact_sheet", spy)
     monkeypatch.setattr(shot, "git_sha", lambda: "abc1234+dirty")
-    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", "--seed", "5", "--lobby", "none") == 0
+    assert run_shot(tmp_path, "tests.test_arcade_shot:Blink", "--seed", "5", "--lobby", "none",
+                    "--size", "128x32") == 0
     for word in ("abc1234", "dirty", "tests.test_arcade_shot:Blink", "128x32", "plain", "seed 5",
                  "scenario short", "lobby none"):
         assert word in titles[0], titles[0]
@@ -224,3 +225,21 @@ def test_captions_carry_caption_keys(tmp_path):
     assert shot._caption(trace, 1, keys) == "#1 0.03s lobby card"
     assert shot._caption(trace, 0) == "#0 0.00s keyed"          # no keys given: the phase, as before
     assert shot.main(["tests.test_arcade_shot:Keyed", "--out", str(tmp_path / "k"), "--scenario", "short"]) == 0
+
+
+def test_default_size_is_128x64():
+    import argparse
+    seen = {}
+
+    def grab(self, *a, **k):
+        seen["actions"] = self._actions
+        raise SystemExit(0)
+
+    real = argparse.ArgumentParser.parse_args
+    argparse.ArgumentParser.parse_args = grab
+    try:
+        with pytest.raises(SystemExit):
+            shot.main(["x", "--out", "y"])
+    finally:
+        argparse.ArgumentParser.parse_args = real
+    assert {a.dest: a.default for a in seen["actions"]}["size"] == "128x64"

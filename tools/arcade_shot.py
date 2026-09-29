@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("games", nargs="+", metavar="GAME")
     ap.add_argument("--out", required=True, metavar="STEM")
     ap.add_argument("--lobby", default="none")
-    ap.add_argument("--size", default="128x32")
+    ap.add_argument("--size", default="128x64")
     ap.add_argument("--scenario")
     ap.add_argument("--ticks", type=int)
     ap.add_argument("--every", type=int, default=15)

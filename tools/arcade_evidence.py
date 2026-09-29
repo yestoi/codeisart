@@ -156,7 +156,8 @@ def _feel_table(rep: dict) -> list[str]:
         lo, hi = _budget(rep.get("budgets", {}).get(metric))
         budget = "-" if lo is None and hi is None else f"{_fmt(lo)} to {_fmt(hi)}"
         ok = value is not None and (lo is None or value >= lo) and (hi is None or value <= hi)
-        lines.append(f"| {metric} | {_fmt(value)} | {budget} | {'yes' if ok else 'no'} |")
+        verdict = "-" if lo is None and hi is None else ("yes" if ok else "no")
+        lines.append(f"| {metric} | {_fmt(value)} | {budget} | {verdict} |")
     for failure in rep.get("failures", []):
         lines.append(f"\nFAIL: {failure}")
     return lines

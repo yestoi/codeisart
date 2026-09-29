@@ -5,7 +5,7 @@ from show.display.colorlight import ColorlightDisplay, brightness_packet, frame_
 from show.display.fake import FakeDisplay
 from tools import wall_pattern as wp
 
-LAYOUTS = [(128, 32), (64, 64)]
+LAYOUTS = [(128, 64), (128, 32), (64, 64)]
 RED, GREEN, BLUE, WHITE = (wp.LEVEL, 0, 0), (0, wp.LEVEL, 0), (0, 0, wp.LEVEL), (wp.LEVEL,) * 3
 
 
@@ -68,7 +68,7 @@ def test_rgb_letters_are_dark_holes_inside_their_bands():
     assert not (frame[12:].reshape(-1, 3).sum(axis=1) == 0).any()  # nothing dark below it
 
 
-@pytest.mark.parametrize("width,height", LAYOUTS)
+@pytest.mark.parametrize("width,height", [(128, 32), (64, 64)])   # 128x64 has two seams: the test below
 def test_index_marks_the_four_corners_and_the_panel_seam(width, height):
     frame = wp.index(width, height, 0.0)
     assert tuple(frame[0, 0]) == RED                      # top left
@@ -82,6 +82,25 @@ def test_index_marks_the_four_corners_and_the_panel_seam(width, height):
     else:                 # stacked: the seam is between two rows
         assert tuple(frame[height // 2 - 1, width // 2]) == cyan
         assert tuple(frame[height // 2, width // 2]) == yellow
+
+
+def test_index_marks_every_panel_seam():
+    cyan, yellow = (0, wp.LEVEL, wp.LEVEL), (wp.LEVEL, wp.LEVEL, 0)
+    f = wp.index(128, 64, 0.0)
+    assert tuple(f[5, 63]) == cyan and tuple(f[5, 64]) == yellow          # the column seam
+    assert tuple(f[31, 5]) == cyan and tuple(f[32, 5]) == yellow          # the row seam
+    wide = wp.index(128, 32, 0.0)
+    assert tuple(wide[5, 63]) == cyan and tuple(wide[5, 64]) == yellow
+    assert (wide == cyan).all(axis=2)[5].sum() == 1           # one seam, no row seam
+    tall = wp.index(64, 64, 0.0)
+    assert tuple(tall[31, 5]) == cyan and tuple(tall[32, 5]) == yellow
+    assert (tall == yellow).all(axis=2)[:, 5].sum() == 1      # one seam, no column seam
+
+
+def test_default_size_is_the_four_panel_wall():
+    args = wp.build_parser().parse_args(["index"])
+    assert (args.width, args.height) == (128, 64)
+    assert (wp.PANEL_W, wp.PANEL_H) == (64, 32)
 
 
 @pytest.mark.parametrize("width,height", LAYOUTS)
@@ -203,5 +222,5 @@ def test_png_saves_the_pattern_without_a_display(tmp_path):
     path = tmp_path / "rgb.png"
     assert wp.main(["rgb", "--png", str(path)]) == 0
     with Image.open(path) as im:
-        assert im.size == (128 * 8, 32 * 8)
+        assert im.size == (128 * 8, 64 * 8)
         assert im.getpixel((8 * 16, 8 * 31)) == RED
