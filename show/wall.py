@@ -10,10 +10,15 @@ it14 T-wall: with a clock, a failed send starts a quiet hold (C51, Q66): nothing
 HOLD_S, the counted frame, HOLD_S, then the governor starts again from the counted frame and new frames go.
 from_dark (C52) primes the governor with black at birth, unsent, so the first frame is counted against the dark
 wall.
+
+it15 T-close (C53, Q68): a close while the wall holds waits out the hold: nothing until the hold's next send is
+due (the clock read once), the counted frame if the hold has not sent it yet and HOLD_S after it, then the governor
+made again from the counted frame (as at a hold's end) and the governed black. At most 2 * HOLD_S of sleep.
 """
 from __future__ import annotations
 
 import logging
+import time
 from typing import Callable
 
 import numpy as np
@@ -30,7 +35,8 @@ SETTLE_SENDS = 2     # the counted frame is sent this many times, HOLD_S apart, 
 
 class GovernedDisplay:
     def __init__(self, display: Display, height: int, width: int, fps: int = 30, gamma: float = 2.2, *,
-                 from_dark: bool = False, clock: Callable[[], float] | None = None):
+                 from_dark: bool = False, clock: Callable[[], float] | None = None,
+                 sleep: Callable[[float], None] = time.sleep):
         # A Config built in code skips load_config's check; the governor's own checks follow. The display is
         # never closed here, whatever raises: it is the caller's.
         if isinstance(gamma, bool) or not isinstance(gamma, (int, float)) or not GAMMA_MIN <= gamma <= GAMMA_MAX:
@@ -44,6 +50,7 @@ class GovernedDisplay:
         self.unsent = False                     # a send began and the display's push has not returned (it raised)
         self.failed = 0                         # sends that raised an Exception, all told
         self._clock = clock                     # seconds, for the hold; None: no hold
+        self._sleep = sleep                     # the close's waits while the wall holds (C53)
         self.holding = False                    # from a failed send (clock given) until push governs again
         self._since = 0.0                       # the hold's failed send, or its last counted send
         self._settled = 0                       # the counted sends of this hold
@@ -114,10 +121,27 @@ class GovernedDisplay:
 
     def close(self) -> None:
         """The counted frame again if the last send did not complete, then two governed black frames, then the
-        display closed, whatever the pushes do. A failed repush still lets the black go."""
+        display closed, whatever the pushes do. A failed repush still lets the black go.
+
+        While the wall holds, the close waits out the hold (C53): nothing until the hold's next send is due (the
+        clock read once, before the first wait: the loop's clock does not move while it sleeps); if the hold has
+        not yet sent the counted frame, it goes once (a failure logged) and HOLD_S of quiet follows it; then the
+        governor is made again from the counted frame, as at a hold's end, and the black goes. A wait that raises
+        ends the close: nothing more is sent, the display is closed, the exception goes on."""
         black = np.zeros(self.governor.shape, np.uint8)
         try:
-            if self.unsent:
+            if self.holding:
+                wait = self._since + HOLD_S - self._clock()      # read once, never in a loop (the plan review's B2)
+                if wait > 0:
+                    self._sleep(wait)
+                if self._settled == 0:          # no counted send since the failure: the counted frame, once
+                    try:
+                        self.repush()
+                    except Exception:
+                        log.exception("closing: resending the last governed frame failed; black still goes")
+                    self._sleep(HOLD_S)         # a quiet second after it, whatever it did
+                self._end_hold()                # the governor as the wall is: black passes apply (Q50)
+            elif self.unsent:
                 try:
                     self.repush()               # what the governor counted, before black follows it
                 except Exception:

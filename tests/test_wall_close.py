@@ -65,6 +65,7 @@ def test_the_loop_s_close_after_a_failed_push_sends_the_counted_frame_first(tmp_
     loop.step(0.10)
     loop.step(0.15)                                               # call 2; call 3 fails: its frame was governed
     counted = loop.wall.last.copy()
+    loop.sleep = lambda s: None
     loop._close()                                                 # calls 4 (the counted frame), 5 and 6 (black)
     assert inner.count == 5 and inner.closed and np.array_equal(inner.pushed[2], counted)
 
