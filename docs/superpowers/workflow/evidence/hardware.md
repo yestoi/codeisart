@@ -1,11 +1,13 @@
 # Hardware bring-up: Colorlight 5A-75E and the four P5 panels
 
-**Status (2026-09-29, 12:05): in progress. Card 1's flash still holds the factory settings (nothing was
-saved to it).** The Intelligent Setting wizard ran to the end (Guides 1 to 8, all 1024 points and rows) and its
-result was **Sent** to the card's RAM. Since 13:00 (Receiver Mapping set to 128 x 64 and Sent) the picture
-reaches all four panels in the right colours, but each grid line shows as 3 to 4 rows (see "13:00" below). The
-`wall_pattern.py` checks have not run yet. How to continue: `.claude/skills/ledvision-card-setup/SKILL.md`,
-from the worktree `/Users/trey/dev/codeisart-ledvision` (branch `ledvision-card1`). Screenshots: `hardware/`.
+**Status (2026-09-29, 15:10): card 2 (the spare) is set up and saved to its flash, and survives a power
+cycle; use card 2.** The fix was the row decoder: **ICN2018/3018** (the panels have serial row drivers), not
+138 (see "14:00" to "14:53" below). Final settings: `hardware/colorlight-outdoor-p5-2x2.rcvbp`. Card 1 has a
+hardware fault of its own and still holds its factory settings (see "13:20"). Left to do: the
+`wall_pattern.py` checks from Linux (close LEDVision, `vm stop`; they need sudo), including whether the Linux
+sender's picture is steady: the flicker seen through LEDVision comes from its stream (see "14:25" and
+"14:53"). How to continue: `.claude/skills/ledvision-card-setup/SKILL.md`, from the worktree
+`/Users/trey/dev/codeisart-ledvision` (branch `ledvision-card1`). Screenshots: `hardware/`.
 
 ### Where the last session stopped (2026-09-29, 12:05)
 
@@ -65,6 +67,138 @@ from the worktree `/Users/trey/dev/codeisart-ledvision` (branch `ledvision-card1
 - The one-column jitter is gone (120 frames, no horizontal shift). The owner sees a slight flicker; the camera
   measures a ~5% dip in one frame in 10 to 15 (static lines, 30 fps), which may also be the camera beating
   with the refresh.
+
+### 13:20: card 2 (the spare) behaves differently from card 1
+
+- The card is powered from the same 5 V supply as the panels (common ground). Card 2 swapped in on the same
+  cables and panels. Detect: **5A 13.17** (`hardware/21-detect-receivers-card2.png`). Its settings, read and
+  saved as `hardware/card2-factory-before.rcvbp`, are byte for byte card 1's factory file (same sha256;
+  `hardware/22-card2-factory-params.png`).
+- Sent to its RAM only: `card1-wizard-20260929.rcvbp` at Brightness Level 1, and the 128 x 64 mapping. Unlike
+  card 1, it showed no green pattern after the parameter Send.
+- Same grid (horizontal, gap 16): each line shows as **2 rows, 4 apart**, the same on all four panels; card 1
+  gave 3 to 4 rows spread over ~8 (`hardware/23-card2-grid-horizontal-gap16.png`,
+  `hardware/24-card1-vs-card2-same-settings.png`). Same settings, cables and panels, different result: **card 1
+  has a hardware fault** on top of whatever remains. The remaining x2 (rows 4 apart) may be the wizard's
+  answers, which were all decided while card 1 was fitted (Guide 7's "2", Guide 8's row order).
+- The owner still sees the flicker with card 2, so it is not card 1's fault: next suspects are the wizard's
+  timing (DCLK 15.6 MHz, Refresh x16, blanking 0) and then the power strip.
+- 13:25, wizard rerun on card 2 from the preset (Level 1, 128 x 64, Normal 32 groups, module 64 x 32, map
+  checked): Guide 3 and 4 as before; **Guide 5 the same colour rotation** (the card's red shows green, green
+  blue, blue red: a panel property, not card 1); Guide 6 16; **Guide 7 again four lines 4 rows apart in the
+  top 16 rows** (`shots` only). So the four lines are not card 1's fault either. One address lighting rows k,
+  k+4, k+8, k+12 instead of k, k+8 is what address line C being ignored looks like, and card 2's grid (each
+  line twice, 4 rows apart) fits the same. What both cards, both chains and all four panels share: the panel
+  design, the power supply, the settings. Stopped at Guide 7 to ask the owner.
+- The owner, at the wall: Guide 7 lights **rows 1-2, 5-6, 9-10, 13-14** (pairs of rows, 2 dark between;
+  the glare makes each pair look solid to the camera, `hardware/25-card2-guide7-rows-1-2-5-6-9-10-13-14.png`).
+  That is 8 rows of 16 for one address, where a 1/8-scan panel lights 2 (rows 1 and 9, what Wired Watts'
+  guide expects). The lit rows are exactly those whose row address (0 to 7) has **B = 0**, whatever A and C:
+  the panels follow address line B (HUB75 pin 10) and not A (pin 9) or C (pin 11). It also explains the
+  rest: each Guide 8 "point" was 4 LEDs (rows 9-10 and 13-14; the camera merged neighbours), card 2's grid
+  shows each line as 2 rows twice, and floating address inputs flicker.
+- Guide 2's Decoding Chip list has ~30 types (`hardware/26-guide2-decoding-chip-list.png`: 138, No Decoding,
+  595, 5953/5958, SM5266, SM5366, ICN2013, ICN2018/3018, 7258, LS97xx, TC7261/7239, HX6158H, MBI5981,
+  ICND2019, DP32019/20, SM5368/5388, D7266, VOD5958, GM5018, TC6960, MBI5988, SM5166/5188, CFD2138SPC,
+  TA6018, ...). Not tried blind: needs the row chip's marking or a measurement first.
+- Left at 13:35: wizard cancelled, card 2 RAM holds the preset "14" at Level 1 with 128 x 64 / Normal 32
+  groups and the 128 x 64 mapping; Screen Test Gray 0; wall black.
+- 13:40, the panel's power corner (`hardware/27-panel-back-power-row-drivers.jpg`): the row drivers are **T2 and
+  T3, 10-pin SOP**, blank tops, beside POWER1; not the 16-pin 74HC138/SM5166 that "138 Decoding" assumes.
+  (Whether there are more T parts elsewhere on the board is not yet known.)
+- 13:45, **"595 Decoding"** tried in Guide 2 (card 2, Level 1, wall powered off and on first, Level 1 and the
+  mapping re-sent): Guide 3's state 2 lit **nothing**, where 138 lit the 16-row band. So these panels are not
+  595-type (shift register). Wizard cancelled, the 138 preset re-sent.
+- Web: a sibling panel, `P5-1921-64*32-8S-S2`, uses row driver **SM5166PF** and column driver **DP5125D**
+  (https://github.com/mrcodetastic/ESP32-HUB75-MatrixPanel-DMA/issues/698). Our sticker, `YP5-5125HG505`,
+  suggests DP5125D columns too. SM5166 is a 138-type decoder, but in SOP-16. Another P5(1921)64x32-8S
+  (https://rpi-rgb-led-matrix.discourse.group/t/p5-1921-64x32-8s/1161) used ICN2037 + HX6016SP (138 type)
+  and needed custom pixel mapping. So 138 is the likely right family; what the 10-pin T2/T3 are is still open.
+
+### 14:00: the decoder is ICN2018/3018 (serial row driver)
+
+- Guide 2's Decoding Chip tried one by one on card 2 (Level 1), each run to Guide 7 and photographed:
+  four row-pairs (the old fault) with 138, ICN2013, 7258, DP32019; the whole 16-row band solid with SM5166,
+  No Decoding IC, HX6158H, SM5266, CFD2138SPC; nothing lit with 595, SM5366, DP32020, SM5368/5388; **one line
+  at the top with ICN2018/3018** (`hardware/28-icn2018-guide7-one-line.png`; the owner: "a single line, one
+  at the top"). The 10-pin T2/T3 are serial (shift-register) row drivers; fed 138-style addresses they lit
+  rows in pairs.
+- ICN2018 at Guide 6: still the 16-row band (16). Guide 7 answered "1" (what was seen): Guide 8 then blinked a
+  whole row (row 16) from the top-left panel's left edge to the middle of the top-right, with a steady top row
+  over the same span; no single point. Answered "2" (1/8 scan, the board's "8S"): the top-left panel shows
+  rows 1 and 9, then 8 and 16 (the owner: two blinking rows at 8 and 16), the healthy k / k+8 pair of a 1/8
+  panel; nothing blinks on the top-right panel, so Guide 8 still gives no clickable point.
+- The owner saw **no flicker** during these runs (preset timing: refresh 420, Refresh x1, DCLK 17.9 MHz); the
+  flicker earlier was with the old wizard result (960, x16, 15.6 MHz).
+
+### 14:25: the wall shows a correct picture (card 2, RAM only)
+
+- Guide 8 with ICN2018 and Guide 7 = 2: the owner saw the single point blink at row 9 on the top-right panel
+  (the camera had it at the joint, row 8-9, column 1-2). Points walked row 9 / row 1 per column over all 64
+  columns (camera checks at columns 1, 9, 25, 35, 49, 64); in the row phase the owner read each lit pair:
+  2/10, 3/11, 4/12, 5/13, 6/14, 7/15, 8/16, clicked as rows 10 to 16 of column 1; "Finished". The exported table,
+  `hardware/icn2018-guide8-route.csv`, is byte for byte `card1-guide8-route.csv`: the pixel order was right all
+  along, the decoder was the fault (`hardware/29-icn2018-guide8-complete.png`).
+- After Finish: module 64W x 16H, 8 scan, **Decode IC ICN2018/3018**, Normal chip, cabinet 128 x 64, From Right
+  to Left, Normal 32 groups; refresh 960, Refresh x16, DCLK 15.6 MHz, blanking 3; Brightness Level 8, set back
+  to 1 and Sent. Saved as `hardware/icn2018-wizard-20260929.rcvbp` (this wizard run skipped Guide 5's colour
+  answers).
+- Grid, horizontal, gap 16: **four clean single lines** 16 rows apart across all four panels
+  (`hardware/30-icn2018-grid-horizontal-gap16.png`). LEDVision's own "LED1" program, text and colour wheels,
+  shows correctly placed on all four panels (`hardware/31-icn2018-led1-program-on-wall.png`); colours rotated
+  (desktop blue shows red, red green, green blue): Guide 5's answers are still to be put back.
+- The owner: "pretty bad flickering" at 960 / x16 / 15.6 MHz. Changing Multiple to x1 reset refresh to 60 and
+  the level to 8 (not sent); set refresh 420, x1, Level 1 and Sent (14:28).
+- Flicker, still open. The owner: "the image shifts and fidgets" at 420 / x1. A 5 s camera video (30 fps) sees
+  no shift in any panel or 16-row band (max 0.4 camera px; one LED is ~4 px) and brightness steady within 1%:
+  whatever it is, it is faster than 30 fps. Tried, one at a time, owner's verdict "Same" for both: DCLK 15.6 ->
+  10.4 MHz (refresh went to 360); Brightness Level 1 -> 3 (14%, clears LEDVision's "Minimum OE is 0" warning).
+  Every change of DCLK or Multiple silently resets Brightness Level to 8 (and the refresh rate): check the
+  level before every Send. State at 14:35 (RAM only): ICN2018/3018, DCLK 10.4 MHz, refresh 360, Refresh x1,
+  blanking 3, Level 3.
+- **The flicker is LEDVision's stream from the VM, not the card, panels or power.** The owner's phone video
+  (3 s, 30 fps): the whole wall dips ~8% darker for single frames, every 6 frames or a multiple of 6 (5 Hz
+  at 30 fps); evenly over the whole wall, no shift, no missing rows. The laptop camera (8 s) sees the same
+  rhythm smaller (~3%, std 1.51). With "Use Net Card" unticked (LEDVision stops sending; the card holds the
+  last frame, No Signal Action "Keep the Last Frame"): the camera sees a steady wall (std 0.34, no dips in 241
+  frames) and the owner: "the image is stable now". Likely irregular frame delivery from Windows in the VM.
+  The installation does not use LEDVision (the Linux sender drives the card), so this does not block; the
+  `wall_pattern.py` checks will show whether the Linux sender streams steadily.
+
+### 14:50: colours fixed, a test image on the wall (card 2, RAM only)
+
+- Wizard rerun with ICN2018/3018: Guide 5 again showed the rotation (state 1 green, 2 blue, 3 red), answered
+  Green / Blue / Red / Black; Guide 6 16, Guide 7 2; Guide 8 by **Import alignment table**
+  (`icn2018-guide8-route.csv`), no clicking. After Finish: refresh 960, Refresh x16, DCLK 15.6 MHz, blanking 3;
+  Level set to 3 (23% at these timings) and Sent. Saved as `hardware/colorlight-outdoor-p5-2x2-draft.rcvbp`
+  (not yet on the card's flash).
+- LEDVision program: Normal Page > File Window, full screen 128 x 64 > a 128 x 64 Mandelbrot PNG (effects None).
+  On the wall in the right colours, placed and scaled right (`hardware/32-mandelbrot-colours-fixed.png`).
+  Reopening LED Screen Settings put the adapter back on the NAT NIC; "Use Net Card" then unticked: the card
+  holds the image, camera steady (std 0.45, no dips in 181 frames). The owner: "everything is aligned and
+  looks great".
+
+### 14:53: card 2 saved (owner's OK)
+
+- With the owner's explicit OK: Receiver Parameters > **Save to Receivers** ("Save parameters to receivers
+  complete!") and Receiver Mapping > **Save to Devices** ("Save mapping to devices successfully!").
+- Read back from the card: mapping 1 x 1, receiver 1 = 128 x 64 (`hardware/33-card2-mapping-read-back.png`;
+  it was 6 x 128x512); parameters 64W x 16H, 8 scan, Normal chip, ICN2018/3018, 128 x 64, From Right to Left,
+  Normal 32 groups, refresh 960, Refresh x16, DCLK 15.6 MHz, blanking 3, Level 3 (23%), gamma 2.8
+  (`hardware/34-card2-params-read-back.png`). Saved from the read-back as
+  **`hardware/colorlight-outdoor-p5-2x2.rcvbp`** (sha256 `98c3c490…35bd`).
+- It differs from the draft file sent (`colorlight-outdoor-p5-2x2-draft.rcvbp`) in 10 bytes: three fields read
+  32/32/128 where the draft has 16/16/64 (0x18e, 0x194, 0x19c; the factory file also has 32/32/128), 0x204
+  255 vs 0, and a six-byte table at 0x599f with bit 6 cleared in every other byte. Not decoded; no setting the
+  dialog shows differs. The power-cycle test settles whether the flash holds a working setup.
+- Card 1 is left on its factory settings; it has a hardware fault (see "13:20").
+- **Power-cycle test passed (~14:57):** after the owner's power reset the card (run time 0:12:28 at 15:09, so
+  booted after the save) showed LEDVision's Mandelbrot correctly: colours, rows, position
+  (`hardware/35-after-power-cycle.png`). The flash holds a working setup.
+- Flicker while streaming: FPP issue #1849 (https://github.com/FalconChristmas/fpp/issues/1849) had FPP 7.5 fail
+  on firmware 13.17 (symptoms not given; fixed by going back to 11.04), and FPP sends its 0x0A brightness
+  packet twice on firmware 13+. `show/display/colorlight.py` sends 0x0A every 3 pushes (10 Hz at 30 Hz): if
+  the Linux sender's picture dips at that rhythm, send it less often before thinking of firmware.
 
 ### What the 2026-09-29 session found
 

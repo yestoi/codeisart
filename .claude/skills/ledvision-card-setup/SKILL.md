@@ -83,37 +83,39 @@ The camera:
 6. LED Screen Settings again (**re-select #2 and Detect**), Receiver Parameters: **Read** and **Save…** the
    card's current settings to a file first (`cardN-factory-before.rcvbp`), then `vm get` it into
    `docs/superpowers/workflow/evidence/hardware/`. For card 1 compare the sha256 with the one in `hardware.md`.
-7. Load > Preset Parameters > General Parameters (Fullcolor) > **14- full-color eight scan**. Data Group
-   **Normal 32 groups**. Cabinet **128 x 64**, cascade From Right to Left. Intelligent Module Setting: module
-   width **64**, height **32** (the boxes are read-only: each Modify button opens a list); its map must show
-   J1 = top row (1-1 top right, 1-2 top left) and J2 = the bottom row. If the card can only be mapped as one
-   chain of 256x32, stop and tell the owner. Then **Brightness Level 1** and **Send** (Yes to "Minimum OE is 0":
-   it costs the darkest grey step, not the mapping).
-8. Intelligent Setting wizard, watching the **top-right** panel (first on J1). Answers, checked on the wall
-   on 2026-09-28 and again on 2026-09-29 (they are still not gospel):
-   - G1 Single Type Module. G2 module width **64** (it opens at 32), 138 decoding, Normal 32 groups, output J1.
-     G2 lights rows 1 to 16 of both top panels.
+7. **The quick way (card 2 is done; use this for a replacement card):** Load > Browse
+   `hardware/colorlight-outdoor-p5-2x2.rcvbp`, set Brightness Level 1, **Send**; then Receiver Mapping: Col 1,
+   Row 1, click the cell, receiver 1 = **128 x 64**, **Send**. Check the Grid test (below), then with the owner's OK
+   **Save to Receivers** and, on Receiver Mapping, **Save to Devices**; Read both back and power-cycle to prove
+   it. The long way (new panels): Load > Preset Parameters > General Parameters (Fullcolor) > **14- full-color
+   eight scan**, Normal 32 groups, cabinet 128 x 64 From Right to Left, Intelligent Module Setting 64 x 32 (the
+   Modify buttons open lists; map: J1 = top row, 1-1 top right; J2 = bottom row), Brightness Level 1, Send
+   (Yes to "Minimum OE is 0"), then the wizard (step 8).
+8. Intelligent Setting wizard, watching the **top-right** panel (first on J1). Answers found on 2026-09-29 with
+   card 2 (card 1 is faulty) and confirmed by a correct picture:
+   - G1 Single Type Module. G2 module width **64** (it opens at 32), **Decoding Chip "ICN2018/3018 Decoding"**
+     (the list may open scrolled: look before clicking), Normal 32 groups, output J1. **Not 138**: the panels'
+     row drivers (T2/T3, 10-pin, next to the power plug) are serial; with 138 every address lit rows in pairs
+     (G7 showed rows 1-2, 5-6, 9-10, 13-14) and the picture came out multiplied. Of 16 decoders tried only
+     ICN2018/3018 gave one line at G7.
    - G3 "1 display black and 2 display white". G4 "1 darker than 2".
-   - G5 colours are rotated: set State1 = **Green**, State2 = **Blue**, State3 = **Red**, State4 Black
-     (what the wall shows for each). This is where the card's pixel order becomes RGB.
-   - G6 **16** (the lit band is rows 1 to 16, measured on the photo at 5.7 px a row).
-   - G7 **2**: four lines light, rows 1-2, 5-6, 9-10 and 13-14, each **two rows thick**. The question is how
-     many rows one line covers, not how many lines there are ("4" left G8 dark on 2026-09-28).
-   - G8 at the start: the top-left panel keeps G7's four lines lit, and the point on the top-right panel blinks.
-     **Where point 1 is, is not settled.** The 2026-09-28 notes say row 9, column 1, then row 1, column 1, then
-     column 2 and so on to column 64. On 2026-09-29 the owner saw point 1 on the far-right column of the
-     top-right panel. Find it with `--flash` and ask the owner to confirm the first two points before clicking;
-     then click where each point is, checking with `--flash` every 8 to 16 points.
-   - G8 rows: **not solved yet.** After the 128 points each step lit four rows 4 apart (3/7/11/15, then
-     2-3/6-7/10-11/14-15, then 4/8/12/16 twice); clicking the topmost lit row stalled it. Those may have been
-     lines like G7's, not single rows. Plan: after the 128 points, click rows 10, 11, 12, 13, 14, 15, 16 in
-     column 1 (Wired Watts' order), Finish; then Send and check with Test > Grid Test through the camera. Rows
-     out of order: repeat mapping by what the camera shows, one step at a time, and stop at the second failure.
-9. When the wall looks right to the owner: close the wizard, **Send**, then with the owner's OK **Save to
-   Receivers**; **Save…** as `colorlight-outdoor-p5-2x2.rcvbp`; `vm get` it into the evidence folder. Put the
-   Brightness Level the show needs back before Save to Receivers, and ask the owner which that is.
+   - G5 colours are rotated (the panels, not the card): State1 = **Green**, State2 = **Blue**, State3 =
+     **Red**, State4 Black.
+   - G6 **16**. G7 **2** (it shows one line; "1" makes G8 blink whole rows).
+   - G8: **Import alignment table** > `hardware/icn2018-guide8-route.csv` (also in the VM's Documents) and
+     skip the clicking. By hand: point 1 blinks at row 9 on the top-right panel's first column; the points go
+     row 9, row 1 in each column, columns 1 to 64; then the rows: the owner reads each lit pair (2/10, 3/11 ...
+     8/16) and you click rows 10 to 16 of column 1. The table is the plain 1/8 layout.
+   - After Finish the Brightness Level is back to 8: set it before any Send. **Changing DCLK, Multiple or the
+     refresh rate also resets the level to 8 (and the refresh rate)**: check the level before every Send.
+9. Check: Test > Screen Test > Grid, horizontal lines, gap 16 = four single rows 16 apart across all panels.
+   Receiver Mapping must say 128 x 64 (a card from elsewhere may hold another layout, e.g. 6 x 128x512, and then
+   shows no picture at all). With the owner's OK: **Save to Receivers**, **Save to Devices**, Read both back,
+   **Save…** the read-back as a `.rcvbp`, `vm get` it, power-cycle the wall and check the picture comes back.
+   LED Screen Settings is modal: close it to use the main window (programs, Screen Test is separate).
+   Saved on card 2: Level 3 (23% at 960 Hz / x16 / 15.6 MHz).
 10. Close LEDVision, `vm stop`, and on the host run the four `tools/wall_pattern.py` checks (`rgb`, `index`,
     `steps --brightness 0.4`, `gamma`; they need CAP_NET_RAW, so the owner runs them with sudo). Photograph
     each with the webcam and write what the wall shows into `hardware.md`.
-11. Card 2 (spare): swap the card (same cable), steps 1 to 6, then Load > Browse the saved `.rcvbp`, Send,
-    check, Save to Receivers with the owner's OK, Read back and compare.
+11. A flicker while LEDVision streams (whole-wall dips of ~8% at ~5 Hz) is its stream from the VM: with "Use
+    Net Card" unticked the card holds the frame steadily. Judge flicker only with the Linux sender.
