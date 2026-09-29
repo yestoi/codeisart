@@ -214,7 +214,7 @@ def card_frame(font, size, **result):
 
 def test_end_card_says_best_on_a_record(font5x7, size):
     plain = card_frame(font5x7, size)
-    record = card_frame(font5x7, size, best=3.0)
+    record = card_frame(font5x7, size, best=3.0, new_best=True)
     beaten = card_frame(font5x7, size, best=4.0)
     no_score = card_frame(font5x7, size, score=None, best=3.0)
     assert np.array_equal(plain, beaten) and not np.array_equal(plain, record)
@@ -319,7 +319,7 @@ def test_attract_title_is_2x_on_a_tall_wall_and_1x_on_128x32(font5x7, size):
 
 
 def test_card_fits_64_rows_with_best(font5x7):
-    frame, lobby = card_lobby(font5x7, (128, 64), [spy("pong")], best=3.0)
+    frame, lobby = card_lobby(font5x7, (128, 64), [spy("pong")], best=3.0, new_best=True)
     assert colours(frame) == {TEXT_COLOR}
     assert bands(frame) == [7 * BIG_SCALE, 7 * BIG_SCALE, 7]         # "PONG 3" and "BEST!" at 2x, the prompt at 1x
     rows, cols = np.flatnonzero(frame.any(axis=(1, 2))), np.flatnonzero(frame.any(axis=(0, 2)))
@@ -335,10 +335,61 @@ def test_card_falls_back_to_1x_when_2x_does_not_fit(font5x7):
     long = spy("pong", info={"title": "PONG CHAMPIONSHIP"})            # 204 px at 2x, 102 at 1x
     frame, _ = card_lobby(font5x7, (128, 64), [long])
     assert bands(frame) == [7, 7]                                     # "PONG CHAMPIONSHIP 3", then the prompt
-    frame, _ = card_lobby(font5x7, (128, 64), [long], best=3.0)
+    frame, _ = card_lobby(font5x7, (128, 64), [long], best=3.0, new_best=True)
     assert bands(frame) == [7, 7 * BIG_SCALE, 7]                      # BEST! still fits at 2x
     _, runner = lobby_run(font5x7, [long], [], 0.2, (128, 64))
     assert bands(runner.raw_frames[-1]) == [7]                        # the attract title too
+
+
+# ----- "BEST!" only for a new best above 0 (iteration 9, P2: C43, Q41) -----
+
+def test_end_card_says_best_only_for_a_new_best(font5x7, size):
+    plain = card_frame(font5x7, size)
+    tied = card_frame(font5x7, size, best=3.0, new_best=False)       # the night's best, not beaten tonight
+    assert np.array_equal(plain, tied)
+    zero = card_frame(font5x7, size, score=0.0, best=0.0, new_best=True)
+    assert np.array_equal(zero, card_frame(font5x7, size, score=0.0))  # a first 0 is no record to cheer
+    record = card_frame(font5x7, size, best=3.0, new_best=True)
+    assert not np.array_equal(plain, record) and colours(record) == {TEXT_COLOR}
+    assert record.any(axis=2).sum() > plain.any(axis=2).sum()
+
+
+def scorer(score: float) -> type:
+    """A "pong" spy that records score in tonight's scores on its last update and reports it, as a game's _finish."""
+    base = spy("pong", finish_after=30, extra={"score": score})
+
+    def update(self, sensed, dt):
+        base.update(self, sensed, dt)
+        if self.updates == self.finish_after:
+            self.scores.record(score)
+
+    return type("Scorer", (base,), {"update": update})
+
+
+def card_bands(runner) -> list[list[int]]:
+    """bands() of the first frame of every run of card ticks, in order."""
+    modes = [s.get("mode") for s in runner.trace]
+    starts = [i for i, m in enumerate(modes) if m == "card" and (i == 0 or modes[i - 1] != "card")]
+    return [bands(runner.raw_frames[i]) for i in starts]
+
+
+BIG, SMALL = 7 * BIG_SCALE, 7
+
+
+def test_best_shows_once_for_a_repeated_score(font5x7):
+    # it08's walk-up, sessions 1 to 3: every session's 3 said BEST!, as the night's best only equalled it.
+    person = Person(0.5, id=1).raise_hand(at=1.0, seconds=0.5).raise_hand(at=6.5, seconds=0.5)
+    _, runner = lobby_run(font5x7, [scorer(3.0)], [person], 9.0, (128, 64))
+    assert [name for _, name in launches(runner)] == ["pong", "pong"]
+    assert runner.scores.best("pong", "128x64") == 3.0
+    assert card_bands(runner) == [[BIG, BIG, SMALL], [BIG, SMALL]]       # "PONG 3", BEST!, prompt; then no BEST!
+
+
+def test_a_zero_score_never_says_best(font5x7):
+    person = Person(0.5, id=1).raise_hand(at=1.0, seconds=0.5)
+    _, runner = lobby_run(font5x7, [scorer(0.0)], [person], 3.5, (128, 64))
+    assert runner.scores.best("pong", "128x64") == 0.0                  # the night's first: the runner's new_best
+    assert card_bands(runner) == [[BIG, SMALL]]                          # "PONG 0", the prompt; no BEST!
 
 
 @pytest.mark.parametrize("x", [0.3, 0.7])

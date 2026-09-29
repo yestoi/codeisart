@@ -5,7 +5,8 @@ Modes, one per tick (MODES):
 - attract, nobody near: the featured game's title, centred, static and dim; nothing when none fits.
 - mirror: the locked player's figure (and player 2's) in its colour, from the tick the runner locks them.
 - invite, after PICTOGRAM_SECONDS near: the HAND_UP pictogram breathes beside the player's figure.
-- card, for CARD_SECONDS after a session: the result, then "HAND UP = AGAIN" or "NEXT: RAISE A HAND".
+- card, for CARD_SECONDS after a session: the result, "BEST!" when the session raised tonight's best
+  (SessionResult.new_best) with a score above 0, then "HAND UP = AGAIN" or "NEXT: RAISE A HAND".
 
 On a wall at least BIG_ROWS tall the title, the card's head line and "BEST!" are drawn at BIG_SCALE where each
 fits the width on one line; everything else, and everything on a shorter wall, at 1x in lines that fit.
@@ -295,7 +296,7 @@ class Lobby:
         title = game.info.title if game is not None else str(r.game).upper()
         head = title if r.score is None else f"{title} {_score(r.score)}"
         lines = _big(head, canvas)
-        if r.score is not None and r.best is not None and r.score >= r.best:
+        if r.new_best and r.score is not None and r.score > 0:     # C43, Q41: tonight's best rose, above 0
             lines += _big("BEST!", canvas)
         prompt = "NEXT: RAISE A HAND" if r.waiting else "HAND UP = AGAIN"
         lines += [(line, 1) for line in _lines(prompt, canvas.width, canvas)]
