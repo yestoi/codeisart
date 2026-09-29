@@ -4,6 +4,7 @@ on the unflipped frame; mirror_keypoints flips x once afterwards when cfg.mirror
 from __future__ import annotations
 
 import logging
+import math
 import time
 from pathlib import Path
 from typing import Callable, Sequence
@@ -11,8 +12,8 @@ from typing import Callable, Sequence
 import numpy as np
 
 from arcade.calibration import Calibration
-from arcade.sensed import MIN_CONF, Keypoint
-from arcade.sources.camera import BodyTracker, CameraResult, ThreadedCamera
+from arcade.sensed import LEFT_HIP, LEFT_SHOULDER, MIN_CONF, NOSE, RIGHT_HIP, RIGHT_SHOULDER, Keypoint
+from arcade.sources.camera import Box, BodyTracker, CameraResult, ThreadedCamera
 from arcade.sources.mirror import mirror_keypoints
 
 log = logging.getLogger("arcade")
@@ -22,6 +23,10 @@ MP_TO_COCO = (0, 2, 5, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28)
 CAPTURE_SIZE = (640, 480)
 NUM_POSES = 2
 EARLY = 0.25              # a frame up to this share of a period before inference is due counts as due
+DUP_DISTANCE = 0.04       # frame units: a duplicate's nose and shoulders lie within this of the original's (the
+                          # spike: 0.01 to 0.02); two people shoulder to shoulder are a shoulder width apart, 0.13 at
+                          # 2 m and about 0.09 at 3 m
+_DUP_POINTS = (NOSE, LEFT_SHOULDER, RIGHT_SHOULDER)
 
 
 def landmarks_to_keypoints(landmarks) -> tuple[Keypoint, ...]:
@@ -32,6 +37,37 @@ def landmarks_to_keypoints(landmarks) -> tuple[Keypoint, ...]:
         vis = getattr(lm, "visibility", None)
         out.append(Keypoint(float(lm.x), float(lm.y), 1.0 if vis is None else float(vis)))
     return tuple(out)
+
+
+def _same_person(a: Sequence[Keypoint], b: Sequence[Keypoint], near: float) -> bool:
+    """The nose and both shoulders confident in both poses, and each pair within near."""
+    for i in _DUP_POINTS:
+        p, q = a[i], b[i]
+        if not (p.conf >= MIN_CONF and q.conf >= MIN_CONF) or math.dist((p.x, p.y), (q.x, q.y)) > near:
+            return False
+    return True
+
+
+def _hip_conf(kps: Sequence[Keypoint]) -> float:
+    return (kps[LEFT_HIP].conf + kps[RIGHT_HIP].conf) / 2
+
+
+def merge_duplicates(detections: list[tuple[Box, tuple[Keypoint, ...]]],
+                     near: float = DUP_DISTANCE) -> list[tuple[Box, tuple[Keypoint, ...]]]:
+    """One detection per person (C45): the model sometimes returns one person twice, the noses 0.01 to 0.02 apart.
+    Two poses are one when the nose and both shoulders are confident in both and each pair lies within near; the
+    one whose hips have the higher mean confidence is kept (a tie keeps the earlier), in the earlier one's place.
+    A pose without a confident nose or both shoulders is never merged. Order otherwise kept."""
+    out: list[tuple[Box, tuple[Keypoint, ...]]] = []
+    for det in detections:
+        for j, kept in enumerate(out):
+            if _same_person(kept[1], det[1], near):
+                if _hip_conf(det[1]) > _hip_conf(kept[1]):
+                    out[j] = det
+                break
+        else:
+            out.append(det)
+    return out
 
 
 def box_of(keypoints: Sequence[Keypoint], min_conf: float = MIN_CONF) -> tuple[float, float, float, float]:
@@ -139,7 +175,7 @@ class MediaPipeCamera(ThreadedCamera):
             if self.mirror:
                 kps = mirror_keypoints(kps)
             detections.append((box_of(kps), kps))
-        return (capture_t, self.tracker.update(detections, capture_t), (), None)
+        return (capture_t, self.tracker.update(merge_duplicates(detections), capture_t), (), None)
 
     def release(self) -> None:
         if self._cap is not None:

@@ -8,7 +8,12 @@ import pytest
 from arcade.config import ArcadeConfig
 from arcade.main import MODEL_PATH
 from arcade.runner import _camera_result
-from arcade.sensed import LEFT_SHOULDER, LEFT_WRIST, NOSE, RIGHT_ANKLE, RIGHT_WRIST
+from arcade.calibration import Calibration
+from arcade.poses import POSES
+from arcade.sensed import (LEFT_HIP, LEFT_SHOULDER, LEFT_WRIST, MIN_CONF, NOSE, RIGHT_ANKLE, RIGHT_HIP,
+                           RIGHT_SHOULDER, RIGHT_WRIST, Keypoint)
+from arcade.sources.actors import make_keypoints
+import arcade.sources.pose_mediapipe as pm
 from arcade.sources.pose_mediapipe import MP_TO_COCO, MediaPipeCamera, box_of, landmarks_to_keypoints
 
 
@@ -215,6 +220,81 @@ def test_default_model_is_the_doctors(tmp_path, monkeypatch, caplog):
     cam = MediaPipeCamera(cfg, cfg.size)
     assert cam.available is False and str(missing) in caplog.text
     cam.close()
+
+
+def detection(kps):
+    return (box_of(kps), tuple(kps))
+
+
+def with_hips(kps, conf):
+    kps = list(kps)
+    for i in (LEFT_HIP, RIGHT_HIP):
+        kps[i] = Keypoint(kps[i].x, kps[i].y, conf)
+    return tuple(kps)
+
+
+def shifted(kps, dx=0.0, dy=0.0, only=None):
+    return tuple(Keypoint(k.x + dx, k.y + dy, k.conf) if only is None or i in only else k
+                 for i, k in enumerate(kps))
+
+
+def test_duplicate_poses_are_merged_keeping_the_more_confident_hips():
+    """C45: the model's duplicates put the noses 0.01 to 0.02 apart; one person comes out, the better hips kept."""
+    low = with_hips(make_keypoints(0.5, 0.55, 0.6), 0.2)
+    high = with_hips(shifted(make_keypoints(0.5, 0.55, 0.6), dx=0.015), 0.9)
+    for dets in ([detection(low), detection(high)], [detection(high), detection(low)]):
+        out = pm.merge_duplicates(dets)
+        assert len(out) == 1 and out[0][1] == high
+
+
+def test_a_tie_in_hip_confidence_keeps_the_earlier():
+    a = make_keypoints(0.5, 0.55, 0.6)
+    b = shifted(a, dx=0.015)
+    assert pm.merge_duplicates([detection(a), detection(b)]) == [detection(a)]
+
+
+def test_two_people_shoulder_to_shoulder_are_never_merged():
+    """Shoulders touching: the centres one shoulder width apart, at the zone's smallest body (3 m) and at 2 m."""
+    for h in (Calibration().min_height, 0.6):
+        width = POSES["stand"][RIGHT_SHOULDER][0] * h - POSES["stand"][LEFT_SHOULDER][0] * h
+        a = make_keypoints(0.5 - width / 2, 0.55, h)
+        b = make_keypoints(0.5 + width / 2, 0.55, h)
+        assert pm.merge_duplicates([detection(a), detection(b)]) == [detection(a), detection(b)], h
+
+
+def test_a_child_in_front_of_an_adult_is_never_merged():
+    adult = make_keypoints(0.5, 0.55, 0.6)
+    child = shifted(shifted(adult, dx=0.03, only={NOSE}), dy=0.1, only={LEFT_SHOULDER, RIGHT_SHOULDER})
+    assert pm.merge_duplicates([detection(adult), detection(child)]) == [detection(adult), detection(child)]
+
+
+def test_a_pose_without_a_nose_or_a_shoulder_is_never_merged():
+    a = make_keypoints(0.5, 0.55, 0.6)
+    for i in (NOSE, LEFT_SHOULDER, RIGHT_SHOULDER):
+        k = a[i]
+        dim = tuple(Keypoint(k.x, k.y, MIN_CONF - 0.01) if j == i else p for j, p in enumerate(shifted(a, dx=0.01)))
+        for dets in ([detection(a), detection(dim)], [detection(dim), detection(a)]):
+            assert pm.merge_duplicates(dets) == dets, i
+
+
+def test_merge_keeps_the_order_of_the_others():
+    a, c = make_keypoints(0.2, 0.55, 0.6), make_keypoints(0.8, 0.55, 0.6)
+    b = with_hips(make_keypoints(0.5, 0.55, 0.6), 0.5)
+    b2 = with_hips(shifted(b, dx=0.01), 0.9)
+    assert pm.merge_duplicates([detection(a), detection(b), detection(c), detection(b2)]) == [
+        detection(a), detection(b2), detection(c)]
+
+
+def test_step_gives_one_body_for_a_doubled_pose():
+    one = person_landmarks()
+    two = [SimpleNamespace(x=lm.x + 0.01, y=lm.y, visibility=lm.visibility) for lm in one]
+    cam, *_ = camera([one, two])
+    ids = set()
+    for _ in range(20):
+        _, bodies, _, _ = cam.step()
+        assert len(bodies) == 1
+        ids.add(bodies[0].id)
+    assert len(ids) == 1
 
 
 def test_real_landmarker_runs_on_a_blank_frame():
