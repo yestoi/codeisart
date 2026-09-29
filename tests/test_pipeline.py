@@ -437,3 +437,68 @@ def test_full_screen_entry_gets_24_rows(tmp_path, cfg, make_player):
         play_through(player)
         assert player.failure is None
         assert size in screen_lines(player.term), (full, screen_lines(player.term))
+
+
+# C49: stop() never raises; a pump that raises inside the kill still leaves the master closed.
+
+UNPUMPED = 0.3  # seconds the escape waits in the pty, no tick pumping it
+
+
+@needs_cc
+def test_stop_returns_when_the_pump_raises_in_kill(tmp_path, cfg, make_player):
+    player = make_player(write_entry(tmp_path, "esc", 1, ESCAPE_C, run_seconds=30.0), cfg)
+    play = drive(player, start(player), until=P.RUN)
+    pid = play.pids[P.RUN]
+    time.sleep(UNPUMPED)  # the escape is written; no tick pumps it (the loop is between frames or preempting)
+    player.stop()
+    assert player.phase == P.DONE
+    assert player.term.master_fd is None
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+
+
+def pyte_raises(data: bytes) -> None:
+    raise TypeError("the screen cannot take this sequence")
+
+
+@needs_cc
+def test_a_pump_exception_leaves_no_open_master(tmp_path, cfg, make_player, monkeypatch):
+    # A flood keeps the pty readable, so the pump inside the kill raises too (every feed raises).
+    player = make_player(write_entry(tmp_path, "flood", 1, FOREVER_C, run_seconds=30.0), cfg)
+    play = drive(player, start(player), until=P.RUN)
+    monkeypatch.setattr(player.term.stream, "feed", pyte_raises)
+    drive(player, play, until=P.ERROR_HOLD)  # the first tick with output ready raises
+    assert player.failure == "terminal error (TypeError)"
+    assert player.term.master_fd is None
+    assert player.term._pgid is None
+    assert wait_gone(play.pids[P.RUN])
+
+
+class CloseRaises:
+    """A capture writer whose close() raises (a full or vanished disk)."""
+
+    def __init__(self, path):
+        self.path = path
+        path.write_text("partial\n")
+
+    def write(self, data: bytes) -> None:
+        pass
+
+    def close(self) -> None:
+        raise OSError(28, "No space left on device")
+
+
+def test_stop_never_raises_when_the_capture_close_fails(tmp_path, cfg, make_player, caplog):
+    entry_dir = write_entry(tmp_path, "full", 1, HELLO_C)
+    player = make_player(entry_dir, cfg)
+    player.phase = P.RUN
+    player._writer = CloseRaises(entry_dir / CAPTURE_TEMP)
+    player.term.listeners.append(player._writer.write)
+    with caplog.at_level(logging.ERROR, logger="show.pipeline"):
+        player.stop()
+    logged = [r.getMessage() for r in caplog.records if r.name == "show.pipeline"]
+    print(logged)
+    assert player.phase == P.DONE
+    assert player._writer is None and player.term.listeners == []
+    assert not (entry_dir / CAPTURE_TEMP).exists()
+    assert len(logged) == 1

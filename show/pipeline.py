@@ -115,12 +115,16 @@ class EntryPlayer:
         return events
 
     def stop(self) -> None:
-        """Kill the child, drop a capture in progress, DONE."""
+        """Kill the child, drop a capture in progress, DONE. Never raises: each step is guarded and logged."""
         try:
             self._kill()
-        finally:
+        except Exception:
+            log.exception("%s: the kill on stop failed", self.entry.slug)
+        try:
             self._stop_capture(keep=False)
-            self.phase = Phase.DONE
+        except Exception:
+            log.exception("%s: dropping the capture on stop failed", self.entry.slug)
+        self.phase = Phase.DONE
 
     # -- phases --------------------------------------------------------------
 
