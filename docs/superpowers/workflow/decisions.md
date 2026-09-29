@@ -309,3 +309,10 @@ default: `wall_pattern index` defaults to 128x64 and draws a seam at every 64 co
 deadline: it8
 answer:
 status: defaulted (standing instruction)
+
+### Q40: Is the faster Pong kept? (It was retuned during it08 to end rounds by points, which also cut the suite's time.)
+asked: it8
+default: yes, until the owner has played it. At 128x64: `CPU_SPEED` 0.35 wall heights a second (Q34's starting value was 0.75), `BALL_START` 100 px/s (60), `BALL_GAIN` 1.2 a paddle hit (1.08), `BALL_MAX` 170 px/s (110). With it all 20 good-bot rounds end by points in 34 to 73 s (median 46.6 s; before, every round ran to the 90 s cap), the lazy bot wins 0.55 (before 0.10, the floor of its band), and the suite takes 141 s (before 178 s). The ball crosses the wall in 0.75 to 1.3 s: whether a person can follow it is judged in the live smoke, and the numbers go back toward Q34's if not
+deadline: the first live smoke
+answer:
+status: defaulted (standing instruction)
