@@ -1,0 +1,52 @@
+"""A pytest plugin for the C52 probe: primes the governor's owners with one black apply at birth, in memory only.
+PRIME=wall primes show.wall.GovernedDisplay; PRIME=runner primes arcade.runner.Runner; PRIME=both, both."""
+import os
+
+import numpy as np
+
+WHICH = os.environ.get("PRIME", "both")
+
+
+def pytest_configure(config):
+    if WHICH in ("wall", "both"):
+        import show.wall as wall
+        orig = wall.GovernedDisplay.__init__
+
+        def init(self, *a, **kw):
+            orig(self, *a, **kw)
+            self.governor.apply(np.zeros(self.governor.shape, np.uint8))
+        wall.GovernedDisplay.__init__ = init
+    if WHICH in ("runner", "both"):
+        import arcade.runner as runner
+        orig_r = runner.Runner.__init__
+
+        def init_r(self, *a, **kw):
+            orig_r(self, *a, **kw)
+            self.governor.apply(np.zeros(self.governor.shape, np.uint8))
+        runner.Runner.__init__ = init_r
+
+
+def _first_black():
+    """PRIME=runner2: the runner's first push sends governed black (the limiter still runs on the canvas and its
+    output is dropped), so the governor's first frame is the dark wall and every apply is a tick's."""
+    import arcade.runner as runner
+    orig_push = runner.Runner._push
+
+    def _push(self):
+        if getattr(self, "_primed", False):
+            return orig_push(self)
+        self._primed = True
+        if self.raw_frames is not None:
+            self.raw_frames.append(self.canvas.frame.copy())
+        try:
+            self.limiter.apply(self.canvas.frame)
+            out = self.governor.apply(np.zeros(self.governor.shape, np.uint8))
+            self.display.push(out)
+        except Exception:
+            self.log.exception("display push failed (logged once a minute)")
+        self._held_before = self.governor.held_ticks
+    runner.Runner._push = _push
+
+
+if WHICH == "runner2":
+    _first_black()

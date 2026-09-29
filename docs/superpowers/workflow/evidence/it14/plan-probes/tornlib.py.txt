@@ -1,0 +1,222 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Shared pieces for the C51 probes: the torn display (two models), the reversal and strobe, the real-time measure,
+and candidate walls (subclasses of today's GovernedDisplay, in memory only)."""
+import numpy as np
+from arcade.flash import BUDGET, FlashGovernor, flash_area, square_flashes
+from show.wall import GovernedDisplay
+
+H, W = 64, 128
+LIT = np.array((51, 255, 51), np.uint8)
+
+
+class TornDisplay:
+    """The probe's torn display: a call whose number `fail` names raises after the rows above `split` arrived.
+    model 'probe': the rows show at once (it13's probe). model 'card': as colorlight's push, the frame packet
+    first shows the rows the previous call left, then this call's rows arrive (shown by the next call).
+    shown: (tick, frame) after every call; tick is set by the driver."""
+
+    def __init__(self, fail, split=H // 2, model="probe"):
+        self.fail, self.split, self.model = fail, split, model
+        self.calls, self.tick = 0, 0
+        self.rows = np.zeros((H, W, 3), np.uint8)     # what the card holds (probe: what it shows)
+        self.screen = np.zeros((H, W, 3), np.uint8)
+        self.shown = []
+
+    def push(self, frame):
+        self.calls += 1
+        if self.model == "card":
+            self.screen = self.rows.copy()             # the frame packet
+        torn = self.fail(self.calls)
+        if torn:
+            self.rows[:self.split] = frame[:self.split]
+        else:
+            self.rows = frame.copy()
+        if self.model == "probe":
+            self.screen = self.rows.copy()
+        self.shown.append((self.tick, self.screen.copy()))
+        if torn:
+            raise OSError("torn")
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        pass
+
+
+def reversal(hz, fps, seconds):
+    out = []
+    for k in range(int(seconds * fps)):
+        f = np.zeros((H, W, 3), np.uint8)
+        if round(k / fps * 2 * hz) % 2 == 0:
+            f[H // 2:] = LIT
+        else:
+            f[:H // 2] = LIT
+        out.append(f)
+    return out
+
+
+def strobe(hz, fps, seconds):
+    return [np.broadcast_to(LIT if round(k / fps * 2 * hz) % 2 == 0 else np.zeros(3, np.uint8), (H, W, 3)).copy()
+            for k in range(int(seconds * fps))]
+
+
+def in_time(shown, fps, before=None):
+    """The wall in real time: every tick cut into k slots (k the most calls in one tick), each slot the state after
+    that call, a tick with fewer calls padded with its last state; fps * k slots are one second. before: the
+    wall before the first call (a frame), or None."""
+    by_tick = {}
+    for tick, frame in shown:
+        by_tick.setdefault(tick, []).append(frame)
+    k = max(len(v) for v in by_tick.values())
+    out, last = ([] if before is None else [before] * k), before
+    for tick in range(min(by_tick), max(by_tick) + 1):
+        frames = by_tick.get(tick, [])
+        if not frames and last is None:
+            continue
+        frames = frames or [last]
+        out += frames + [frames[-1]] * (k - len(frames))
+        last = frames[-1]
+    return out, fps * k
+
+
+def measure(shown, fps, before=None):
+    seq, n = in_time(shown, fps, before)
+    return flash_area(seq, fps=n), square_flashes(seq, fps=n)
+
+
+def drive_today(frames, disp, fps):
+    """show/main.py's _push today: repush after a failure, then push."""
+    wall = GovernedDisplay(disp, H, W, fps=fps)
+    failed = False
+    for k, f in enumerate(frames):
+        disp.tick = k
+        try:
+            if failed:
+                wall.repush()
+            wall.push(f)
+        except Exception:
+            failed = True
+            continue
+        failed = False
+    return wall
+
+
+class Hold(GovernedDisplay):
+    """Q65's default: after a failed send, every push sends the last governed frame again (not governed, the new
+    frame dropped) until HOLD_S has passed since the last failed send. apply_during: also apply the held frame
+    (a wrong variant). still: send nothing during the hold (another variant)."""
+    HOLD_S = 1.0
+
+    def __init__(self, *a, clock, apply_during=False, still=False, after_settle=0.0, **kw):
+        super().__init__(*a, **kw)
+        self.clock, self.apply_during, self.still, self.after_settle = clock, apply_during, still, after_settle
+        self.failed_at = None
+        self.settled_at = None
+
+    def _send(self, frame):
+        try:
+            super()._send(frame)
+        except Exception:
+            self.failed_at = self.clock()
+            self.settled_at = None
+            raise
+
+    def holding(self):
+        now = self.clock()
+        if self.failed_at is not None and now - self.failed_at < self.HOLD_S:
+            return True
+        if self.after_settle and self.settled_at is not None and now - self.settled_at < self.after_settle:
+            return True
+        return False
+
+    def push(self, frame):
+        if self.failed_at is not None and self.clock() - self.failed_at >= self.HOLD_S and self.unsent:
+            # the hold is over but the counted frame never arrived whole (still variant): send it first
+            self._send(self._last)
+            self.settled_at = self.clock()
+            if self.after_settle:
+                return self._last
+        if self.holding():
+            if self.apply_during:
+                self.governor.apply(self._last)
+            if not self.still:
+                self._send(self._last)
+                if self.after_settle and self.settled_at is None:
+                    self.settled_at = self.clock()
+            return self._last
+        return super().push(frame)
+
+
+def drive_hold(frames, disp, fps, **kw):
+    """The loop's _push with the hold in the wall: push only (no repush of its own), failures swallowed."""
+    wall = Hold(disp, H, W, fps=fps, clock=lambda: disp.tick / fps, **kw)
+    for k, f in enumerate(frames):
+        disp.tick = k
+        try:
+            wall.push(f)
+        except Exception:
+            pass
+    return wall
+
+
+class Quiet(GovernedDisplay):
+    """Candidate holds, the governor primed with black at birth. After a failed send:
+    'repush' (Q65's default): every push sends the counted frame again until HOLD_S has passed since the last
+      failed send; then new frames.
+    'still': nothing is sent until HOLD_S has passed since the last failed send; then the counted frame once (its
+      tick takes no new frame); then new frames.
+    'still2': nothing for HOLD_S; the counted frame; nothing for HOLD_S; the counted frame again; nothing for HOLD_S;
+      then new frames (each counted send at least HOLD_S from the one before and from the next new frame).
+    'none': today's GovernedDisplay, primed (the loop's repush then push is the driver's)."""
+    HOLD_S = 1.0
+
+    def __init__(self, *a, clock, mode, prime=True, **kw):
+        super().__init__(*a, **kw)
+        if prime:
+            self.governor.apply(np.zeros(self.governor.shape, np.uint8))
+        self.clock, self.mode = clock, mode
+        self.quiet_until, self.need, self.failed_at = -1e9, 0, None
+
+    def _send(self, frame):
+        try:
+            super()._send(frame)
+        except Exception:
+            now = self.clock()
+            self.failed_at = now
+            if self.mode in ("still", "still2"):
+                self.quiet_until, self.need = now + self.HOLD_S, (1 if self.mode == "still" else 2)
+            raise
+
+    def push(self, frame):
+        now = self.clock()
+        if self.mode == "repush":
+            if self.failed_at is not None and now - self.failed_at < self.HOLD_S:
+                self._send(self._last)
+                return self._last
+            return super().push(frame)
+        if self.mode in ("still", "still2"):
+            if now < self.quiet_until - 1e-9:
+                return self._last
+            if self.need:
+                self._send(self._last)
+                self.need -= 1
+                self.quiet_until = now + (self.HOLD_S if self.mode == "still2" else 1e-6)
+                return self._last
+        return super().push(frame)
+
+
+def drive_quiet(frames, disp, fps, mode, prime=True):
+    wall = Quiet(disp, H, W, fps=fps, clock=lambda: disp.tick / fps, mode=mode, prime=prime)
+    failed = False
+    for k, f in enumerate(frames):
+        disp.tick = k
+        try:
+            if mode == "none" and failed:
+                wall.repush()
+            wall.push(f)
+        except Exception:
+            failed = True
+            continue
+        failed = False
+    return wall

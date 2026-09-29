@@ -1,0 +1,120 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""C51: why the torn-push probe reads 7. Today's show/wall.py, the loop's pattern (repush then push in one tick).
+Every display call's resulting screen is kept with its tick. Measures: square_flashes on the entry list (the
+it13 probe's), and the same counted in real time (transitions stamped with their tick, any fps consecutive ticks).
+Then the square and the entries that carry the 7th transition."""
+import numpy as np
+from arcade.flash import BUDGET, THRESHOLD, WINDOW, _Transitions, flash_area, signals, square_flashes, square_means
+from show.wall import GovernedDisplay
+
+H, W = 64, 128
+LIT = np.array((51, 255, 51), np.uint8)
+
+
+class Torn:
+    def __init__(self, fail):
+        self.fail, self.count, self.tick = fail, 0, 0
+        self.screen = np.zeros((H, W, 3), np.uint8)
+        self.shown = []                       # (tick, what, screen)
+        self.what = ""
+
+    def push(self, frame):
+        self.count += 1
+        if self.fail(self.count):
+            self.screen[:H // 2] = frame[:H // 2]
+            self.shown.append((self.tick, self.what + "/torn", self.screen.copy()))
+            raise OSError("torn")
+        self.screen = frame.copy()
+        self.shown.append((self.tick, self.what, self.screen.copy()))
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        pass
+
+
+def reversal(hz, fps, seconds):
+    out = []
+    for k in range(int(seconds * fps)):
+        f = np.zeros((H, W, 3), np.uint8)
+        if round(k / fps * 2 * hz) % 2 == 0:
+            f[H // 2:] = LIT
+        else:
+            f[:H // 2] = LIT
+        out.append(f)
+    return out
+
+
+def drive(frames, disp, fps):
+    wall = GovernedDisplay(disp, H, W, fps=fps)
+    failed = False
+    for k, f in enumerate(frames):
+        disp.tick = k
+        try:
+            if failed:
+                disp.what = "repush"
+                wall.repush()
+            disp.what = "push"
+            wall.push(f)
+        except Exception:
+            failed = True
+            continue
+        failed = False
+
+
+def square_track(entries, fps):
+    """Per entry: (tick, flips (h', w') bool) of the square means, as square_flashes counts them."""
+    track, out = None, []
+    for tick, what, frame in entries:
+        m = square_means(signals(frame, 2.2), WINDOW)
+        if track is None:
+            track = _Transitions(m, THRESHOLD)
+            out.append((tick, what, np.zeros(m.shape[1:], bool), m))
+            continue
+        flip, up = track.flips(m)
+        track.advance(m, flip, up)
+        out.append((tick, what, flip.any(axis=0), m))
+    return out
+
+
+def timed_max(track, fps):
+    """The most square transitions in any fps consecutive ticks, and where."""
+    ticks = np.array([t for t, _, _, _ in track])
+    flips = np.stack([f for _, _, f, _ in track]).astype(np.int32)
+    best, where = 0, None
+    for start in range(ticks.min(), ticks.max() + 1):
+        sel = (ticks >= start) & (ticks < start + fps)
+        c = flips[sel].sum(axis=0)
+        if c.max() > best:
+            best, where = int(c.max()), (start, np.unravel_index(c.argmax(), c.shape))
+    return best, where
+
+
+print("Hz | fps | tear | entries | ticks | max entries/tick | sq by entries | sq in real time | area by entries")
+detail = []
+for hz in (10, 5):
+    for fps in (20, 30):
+        for tear, pred in (("every 2nd", lambda n: n % 2 == 0), ("every 3rd", lambda n: n % 3 == 0),
+                           ("calls 9-12", lambda n: 9 <= n <= 12), ("once (5)", lambda n: n == 5)):
+            d = Torn(pred)
+            frames = reversal(hz, fps, 3.0)
+            drive(frames, d, fps)
+            shots = [s for _, _, s in d.shown]
+            ticks = [t for t, _, _ in d.shown]
+            per_tick = max(ticks.count(t) for t in set(ticks))
+            tr = square_track(d.shown, fps)
+            rt, where = timed_max(tr, fps)
+            sq = square_flashes(shots, fps=fps)
+            print(f"{hz} | {fps} | {tear} | {len(shots)} | {len(frames)} | {per_tick} | {sq} | {rt} | "
+                  f"{flash_area(shots, fps=fps):.3f}")
+            if (hz, fps, tear) == (10, 20, "every 2nd"):
+                detail = (tr, where, fps)
+
+tr, (start, (i, j)), fps = detail
+print(f"\n10 Hz, fps 20, every 2nd: the square at row {i}, col {j} (rows {i}..{i + WINDOW - 1}); window ticks "
+      f"{start}..{start + fps - 1}")
+print("entry | tick | call | square mean light | transition")
+for n, (tick, what, flip, m) in enumerate(tr):
+    if start - 2 <= tick <= start + fps:
+        print(f"{n} | {tick} | {what} | {m[0, i, j]:.3f} | {'FLIP' if flip[i, j] else ''}")

@@ -1,0 +1,231 @@
+........................................................................ [ 19%]
+....................................................FFFFFF.............. [ 38%]
+........................................................................ [ 57%]
+........................................................................ [ 76%]
+........................................................................ [ 95%]
+................                                                         [100%]
+=================================== FAILURES ===================================
+___________ test_tick_budget_with_the_governors_share[strobe-128x32] ___________
+
+game_cls = <class 'tests.arcade.test_headless.Strobe'>, size = (128, 32)
+font5x7 = <show.font.Font object at 0x10356eba0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106ac86b0>
+capsys = <_pytest.capture.CaptureFixture object at 0x106ac9220>
+
+    @pytest.mark.perf
+    @pytest.mark.parametrize("size", SIZES + [WALL], ids=lambda s: f"{s[0]}x{s[1]}")   # WALL: 8192 pixels, same budget
+    @pytest.mark.parametrize("game_cls", [Strobe, Static], ids=lambda g: g.info.name)
+    def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypatch, capsys):
+        # spec 9.2's budget, with a scenario on the governor's holding path (it04 N23, C27) and the governor's share.
+        # Timed on the thread's CPU clock, which is the code's cost, what the budget is for. perf_counter also counts
+        # the time the thread waits preempted, and under parallel agent load that failed this test (plan review B2).
+        spent = []
+        apply = FlashGovernor.apply
+    
+        def timed_apply(self, frame):
+            start = time.thread_time()
+            out = apply(self, frame)
+            spent.append(time.thread_time() - start)
+            return out
+    
+        monkeypatch.setattr(FlashGovernor, "apply", timed_apply)
+        frames = list(stand(330))
+        stamps = []
+        _, runner = run_headless(make_cfg(size), font5x7, game_cls, timed(frames, stamps),
+                                 display=RecordingDisplay(keep_all=False))
+        ticks = np.diff(stamps)[30:] * 1000                               # the first second warms up
+        governor = np.array(spent[30:]) * 1000
+>       assert len(ticks) == len(governor) == 300
+E       assert 300 == 301
+E        +  where 300 = len(array([0.385708, 0.354709, 0.374958, 0.359625, 0.374   , 0.356125,\n       0.373208, 0.537167, 0.385417, 0.370333, 0.38..., 0.329708, 0.359334, 0.341875, 0.354916, 0.348125,\n       0.365084, 0.341458, 0.377083, 0.336167, 0.37575 , 0.397083]))
+E        +  and   301 = len(array([0.196334, 0.201125, 0.17825 , 0.1915  , 0.186792, 0.191583,\n       0.182792, 0.190917, 0.364917, 0.200458, 0.19...375, 0.188042, 0.181458, 0.186958,\n       0.188625, 0.195959, 0.187333, 0.207583, 0.176458, 0.205792,\n       0.20275 ]))
+
+tests/arcade/test_headless.py:227: AssertionError
+___________ test_tick_budget_with_the_governors_share[strobe-64x64] ____________
+
+game_cls = <class 'tests.arcade.test_headless.Strobe'>, size = (64, 64)
+font5x7 = <show.font.Font object at 0x10356eba0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1090d5100>
+capsys = <_pytest.capture.CaptureFixture object at 0x1090d66f0>
+
+    @pytest.mark.perf
+    @pytest.mark.parametrize("size", SIZES + [WALL], ids=lambda s: f"{s[0]}x{s[1]}")   # WALL: 8192 pixels, same budget
+    @pytest.mark.parametrize("game_cls", [Strobe, Static], ids=lambda g: g.info.name)
+    def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypatch, capsys):
+        # spec 9.2's budget, with a scenario on the governor's holding path (it04 N23, C27) and the governor's share.
+        # Timed on the thread's CPU clock, which is the code's cost, what the budget is for. perf_counter also counts
+        # the time the thread waits preempted, and under parallel agent load that failed this test (plan review B2).
+        spent = []
+        apply = FlashGovernor.apply
+    
+        def timed_apply(self, frame):
+            start = time.thread_time()
+            out = apply(self, frame)
+            spent.append(time.thread_time() - start)
+            return out
+    
+        monkeypatch.setattr(FlashGovernor, "apply", timed_apply)
+        frames = list(stand(330))
+        stamps = []
+        _, runner = run_headless(make_cfg(size), font5x7, game_cls, timed(frames, stamps),
+                                 display=RecordingDisplay(keep_all=False))
+        ticks = np.diff(stamps)[30:] * 1000                               # the first second warms up
+        governor = np.array(spent[30:]) * 1000
+>       assert len(ticks) == len(governor) == 300
+E       assert 300 == 301
+E        +  where 300 = len(array([0.419417, 0.38325 , 0.41275 , 0.398833, 0.40825 , 0.387667,\n       0.410208, 0.439   , 0.4165  , 0.39775 , 0.41..., 0.350292, 0.382583, 0.364833, 0.383084, 0.36525 ,\n       0.388916, 0.373   , 0.398375, 0.36    , 0.413084, 0.421916]))
+E        +  and   301 = len(array([0.217583, 0.213542, 0.191542, 0.215042, 0.214958, 0.215833,\n       0.198875, 0.210667, 0.245084, 0.22075 , 0.21...   , 0.203375, 0.196916, 0.203375,\n       0.197709, 0.209458, 0.204291, 0.219042, 0.191625, 0.233167,\n       0.215167]))
+
+tests/arcade/test_headless.py:227: AssertionError
+___________ test_tick_budget_with_the_governors_share[strobe-128x64] ___________
+
+game_cls = <class 'tests.arcade.test_headless.Strobe'>, size = (128, 64)
+font5x7 = <show.font.Font object at 0x10356eba0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106438e30>
+capsys = <_pytest.capture.CaptureFixture object at 0x106438c50>
+
+    @pytest.mark.perf
+    @pytest.mark.parametrize("size", SIZES + [WALL], ids=lambda s: f"{s[0]}x{s[1]}")   # WALL: 8192 pixels, same budget
+    @pytest.mark.parametrize("game_cls", [Strobe, Static], ids=lambda g: g.info.name)
+    def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypatch, capsys):
+        # spec 9.2's budget, with a scenario on the governor's holding path (it04 N23, C27) and the governor's share.
+        # Timed on the thread's CPU clock, which is the code's cost, what the budget is for. perf_counter also counts
+        # the time the thread waits preempted, and under parallel agent load that failed this test (plan review B2).
+        spent = []
+        apply = FlashGovernor.apply
+    
+        def timed_apply(self, frame):
+            start = time.thread_time()
+            out = apply(self, frame)
+            spent.append(time.thread_time() - start)
+            return out
+    
+        monkeypatch.setattr(FlashGovernor, "apply", timed_apply)
+        frames = list(stand(330))
+        stamps = []
+        _, runner = run_headless(make_cfg(size), font5x7, game_cls, timed(frames, stamps),
+                                 display=RecordingDisplay(keep_all=False))
+        ticks = np.diff(stamps)[30:] * 1000                               # the first second warms up
+        governor = np.array(spent[30:]) * 1000
+>       assert len(ticks) == len(governor) == 300
+E       assert 300 == 301
+E        +  where 300 = len(array([0.579792, 0.529666, 0.568042, 0.560667, 0.565083, 0.553083,\n       0.551584, 0.603166, 0.575959, 0.5555  , 0.56..., 0.497458, 0.521459, 0.526958, 0.526208, 0.531709,\n       0.523791, 0.524292, 0.543542, 0.496   , 0.533333, 0.582042]))
+E        +  and   301 = len(array([0.366583, 0.370958, 0.32325 , 0.368041, 0.354375, 0.35025 ,\n       0.349916, 0.34725 , 0.407709, 0.376333, 0.35...25 , 0.344542, 0.350834, 0.349292,\n       0.355875, 0.347583, 0.348834, 0.365625, 0.31975 , 0.355208,\n       0.369375]))
+
+tests/arcade/test_headless.py:227: AssertionError
+___________ test_tick_budget_with_the_governors_share[static-128x32] ___________
+
+game_cls = <class 'tests.arcade.test_headless.Static'>, size = (128, 32)
+font5x7 = <show.font.Font object at 0x10356eba0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106748fe0>
+capsys = <_pytest.capture.CaptureFixture object at 0x106749310>
+
+    @pytest.mark.perf
+    @pytest.mark.parametrize("size", SIZES + [WALL], ids=lambda s: f"{s[0]}x{s[1]}")   # WALL: 8192 pixels, same budget
+    @pytest.mark.parametrize("game_cls", [Strobe, Static], ids=lambda g: g.info.name)
+    def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypatch, capsys):
+        # spec 9.2's budget, with a scenario on the governor's holding path (it04 N23, C27) and the governor's share.
+        # Timed on the thread's CPU clock, which is the code's cost, what the budget is for. perf_counter also counts
+        # the time the thread waits preempted, and under parallel agent load that failed this test (plan review B2).
+        spent = []
+        apply = FlashGovernor.apply
+    
+        def timed_apply(self, frame):
+            start = time.thread_time()
+            out = apply(self, frame)
+            spent.append(time.thread_time() - start)
+            return out
+    
+        monkeypatch.setattr(FlashGovernor, "apply", timed_apply)
+        frames = list(stand(330))
+        stamps = []
+        _, runner = run_headless(make_cfg(size), font5x7, game_cls, timed(frames, stamps),
+                                 display=RecordingDisplay(keep_all=False))
+        ticks = np.diff(stamps)[30:] * 1000                               # the first second warms up
+        governor = np.array(spent[30:]) * 1000
+>       assert len(ticks) == len(governor) == 300
+E       assert 300 == 301
+E        +  where 300 = len(array([0.376375, 0.359125, 0.374417, 0.357416, 0.374334, 0.360583,\n       0.37325 , 0.358667, 0.376583, 0.37825 , 0.39..., 0.374042, 0.387   , 0.373958, 0.389708, 0.374709,\n       0.390291, 0.377417, 0.388583, 0.348417, 0.361792, 0.34825 ]))
+E        +  and   301 = len(array([0.178708, 0.179417, 0.1735  , 0.17825 , 0.172417, 0.178792,\n       0.173292, 0.177833, 0.172459, 0.180125, 0.19...542, 0.186084, 0.180708, 0.184958,\n       0.181   , 0.185625, 0.185083, 0.185292, 0.167042, 0.171458,\n       0.168458]))
+
+tests/arcade/test_headless.py:227: AssertionError
+___________ test_tick_budget_with_the_governors_share[static-64x64] ____________
+
+game_cls = <class 'tests.arcade.test_headless.Static'>, size = (64, 64)
+font5x7 = <show.font.Font object at 0x10356eba0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106ab8ef0>
+capsys = <_pytest.capture.CaptureFixture object at 0x106aba900>
+
+    @pytest.mark.perf
+    @pytest.mark.parametrize("size", SIZES + [WALL], ids=lambda s: f"{s[0]}x{s[1]}")   # WALL: 8192 pixels, same budget
+    @pytest.mark.parametrize("game_cls", [Strobe, Static], ids=lambda g: g.info.name)
+    def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypatch, capsys):
+        # spec 9.2's budget, with a scenario on the governor's holding path (it04 N23, C27) and the governor's share.
+        # Timed on the thread's CPU clock, which is the code's cost, what the budget is for. perf_counter also counts
+        # the time the thread waits preempted, and under parallel agent load that failed this test (plan review B2).
+        spent = []
+        apply = FlashGovernor.apply
+    
+        def timed_apply(self, frame):
+            start = time.thread_time()
+            out = apply(self, frame)
+            spent.append(time.thread_time() - start)
+            return out
+    
+        monkeypatch.setattr(FlashGovernor, "apply", timed_apply)
+        frames = list(stand(330))
+        stamps = []
+        _, runner = run_headless(make_cfg(size), font5x7, game_cls, timed(frames, stamps),
+                                 display=RecordingDisplay(keep_all=False))
+        ticks = np.diff(stamps)[30:] * 1000                               # the first second warms up
+        governor = np.array(spent[30:]) * 1000
+>       assert len(ticks) == len(governor) == 300
+E       assert 300 == 301
+E        +  where 300 = len(array([0.362458, 0.35125 , 0.366417, 0.351583, 0.364917, 0.350458,\n       0.367208, 0.351625, 0.367792, 0.352542, 0.36..., 0.388458, 0.3935  , 0.387792, 0.384   , 0.3855  ,\n       0.396041, 0.386417, 0.3845  , 0.384458, 0.393792, 0.386542]))
+E        +  and   301 = len(array([0.186542, 0.187167, 0.182459, 0.189125, 0.183083, 0.188708,\n       0.183291, 0.187875, 0.182709, 0.187458, 0.18...333, 0.204708, 0.198583, 0.19575 ,\n       0.195625, 0.207959, 0.197583, 0.196875, 0.196083, 0.20675 ,\n       0.198209]))
+
+tests/arcade/test_headless.py:227: AssertionError
+___________ test_tick_budget_with_the_governors_share[static-128x64] ___________
+
+game_cls = <class 'tests.arcade.test_headless.Static'>, size = (128, 64)
+font5x7 = <show.font.Font object at 0x10356eba0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1067386e0>
+capsys = <_pytest.capture.CaptureFixture object at 0x1067390d0>
+
+    @pytest.mark.perf
+    @pytest.mark.parametrize("size", SIZES + [WALL], ids=lambda s: f"{s[0]}x{s[1]}")   # WALL: 8192 pixels, same budget
+    @pytest.mark.parametrize("game_cls", [Strobe, Static], ids=lambda g: g.info.name)
+    def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypatch, capsys):
+        # spec 9.2's budget, with a scenario on the governor's holding path (it04 N23, C27) and the governor's share.
+        # Timed on the thread's CPU clock, which is the code's cost, what the budget is for. perf_counter also counts
+        # the time the thread waits preempted, and under parallel agent load that failed this test (plan review B2).
+        spent = []
+        apply = FlashGovernor.apply
+    
+        def timed_apply(self, frame):
+            start = time.thread_time()
+            out = apply(self, frame)
+            spent.append(time.thread_time() - start)
+            return out
+    
+        monkeypatch.setattr(FlashGovernor, "apply", timed_apply)
+        frames = list(stand(330))
+        stamps = []
+        _, runner = run_headless(make_cfg(size), font5x7, game_cls, timed(frames, stamps),
+                                 display=RecordingDisplay(keep_all=False))
+        ticks = np.diff(stamps)[30:] * 1000                               # the first second warms up
+        governor = np.array(spent[30:]) * 1000
+>       assert len(ticks) == len(governor) == 300
+E       assert 300 == 301
+E        +  where 300 = len(array([0.5585  , 0.563333, 0.551625, 0.567958, 0.553042, 0.561458,\n       0.552834, 0.568916, 0.55025 , 0.572459, 0.54..., 0.564167, 0.575625, 0.554417, 0.556375, 0.56425 ,\n       0.561958, 0.55025 , 0.555625, 0.553208, 0.556334, 0.5745  ]))
+E        +  and   301 = len(array([0.380083, 0.337125, 0.348166, 0.336792, 0.353917, 0.336708,\n       0.347625, 0.335666, 0.354792, 0.336708, 0.35...166, 0.363334, 0.340084, 0.343292,\n       0.349667, 0.350792, 0.335625, 0.34275 , 0.340125, 0.345125,\n       0.362542]))
+
+tests/arcade/test_headless.py:227: AssertionError
+=========================== short test summary info ============================
+FAILED tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share[strobe-128x32]
+FAILED tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share[strobe-64x64]
+FAILED tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share[strobe-128x64]
+FAILED tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share[static-128x32]
+FAILED tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share[static-64x64]
+FAILED tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share[static-128x64]
+6 failed, 370 passed in 161.58s (0:02:41)

@@ -1,0 +1,20 @@
+........................................................................ [ 92%]
+.....F                                                                   [100%]
+=================================== FAILURES ===================================
+________ test_every_governed_wall_starts_from_dark_and_the_show_s_holds ________
+
+    def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
+        made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
+                if "GovernedDisplay(" in p.read_text()}
+>       assert made == {"main.py", "wall_pattern.py"}
+E       AssertionError: assert set() == {'main.py', 'wall_pattern.py'}
+E         
+E         Extra items in the right set:
+E         'main.py'
+E         'wall_pattern.py'
+E         Use -v to get more diff
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:179: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+1 failed, 77 passed in 3.10s

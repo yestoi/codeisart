@@ -489,8 +489,22 @@ status: defaulted (standing instruction)
 
 ### Q65: What should the wall do after repeated failed pushes (a torn frame the governor never saw)?
 asked: it13 (the review; evidence/it13/review-probes/p2_torn_base.txt)
-default: the wall holds. After a failed push the wall sends the last governed frame again and takes no new frame until one second has passed without a failed push; the governor goes on counting from the frame it holds. The wall does not go dark by itself (spec 4.6: the wall is never blank), and the failures are logged and counted as today. Why: the Colorlight push sends the frame packet and then the rows, so a send that fails between the rows leaves a mix of two frames on the card for a tick; with a failure on every second or third push a 32x32 square made 7 transitions against the budget of 6. A pulled cable fails at the first packet and shows nothing of this. The other choice is a dark wall after N failures in a row. Built in iteration 14's safety slice (C51), with a plan review
+default: the wall holds. After a failed push the wall sends the last governed frame again and takes no new frame until one second has passed without a failed push; the governor goes on counting from the frame it holds. The wall does not go dark by itself (spec 4.6: the wall is never blank), and the failures are logged and counted as today. Why: the Colorlight push sends the frame packet and then the rows, so a send that fails between the rows leaves a mix of two frames on the card for a tick; with a failure on every second or third push a 32x32 square made 7 transitions against the budget of 6. A pulled cable fails at the first packet and shows nothing of this. The other choice is a dark wall after N failures in a row. Built in iteration 14's safety slice (C51), with a plan review. The loop's measure (it14's plan, evidence/it14/plan-probes/p4_single.txt): this default closes the repeated tears (at most 3 transitions) but not one tear on the budget's last change, which still reads 7; the hold that is built is Q66's
 deadline: the first run of the show on the real panels with people in front of it
+answer:
+status: defaulted (standing instruction); replaced by Q66's default in iteration 14
+
+### Q66: After a failed push, may the wall stand still for three seconds (a quiet hold) and not send every tick?
+asked: it14 (the plan writer; evidence/it14/plan-probes/)
+default: yes, quiet. After a failed send nothing is sent for 1 s; then the last governed frame is sent; 1 s later it is sent again; 1 s later new frames start. Any failed send starts the hold again. The wall is frozen for 3 s or more after each failure, and a dead link is sent to once a second. The close is never held. Why: a torn frame (new rows over old rows) makes a 32x32 square that straddles the tear overshoot, and the return from the overshoot is a transition the governor never counted; Q65's resend on every tick puts that return right behind the tear (7 transitions against the budget of 6 for one tear on the budget's last change); the quiet hold puts a second between every change (at most 6 in every case the probes tried, in both display models). It needs the Colorlight card to keep its last picture through a second without packets. The owner's check on the real panels: stop the sender for 3 s; the picture must stay, not go black. If the card blanks, tell the loop: the hold then needs another form (a blanking card would blink once a second during the hold), and until then Q65's resend is the fallback
+deadline: the first run of the show on the real panels with people in front of it
+answer:
+status: defaulted (standing instruction)
+
+### Q67: May the arcade's runner count its governor's first frame against black (C52 for the arcade)?
+asked: it14 (the plan writer)
+default: not changed. Priming the runner's governor with one black frame at birth makes `tests/arcade/test_headless.py:227` read 301 governor calls where it asserts 300 (six cases); the loop changes no assert of the arcade without the owner's word. The arcade starts on the dark lobby, so its first frames do not flash today. The show's half of C52 is built in iteration 14 (`from_dark=True`, passed by every caller). With the owner's yes the loop primes the runner and changes that one number
+deadline: the arcade's first night in front of people
 answer:
 status: defaulted (standing instruction)
 

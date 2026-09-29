@@ -1,0 +1,100 @@
+"""A pytest plugin for the C51 probe: the hold in show.wall.GovernedDisplay (in memory), the loop's _push without its
+own repush, the loop's step time as the wall's clock. HOLD=quiet (nothing for 1 s, the counted frame, 1 s, again,
+1 s, then new frames) or HOLD=repush (Q65: the counted frame every push until 1 s without a failure)."""
+import os
+import time
+
+import numpy as np
+
+MODE = os.environ.get("HOLD", "quiet")
+
+
+def pytest_configure(config):
+    import show.main as main
+    import show.wall as wall
+    G = wall.GovernedDisplay
+    init0, send0, push0 = G.__init__, G._send, G.push
+
+    def init(self, *a, clock=None, **kw):
+        init0(self, *a, **kw)
+        self.clock = clock or time.monotonic
+        self.quiet_until, self.need, self.failed_at, self.holding = -1e18, 0, None, False
+
+    def _send(self, frame):
+        try:
+            send0(self, frame)
+        except Exception:
+            now = self.clock()
+            self.failed_at, self.holding = now, True
+            self.quiet_until, self.need = now + 1.0, 2
+            raise
+
+    def push(self, frame):
+        self.sent = True
+        if not self.holding or getattr(self, "_closing", False):
+            return push0(self, frame)
+        now = self.clock()
+        if MODE == "repush":
+            if now - self.failed_at < 1.0:
+                self.repush()
+                return self._last
+            self.holding = False
+            return push0(self, frame)
+        if now < self.quiet_until:
+            self.sent = False
+            return self._last
+        if self.need:
+            self.repush()
+            self.need -= 1
+            self.quiet_until = now + 1.0
+            return self._last
+        self.holding = False
+        return push0(self, frame)
+
+    def close(self):
+        self._closing = True                      # close bypasses the hold
+        return close0(self)
+
+    close0 = G.close
+    G.__init__, G._send, G.push, G.close = init, _send, push, close
+
+    step0, open0 = main.ShowLoop.step, main.ShowLoop._open_wall
+
+    def step(self, now):
+        self._now = now
+        return step0(self, now)
+
+    def _open_wall(self):
+        r = open0(self)
+        if self.wall is not None:
+            self.wall.clock = lambda: getattr(self, "_now", 0.0)
+        return r
+
+    def _push(self, frame, now):
+        if self.wall is None:
+            self._failing(now)
+            return
+        if frame is None:
+            return
+        sent_before = self.wall.failed
+        try:
+            self.wall.push(frame)
+        except Exception:
+            self._failures += 1
+            self._failing(now)
+            return
+        if self.wall.holding and self.wall.failed == sent_before and not self.wall.sent:
+            self._failing(now)
+            return
+        if self._failures:
+            pass
+        self._push_failed, self._failures, self._fail_since = False, 0, None
+        if self._dark:
+            self._dark = False
+            if self.show is not None:
+                try:
+                    self.show.relight()
+                except Exception:
+                    pass
+
+    main.ShowLoop.step, main.ShowLoop._open_wall, main.ShowLoop._push = step, _open_wall, _push

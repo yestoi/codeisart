@@ -1,0 +1,276 @@
+..........FF..............................................F.........F... [ 19%]
+....FF........................................F.....
+strobe 128x32: tick mean 0.348 ms, p95 0.383 ms, governor 0.184 ms (53% of the tick), held 193 ticks
+.
+strobe 64x64: tick mean 0.367 ms, p95 0.400 ms, governor 0.197 ms (54% of the tick), held 193 ticks
+.
+strobe 128x64: tick mean 0.528 ms, p95 0.567 ms, governor 0.343 ms (65% of the tick), held 193 ticks
+.
+static 128x32: tick mean 0.340 ms, p95 0.350 ms, governor 0.165 ms (48% of the tick), held 0 ticks
+.
+static 64x64: tick mean 0.347 ms, p95 0.358 ms, governor 0.177 ms (51% of the tick), held 0 ticks
+.
+static 128x64: tick mean 0.493 ms, p95 0.501 ms, governor 0.305 ms (62% of the tick), held 0 ticks
+............... [ 38%]
+........................................................................ [ 57%]
+........................................................................ [ 76%]
+.....................................................................F.. [ 95%]
+................                                                         [100%]
+=================================== FAILURES ===================================
+_____________ test_crash_shows_static_dim_icon_then_lobby[update] ______________
+
+font5x7 = <show.font.Font object at 0x1053f1e80>, game = <class 'abc.Spy'>
+
+    @pytest.mark.parametrize("game", [spy(raise_in=frozenset({"update"})), Smear], ids=["update", "draw"])
+    def test_crash_shows_static_dim_icon_then_lobby(font5x7, game):
+        assert CRASH_SECONDS == 0.5 and CRASH_RED == (96, 0, 0)            # loop decision 17
+        runner, display, lobby = make_runner(font5x7, games=(game,))
+        runner.launch("spy")
+        feed(runner, stand(ticks=1))
+        assert runner.state()["glitch"] is True and runner.state()["game"] == "spy"
+        frames = [display.last]
+        while runner.state()["glitch"]:
+            feed(runner, stand(ticks=1))
+            frames.append(display.last)
+        assert len(frames) == ticks(CRASH_SECONDS) + 1
+        lit = frames[0].any(axis=2)
+>       assert lit.sum() == CROSS_ICON.sum() and frames[0][..., 1:].max() == 0   # only the icon, never half a frame
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert (np.int64(0) == np.int64(112))
+E        +  where np.int64(0) = <built-in method sum of numpy.ndarray object at 0x108798690>()
+E        +    where <built-in method sum of numpy.ndarray object at 0x108798690> = array([[False, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False],\n      ...alse, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False]], shape=(64, 64)).sum
+E        +  and   np.int64(112) = <built-in method sum of numpy.ndarray object at 0x1059caaf0>()
+E        +    where <built-in method sum of numpy.ndarray object at 0x1059caaf0> = array([[ True,  True,  True,  True,  True,  True,  True,  True,  True,\n         True,  True,  True,  True,  True,  Tru...rue,  True,  True,  True,  True,  True,  True,  True,  True,\n         True,  True,  True,  True,  True,  True,  True]]).sum
+
+tests/arcade/test_runner.py:157: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    arcade:runner.py:395 game spy crashed
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/arcade/runner.py", line 488, in _game_tick
+    game.update(game_sensed, dt)
+  File "/Users/trey/dev/codeisart/tests/arcade/helpers.py", line 72, in update
+    raise RuntimeError("boom in update")
+RuntimeError: boom in update
+______________ test_crash_shows_static_dim_icon_then_lobby[draw] _______________
+
+font5x7 = <show.font.Font object at 0x1053f1e80>
+game = <class 'tests.arcade.test_runner.Smear'>
+
+    @pytest.mark.parametrize("game", [spy(raise_in=frozenset({"update"})), Smear], ids=["update", "draw"])
+    def test_crash_shows_static_dim_icon_then_lobby(font5x7, game):
+        assert CRASH_SECONDS == 0.5 and CRASH_RED == (96, 0, 0)            # loop decision 17
+        runner, display, lobby = make_runner(font5x7, games=(game,))
+        runner.launch("spy")
+        feed(runner, stand(ticks=1))
+        assert runner.state()["glitch"] is True and runner.state()["game"] == "spy"
+        frames = [display.last]
+        while runner.state()["glitch"]:
+            feed(runner, stand(ticks=1))
+            frames.append(display.last)
+        assert len(frames) == ticks(CRASH_SECONDS) + 1
+        lit = frames[0].any(axis=2)
+>       assert lit.sum() == CROSS_ICON.sum() and frames[0][..., 1:].max() == 0   # only the icon, never half a frame
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert (np.int64(0) == np.int64(112))
+E        +  where np.int64(0) = <built-in method sum of numpy.ndarray object at 0x1087e8450>()
+E        +    where <built-in method sum of numpy.ndarray object at 0x1087e8450> = array([[False, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False],\n      ...alse, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False]], shape=(64, 64)).sum
+E        +  and   np.int64(112) = <built-in method sum of numpy.ndarray object at 0x1059caaf0>()
+E        +    where <built-in method sum of numpy.ndarray object at 0x1059caaf0> = array([[ True,  True,  True,  True,  True,  True,  True,  True,  True,\n         True,  True,  True,  True,  True,  Tru...rue,  True,  True,  True,  True,  True,  True,  True,  True,\n         True,  True,  True,  True,  True,  True,  True]]).sum
+
+tests/arcade/test_runner.py:157: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    arcade:runner.py:395 game spy crashed
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/arcade/runner.py", line 489, in _game_tick
+    game.draw(self.canvas)
+  File "/Users/trey/dev/codeisart/tests/arcade/test_runner.py", line 67, in draw
+    raise RuntimeError("boom in draw")
+RuntimeError: boom in draw
+_____________________________ test_push_path_order _____________________________
+
+font5x7 = <show.font.Font object at 0x1053f1e80>
+
+    def test_push_path_order(font5x7):
+        # Q11: limiter, then governor, then push. A frame the limiter changes reaches the governor, and what the
+        # governor returns is what is pushed.
+        class White(SpyGame):
+            def draw(self, canvas):
+                canvas.clear(WHITE)
+    
+        calls = []
+        runner, display, _ = make_runner(font5x7, games=(White,), local_clock=lambda: datetime(2026, 11, 12, 2, 0))
+        limiter, governor = runner.limiter.apply, runner.governor.apply
+    
+        def limit(frame):
+            calls.append(("limiter", frame is runner.canvas.frame, int(frame.max())))
+            out = limiter(frame)
+            calls.append(("limited", out))
+            return out
+    
+        def govern(frame):
+            calls.append(("governor", frame is calls[-1][1]))
+            out = governor(frame)
+            calls.append(("governed", out))
+            return out
+    
+        runner.limiter.apply, runner.governor.apply = limit, govern
+        runner.launch("spy")
+        feed(runner, stand(ticks=1))
+        assert [c[0] for c in calls] == ["limiter", "limited", "governor", "governed"]
+>       assert calls[0][1:] == (True, 255) and calls[2][1] is True
+E       assert ((True, 255) == (True, 255)
+E         
+E         Use -v to get more diff and False is True)
+
+tests/arcade/test_runner.py:648: AssertionError
+__________________ test_push_failure_is_logged_once_a_minute ___________________
+
+font5x7 = <show.font.Font object at 0x1053f1e80>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x108820bc0>
+
+    def test_push_failure_is_logged_once_a_minute(font5x7, caplog):
+        class BadDisplay(RecordingDisplay):
+            def push(self, frame):
+                raise OSError("socket")
+    
+        runner, _, _ = make_runner(font5x7, display=BadDisplay())
+        with caplog.at_level(logging.ERROR, logger="arcade"):
+            feed(runner, scene(ticks=90))
+>           assert len(caplog.records) == 1
+E           assert 2 == 1
+E            +  where 2 = len([<LogRecord: arcade, 40, /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratc...<LogRecord: arcade, 40, /Users/trey/dev/codeisart/arcade/runner.py, 557, "display push failed (logged once a minute)">])
+E            +    where [<LogRecord: arcade, 40, /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratc...<LogRecord: arcade, 40, /Users/trey/dev/codeisart/arcade/runner.py, 557, "display push failed (logged once a minute)">] = <_pytest.logging.LogCaptureFixture object at 0x108820bc0>.records
+
+tests/arcade/test_runner.py:846: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    arcade:prime_plugin.py:46 display push failed (logged once a minute)
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/plug/prime_plugin.py", line 44, in _push
+    self.display.push(out)
+  File "/Users/trey/dev/codeisart/tests/arcade/test_runner.py", line 841, in push
+    raise OSError("socket")
+OSError: socket
+ERROR    arcade:runner.py:557 display push failed (logged once a minute)
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/arcade/runner.py", line 553, in _push
+    self.display.push(out)
+  File "/Users/trey/dev/codeisart/tests/arcade/test_runner.py", line 841, in push
+    raise OSError("socket")
+OSError: socket
+__________ test_a_raising_limiter_or_governor_pushes_nothing[limiter] __________
+
+font5x7 = <show.font.Font object at 0x1053f1e80>, stage = 'limiter'
+caplog = <_pytest.logging.LogCaptureFixture object at 0x1087c5280>
+
+    @pytest.mark.parametrize("stage", ["limiter", "governor"])
+    def test_a_raising_limiter_or_governor_pushes_nothing(font5x7, stage, caplog):
+        # C30: a frame that did not pass both ceilings never reaches the wall.
+        runner, display, _ = make_runner(font5x7)
+    
+        def boom(frame):
+            raise RuntimeError(f"boom in {stage}")
+    
+        setattr(getattr(runner, stage), "apply", boom)
+        with caplog.at_level(logging.ERROR, logger="arcade"):
+            feed(runner, stand(ticks=3))
+        assert display.count == 0
+>       assert [r.getMessage() for r in caplog.records].count("display push failed (logged once a minute)") == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = <built-in method count of list object at 0x1059a5480>('display push failed (logged once a minute)')
+E        +    where <built-in method count of list object at 0x1059a5480> = ['display push failed (logged once a minute)', 'display push failed (logged once a minute)'].count
+
+tests/arcade/test_runner.py:941: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    arcade:prime_plugin.py:46 display push failed (logged once a minute)
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/plug/prime_plugin.py", line 42, in _push
+    self.limiter.apply(self.canvas.frame)
+  File "/Users/trey/dev/codeisart/tests/arcade/test_runner.py", line 935, in boom
+    raise RuntimeError(f"boom in {stage}")
+RuntimeError: boom in limiter
+ERROR    arcade:runner.py:557 display push failed (logged once a minute)
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/arcade/runner.py", line 552, in _push
+    out = self.governor.apply(self.limiter.apply(self.canvas.frame))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/tests/arcade/test_runner.py", line 935, in boom
+    raise RuntimeError(f"boom in {stage}")
+RuntimeError: boom in limiter
+_________ test_a_raising_limiter_or_governor_pushes_nothing[governor] __________
+
+font5x7 = <show.font.Font object at 0x1053f1e80>, stage = 'governor'
+caplog = <_pytest.logging.LogCaptureFixture object at 0x1087c41d0>
+
+    @pytest.mark.parametrize("stage", ["limiter", "governor"])
+    def test_a_raising_limiter_or_governor_pushes_nothing(font5x7, stage, caplog):
+        # C30: a frame that did not pass both ceilings never reaches the wall.
+        runner, display, _ = make_runner(font5x7)
+    
+        def boom(frame):
+            raise RuntimeError(f"boom in {stage}")
+    
+        setattr(getattr(runner, stage), "apply", boom)
+        with caplog.at_level(logging.ERROR, logger="arcade"):
+            feed(runner, stand(ticks=3))
+        assert display.count == 0
+>       assert [r.getMessage() for r in caplog.records].count("display push failed (logged once a minute)") == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = <built-in method count of list object at 0x108ae7200>('display push failed (logged once a minute)')
+E        +    where <built-in method count of list object at 0x108ae7200> = ['display push failed (logged once a minute)', 'display push failed (logged once a minute)'].count
+
+tests/arcade/test_runner.py:941: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    arcade:prime_plugin.py:46 display push failed (logged once a minute)
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/plug/prime_plugin.py", line 43, in _push
+    out = self.governor.apply(np.zeros(self.governor.shape, np.uint8))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/tests/arcade/test_runner.py", line 935, in boom
+    raise RuntimeError(f"boom in {stage}")
+RuntimeError: boom in governor
+ERROR    arcade:runner.py:557 display push failed (logged once a minute)
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/arcade/runner.py", line 552, in _push
+    out = self.governor.apply(self.limiter.apply(self.canvas.frame))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/tests/arcade/test_runner.py", line 935, in boom
+    raise RuntimeError(f"boom in {stage}")
+RuntimeError: boom in governor
+________________ test_with_a_lobby_the_run_starts_in_the_lobby _________________
+
+font5x7 = <show.font.Font object at 0x1053f1e80>
+
+    def test_with_a_lobby_the_run_starts_in_the_lobby(font5x7):
+        lobby = StubLobby()
+        frames, runner = run_headless(make_cfg((64, 64)), font5x7, SpyGame, stand(10), trace=True, lobby=lobby)
+        assert runner.lobby is lobby and lobby.updates == 10 and lobby.available == {"spy"}
+        assert [s["game"] for s in runner.trace] == ["lobby"] * 10
+        assert runner.game is None and len(frames) == 10
+>       assert all(f[0, 1].any() and not f[0, 0].any() for f in frames)  # the stub lobby's pixel, never the spy's
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert False
+E        +  where False = all(<generator object test_with_a_lobby_the_run_starts_in_the_lobby.<locals>.<genexpr> at 0x10878fac0>)
+
+tests/arcade/test_headless.py:147: AssertionError
+_______________ test_every_run_prints_frames_nonblack_and_state ________________
+
+tmp_path = PosixPath('/private/var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/pytest-of-trey/pytest-3445/test_every_run_prints_frames_n0')
+capsys = <_pytest.capture.CaptureFixture object at 0x1059f5ca0>
+
+    def test_every_run_prints_frames_nonblack_and_state(tmp_path, capsys):
+        assert run_shot(tmp_path) == 0
+        out = capsys.readouterr().out
+>       assert "frames 7" in out and "non-black 7" in out and "'game': 'blink'" in out
+E       assert ('frames 7' in "frames 7 non-black 6\nstate {'updates': 7, 'fx_shake': [0, 0], 'fx_particles': 0, 'fx_frozen': False, 'fx_flash': 0.0...attract': False, 'hidden': [], 'crashes': {}, 'glitch': False, 'flash_held_ticks': 0, 'player': 1, 'present': False}\n" and 'non-black 7' in "frames 7 non-black 6\nstate {'updates': 7, 'fx_shake': [0, 0], 'fx_particles': 0, 'fx_frozen': False, 'fx_flash': 0.0...attract': False, 'hidden': [], 'crashes': {}, 'glitch': False, 'flash_held_ticks': 0, 'player': 1, 'present': False}\n")
+
+tests/test_arcade_shot.py:218: AssertionError
+=========================== short test summary info ============================
+FAILED tests/arcade/test_runner.py::test_crash_shows_static_dim_icon_then_lobby[update]
+FAILED tests/arcade/test_runner.py::test_crash_shows_static_dim_icon_then_lobby[draw]
+FAILED tests/arcade/test_runner.py::test_push_path_order - assert ((True, 255...
+FAILED tests/arcade/test_runner.py::test_push_failure_is_logged_once_a_minute
+FAILED tests/arcade/test_runner.py::test_a_raising_limiter_or_governor_pushes_nothing[limiter]
+FAILED tests/arcade/test_runner.py::test_a_raising_limiter_or_governor_pushes_nothing[governor]
+FAILED tests/arcade/test_headless.py::test_with_a_lobby_the_run_starts_in_the_lobby
+FAILED tests/test_arcade_shot.py::test_every_run_prints_frames_nonblack_and_state
+8 failed, 368 passed in 151.49s (0:02:31)

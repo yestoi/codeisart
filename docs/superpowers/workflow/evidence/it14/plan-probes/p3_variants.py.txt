@@ -1,0 +1,46 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""C51 with C52 set aside (every wall primed with black, the wall measured from black): today's loop, Q65's hold
+('repush') and two quieter holds, in real time, in the probe's model (torn rows show at once) and the card's
+(colorlight: the frame packet first shows the rows the previous call left)."""
+import numpy as np
+from tornlib import H, W, TornDisplay, drive_quiet, measure, reversal, strobe
+
+BLACK = np.zeros((H, W, 3), np.uint8)
+MODES = ("none", "repush", "still", "still2")
+REPEAT = {"every 2nd": lambda n: n % 2 == 0, "every 3rd": lambda n: n % 3 == 0,
+          "calls 9-12": lambda n: 9 <= n <= 12, "once (5)": lambda n: n == 5, "every call from 5": lambda n: n >= 5}
+
+
+def run(frames, pred, split, model, fps, mode):
+    d = TornDisplay(pred, split, model)
+    drive_quiet(frames, d, fps, mode)
+    return measure(d.shown, fps, before=BLACK)
+
+
+print("## repeated tears, split H/2: sq (area) in real time")
+print("model | pattern | Hz | fps | case | " + " | ".join(MODES))
+for model in ("probe", "card"):
+    for name, src in (("reversal", reversal), ("strobe", strobe)):
+        for hz, fps in ((10, 20), (10, 30), (5, 20), (5, 30)):
+            frames = src(hz, fps, 3.0)
+            for cname, pred in REPEAT.items():
+                cells = [run(frames, pred, H // 2, model, fps, m) for m in MODES]
+                print(f"{model} | {name} | {hz} | {fps} | {cname} | " + " | ".join(f"{s} ({a:.3f})" for a, s in cells))
+
+print("\n## one tear at call n = 1..24, split rows 16/32/48: worst sq (area) and its (n, split)")
+print("model | pattern | Hz | fps | " + " | ".join(MODES))
+for model in ("probe", "card"):
+    for name, src in (("reversal", reversal), ("strobe", strobe)):
+        for hz, fps in ((10, 20), (5, 30)):
+            frames = src(hz, fps, 2.5)
+            cells = []
+            for m in MODES:
+                worst = (-1, 0.0, None)
+                for split in (16, 32, 48):
+                    for n in range(1, 25):
+                        a, s = run(frames, lambda c, n=n: c == n, split, model, fps, m)
+                        if (s, a) > (worst[0], worst[1]):
+                            worst = (s, a, (n, split))
+                cells.append(f"{worst[0]} ({worst[1]:.3f}) at {worst[2]}")
+            print(f"{model} | {name} | {hz} | {fps} | " + " | ".join(cells))

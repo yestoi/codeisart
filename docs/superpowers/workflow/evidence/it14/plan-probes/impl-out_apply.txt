@@ -1,0 +1,53 @@
+....................................................................F... [ 92%]
+.....F                                                                   [100%]
+=================================== FAILURES ===================================
+_ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+
+    def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
+        now = [0.0]
+        inner = Clocked({17, 21}, lambda: now[0])
+        wall = GovernedDisplay(inner, H, W, fps=16, from_dark=True, clock=lambda: now[0])
+        applied, apply = [], wall.governor.apply
+        wall.governor.apply = lambda f: applied.append(now[0]) or apply(f)
+        got, counted = [], {}
+        for k, f in enumerate(strobe(1, 16, 160)):
+            now[0] = k / 16
+            try:
+                got.append(wall.push(f))
+            except OSError:
+                got.append("raised")
+                counted[k] = wall.last.copy()
+        # call 17 fails at 1.0: still to 2.0; the counted frame at 2.0 and 3.0; new frames from 4.0. Call 21 (4.0625)
+        # fails: still to 5.0625; the counted frame at 5.0625 and 6.0625; new frames from 7.0625.
+        assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+        assert [t for t, _ in inner.sent] == [k / 16 for k in [*range(16), 32, 48, 64, 81, 97, *range(113, 160)]]
+        assert [k for k, g in enumerate(got) if g is None] == [*range(17, 32), *range(33, 48), *range(49, 64),
+                                                               *range(66, 81), *range(82, 97), *range(98, 113)]
+        for sent, pushed, failed in ((16, 32, 16), (17, 48, 16), (19, 81, 65), (20, 97, 65)):
+            assert np.array_equal(inner.sent[sent][1], counted[failed]) and np.array_equal(got[pushed], counted[failed])
+>       assert applied == [k / 16 for k in [*range(17), 64, 65, *range(113, 160)]] and wall.governed == len(applied) - 2
+E       assert ([0.0, 0.0625,..., 0.3125, ...] == [0.0, 0.0625,..., 0.3125, ...]
+E         
+E         At index 17 diff: 1.0625 != 4.0
+E         Left contains 90 more items, first extra item: 4.25
+E         Use -v to get more diff)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:160: AssertionError
+________ test_every_governed_wall_starts_from_dark_and_the_show_s_holds ________
+
+    def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
+        made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
+                if "GovernedDisplay(" in p.read_text()}
+>       assert made == {"main.py", "wall_pattern.py"}
+E       AssertionError: assert set() == {'main.py', 'wall_pattern.py'}
+E         
+E         Extra items in the right set:
+E         'main.py'
+E         'wall_pattern.py'
+E         Use -v to get more diff
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:179: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+2 failed, 76 passed in 4.65s

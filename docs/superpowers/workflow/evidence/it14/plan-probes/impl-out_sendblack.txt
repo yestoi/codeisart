@@ -1,0 +1,387 @@
+................................................................FFFFFFFF [ 92%]
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-probe] _____
+
+lead = 0, card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+>           drive(frames, inner, 20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:82: in drive
+    wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/wall14.py:30: in __init__
+    self.display.push(self.governor.apply(np.zeros(self.governor.shape, np.uint8)))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_plan_wall_hold.TornDisplay object at 0x10159c8f0>
+frame = array([[[0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0...    [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]], shape=(64, 128, 3), dtype=uint8)
+
+    def push(self, frame):
+        self.calls += 1
+        if self.card:
+            self.screen = self.rows.copy()
+        torn = self.tears(self.calls)
+        if torn:
+            self.rows[:self.split] = frame[:self.split]
+        else:
+            self.rows = frame.copy()
+        if not self.card:
+            self.screen = self.rows.copy()
+        self.shown.append((self.tick, self.screen.copy()))
+        if torn:
+>           raise OSError("torn")
+E           OSError: torn
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:39: OSError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-card] ______
+
+lead = 0, card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+>           drive(frames, inner, 20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:82: in drive
+    wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/wall14.py:30: in __init__
+    self.display.push(self.governor.apply(np.zeros(self.governor.shape, np.uint8)))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_plan_wall_hold.TornDisplay object at 0x10159d8e0>
+frame = array([[[0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0...    [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]], shape=(64, 128, 3), dtype=uint8)
+
+    def push(self, frame):
+        self.calls += 1
+        if self.card:
+            self.screen = self.rows.copy()
+        torn = self.tears(self.calls)
+        if torn:
+            self.rows[:self.split] = frame[:self.split]
+        else:
+            self.rows = frame.copy()
+        if not self.card:
+            self.screen = self.rows.copy()
+        self.shown.append((self.tick, self.screen.copy()))
+        if torn:
+>           raise OSError("torn")
+E           OSError: torn
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:39: OSError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-probe] _____
+
+lead = 1, card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+>           drive(frames, inner, 20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:82: in drive
+    wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/wall14.py:30: in __init__
+    self.display.push(self.governor.apply(np.zeros(self.governor.shape, np.uint8)))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_plan_wall_hold.TornDisplay object at 0x10159d2e0>
+frame = array([[[0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0...    [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]], shape=(64, 128, 3), dtype=uint8)
+
+    def push(self, frame):
+        self.calls += 1
+        if self.card:
+            self.screen = self.rows.copy()
+        torn = self.tears(self.calls)
+        if torn:
+            self.rows[:self.split] = frame[:self.split]
+        else:
+            self.rows = frame.copy()
+        if not self.card:
+            self.screen = self.rows.copy()
+        self.shown.append((self.tick, self.screen.copy()))
+        if torn:
+>           raise OSError("torn")
+E           OSError: torn
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:39: OSError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-card] ______
+
+lead = 1, card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+>           drive(frames, inner, 20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:82: in drive
+    wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/wall14.py:30: in __init__
+    self.display.push(self.governor.apply(np.zeros(self.governor.shape, np.uint8)))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_plan_wall_hold.TornDisplay object at 0x10159e7b0>
+frame = array([[[0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0...    [0, 0, 0],
+        ...,
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]], shape=(64, 128, 3), dtype=uint8)
+
+    def push(self, frame):
+        self.calls += 1
+        if self.card:
+            self.screen = self.rows.copy()
+        torn = self.tears(self.calls)
+        if torn:
+            self.rows[:self.split] = frame[:self.split]
+        else:
+            self.rows = frame.copy()
+        if not self.card:
+            self.screen = self.rows.copy()
+        self.shown.append((self.tick, self.screen.copy()))
+        if torn:
+>           raise OSError("torn")
+E           OSError: torn
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:39: OSError
+_ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+
+    def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
+        now = [0.0]
+        inner = Clocked({17, 21}, lambda: now[0])
+        wall = GovernedDisplay(inner, H, W, fps=16, from_dark=True, clock=lambda: now[0])
+        applied, apply = [], wall.governor.apply
+        wall.governor.apply = lambda f: applied.append(now[0]) or apply(f)
+        got, counted = [], {}
+        for k, f in enumerate(strobe(1, 16, 160)):
+            now[0] = k / 16
+            try:
+                got.append(wall.push(f))
+            except OSError:
+                got.append("raised")
+                counted[k] = wall.last.copy()
+        # call 17 fails at 1.0: still to 2.0; the counted frame at 2.0 and 3.0; new frames from 4.0. Call 21 (4.0625)
+        # fails: still to 5.0625; the counted frame at 5.0625 and 6.0625; new frames from 7.0625.
+>       assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+E       assert (1.0 == 1.0 and 2 == 2 and [15, 64] == [16, 65]
+E        +  where 2 = <wall14.GovernedDisplay object at 0x10159f4d0>.failed
+E         
+E         At index 0 diff: 15 != 16
+E         Use -v to get more diff)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:154: AssertionError
+___ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-20] ____
+
+pattern = <function reversal at 0x101565260>, hz = 10, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x1012f6f30>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+___ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-30] ____
+
+pattern = <function reversal at 0x101565260>, hz = 10, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x102ce8530>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-20] ____
+
+pattern = <function reversal at 0x101565260>, hz = 5, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x102ce90a0>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-30] ____
+
+pattern = <function reversal at 0x101565260>, hz = 5, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x102ce9a60>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-20] _____
+
+pattern = <function strobe at 0x101565300>, hz = 10, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x102cea450>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-30] _____
+
+pattern = <function strobe at 0x101565300>, hz = 10, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x102ceae70>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+_____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-20] _____
+
+pattern = <function strobe at 0x101565300>, hz = 5, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x102ceb890>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+_____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-30] _____
+
+pattern = <function strobe at 0x101565300>, hz = 5, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+>       assert inner.calls == 0                                       # nothing is sent at birth
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 1 == 0
+E        +  where 1 = <test_plan_wall_hold.Clocked object at 0x102ceb2f0>.calls
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:168: AssertionError
+________ test_every_governed_wall_starts_from_dark_and_the_show_s_holds ________
+
+    def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
+        made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
+                if "GovernedDisplay(" in p.read_text()}
+>       assert made == {"main.py", "wall_pattern.py"}
+E       AssertionError: assert set() == {'main.py', 'wall_pattern.py'}
+E         
+E         Extra items in the right set:
+E         'wall_pattern.py'
+E         'main.py'
+E         Use -v to get more diff
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:179: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+14 failed, 64 passed in 3.14s

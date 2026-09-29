@@ -1,0 +1,24 @@
+.................................F...................................... [ 44%]
+........................................................................ [ 88%]
+...................                                                      [100%]
+=================================== FAILURES ===================================
+_________ test_after_a_failed_push_the_last_governed_frame_goes_again __________
+
+tmp_path = PosixPath('/private/var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/pytest-of-trey/pytest-3449/test_after_a_failed_push_the_l0')
+
+    def test_after_a_failed_push_the_last_governed_frame_goes_again(tmp_path):
+        inner = FailingPushes({3})
+        loop = playing_loop(tmp_path, inner)                          # call 1
+        loop.step(0.10)                                               # call 2
+        loop.step(0.15)                                               # call 3 fails: its frame was governed
+        governed = loop.wall.governed
+        third = loop.rendered.copy()
+        loop.step(0.20)                                               # calls 4 (the repush) and 5
+>       assert inner.count == 4 and governed == 2 and loop.wall.governed == 3
+E       assert (3 == 4)
+E        +  where 3 = <tests.test_main.FailingPushes object at 0x1036ff170>.count
+
+tests/test_main.py:297: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_main.py::test_after_a_failed_push_the_last_governed_frame_goes_again
+1 failed, 162 passed in 36.51s

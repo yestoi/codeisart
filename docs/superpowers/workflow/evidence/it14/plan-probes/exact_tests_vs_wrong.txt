@@ -1,0 +1,33 @@
+quiet: 1 failed, 77 passed in 3.10s
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+repush: 6 failed, 72 passed in 3.86s
+   1 test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   4 test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget
+still: 5 failed, 73 passed in 2.96s
+   1 test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   3 test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget
+apply: 2 failed, 76 passed in 4.65s
+   1 test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+none: 4 failed, 74 passed in 5.58s
+   1 test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   2 test_torn_pushes_keep_the_wall_in_the_budget_in_real_time
+undark: 17 failed, 61 passed in 2.84s
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   8 test_from_a_dark_wall_the_first_second_is_in_the_budget
+   4 test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget
+   4 test_torn_pushes_keep_the_wall_in_the_budget_in_real_time
+sendblack: 14 failed, 64 passed in 3.14s
+   1 test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   8 test_from_a_dark_wall_the_first_second_is_in_the_budget
+   4 test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget
+primefirst: 18 failed, 60 passed in 2.51s
+   1 test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   8 test_from_a_dark_wall_the_first_second_is_in_the_budget
+   4 test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget
+   4 test_torn_pushes_keep_the_wall_in_the_budget_in_real_time

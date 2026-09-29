@@ -1,0 +1,46 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""C51: today's loop against Q65's hold (in the wall, the clock the tick), measured in real time (tornlib.in_time).
+The probe's cases, then one tear at every call 1..40 at five split rows, in the probe's model and the card's."""
+from tornlib import H, drive_hold, drive_today, measure, reversal, strobe, TornDisplay
+
+CASES = {"every 2nd": lambda n: n % 2 == 0, "every 3rd": lambda n: n % 3 == 0,
+         "calls 9-12": lambda n: 9 <= n <= 12, "once (5)": lambda n: n == 5}
+WALLS = {"today": lambda fr, d, fps: drive_today(fr, d, fps),
+         "Q65 hold": lambda fr, d, fps: drive_hold(fr, d, fps),
+         "hold+apply": lambda fr, d, fps: drive_hold(fr, d, fps, apply_during=True)}
+
+print("## the probe's cases, split H/2, probe model: shown sq in real time (area)")
+print("pattern | Hz | fps | case | " + " | ".join(WALLS))
+for name, src in (("reversal", reversal), ("strobe", strobe)):
+    for hz in (10, 5):
+        for fps in (20, 30):
+            frames = src(hz, fps, 3.0)
+            for cname, pred in CASES.items():
+                cells = []
+                for wname, drive in WALLS.items():
+                    d = TornDisplay(pred)
+                    drive(frames, d, fps)
+                    a, sq = measure(d.shown, fps)
+                    cells.append(f"{sq} ({a:.3f})")
+                print(f"{name} | {hz} | {fps} | {cname} | " + " | ".join(cells))
+
+print("\n## one tear at call n (1..40), split rows 8/16/32/48/56: the worst sq over n and splits, and where")
+print("model | pattern | Hz | fps | " + " | ".join(WALLS))
+for model in ("probe", "card"):
+    for name, src in (("reversal", reversal), ("strobe", strobe)):
+        for hz in (10, 5):
+            for fps in (20, 30):
+                frames = src(hz, fps, 3.0)
+                cells = []
+                for wname, drive in WALLS.items():
+                    worst = (0, None)
+                    for split in (8, 16, 32, 48, 56):
+                        for n in range(1, 41):
+                            d = TornDisplay(lambda c, n=n: c == n, split, model)
+                            drive(frames, d, fps)
+                            a, sq = measure(d.shown, fps)
+                            if sq > worst[0] or a > 0:
+                                worst = (max(sq, worst[0]), (n, split, round(a, 3)))
+                    cells.append(f"{worst[0]} at {worst[1]}")
+                print(f"{model} | {name} | {hz} | {fps} | " + " | ".join(cells))

@@ -1,0 +1,127 @@
+................................................................FFFFF... [ 92%]
+.....F                                                                   [100%]
+=================================== FAILURES ===================================
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-probe] _____
+
+lead = 0, card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 6
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [  0,   0,   0],\n        [  0,   0,   0],\n        [  0,   0,   0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-card] ______
+
+lead = 0, card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 6
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-probe] _____
+
+lead = 1, card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 7
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-card] ______
+
+lead = 1, card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 7
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [  0,   0,   0],\n        [  0,   0,   0],\n        [  0,   0,   0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+_ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+
+    def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
+        now = [0.0]
+        inner = Clocked({17, 21}, lambda: now[0])
+        wall = GovernedDisplay(inner, H, W, fps=16, from_dark=True, clock=lambda: now[0])
+        applied, apply = [], wall.governor.apply
+        wall.governor.apply = lambda f: applied.append(now[0]) or apply(f)
+        got, counted = [], {}
+        for k, f in enumerate(strobe(1, 16, 160)):
+            now[0] = k / 16
+            try:
+                got.append(wall.push(f))
+            except OSError:
+                got.append("raised")
+                counted[k] = wall.last.copy()
+        # call 17 fails at 1.0: still to 2.0; the counted frame at 2.0 and 3.0; new frames from 4.0. Call 21 (4.0625)
+        # fails: still to 5.0625; the counted frame at 5.0625 and 6.0625; new frames from 7.0625.
+>       assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+E       assert (1.0 == 1.0 and 2 == 2 and [16, 20] == [16, 65]
+E        +  where 2 = <wall14.GovernedDisplay object at 0x101e26ba0>.failed
+E         
+E         At index 1 diff: 20 != 65
+E         Use -v to get more diff)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:154: AssertionError
+________ test_every_governed_wall_starts_from_dark_and_the_show_s_holds ________
+
+    def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
+        made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
+                if "GovernedDisplay(" in p.read_text()}
+>       assert made == {"main.py", "wall_pattern.py"}
+E       AssertionError: assert set() == {'main.py', 'wall_pattern.py'}
+E         
+E         Extra items in the right set:
+E         'wall_pattern.py'
+E         'main.py'
+E         Use -v to get more diff
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:179: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+6 failed, 72 passed in 3.86s

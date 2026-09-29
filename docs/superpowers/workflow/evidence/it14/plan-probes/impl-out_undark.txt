@@ -1,0 +1,336 @@
+....FF..............................FF..........................FFFF.FFF [ 92%]
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+_ test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-probe] _
+
+pattern = <function reversal at 0x1038a9260>, hz = 10, fps = 20
+tears = 'calls 9-12', card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("tears", TEARS, ids=list(TEARS))
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_torn_pushes_keep_the_wall_in_the_budget_in_real_time(pattern, hz, fps, tears, card):
+        inner = TornDisplay(TEARS[tears], card=card)
+        drive(pattern(hz, fps, 3 * fps), inner, fps)
+        seq, n = in_time(inner.shown, fps)
+>       assert flash_area(seq, fps=n) == 0.0 and square_flashes(seq, fps=n) <= BUDGET
+E       assert (0.5 == 0.0)
+E        +  where 0.5 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:104: AssertionError
+_ test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-card] _
+
+pattern = <function reversal at 0x1038a9260>, hz = 10, fps = 20
+tears = 'calls 9-12', card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("tears", TEARS, ids=list(TEARS))
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_torn_pushes_keep_the_wall_in_the_budget_in_real_time(pattern, hz, fps, tears, card):
+        inner = TornDisplay(TEARS[tears], card=card)
+        drive(pattern(hz, fps, 3 * fps), inner, fps)
+        seq, n = in_time(inner.shown, fps)
+>       assert flash_area(seq, fps=n) == 0.0 and square_flashes(seq, fps=n) <= BUDGET
+E       assert (0.5 == 0.0)
+E        +  where 0.5 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [  0,   0,   0],\n        [  0,   0,   0],\n        [  0,   0,   0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:104: AssertionError
+_ test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-probe] _
+
+pattern = <function strobe at 0x1038a9300>, hz = 10, fps = 20
+tears = 'calls 9-12', card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("tears", TEARS, ids=list(TEARS))
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_torn_pushes_keep_the_wall_in_the_budget_in_real_time(pattern, hz, fps, tears, card):
+        inner = TornDisplay(TEARS[tears], card=card)
+        drive(pattern(hz, fps, 3 * fps), inner, fps)
+        seq, n = in_time(inner.shown, fps)
+>       assert flash_area(seq, fps=n) == 0.0 and square_flashes(seq, fps=n) <= BUDGET
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:104: AssertionError
+_ test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-card] _
+
+pattern = <function strobe at 0x1038a9300>, hz = 10, fps = 20
+tears = 'calls 9-12', card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("tears", TEARS, ids=list(TEARS))
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_torn_pushes_keep_the_wall_in_the_budget_in_real_time(pattern, hz, fps, tears, card):
+        inner = TornDisplay(TEARS[tears], card=card)
+        drive(pattern(hz, fps, 3 * fps), inner, fps)
+        seq, n = in_time(inner.shown, fps)
+>       assert flash_area(seq, fps=n) == 0.0 and square_flashes(seq, fps=n) <= BUDGET
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [..., 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:104: AssertionError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-probe] _____
+
+lead = 0, card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 7
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [  0,   0,   0],\n        [  0,   0,   0],\n        [  0,   0,   0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-card] ______
+
+lead = 0, card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 8
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-probe] _____
+
+lead = 1, card = False
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 8
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+_____ test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-card] ______
+
+lead = 1, card = True
+
+    @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+    @pytest.mark.parametrize("lead", [0, 1])
+    def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
+        frames = reversal(10, 20, 50, top_first=True)
+        frames = frames[:1] * lead + frames
+        for call in range(1, 11):
+            inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+            drive(frames, inner, 20)
+            seq, n = in_time(inner.shown, 20)
+>           assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
+E           AssertionError: 9
+E           assert (7 <= 6)
+E            +  where 7 = square_flashes([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [  0,   0,   0],\n        [  0,   0,   0],\n        [  0,   0,   0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:116: AssertionError
+___ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-20] ____
+
+pattern = <function reversal at 0x1038a9260>, hz = 10, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (0.5 == 0.0)
+E        +  where 0.5 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+___ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-30] ____
+
+pattern = <function reversal at 0x1038a9260>, hz = 10, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (0.5 == 0.0)
+E        +  where 0.5 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [  0,   0,   0],\n        [  0,   0,   0],\n        [  0,   0,   0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=30)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-20] ____
+
+pattern = <function reversal at 0x1038a9260>, hz = 5, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (0.5 == 0.0)
+E        +  where 0.5 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-30] ____
+
+pattern = <function reversal at 0x1038a9260>, hz = 5, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (0.5 == 0.0)
+E        +  where 0.5 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [  0,   0,   0],\n        [  0,   0,   0],\n        [  0,   0,   0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=30)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-20] _____
+
+pattern = <function strobe at 0x1038a9300>, hz = 10, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-30] _____
+
+pattern = <function strobe at 0x1038a9300>, hz = 10, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [..., 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=30)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+_____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-20] _____
+
+pattern = <function strobe at 0x1038a9300>, hz = 5, fps = 20
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [.....,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(64, 128, 3), dtype=uint8), ...], fps=20)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+_____ test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-30] _____
+
+pattern = <function strobe at 0x1038a9300>, hz = 5, fps = 30
+
+    @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+    @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
+    def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
+        inner = Clocked(set(), lambda: 0.0)
+        wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True)
+        assert inner.calls == 0                                       # nothing is sent at birth
+        for f in pattern(hz, fps, 2 * fps):
+            wall.push(f)
+        shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
+        assert len(shown) == 2 * fps + 1
+>       assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = flash_area([array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [..., 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0]]], shape=(64, 128, 3), dtype=uint8), ...], fps=30)
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:173: AssertionError
+________ test_every_governed_wall_starts_from_dark_and_the_show_s_holds ________
+
+    def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
+        made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
+                if "GovernedDisplay(" in p.read_text()}
+>       assert made == {"main.py", "wall_pattern.py"}
+E       AssertionError: assert set() == {'main.py', 'wall_pattern.py'}
+E         
+E         Extra items in the right set:
+E         'main.py'
+E         'wall_pattern.py'
+E         Use -v to get more diff
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py:179: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-probe]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-card]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-10-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[reversal-5-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-20]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-30]
+FAILED ../../../../private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/test_plan_wall_hold.py::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+17 failed, 61 passed in 2.84s

@@ -1,0 +1,61 @@
+.F...........F..........................F............................... [ 43%]
+........................................................................ [ 86%]
+.......................                                                  [100%]
+=================================== FAILURES ===================================
+_______________ test_the_display_gets_exactly_the_governed_frame _______________
+
+    def test_the_display_gets_exactly_the_governed_frame():
+        inner, reference = Recorder(), FlashGovernor(H, W, 2.2, fps=FPS)
+        wall = GovernedDisplay(inner, H, W, fps=FPS, gamma=2.2)
+        for k, f in enumerate(strobe(40)):
+            out = wall.push(f)
+            want = reference.apply(f)
+>           assert np.array_equal(inner.pushed[-1], want) and np.array_equal(out, want), k
+E           AssertionError: 6
+E           assert (False)
+E            +  where False = <function array_equal at 0x101a08230>(array([[[0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [0...   [0, 0, 0],\n        ...,\n        [0, 0, 0],\n        [0, 0, 0],\n        [0, 0, 0]]], shape=(192, 512, 3), dtype=uint8), array([[[ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        ...,\n        [ 51, 255,  51],\n     ...    ...,\n        [ 51, 255,  51],\n        [ 51, 255,  51],\n        [ 51, 255,  51]]], shape=(192, 512, 3), dtype=uint8))
+E            +    where <function array_equal at 0x101a08230> = np.array_equal
+
+tests/test_wall.py:65: AssertionError
+_____ test_close_after_a_failed_push_sends_the_counted_frame_before_black ______
+
+    def test_close_after_a_failed_push_sends_the_counted_frame_before_black():
+        inner, reference = FailingPushes({31}), FlashGovernor(H, W, 2.2, fps=FPS)
+        wall, frames = GovernedDisplay(inner, H, W, fps=FPS), strobe(31)
+        for f in frames[:30]:
+            wall.push(f)
+            reference.apply(f)
+        with pytest.raises(OSError):
+            wall.push(frames[30])                                     # governed and counted, never shown
+        assert wall.unsent and wall.failed == 1 and wall.governed == 30
+        black = np.zeros((H, W, 3), np.uint8)
+        want = [reference.apply(frames[30]).copy(), reference.apply(black).copy(), reference.apply(black).copy()]
+        wall.close()
+        assert inner.count == 33 and inner.closed and not wall.unsent
+>       assert all(np.array_equal(got, w) for got, w in zip(inner.pushed[-3:], want))
+E       assert False
+E        +  where False = all(<generator object test_close_after_a_failed_push_sends_the_counted_frame_before_black.<locals>.<genexpr> at 0x101c59380>)
+
+tests/test_wall_close.py:32: AssertionError
+_____________ test_a_clean_close_pushes_two_governed_black_frames ______________
+
+    def test_a_clean_close_pushes_two_governed_black_frames():
+        inner, reference = Recorder(), FlashGovernor(H, W, 2.2, fps=FPS)
+        wall = GovernedDisplay(inner, H, W, fps=FPS)
+        for f in strobe(40):
+            wall.push(f)
+            reference.apply(f)
+        black = np.zeros((H, W, 3), np.uint8)
+        want = [reference.apply(black).copy(), reference.apply(black).copy()]
+        wall.close()
+        assert inner.count == 42 and inner.closed
+>       assert all(np.array_equal(got, w) for got, w in zip(inner.pushed[-2:], want))
+E       assert False
+E        +  where False = all(<generator object test_a_clean_close_pushes_two_governed_black_frames.<locals>.<genexpr> at 0x101c58ba0>)
+
+tests/test_main.py:416: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_wall.py::test_the_display_gets_exactly_the_governed_frame
+FAILED tests/test_wall_close.py::test_close_after_a_failed_push_sends_the_counted_frame_before_black
+FAILED tests/test_main.py::test_a_clean_close_pushes_two_governed_black_frames
+3 failed, 164 passed in 38.84s

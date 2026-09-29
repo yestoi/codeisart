@@ -1,0 +1,48 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""C51, one tear, more phases: the reversal from either half, the strobe lit or dark first, each with 0 or 1 extra
+first frame; primed walls; 10 Hz at fps 20; one tear at call n = 1..20 at split rows 8/24/32/40/56. The worst sq."""
+import numpy as np
+from tornlib import H, W, LIT, TornDisplay, drive_quiet, measure
+
+BLACK = np.zeros((H, W, 3), np.uint8)
+MODES = ("none", "repush", "still", "still2")
+
+
+def rev(first_bottom, n):
+    out = []
+    for k in range(n):
+        f = np.zeros((H, W, 3), np.uint8)
+        if (k % 2 == 0) == first_bottom:
+            f[H // 2:] = LIT
+        else:
+            f[:H // 2] = LIT
+        out.append(f)
+    return out
+
+
+def stb(first_lit, n):
+    return [np.broadcast_to(LIT if (k % 2 == 0) == first_lit else np.zeros(3, np.uint8), (H, W, 3)).copy()
+            for k in range(n)]
+
+
+PATTERNS = {"reversal bottom first": rev(True, 50), "reversal top first": rev(False, 50),
+            "strobe lit first": stb(True, 50), "strobe dark first": stb(False, 50)}
+fps = 20
+print("model | pattern | prefix | " + " | ".join(MODES))
+for model in ("probe", "card"):
+    for pname, frames in PATTERNS.items():
+        for prefix in (0, 1):
+            seq = [frames[0]] * prefix + frames
+            cells = []
+            for m in MODES:
+                worst = (-1, 0.0, None)
+                for split in (8, 24, 32, 40, 56):
+                    for n in range(1, 21):
+                        d = TornDisplay(lambda c, n=n: c == n, split, model)
+                        drive_quiet(seq, d, fps, m)
+                        a, s = measure(d.shown, fps, before=BLACK)
+                        if (s, a) > (worst[0], worst[1]):
+                            worst = (s, a, (n, split))
+                cells.append(f"{worst[0]} ({worst[1]:.3f}) at {worst[2]}")
+            print(f"{model} | {pname} | {prefix} | " + " | ".join(cells), flush=True)
