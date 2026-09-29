@@ -1,0 +1,165 @@
+$ python -m tools.show_shot --session presses --every-ms 1000 --look both --out it12-presses
+0.0s held 0  PRESS A BUTTON ON ANY PORTRAIT
+1.0s held 0  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+2.1s held 0  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+3.0s held 0  NOW: hello by Trey, 2026, Not A.I. | QUEUED #1
+3.1s held 0  NOW: hello by Trey, 2026, Not A.I. | QUEUED #1
+3.5s held 0  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+4.2s held 0  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+5.2s held 0  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+6.2s held 0  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+7.3s held 0  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+8.3s held 0  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+9.3s held 0  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+10.4s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+11.4s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+12.5s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+13.5s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+14.5s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+15.6s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+16.6s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+17.7s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+18.7s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+19.7s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+20.8s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+21.8s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+22.8s held 0  NOW: hello-2 by Trey, 2026, Not A.I.
+23.9s held 0  PRESS A BUTTON ON ANY PORTRAIT
+24.9s held 0  PRESS A BUTTON ON ANY PORTRAIT
+26.0s held 0  PRESS A BUTTON ON ANY PORTRAIT
+27.0s held 0  PRESS A BUTTON ON ANY PORTRAIT
+28.0s held 0  PRESS A BUTTON ON ANY PORTRAIT
+29.1s held 0  PRESS A BUTTON ON ANY PORTRAIT
+30.1s held 0  PRESS A BUTTON ON ANY PORTRAIT
+31.2s held 0  PRESS A BUTTON ON ANY PORTRAIT
+32.2s held 0  PRESS A BUTTON ON ANY PORTRAIT
+33.2s held 0  PRESS A BUTTON ON ANY PORTRAIT
+34.3s held 0  PRESS A BUTTON ON ANY PORTRAIT
+35.3s held 0  PRESS A BUTTON ON ANY PORTRAIT
+36.4s held 0  PRESS A BUTTON ON ANY PORTRAIT
+37.4s held 0  PRESS A BUTTON ON ANY PORTRAIT
+38.4s held 0  PRESS A BUTTON ON ANY PORTRAIT
+39.5s held 0  PRESS A BUTTON ON ANY PORTRAIT
+held 0
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 46.9 s; git status after: clean]
+
+$ python -m tools.show_shot --session strobe --seconds 6 --every-ms 100 --cols 6 --look led --out it12-strobe
+0.0s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.1s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.2s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.3s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.4s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.5s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.7s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.8s held 0  PRESS A BUTTON ON ANY PORTRAIT
+0.9s held 0  PRESS A BUTTON ON ANY PORTRAIT
+1.0s held 0  PRESS A BUTTON ON ANY PORTRAIT
+1.0s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.1s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.2s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.3s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.4s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.5s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.6s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.8s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.9s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.0s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.1s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.2s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.3s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.4s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.5s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.6s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.7s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.8s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+3.0s held 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+3.1s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.2s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.3s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.4s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.5s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.6s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.7s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.8s held 0  NOW: strobe by Trey, 2026, Not A.I.
+3.9s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.1s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.2s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.3s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.4s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.5s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.6s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.7s held 0  NOW: strobe by Trey, 2026, Not A.I.
+4.8s held 1  NOW: strobe by Trey, 2026, Not A.I.
+4.9s held 3  NOW: strobe by Trey, 2026, Not A.I.
+5.0s held 5  NOW: strobe by Trey, 2026, Not A.I.
+5.1s held 5  NOW: strobe by Trey, 2026, Not A.I.
+5.3s held 5  NOW: strobe by Trey, 2026, Not A.I.
+5.4s held 6  NOW: strobe by Trey, 2026, Not A.I.
+5.5s held 6  NOW: strobe by Trey, 2026, Not A.I.
+5.6s held 6  NOW: strobe by Trey, 2026, Not A.I.
+5.7s held 6  NOW: strobe by Trey, 2026, Not A.I.
+5.8s held 6  NOW: strobe by Trey, 2026, Not A.I.
+5.9s held 6  NOW: strobe by Trey, 2026, Not A.I.
+held 6
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 12.6 s; git status after: clean]
+
+$ python -m tools.show_shot --strips --look both --cols 3 --out it12-strips
+[exit 0, 0.8 s; git status after: clean]
+
+$ python -m tools.show_shot --strips --look led --cols 1 --crop 0,176,512,16 --out it12-strips-row
+[exit 0, 0.3 s; git status after: clean]
+
+$ python -m tools.show_shot --config show.poc.toml --strips --look led --cols 2 --out it12-strips-poc
+[exit 0, 0.2 s; git status after: clean]
+
+$ python -m tools.show_shot --config show.poc.toml --session presses --every-ms 1000 --look led --out it12-presses-poc
+0.0s held 0  PRESS A BUTTON
+1.0s held 0  PLAYING
+2.0s held 0  PLAYING
+3.1s held 0  QUEUED #1
+3.5s held 8  PLAYING
+4.1s held 13  PLAYING
+5.1s held 13  PLAYING
+6.1s held 13  Not A.I.
+7.2s held 13  Trey, 2026
+8.2s held 13  Trey, 2026
+9.2s held 13  Trey, 2026
+10.2s held 13  Trey, 2026
+11.2s held 13  Trey, 2026
+12.3s held 14  Trey, 2026
+13.3s held 21  Not A.I.
+14.3s held 21  Not A.I.
+15.3s held 21  Trey, 2026
+16.4s held 21  Trey, 2026
+17.4s held 21  Trey, 2026
+18.4s held 21  Not A.I.
+19.4s held 21  Not A.I.
+20.5s held 21  Not A.I.
+21.5s held 21  Trey, 2026
+22.5s held 21  Trey, 2026
+23.5s held 21  PRESS A BUTTON
+24.5s held 21  PRESS A BUTTON
+25.5s held 21  PRESS A BUTTON
+26.5s held 21  ON ANY PORTRAIT
+27.6s held 21  ON ANY PORTRAIT
+28.6s held 21  ON ANY PORTRAIT
+29.6s held 21  PRESS A BUTTON
+30.6s held 21  PRESS A BUTTON
+31.6s held 21  PRESS A BUTTON
+32.6s held 21  ON ANY PORTRAIT
+33.6s held 21  ON ANY PORTRAIT
+34.6s held 21  ON ANY PORTRAIT
+35.7s held 21  PRESS A BUTTON
+36.7s held 21  PRESS A BUTTON
+37.7s held 21  PRESS A BUTTON
+38.7s held 21  ON ANY PORTRAIT
+39.7s held 21  ON ANY PORTRAIT
+held 21
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 40.8 s; git status after: clean]
+

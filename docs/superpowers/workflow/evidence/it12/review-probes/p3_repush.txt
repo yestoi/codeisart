@@ -1,0 +1,20 @@
+budget 6 steps 120 fps 20, 512x192
+| pattern | strobe period (steps) | display calls | received | governed | held | raw area | governed area | governed squares | received area | received squares | wall-per-step area | wall-per-step squares | received == governed with repeats removed |
+| none | 1 | 122 | 122 | 122 | 44 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| every 2nd, before | 1 | 240 | 120 | 122 | 44 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| every 2nd, after | 1 | 240 | 240 | 122 | 44 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| every 3rd, before | 1 | 180 | 120 | 121 | 43 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 2 | True |
+| run of 3 in 7, before | 1 | 141 | 80 | 81 | 29 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 4 | True |
+| run of 5 in 9, after | 1 | 136 | 136 | 61 | 22 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| random 50%, before | 1 | 151 | 74 | 76 | 21 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | False |
+| random 50%, after | 1 | 161 | 161 | 86 | 27 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| random mix | 1 | 145 | 111 | 74 | 23 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| none | 2 | 122 | 122 | 122 | 41 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| every 2nd, before | 2 | 240 | 120 | 122 | 41 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | False |
+| every 2nd, after | 2 | 240 | 240 | 122 | 41 | 0.8979 | 0.0000 | 6 | 0.0000 | 5 | 0.0000 | 6 | True |
+| every 3rd, before | 2 | 180 | 120 | 121 | 41 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | False |
+| run of 3 in 7, before | 2 | 141 | 80 | 81 | 25 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 4 | True |
+| run of 5 in 9, after | 2 | 136 | 136 | 61 | 19 | 0.8979 | 0.0000 | 6 | 0.0000 | 5 | 0.0000 | 6 | True |
+| random 50%, before | 2 | 151 | 74 | 76 | 21 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | False |
+| random 50%, after | 2 | 161 | 161 | 86 | 25 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |
+| random mix | 2 | 145 | 111 | 74 | 16 | 0.8979 | 0.0000 | 6 | 0.0000 | 6 | 0.0000 | 6 | True |

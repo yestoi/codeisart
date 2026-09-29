@@ -1,0 +1,253 @@
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.22
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 22.0
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got nan
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got True
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got -1.0
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got inf
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/arcade/flash.py", line 144, in __init__
+    raise ValueError(f"fps must be an int of at least 2, got {fps!r}")
+ValueError: fps must be an int of at least 2, got 1
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/arcade/flash.py", line 144, in __init__
+    raise ValueError(f"fps must be an int of at least 2, got {fps!r}")
+ValueError: fps must be an int of at least 2, got 0
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/arcade/flash.py", line 144, in __init__
+    raise ValueError(f"fps must be an int of at least 2, got {fps!r}")
+ValueError: fps must be an int of at least 2, got 2.5
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/arcade/flash.py", line 144, in __init__
+    raise ValueError(f"fps must be an int of at least 2, got {fps!r}")
+ValueError: fps must be an int of at least 2, got True
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/arcade/flash.py", line 144, in __init__
+    raise ValueError(f"fps must be an int of at least 2, got {fps!r}")
+ValueError: fps must be an int of at least 2, got -5
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/arcade/flash.py", line 144, in __init__
+    raise ValueError(f"fps must be an int of at least 2, got {fps!r}")
+ValueError: fps must be an int of at least 2, got -5
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-review/p5_fallback.py", line 98, in refuse
+    raise RuntimeError("no governor")
+RuntimeError: no governor
+no flash governor can be built; the display is closed and the wall stays dark
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-review/p5_fallback.py", line 98, in refuse
+    raise RuntimeError("no governor")
+RuntimeError: no governor
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 163, in _open_wall
+    self.wall = GovernedDisplay(raw, cfg.height, cfg.width)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-review/p5_fallback.py", line 98, in refuse
+    raise RuntimeError("no governor")
+RuntimeError: no governor
+no frame has reached the wall for 10 s: all lights off
+the flash governor refused the config; the error frame only
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.22
+no flash governor can be built; the display is closed and the wall stays dark
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 152, in _open_wall
+    self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 23, in __init__
+    raise ValueError(f"gamma must be {GAMMA_MIN} (the card applies gamma) to {GAMMA_MAX} (bytes as they "
+ValueError: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.22
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 163, in _open_wall
+    self.wall = GovernedDisplay(raw, cfg.height, cfg.width)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 25, in __init__
+    self.governor = FlashGovernor(height, width, gamma, fps=fps)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-review/p5_fallback.py", line 98, in refuse
+    raise RuntimeError("no governor")
+RuntimeError: no governor
+no frame has reached the wall for 10 s: all lights off
+config /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/bad.toml: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/bad.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are); the defaults run and the wall names the error
+config /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/bad.toml: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/bad.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are); the defaults run and the wall names the error
+the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 272, in _push
+    self.wall.push(frame)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 32, in push
+    out = self.governor.apply(frame)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-review/p5_fallback.py", line 169, in bad_apply
+    return real_apply(frame[:, :, :2])     # wrong shape: raises before any state changes
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/arcade/flash.py", line 161, in apply
+    raise ValueError(f"frame must be {self.shape} uint8, got {frame.shape} {frame.dtype}")
+ValueError: frame must be (192, 512, 3) uint8, got (192, 512, 2) uint8
+the render failed; the last frame again, and attract
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 253, in _render
+    frame = self.renderer.render(show.term.screen, cursor_on=int(now * 2 * BLINK_HZ) % 2 == 0,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-review/p5_fallback.py", line 188, in bad_render
+    raise RuntimeError("render boom")
+RuntimeError: render boom
+the render failed; the last frame again, and attract
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 253, in _render
+    frame = self.renderer.render(show.term.screen, cursor_on=int(now * 2 * BLINK_HZ) % 2 == 0,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-review/p5_fallback.py", line 188, in bad_render
+    raise RuntimeError("render boom")
+RuntimeError: render boom
+## 5. configs the governor refuses (Config built in code), 60 steps each
+| case | show | wall | governor gamma/fps | pushes | governed | all pushes equal | lit | closed | errors |
+| gamma 0.22 | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.22'] |
+| gamma 22 | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 22.0'] |
+| gamma NaN | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got nan'] |
+| gamma True | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got True'] |
+| gamma -1 | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got -1.0'] |
+| gamma inf | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got inf'] |
+| fps 1 | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: fps must be an int of at least 2, got 1'] |
+| fps 0 | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: fps must be an int of at least 2, got 0'] |
+   run() with fps 0: raised ZeroDivisionError: float division by zero; steps []
+| fps 2.5 | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: fps must be an int of at least 2, got 2.5'] |
+| fps True | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: fps must be an int of at least 2, got True'] |
+| fps -5 | False | True | (2.2, 30) | 121 | 121 | True | True | False | ['flash governor: fps must be an int of at least 2, got -5'] |
+   run() with fps -5: returned 0, steps [0.0, 0.0, 0.0, 0.01, 0.02, 0.03]
+
+## 5b. no governor can be built at all (FlashGovernor raises)
+wall None, pushes 0, raw closed True, lights [], errors ['flash governor: no governor', 'flash governor (defaults): no governor']
+gamma 0.22 + no governor: wall None, pushes 0, raw closed True, show None
+
+## 6. the repo's configs through load_config
+show.toml: backend sdl, 512x192, view text, fps 20, gamma 2.2, strip_look reverse, brightness 0.15 cap 0.4 effective 0.15
+show.poc.toml: backend sdl, 128x64, view ink, fps 20, gamma 2.2, strip_look reverse, brightness 0.15 cap 0.4 effective 0.15
+  'gamma = 0.22': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)
+  'gamma = 22.0': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)
+  'gamma = true': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)
+  'gamma = nan': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)
+  'gamma = inf': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)
+  'gamma = 1': loads (gamma 1, fps 20)
+  'gamma = 2': loads (gamma 2, fps 20)
+  'fps = 1': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: fps must be an int of at least 2
+  'fps = 2.5': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: fps must be an int of at least 2
+  'fps = true': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: fps must be an int of at least 2
+  'fps = 0': raises ValueError: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/t.toml: fps must be an int of at least 2
+  'fps = 2': loads (gamma 2.2, fps 2)
+  'fps = 1000': loads (gamma 2.2, fps 1000)
+config_from(gamma 0.3 file): backend sdl, gamma 2.2, error 'config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/bad.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)'
+  loop on it: show None, pushes 41, governed 41, static True, lit True, governor 2.2/20, errors ['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpk33q5o3g/bad.toml: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)']
+
+## 4. apply raising, renderer raising
+after 3 raising applies and 2 good: pushes 5 (repushes of the last governed 5), show playing True, governor prev was the last shown: True
+renderer raising twice: pushes 5, governed 5, show playing False (attract after abort), last frame lit True

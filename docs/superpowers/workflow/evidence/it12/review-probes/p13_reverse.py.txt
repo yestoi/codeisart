@@ -1,0 +1,41 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 13: the default look 'reverse' renders byte-identical frames to the renderer at 02f3944."""
+import importlib.util
+import random
+from pathlib import Path
+
+import numpy as np
+
+from show.config import PHOSPHORS
+from show.font import Font
+from show.renderer import Renderer
+from show.terminal import Terminal
+
+HERE = Path(__file__).parent
+spec = importlib.util.spec_from_file_location("old_renderer", HERE / "old_renderer.py")
+old = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(old)
+font = Font.load(Path("/Users/trey/dev/codeisart/fonts/5x7.bin"))
+rng = random.Random(7)
+checked = diff = 0
+for (w, h, view) in [(512, 192, "text"), (128, 64, "ink"), (512, 192, "ink")]:
+    for phos in PHOSPHORS.values():
+        for glow in (False, True):
+            new_r = Renderer(font, w, h, 80, 24, phos, glow=glow, view=view)
+            old_r = old.Renderer(font, w, h, 80, 24, phos, glow=glow, view=view)
+            term = Terminal(80, 23)
+            for k in range(25):
+                data = "".join(rng.choice(["\x1b[1m", "\x1b[7m", "\x1b[0m", "\n", "\r", "é", "漢", "#", "x" * 5,
+                                           " ", "\x1b[H", "\x1b[?25l", "\x1b[?25h", "\x1b[5;10H"])
+                               for _ in range(rng.randint(5, 200)))
+                term.feed(data.encode())
+                strip = rng.choice(["", "NOW: hello by Trey, 2026, Not A.I. | PLAYING", "PRESS A BUTTON",
+                                    "x" * 120, "é漢"])
+                cursor_on, fs, vis = rng.random() < 0.5, rng.random() < 0.3, rng.random() < 0.5
+                a = new_r.render(term.screen, cursor_on, strip, full_screen=fs, strip_visible=vis).copy()
+                term.screen.dirty.update(range(23))
+                b = old_r.render(term.screen, cursor_on, strip, full_screen=fs, strip_visible=vis).copy()
+                checked += 1
+                if not np.array_equal(a, b):
+                    diff += 1
+print(f"frames compared {checked}, differing {diff}")

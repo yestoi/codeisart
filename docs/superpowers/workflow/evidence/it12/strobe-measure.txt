@@ -1,0 +1,11 @@
+no unshare: entries run without network isolation
+show.toml fps 20 steps 156 pushed kept 156 held_ticks 21
+  rendered: flash_area 0.8979, big changes of the mean level 34
+  pushed:   flash_area 0.0000, big changes of the mean level 20
+  square_flashes rendered 15 pushed 6
+  lit first at 3.9406622080132365 s, last at 7.581261583138257 s
+show.poc.toml fps 20 steps 157 pushed kept 157 held_ticks 22
+  rendered: flash_area 0.7651, big changes of the mean level 40
+  pushed:   flash_area 0.0000, big changes of the mean level 22
+  square_flashes rendered 14 pushed 6
+  lit first at 3.928601291961968 s, last at 7.677903958130628 s

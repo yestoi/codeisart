@@ -1,0 +1,4 @@
+245cb57
+ M docs/superpowers/workflow/state.md
+?? reports/
+?? research_notes/

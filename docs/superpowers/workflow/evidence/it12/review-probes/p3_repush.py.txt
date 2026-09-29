@@ -1,0 +1,131 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Safety point 3: the loop's repush path on a display that fails on a pattern, fed a 10 Hz and a 5 Hz
+full-screen strobe (StrobePlayer as the plan's, period 1 and 2 steps at 20 fps). Measures, with arcade.flash's
+own measures, (a) every frame the display received, (b) the wall's picture at the end of each step (time
+sampled at 20 Hz), (c) the governed sequence (every apply output)."""
+import random
+import tempfile
+from pathlib import Path
+
+import numpy as np
+
+from arcade.flash import BUDGET, flash_area, square_flashes
+from show.audio import FakeAudio
+from show.config import Config
+from show.lights import FakeLights
+from show.main import ShowLoop
+from tests.show_helpers import HELLO_C, write_entry
+
+ROOT = Path("/Users/trey/dev/codeisart")
+FILL = b"\x1b[?25l\x1b[H\x1b[7m" + b" " * (80 * 23 - 1) + b"\x1b[0m"
+STEPS = 120
+
+
+def player(period):
+    class StrobePlayer:
+        def __init__(self, entry, term, cfg):
+            self.term, self.done, self.crowd, self.k = term, False, False, 0
+
+        def start(self, now, crowd=False):
+            self.term.reset(23)
+
+        def stop(self):
+            self.done = True
+
+        def tick(self, now):
+            self.term.feed(FILL if (self.k // period) % 2 == 0 else b"\x1b[?25l\x1b[H\x1b[2J")
+            self.k += 1
+            return []
+    return StrobePlayer
+
+
+class Failing:
+    """fail(n) -> None | 'before' | 'after' | ('torn',) for display call n (1-based)."""
+
+    def __init__(self, fail):
+        self.fail, self.n, self.received, self.shown, self.closed = fail, 0, [], None, False
+
+    def push(self, frame):
+        self.n += 1
+        how = self.fail(self.n)
+        if how == "before":
+            raise OSError("send failed")
+        self.received.append(frame.copy())
+        self.shown = frame.copy()
+        if how == "after":
+            raise OSError("send failed after the frame was out")
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
+def patterns():
+    rng_b = random.Random(1)
+    rb = [rng_b.random() < 0.5 for _ in range(1000)]
+    rng_a = random.Random(2)
+    ra = [rng_a.random() < 0.5 for _ in range(1000)]
+    return {
+        "none": lambda n: None,
+        "every 2nd, before": lambda n: "before" if n % 2 == 0 else None,
+        "every 2nd, after": lambda n: "after" if n % 2 == 0 else None,
+        "every 3rd, before": lambda n: "before" if n % 3 == 0 else None,
+        "run of 3 in 7, before": lambda n: "before" if n % 7 in (1, 2, 3) else None,
+        "run of 5 in 9, after": lambda n: "after" if n % 9 in (1, 2, 3, 4, 5) else None,
+        "random 50%, before": lambda n: "before" if rb[n] else None,
+        "random 50%, after": lambda n: "after" if ra[n] else None,
+        "random mix": lambda n: ("before" if rb[n] else None) if ra[n] else ("after" if rb[n + 1] else None),
+    }
+
+
+def run(period, name, fail):
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        write_entry(tmp / "entries", "a", 1, HELLO_C)
+        cfg = Config(backend="fake", entries_dir=tmp / "entries", font_path=ROOT / "fonts" / "5x7.bin",
+                     audio_dir=tmp, fps=20)
+        disp = Failing(fail)
+        loop = ShowLoop(cfg, display=disp, player_factory=player(period), notify=lambda s: None)
+        loop._devices = True
+        loop.lights, loop.audio = FakeLights(), FakeAudio()
+        loop.start(0.0)
+        governed, rendered = [], []
+        real_apply = loop.wall.governor.apply
+
+        def apply(frame):
+            out = real_apply(frame)
+            governed.append(out.copy())
+            return out
+        loop.wall.governor.apply = apply
+        loop.presses.put(1)
+        sampled = []
+        for k in range(1, STEPS + 1):
+            loop.step(k / 20)
+            rendered.append(loop.rendered.copy())
+            if disp.shown is not None:
+                sampled.append(disp.shown.copy())
+        try:
+            loop.wall.close()
+        except OSError:
+            pass
+        # is the received sequence the governed one with repeats only?
+        ded = [f for i, f in enumerate(disp.received) if i == 0 or not np.array_equal(f, disp.received[i - 1])]
+        gd = [f for i, f in enumerate(governed) if i == 0 or not np.array_equal(f, governed[i - 1])]
+        same = len(ded) == len(gd) and all(np.array_equal(a, b) for a, b in zip(ded, gd))
+        row = (name, period, disp.n, len(disp.received), len(governed), loop.wall.governor.held_ticks,
+               flash_area(rendered, fps=20), flash_area(governed, fps=20), square_flashes(governed, fps=20),
+               flash_area(disp.received, fps=20), square_flashes(disp.received, fps=20),
+               flash_area(sampled, fps=20), square_flashes(sampled, fps=20), same)
+        return row
+
+
+print("budget", BUDGET, "steps", STEPS, "fps 20, 512x192")
+print("| pattern | strobe period (steps) | display calls | received | governed | held | raw area | governed area"
+      " | governed squares | received area | received squares | wall-per-step area | wall-per-step squares"
+      " | received == governed with repeats removed |")
+for period in (1, 2):
+    for name, fail in patterns().items():
+        r = run(period, name, fail)
+        print("| " + " | ".join(f"{v:.4f}" if isinstance(v, float) else str(v) for v in r) + " |", flush=True)

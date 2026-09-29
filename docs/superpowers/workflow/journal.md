@@ -621,3 +621,134 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   transcript's words), Q58 (the short strip on 128x64): all four answered by the owner during the iteration, with Q53
   (the ink view) and Q54 (the three strip variants are drawn in D3; the pick stays open).
 - Status: done
+
+## Iteration 12 — 2026-09-29
+- The operator's verdict on the sheets, written 04:02 CDT before any other tool call (sheets stamped 245cb57, clean, made
+  from a clean detached checkout; read with the Read tool: the three strip sheets whole, the press session at the led
+  look from 0 to 12.5 s and 19.7 to 24.9 s, three of its frames at the 10 m look, the strobe from 3.0 to 5.9 s, the
+  128x64 session from 0 to 26.5 s at the led look and 0 to 12.3 s at the 10 m look):
+  - The show runs by itself on the full wall (512x192). 0.0 s: attract, the banner `CODE IS ART, A.I. IS NOT` and
+    `Press the button on any portrait to compile and run it.`, the cursor block, and on row 24 the strip
+    `PRESS A BUTTON ON ANY PORTRAIT`. 1.0 s, after the press: `hello`, `Created by Trey, 2026, Not A.I.`,
+    `$ cat hello.c`, strip `NOW: hello by Trey, 2026, Not A.I. | PLAYING`. 3.0 s, a second press: `| QUEUED #1`.
+    3.5 s: `| PLAYING` again (a third press, it seems; to check which). 4.2 and 5.2 s: `$ cc -Wall -o hello hello.c`,
+    the real warning `hello.c:21:9: warning: unused variable 'leftover'`, `1 warning generated.`, `$ ./hello`.
+    6.2 to 9.3 s: the band sweeps, no trail; the strip says `| NEXT: hello-2 (1 queued)`. 10.4 s: the queued entry
+    starts by itself, title `hello-2`, strip `NOW: hello-2 by Trey, 2026, Not A.I.` with no NEXT part. 19.7 to 22.8 s:
+    `hello, world` dwells. 23.9 s: attract is back, the banner and hello's source scrolling. `held 0` on every frame:
+    the governor holds nothing of a normal entry on the full wall.
+  - Legible: the body text reads at the led look and at 10 m. The strip in the present look (`reverse`) reads at the
+    led look; at 10 m it reads badly: the lit field swallows the dark letters, and a cursor on row 23 runs into it.
+  - The three strip looks are drawn (Q54). `reverse`: dark letters on a bright field, thin at 10 m. `dim-reverse`:
+    the same on a darker field, a little better, still weak. `bright-on-field`: bright letters on a dim field; at
+    10 m it is the clearest of the three on the full wall and on 128x64 (`Trey, 2026`, `Not A.I.` read at once). The
+    loop's pick for show.toml is `bright-on-field`; the pick among the three stays the owner's.
+  - 128x64 (ink view, `show.poc.toml`): the strip alternates as Q58 and Q61 say (`PRESS A BUTTON` / `ON ANY
+    PORTRAIT`; `Trey, 2026` / `Not A.I.`), and a notice fills it (`PLAYING`, `QUEUED #1`). The entry's name never
+    stands on the short strip, only on the title line at the start (the plan's reading of Q58; for the owner). In
+    the `reverse` look the `T` of `Trey` stands on the left edge and reads as `I`. The governor holds parts of the
+    ink view while the source types and scrolls: held 8 at 3.5 s, 13 at 4.1 s, 21 at 13.3 s; the frame at 3.5 s
+    shows it as a smear of two frames. That is Q60 (accepted on the proof of concept), now seen.
+  - The strobe session: the sheet takes a frame every 100 ms, which is the strobe's own period, so the samples fall
+    on the same phase and the sheet cannot show flicker or its absence by itself. What it shows: black with the strip
+    until 3.3 s, a lit field from 4.3 to 4.7 s (held 0), dark at 4.8 to 5.0 s while held climbs 1, 3, 5, then a lit
+    field that stands still from 5.1 s to the end with held 6 and the strip readable on it. The log prints `held 6`
+    and no `flash_area`: the plan's "pushed flash_area 0.0" is not in what I read. Open, to check before the
+    iteration is judged: what `held` counts, how long the entry strobes, where the tool reports the flash area, and
+    a sampling interval that does not alias. The proof of the safety property is the exact tests and the reviewer's
+    probes, not this sheet.
+  - After the verdict, checked (04:03): `held` is the governor's count of held ticks so far; the entry strobes for
+    3 s from about 3.9 s, so a 6 s session shows 2 s of it; the tool prints no flash area (its test asserts it). The
+    operator measured the session frame by frame (evidence/it12/strobe-measure.txt, 8.5 s, every step kept):
+
+    | wall | frames | flash_area | square flashes | held ticks |
+    |---|---|---|---|---|
+    | 512x192 | rendered, before the governor | 0.898 | 15 | |
+    | 512x192 | pushed, what the wall gets | 0.000 | 6 (the budget) | 21 |
+    | 128x64 | rendered | 0.765 | 14 | |
+    | 128x64 | pushed | 0.000 | 6 | 22 |
+
+    The running show holds a strobing entry to the budget. The third press at 3.5 s is station 1 again, the entry
+    that plays: the strip answers `PLAYING`.
+- Plan: docs/superpowers/plans/2026-09-29-it12-show-runs.md (02f3944), 299 lines, thin, a SAFETY SLICE. Written in 21
+  minutes; the plan review (one round and its confirmation, evidence/it12/plan-review.md, plan-review-round2.md)
+  blocked on five findings and then on two that the fix had opened (B1 to B7): an exact test that a correct governor
+  would fail, a gamma that turns the governor off, an AST test that proved nothing, a render raise that froze the
+  wall, the strip pick against the owner's answer, a way round the governor through `_send`, the fallback against
+  the AST test. All seven were fixed in the plan before any code was written.
+- Shipped: D3, the show runs; 02f3944..245cb57, 14 commits, 25 files, 2715 insertions, 34 deletions. No file of the
+  arcade changed; `arcade/flash.py`, `arcade/brightness.py` and `show/display/colorlight.py` are unchanged since
+  0dae849 (the show imports the governor).
+  - I0 (5771782): `strip_look`, `gamma` (1.0 to 2.2) and `fps` (an int of at least 2) checked in `show/config.py`.
+  - T-term (004b606, merged 2a8d053): C49. `Terminal.kill()` closes the master and forgets the group when its pump
+    raises; `EntryPlayer.stop()` never raises.
+  - T-strip (ce6759d, merged 44ebcc2): the strip's three looks and `renderer_for` (Q54); the default look is
+    byte-identical to before (the reviewer compared 300 frames).
+  - T-state (cc29a90, merged 185bf22): `show/state.py`, the `Show`: the queue, the notices, the strip's texts, the
+    short strip that alternates (Q58, Q61), stations above 5 left out of attract and autoplay (Q56), a press on an
+    empty portrait (Q62), every raise back to the next entry or attract; attract feeds a rejected line once.
+  - T-deploy (0e37c89, c4924b7, merged 01b8910): `hello.c` fits 80 columns (comments only, one warning still);
+    `deploy/show.service` and `deploy/README.md`, text only, never installed.
+  - T-main (6fac4c1, merged 29a1d10): `show/wall.py`, the `GovernedDisplay` (every frame through
+    `FlashGovernor.apply`, the last governed frame pushed again after a failed push, two governed black frames at
+    the close), and `show/main.py`, the `ShowLoop` (setup never exits, the static error frame, the retry, the
+    watchdog, the lights off after 10 s without a frame on the wall), `python -m show`.
+  - T-shot (2ae14e3, merged 245cb57): `show_shot --session presses|strobe` and `--strips`: the show itself in the
+    sheets, its frames taken after the governor.
+- Review: APPROVED after 1 round, no blocking finding (evidence/it12/reviewer.md, probes in review-probes/; 9 minutes
+  by the clock, 03:56 to 04:05; the reviewer's own "about 25" is wrong). The ten safety points:
+  - Every path to a display is governed: `make_display` is called once, inside `GovernedDisplay(...)`; `_send` has
+    two callers, `push` and `repush`; no alias, `getattr` or lambda reaches a display's `push`.
+  - The exact safety tests equal the plan's text in every assert, input and number (layout only changed).
+  - Under displays that fail on a pattern (every second push, runs of 3 and 5, random 50 %, before or after the
+    frame shows), with a 10 Hz and a 5 Hz strobe: raw flash area 0.8979, received 0.0000, square flashes at most 6.
+  - A raising `apply` or renderer leaves the picture, the loop goes on, and the next frame is governed against the
+    right one. A gamma or fps the governor refuses (eleven values) shows only the governed error frame, no show; if
+    no governor can be built the display is closed and the wall stays dark.
+  - The loop cannot step faster than `cfg.fps`. The show's own drawing (cursor, strip, notice) stays far under the
+    budget. No assert removed (0 lines removed under tests/); the core plan's `lights.ticks == 1` became
+    `lights.levels == {}` because the plan moved the lights' tick to the loop: not a weakening.
+  - C49: the it11 probe run on the new code: `stop()` returns, the master is closed, the child gone.
+- Deploy: none (never deployed by the loop; nothing under `deploy/` installed or run).
+- Verify: 7 of 7 of the show daemon's checklist (item 5, `arcade doctor`, dropped: no camera path, and the display
+  path is covered by the review). 1 freshness: the sheets are stamped 245cb57 = HEAD at verify, clean, from a clean
+  detached checkout. 2 the suite is green. 3 skips stay at 1 (the unshare test on the Mac). 4 collected rose from
+  966 to 1064. 6 evidence/it12/. 7 the verdict above.
+- Tests: 1064 collected, 1063 passed, 1 skipped, 231.39 s with the sheet reads, the strobe measure and the reviewer's
+  probes beside it (the orchestrator's last run alone: 220.58 s; limit 235 s; it11: 966, 202.18 s). T-main's tests
+  add 13.4 s, T-shot's 6.6 s (its share was 5 s).
+- Minutes: about 138, from 01:50 to 04:08 CDT: plan 21, plan review and its fixes 33, implement 71 (serial 4,
+  parallel tasks 41.5 on the critical path, integration 23.5), review 9 with verify beside it (8), report
+  2.
+- Loop decisions and deviations:
+  - The iteration took about 138 minutes against a target of 90. Why: the safety plan review and its two fix
+    rounds took 33 minutes and found seven real problems before any code; and the tasks stand in three groups by
+    their dependencies (the loop needs the state machine and the looks, the sheet tool needs the loop), so only the
+    first group ran in parallel.
+  - The strip's look in show.toml was NOT changed, against the plan's I2. `tests/test_config.py:48`
+    (`test_repo_show_toml_matches_defaults`, older than this iteration) asserts that show.toml equals `Config()`,
+    and the plan keeps `Config`'s default at `reverse`: the two cannot both hold, and the plan review did not see
+    it. The operator changes no assert and writes no code. The pick (`bright-on-field`) becomes the default in
+    `Config` and in show.toml together as a task of iteration 13, test first, reviewed. Until then the show draws
+    `reverse`; the owner can see any look with `strip_look` in a copy of show.toml given by `--config`.
+  - The sheet tool caps a sheet's width at 2080 px, so the full wall's sessions are one column of frames
+    (2056 x 32076 and 2056 x 43806): `--cols 6` did nothing there. The operator cut them into tiles to read them.
+    `it12-presses-distance.png` (13 MB) and `it12-strobe-distance.png` (4 MB) are not committed; three frames of the
+    first are (`it12-presses-distance-4s-to-6s.png`); the commands in show-shot.txt make them again.
+  - Commit trailers: I0, T-state and T-main end with `Co-Authored-By: Claude Opus 5.5` (the agents' own harness
+    told them so; they ran on that model); the history is not rewritten.
+  - `cd` was used three times by agents, outside the repository and with no git command or edit (T-term once, the
+    reviewer twice), against Loop rule 9; both reported it themselves.
+  - The orchestrator's other choices are listed in evidence/it12/orchestrator-report.md; the reviewer judged them.
+- Carried forward: none new. C49 closed (004b606, confirmed by the review's run of the it11 probe). C50 (the
+  arcade's unbounded gamma) stays for the arcade's next safety slice.
+- Noted, not carried (roadmap.md, "it12 (D4's plan)"): no SIGTERM handler, so `systemctl stop` leaves the last
+  governed frame on the wall, static, and skips the two black frames; after a failed push `close` governs black
+  without pushing the last frame again; a broken show.toml falls back to `Config()` with backend `sdl`, which on
+  the Pi leaves the wall dark; `network-online.target` can delay the start with no carrier; no test pins that the
+  loop calls `lights.tick`; an fps of 0 or less in a `Config` built in code; the README's "every few seconds" for
+  the watchdog; a torn push on the Colorlight path (a bench check in D4); the strobe sheet's sampling.
+- Owner questions: none new. For the next check-in: the loop's reading of Q54 (`bright-on-field`); on 128x64 the
+  entry's name never stands on the short strip (Q58 as answered); Q60 seen in the sheets (the ink view smears for a
+  moment while source scrolls); the first playable by hand is `python -m show` with key 6 (hello is station 6).
+- Status: done

@@ -1,0 +1,36 @@
+import sys
+CO = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it12-verify-checkout"
+sys.path.insert(0, CO)
+import numpy as np
+from arcade.flash import flash_area, square_flashes
+import show.main as sm
+from show.config import load_config
+from tools import show_shot as ss
+from pathlib import Path
+
+rendered, times = [], []
+orig = sm.ShowLoop.step
+def step(self, now):
+    orig(self, now)
+    if self.rendered is not None:
+        rendered.append(np.array(self.rendered).copy()); times.append(now)
+sm.ShowLoop.step = step
+for name in ("show.toml", "show.poc.toml"):
+    rendered.clear(); times.clear()
+    cfg = load_config(Path(CO) / name)
+    frames, strips, held = ss.frames_from_session("strobe", cfg, seconds=8.5, every_ms=1)
+    pushed = [f for _, f in frames]
+    lum = [float(f[: f.shape[0] - 8].mean()) for f in rendered]
+    flips = sum(1 for a, b in zip(lum, lum[1:]) if abs(a - b) > 20)
+    lum_p = [float(f[: f.shape[0] - 8].mean()) for f in pushed]
+    flips_p = sum(1 for a, b in zip(lum_p, lum_p[1:]) if abs(a - b) > 20)
+    print(name, "fps", cfg.fps, "steps", len(rendered), "pushed kept", len(pushed), "held_ticks", held)
+    print("  rendered: flash_area %.4f, big changes of the mean level %d" % (flash_area(rendered, fps=cfg.fps), flips))
+    print("  pushed:   flash_area %.4f, big changes of the mean level %d" % (flash_area(pushed, fps=cfg.fps), flips_p))
+    try:
+        print("  square_flashes rendered", square_flashes(rendered, fps=cfg.fps), "pushed", square_flashes(pushed, fps=cfg.fps))
+    except Exception as e:
+        print("  square_flashes:", type(e).__name__, e)
+    first = next((t for t, l in zip(times, lum) if l > 20), None)
+    last = max((t for t, l in zip(times, lum) if l > 20), default=None)
+    print("  lit first at %s s, last at %s s" % (first, last))

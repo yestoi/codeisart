@@ -1,0 +1,35 @@
+4.64s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+3.62s call     tests/test_show_shot.py::test_strobe_session_is_held
+2.90s call     tests/test_show_shot.py::test_entry_and_attract_modes_write_stamped_sheets
+1.83s call     tests/test_show_shot.py::test_session_and_strips_write_stamped_sheets
+1.57s call     tests/test_show_shot.py::test_entry_mode_with_a_broken_build_replays_the_captured_fallback
+20 passed in 18.39s
+run 1 wall 19 s
+4.72s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+3.63s call     tests/test_show_shot.py::test_strobe_session_is_held
+2.76s call     tests/test_show_shot.py::test_entry_and_attract_modes_write_stamped_sheets
+1.72s call     tests/test_show_shot.py::test_session_and_strips_write_stamped_sheets
+1.55s call     tests/test_show_shot.py::test_entry_mode_with_a_broken_build_replays_the_captured_fallback
+20 passed in 18.07s
+run 2 wall 18 s
+4.64s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+3.59s call     tests/test_show_shot.py::test_strobe_session_is_held
+3.00s call     tests/test_show_shot.py::test_entry_and_attract_modes_write_stamped_sheets
+1.69s call     tests/test_show_shot.py::test_session_and_strips_write_stamped_sheets
+1.67s call     tests/test_show_shot.py::test_entry_mode_with_a_broken_build_replays_the_captured_fallback
+20 passed in 18.45s
+run 3 wall 19 s
+4.46s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+3.65s call     tests/test_show_shot.py::test_strobe_session_is_held
+2.79s call     tests/test_show_shot.py::test_entry_and_attract_modes_write_stamped_sheets
+1.72s call     tests/test_show_shot.py::test_entry_mode_with_a_broken_build_replays_the_captured_fallback
+1.70s call     tests/test_show_shot.py::test_session_and_strips_write_stamped_sheets
+20 passed in 18.04s
+run 4 wall 18 s
+4.51s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+3.60s call     tests/test_show_shot.py::test_strobe_session_is_held
+2.82s call     tests/test_show_shot.py::test_entry_and_attract_modes_write_stamped_sheets
+1.78s call     tests/test_show_shot.py::test_session_and_strips_write_stamped_sheets
+1.59s call     tests/test_show_shot.py::test_entry_mode_with_a_broken_build_replays_the_captured_fallback
+20 passed in 18.00s
+run 5 wall 18 s

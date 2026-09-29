@@ -1,0 +1,196 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Safety points 4, 5, 6: the fallback in _open_wall with configs the governor refuses; a governor that cannot be
+built at all; the repo's show.toml and show.poc.toml through load_config; config_from on a broken file; apply and
+the renderer raising."""
+import math
+import tempfile
+from dataclasses import replace
+from pathlib import Path
+
+import numpy as np
+
+import show.wall as wall_mod
+from arcade.flash import FlashGovernor
+from show.audio import FakeAudio
+from show.config import Config, load_config
+from show.lights import FakeLights
+from show.main import ShowLoop, config_from, parse_args
+from tests.show_helpers import HELLO_C, write_entry
+
+ROOT = Path("/Users/trey/dev/codeisart")
+
+
+class Rec:
+    def __init__(self):
+        self.pushed, self.closed = [], False
+
+    def push(self, frame):
+        self.pushed.append(frame.copy())
+
+    def set_brightness(self, level):
+        self.level = level
+
+    def close(self):
+        self.closed = True
+
+
+def loop_for(cfg, disp, **kw):
+    loop = ShowLoop(cfg, display=disp, notify=lambda s: None, **kw)
+    loop._devices = True
+    loop.lights, loop.audio = FakeLights(), FakeAudio()
+    return loop
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    tmp = Path(tmp)
+    write_entry(tmp / "entries", "a", 1, HELLO_C)
+    base = Config(backend="fake", entries_dir=tmp / "entries", font_path=ROOT / "fonts" / "5x7.bin",
+                  audio_dir=tmp, fps=20)
+    print("## 5. configs the governor refuses (Config built in code), 60 steps each")
+    print("| case | show | wall | governor gamma/fps | pushes | governed | all pushes equal | lit | closed | errors |")
+    for label, kw in [("gamma 0.22", dict(gamma=0.22)), ("gamma 22", dict(gamma=22.0)),
+                      ("gamma NaN", dict(gamma=math.nan)), ("gamma True", dict(gamma=True)),
+                      ("gamma -1", dict(gamma=-1.0)), ("gamma inf", dict(gamma=math.inf)),
+                      ("fps 1", dict(fps=1)), ("fps 0", dict(fps=0)), ("fps 2.5", dict(fps=2.5)),
+                      ("fps True", dict(fps=True)), ("fps -5", dict(fps=-5))]:
+        cfg = replace(base, **kw)
+        d = Rec()
+        loop = loop_for(cfg, d)
+        loop.start(0.0)
+        for k in range(1, 61):
+            loop.step(k / 20)
+        loop.presses.put(1)                         # a press changes nothing: no show
+        for k in range(61, 121):
+            loop.step(k / 20)
+        loop.step(100.0)                            # past RETRY_S: no retry opens anything else
+        w = loop.wall
+        eq = all(np.array_equal(f, d.pushed[0]) for f in d.pushed) if d.pushed else None
+        print(f"| {label} | {loop.show is not None} | {w is not None} | "
+              f"{(w.governor.gamma, w.governor.fps) if w else None} | {len(d.pushed)} | "
+              f"{w.governed if w else None} | {eq} | {bool(d.pushed and d.pushed[-1].any())} | {d.closed} | "
+              f"{loop.errors} |")
+        # run(): pacing computes 1/cfg.fps before its try
+        if kw.get("fps") in (0, -5):
+            loop2 = loop_for(cfg, Rec())
+            ticks = iter([0.0, 0.0, 0.0, 0.0, 0.01, 0.02, 0.03] + [1e9] * 5)
+            steps = []
+            loop2.clock = lambda: next(ticks)
+            loop2.sleep = lambda s: steps.append(("sleep", s))
+            orig = loop2.step
+
+            def st(now, orig=orig):
+                steps.append(now)
+                if len(steps) > 5:
+                    raise KeyboardInterrupt
+                orig(now)
+            loop2.step = st
+            try:
+                rc = loop2.run()
+                print(f"   run() with {label}: returned {rc}, steps {steps}")
+            except Exception as exc:
+                print(f"   run() with {label}: raised {type(exc).__name__}: {exc}; steps {steps}")
+
+    print()
+    print("## 5b. no governor can be built at all (FlashGovernor raises)")
+    real = wall_mod.FlashGovernor
+
+    def refuse(*a, **k):
+        raise RuntimeError("no governor")
+    wall_mod.FlashGovernor = refuse
+    try:
+        d = Rec()
+        loop = loop_for(base, d)
+        loop.start(0.0)
+        for k in range(1, 801):
+            loop.step(k / 20)                       # 40 s: past RETRY_S
+        print(f"wall {loop.wall}, pushes {len(d.pushed)}, raw closed {d.closed}, lights "
+              f"{sorted(set(loop.lights.modes.values()))}, errors {loop.errors}")
+        # and a bad gamma plus no governor: the fallback also fails
+        d = Rec()
+        loop = loop_for(replace(base, gamma=0.22), d)
+        loop.start(0.0)
+        for k in range(1, 801):
+            loop.step(k / 20)
+        print(f"gamma 0.22 + no governor: wall {loop.wall}, pushes {len(d.pushed)}, raw closed {d.closed}, "
+              f"show {loop.show}")
+    finally:
+        wall_mod.FlashGovernor = real
+
+    print()
+    print("## 6. the repo's configs through load_config")
+    for name in ("show.toml", "show.poc.toml"):
+        cfg = load_config(ROOT / name)
+        print(f"{name}: backend {cfg.backend}, {cfg.width}x{cfg.height}, view {cfg.view}, fps {cfg.fps!r}, "
+              f"gamma {cfg.gamma!r}, strip_look {cfg.strip_look}, brightness {cfg.brightness} cap "
+              f"{cfg.brightness_cap} effective {cfg.effective_brightness}")
+        FlashGovernor(cfg.height, cfg.width, cfg.gamma, fps=cfg.fps)
+    for text in ["gamma = 0.22\n", "gamma = 22.0\n", "gamma = true\n", "gamma = nan\n", "gamma = inf\n",
+                 "gamma = 1\n", "gamma = 2\n", "fps = 1\n", "fps = 2.5\n", "fps = true\n", "fps = 0\n",
+                 "fps = 2\n", "fps = 1000\n"]:
+        p = tmp / "t.toml"
+        p.write_text(text)
+        try:
+            c = load_config(p)
+            res = f"loads (gamma {c.gamma!r}, fps {c.fps!r})"
+        except Exception as exc:
+            res = f"raises {type(exc).__name__}: {exc}"
+        print(f"  {text.strip()!r}: {res}")
+    bad = tmp / "bad.toml"
+    bad.write_text('backend = "fake"\ngamma = 0.3\n')
+    cfg, err = config_from(parse_args(["--config", str(bad)]))
+    print(f"config_from(gamma 0.3 file): backend {cfg.backend}, gamma {cfg.gamma}, error {err!r}")
+    cfg, err = config_from(parse_args(["--config", str(bad), "--backend", "fake"]))
+    cfg = replace(cfg, entries_dir=tmp / "entries", font_path=ROOT / "fonts" / "5x7.bin", audio_dir=tmp)
+    d = Rec()
+    loop = loop_for(cfg, d, config_error=err)
+    loop.start(0.0)
+    for k in range(1, 41):
+        loop.step(k / 20)
+    loop.step(40.0)
+    print(f"  loop on it: show {loop.show}, pushes {len(d.pushed)}, governed {loop.wall.governed}, static "
+          f"{all(np.array_equal(f, d.pushed[0]) for f in d.pushed)}, lit {d.pushed[-1].any()}, "
+          f"governor {loop.wall.governor.gamma}/{loop.wall.governor.fps}, errors {loop.errors}")
+
+    print()
+    print("## 4. apply raising, renderer raising")
+    d = Rec()
+    loop = loop_for(base, d)
+    loop.start(0.0)
+    loop.presses.put(1)
+    for k in range(1, 11):
+        loop.step(k / 20)
+    gov = loop.wall.governor
+    real_apply = gov.apply
+    calls = {"n": 0}
+
+    def bad_apply(frame):
+        calls["n"] += 1
+        if calls["n"] in (1, 2):
+            return real_apply(frame[:, :, :2])     # wrong shape: raises before any state changes
+        if calls["n"] == 3:
+            return real_apply(frame.astype(np.float32))   # wrong dtype
+        return real_apply(frame)
+    gov.apply = bad_apply
+    prev_last = loop.wall._last.copy()
+    prev_gov = gov._prev.copy()
+    n0 = len(d.pushed)
+    for k in range(11, 16):
+        loop.step(k / 20)
+    print(f"after 3 raising applies and 2 good: pushes {len(d.pushed) - n0} (repushes of the last governed "
+          f"{sum(np.array_equal(f, prev_last) for f in d.pushed[n0:])}), show playing {loop.show.playing}, "
+          f"governor prev was the last shown: {np.array_equal(prev_gov, prev_last)}")
+    rr = loop.renderer.render
+    state = {"n": 0}
+
+    def bad_render(*a, **k):
+        state["n"] += 1
+        if state["n"] <= 2:
+            raise RuntimeError("render boom")
+        return rr(*a, **k)
+    loop.renderer.render = bad_render
+    n0 = len(d.pushed)
+    gov_before = loop.wall.governed
+    for k in range(16, 21):
+        loop.step(k / 20)
+    print(f"renderer raising twice: pushes {len(d.pushed) - n0}, governed {loop.wall.governed - gov_before}, "
+          f"show playing {loop.show.playing} (attract after abort), last frame lit {d.pushed[-1].any()}")

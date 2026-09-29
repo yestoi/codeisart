@@ -1,0 +1,24 @@
+no unshare: entries run without network isolation
+the pump raised while killing; the rest of the output is dropped
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/terminal.py", line 168, in kill
+    self.pump()
+  File "/Users/trey/dev/codeisart/show/terminal.py", line 108, in pump
+    self.feed(data)
+  File "/Users/trey/dev/codeisart/show/terminal.py", line 48, in feed
+    self.stream.feed(data)
+  File "/Users/trey/dev/codeisart/.venv/lib/python3.12/site-packages/pyte/streams.py", line 424, in feed
+    super(ByteStream, self).feed(data_str)
+  File "/Users/trey/dev/codeisart/.venv/lib/python3.12/site-packages/pyte/streams.py", line 205, in feed
+    taking_plain_text = send(data[offset:offset + 1])
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/.venv/lib/python3.12/site-packages/pyte/streams.py", line 213, in _send_to_parser
+    return self._parser.send(data)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/.venv/lib/python3.12/site-packages/pyte/streams.py", line 353, in _parser_fsm
+    csi_dispatch[char](*params, private=True)
+TypeError: Screen.cursor_up() got an unexpected keyword argument 'private'
+phase Phase.RUN
+stop returned
+phase after Phase.DONE master_fd None pgid kept None
+child gone
