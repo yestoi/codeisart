@@ -26,6 +26,7 @@ from arcade.input import Depth
 from arcade.juice import Juice
 from arcade.scores import Scores
 from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
+from tests.arcade import test_oracle as oracle
 from tests.arcade.helpers import make_cfg, run
 
 WALL = (128, 64)
@@ -614,9 +615,12 @@ def test_bots_module_is_found():
 
 @functools.lru_cache(maxsize=None)
 def bot_play(name: str, s: int):
-    """One play of a named bot ("none" is Nobody) on seed s, shared by the two bot tests."""
+    """One play of a named bot ("none" is Nobody) on seed s, shared by the two bot tests: the oracle's play of it
+    when test_oracle has already measured it (the same seeds), else played here."""
     make = Nobody if name == "none" else for_game(Pong)[0][name]
-    return play(Pong, make(), s)
+    bot = make()
+    measured = oracle.PLAYS.get(oracle.play_key(Pong, type(bot).__name__, s))
+    return measured if measured is not None else play(Pong, bot, s)
 
 
 def test_good_beats_lazy_beats_nobody():
