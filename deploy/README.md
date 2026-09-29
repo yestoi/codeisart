@@ -45,7 +45,9 @@ Afterwards, with the unit running again, `systemctl show show -p NRestarts` must
 
 The test pattern goes through the governor, capped:
 
-    .venv/bin/python tools/wall_pattern.py --config show.toml
+    .venv/bin/python tools/wall_pattern.py --config show.toml panels
+
+`grid` is the other alignment pattern.
 
 ## Hardware watchdog
 
