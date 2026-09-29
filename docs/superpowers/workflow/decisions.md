@@ -365,3 +365,10 @@ default: about 0.5 m nearer to 0.7 m back from where they raised their hand cove
 deadline: the second live smoke
 answer:
 status: defaulted (standing instruction)
+
+### Q48: Is the body's size held when the hips leave the camera's view, inside iteration 9?
+asked: it9
+default: yes, as one more task of iteration 9 (S3, the plan's amendment). The owner's hand-read spike (branch `spike/hand-read`, docs/superpowers/reviews/2026-09-28-hand-read-spike.md) measured that without hips the size falls back to 1.25 shoulder widths, which read 0.16 against 0.26 measured on the owner. Pong by the body reads that size: a hip dropout would throw the paddle to the far end, and stepping in is when the hips leave the frame. The tracker learns each person's size per shoulder width while the hips are seen and uses it when they are not. The spike's other findings (the full model, 30 captures a second, duplicate poses, the hand point, the cursor's hand switch) wait for the arcade's return (C45 to C47 in the roadmap)
+deadline: the second live smoke
+answer:
+status: defaulted (standing instruction)
