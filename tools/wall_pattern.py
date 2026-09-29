@@ -8,7 +8,8 @@
     python tools/wall_pattern.py rgb   --png rgb.png                 # or as a file, with no display
 
 The colorlight backend needs Linux and CAP_NET_RAW (show/display/colorlight.py), so on the wall this runs
-from the Omarchy box or a Pi, after the card's one-time LEDVision setup. 64x64 is `--width 64 --height 64`.
+from the Omarchy box or a Pi, after the card's one-time LEDVision setup. The default is 128x64, the four
+panels 2 x 2; `--width 128 --height 32` is one row of two panels, `--width 64 --height 64` a column.
 It runs until Ctrl-C, or for --seconds, and leaves the wall dark. Brightness is the card's brightness packet,
 0.1 unless asked, and never over CAP (0.4, what the power supplies are sized for). No pattern lights half the
 wall. Each pattern prints what to look for; write what the panel shows into
@@ -34,6 +35,7 @@ from show.display import make_display  # noqa: E402
 from show.font import CELL_H, CELL_W, Font  # noqa: E402
 
 CAP = 0.4                     # the brightness the power supplies are sized for (arcade.toml, show.toml)
+PANEL_W, PANEL_H = 64, 32      # one panel
 LEVEL = 128                   # the byte the solid colours use
 STEP_SECONDS = 2.0            # how long `steps` holds each level
 STEPS = (0.125, 0.25, 0.5, 1.0)   # shares of --brightness, low to high
@@ -89,12 +91,12 @@ def index(width: int, height: int, t: float) -> np.ndarray:
     frame = _blank(width, height)
     frame[0, ::8] = DIM
     frame[::8, 0] = DIM
-    if width > height:                     # two 64x32 panels side by side
-        frame[:, width // 2 - 1] = CYAN
-        frame[:, width // 2] = YELLOW
-    else:                                  # stacked
-        frame[height // 2 - 1, :] = CYAN
-        frame[height // 2, :] = YELLOW
+    for x in range(PANEL_W, width, PANEL_W):       # a seam at every panel edge inside the wall
+        frame[:, x - 1] = CYAN
+        frame[:, x] = YELLOW
+    for y in range(PANEL_H, height, PANEL_H):
+        frame[y - 1, :] = CYAN
+        frame[y, :] = YELLOW
     for (y, x), colour in zip(((0, 0), (0, width - 2), (height - 2, 0), (height - 2, width - 2)),
                               (RED, GREEN, BLUE, WHITE)):
         frame[y:y + 2, x:x + 2] = colour
@@ -184,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--backend", default="colorlight", choices=["colorlight", "sdl", "ddp"])
     p.add_argument("--iface", default="eth0", help="the wired interface the card is on (colorlight)")
     p.add_argument("--width", type=int, default=128)
-    p.add_argument("--height", type=int, default=32)
+    p.add_argument("--height", type=int, default=64)
     p.add_argument("--brightness", type=float, default=0.1, help=f"over 0, at most {CAP}")
     p.add_argument("--seconds", type=float, default=0.0, help="0 runs until Ctrl-C")
     p.add_argument("--fps", type=float, default=20.0)

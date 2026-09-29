@@ -189,6 +189,15 @@ def test_feel_json_and_games_md_from_report(packaged):
         assert f"![{name}]({name})" in md
 
 
+def test_ok_column_is_a_dash_without_a_budget():
+    rep = {"metrics": {"presence_answer_seconds": 1.5, "rally": 4.5, "empty": None},
+           "budgets": {"rally": {"min": 2.0, "max": 9.0}, "empty": {"min": 1.0}}}
+    rows = {line.split(" | ")[0].strip("| "): line for line in ev._feel_table(rep)[2:]}
+    assert rows["presence_answer_seconds"] == "| presence_answer_seconds | 1.5 | - | - |"
+    assert rows["rally"].endswith("| yes |")
+    assert rows["empty"].endswith("| no |")
+
+
 def test_runs_as_a_script_and_as_a_module():
     for cmd in ([PY, "-m", "tools.arcade_evidence", "--help"],
                 [PY, str(ROOT / "tools" / "arcade_evidence.py"), "--help"]):
