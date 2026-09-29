@@ -443,3 +443,63 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - Owner items open: the second live smoke (live-smoke.md: both commands, the camera at chest height looking level, no
   lamp in view); the 2 x 2 wiring shown with the `index` pattern; the hardware bring-up.
 - Status: done. By Q49 the loop goes on to the show daemon's foundation tasks as iteration 10.
+
+## Iteration 10 — 2026-09-29
+- Verify verdict (the operator, 2026-09-29 00:12 CDT, from the sheets read with the Read tool before any other tool call; sheets stamped ee5a9ce, clean, made from a clean detached checkout of HEAD): **the terminal on the wall shows what D1 asks.** What the sheets show:
+  - `it10-strip` (plain and led): the attract frame is black but for the block cursor at row 1, column 1 and the strip on row 24, in reverse video across all 80 columns, reading "PRESS A BUTTON ON ANY PORTRAIT". The play frames carry "NOW: hello by Trey, 2026, Not A.I. | NEXT: -". In the scrolled frame lines 19 to 40 fill rows 1 to 22, the cursor stands on row 23, and no program text reaches row 24. At the led look every line reads; the strip reads, with less contrast than the normal text.
+  - `it10-edges`: 80 `A`s fill row 1 from edge to edge and the block cursor sits on the last cell (column 80), the `A` dark inside it. The block character and the CJK characters are drawn as `?`. Bold is brighter than normal; reverse and bold reverse are lit fields with dark letters. The fourth frame has no cursor (hidden). The strip is on every frame.
+  - `it10-fullscreen`: with the strip hidden the program's "ROW 24" is on the wall's last row with the cursor after it; with the strip shown, rows 01 to 23 stay and the strip covers row 24.
+  - `it10-cc`: the source by `cat`, then the real compiler's warning, "hello.c:3:9: warning: unused variable 'unused' [-Wunused-variable]" with its caret lines and "1 warning generated.", then `./hello` and "result 42". The output is real; the session is fed as steps, not run in the pty (the orchestrator's deviation, T-shot 1).
+  - `it10-seq`: `seq 1 60` in a real pty: the frame at 0.06 s shows 39 to 60 on rows 1 to 22 and the cursor on row 23, inside 23 rows; the strip is untouched. The sheet has two frames, not eight: the child ended at once and the tool stops with it.
+  - `it10-cc-distance` (10 m): the program's text reads. The strip's dark letters on the lit field read poorly: the field's glow closes the letters. A note for D3's plan, below.
+  - `it10-prototype` (`--crop 0,0,128,64`, led): 8 rows and 18 whole columns ("line 01: the quick"), not the plan's 21: the wall's terminal starts at x 16, so a window from x 0 holds 16 px of margin. The window also holds no strip (rows 1 to 8). The plan's command was wrong, not the code: the prototype's window is `--crop 16,128,128,64` (21 columns, rows 17 to 24, the strip inside). A note for D4's test pattern.
+  - `it10-prototype-window` (added by the operator, `--crop 16,128,128,64`, led, near the panels' own scale): 21 columns, rows 17 to 24, the strip inside. The program's text reads well. **The strip reads badly at this scale**: the letters are dark gaps one LED wide inside a lit field, and "PRESS A BUTTON ON ANY" can be guessed more than read. The large sheets hid this because they are scaled down on the screen. The code does what the spec says (reverse video); the look is the question: Q54, defaulted, for D3's plan and the owner's eyes on the panels.
+- Plan: docs/superpowers/plans/2026-09-28-it10-show-terminal-on-the-wall.md (8f7015d), 299 lines, thin, written by the plan
+  writer in 8 minutes. Not a safety slice: no plan review. BASE 2eb5f3e.
+- Shipped: D1, the show daemon's terminal on the wall; 15 new files, 2111 lines, 2eb5f3e..0065293; no file of the arcade
+  and no shared file changed.
+  - T3 (6a08b06, merged 86dd652): `show/renderer.py`: the strip on row 24, `full_screen` and `strip_visible`, `?` for
+    what the font cannot draw, the dirty-only cache; 1.06 ms a render (bound 5 ms).
+  - T4 (3b860c2, merged 7013cc8): `show/terminal.py`: a pty and a pyte screen, the pump bounded by bytes and time
+    (default pumps at most 4096 bytes, median 6.94 ms against 20 ms; a 2 ms budget returns in 3.9 ms), `reset` restores
+    80 columns after `ESC[?3h`, `kill()` takes the process group, `finished_or_orphaned`.
+  - T6 (7c4920a, merged a66da08): `show/entries.py`, `tests/show_helpers.py`: the plaque with the year, `full_screen`,
+    `rescan` that never raises.
+  - T9 (2aa0476, merged 3d5c553): `show/sandbox.py`: rlimits and the cached `unshare -rn` probe.
+  - T7 (bab6d1a, merged 6c05694): `show/queue.py`. T8 (1acd8e4, merged 542f8d7): `show/recording.py`, asciinema v2 with
+    an incremental decoder. T-shot (45aab6d, merged 0065293): `tools/show_shot.py`.
+- Review: APPROVED after 1 round, 0 blocking (evidence/it10/reviewer-round1.md). No assert removed or changed: the range
+  only adds test files. The reviewer ran 35 runs through one `Terminal` (floods, orphans, closed ttys, `kill -9 $$`,
+  invalid UTF-8): no descriptor leaked, no process left. Both deviations accepted: the orphan test's Python session
+  leader proves what the plan's test was for (the plan's exact test fails on macOS because bash hangs the orphan up at
+  once), and the `cc` script feeds real compiler output as steps.
+- Deploy: none (never deployed by the loop).
+- Verify: 7 of 7 of the show daemon's checklist (item 5, `arcade doctor`, is dropped: no camera or display path
+  touched). 1 freshness: sheets stamped ee5a9ce = HEAD at verify, clean; made from a clean detached checkout of HEAD
+  because two untracked folders of the owner's (`research_notes/`, `reports/`, IOCCC entry research from another
+  session) stand in the main checkout and the stamp counts untracked files. The loop did not touch them. 2 the suite is
+  green. 3 skips rose from 0 to 1, journaled here once: `tests/test_sandbox.py:153`, "needs a working unshare -rn (Linux
+  with unprivileged user namespaces); macOS has no unshare"; it runs on the Omarchy box and the Pi at GATE C. 4
+  collected rose from 762 to 888. 6 evidence/it10/. 7 the verdict above.
+- Tests: 888 collected, 887 passed, 1 skipped, 168.8 s (limit 192 s; it09: 762, 0 skipped, 172.8 s). The seven new
+  modules add about 4.8 s.
+- Minutes: about 68, from 23:12 to 00:20 CDT: orient 2, plan 12, implement 42 (parallel tasks 21, integration 21, nearly
+  all of it seven full-suite runs), review 7 and verify beside it, report 5.
+- Loop decisions and deviations:
+  - The orchestrator's first spawn of group 1 named its agents and the harness refused it; it spawned them again
+    without names. No work lost.
+  - T-shot's implementer ran one pytest call with `cd`; T8's implementer did not load the TDD skill and says it wrote
+    the tests first by hand. Nothing was written outside the tasks' files.
+  - The plan's I2 crop command (`--crop 0,0,128,64`) showed the margin and no strip; the operator added the sheet
+    `it10-prototype-window` (`--crop 16,128,128,64`).
+  - The operator wrote 00:20 for the verdict's time from memory; the clock read 00:12; corrected.
+  - Extra validations and tests beyond the plan are listed in evidence/it10/orchestrator-report.md; the plan's estimate
+    of about 75 new tests became 126.
+- Carried forward: C48 (the review: `Terminal` signals an old process group again after it has ended).
+- Noted for later tasks (roadmap.md): D2's pipeline (pyte's TypeError on malformed escapes, the output's tail at the
+  child's exit on Linux, the cast written to a temp file, `LC_ALL=C` for the build, the compiler's bold on a pty); D3
+  (Q54, the strip's look); D4 (the prototype's window, pyte's cost on the Pi); GATE C (no controlling tty under dash,
+  daemonizing entries, the owner's research folders).
+- Owner questions: Q51 (rows on the Reduced tier), Q52 (the strip's text and the year), Q53 (the sheets show the full
+  wall), Q54 (the strip's legibility in reverse video), all defaulted.
+- Status: done

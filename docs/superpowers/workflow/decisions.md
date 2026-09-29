@@ -407,3 +407,10 @@ default: the sheets render the full 512x192 wall: 128x64 cannot hold 80 columns 
 deadline: GATE C
 answer:
 status: defaulted (standing instruction)
+
+### Q54: Is the attribution strip legible in reverse video on LEDs?
+asked: it10
+default: the spec's reverse video stays through D1 and D2. The sheets of iteration 10 (evidence/it10/it10-prototype-window.png at the led look, it10-cc-distance.png at 10 m) show the strip's dark letters closing up inside the lit field, while normal text reads well. The strip carries the attribution ("the year is the proof"), so it must read from 15 to 40 feet. D3's plan draws three variants in sheets (reverse at 70 % as now; reverse on a field at about 35 %; bright letters on a field at about 25 %), makes the choice a key in show.toml, and takes the one that reads best at the led and distance looks as the default. The owner judges on the real panels (the 128x64 prototype can show the strip's window: `--crop 16,128,128,64`)
+deadline: the plan of D3; the panels at GATE C
+answer:
+status: defaulted (standing instruction)

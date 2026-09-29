@@ -1,0 +1,21 @@
+$ python -m tools.show_shot --script strip --look both --out it10-strip
+exit 0
+
+$ python -m tools.show_shot --script edges --look both --out it10-edges
+exit 0
+
+$ python -m tools.show_shot --script fullscreen --look both --out it10-fullscreen
+exit 0
+
+$ python -m tools.show_shot --script cc --look both --out it10-cc
+exit 0
+
+$ python -m tools.show_shot --command seq 1 60 --seconds 2 --every-ms 250 --look both --out it10-seq
+exit 0
+
+$ python -m tools.show_shot --script strip --crop 0,0,128,64 --look led --out it10-prototype
+exit 0
+
+$ python -m tools.show_shot --script strip --crop 16,128,128,64 --look led --out it10-prototype-window (added by the operator: the window with the strip)
+exit 0
+

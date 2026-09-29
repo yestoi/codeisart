@@ -1,0 +1,27 @@
+# The plan's test_background_child_counts_as_finished_after_grace with the plan's exact child,
+# `sh -c "sleep 30 & exit 0"` (plus `echo $!` to learn the sleep's pid). Fails on macOS at
+# `assert not term.finished`: /bin/sh (bash 3.2) takes the pty as controlling terminal, its exit
+# SIGHUPs the sleep and revokes the pty, so EOF arrives at once. Copy into tests/ to run.
+import time
+
+from tests.test_terminal import POLL, WAIT, term, wait_for_text, wait_gone  # noqa: F401
+
+
+def test_background_child_counts_as_finished_after_grace_plan_exact(term, tmp_path):
+    term.run(["sh", "-c", "sleep 30 & echo $!; exit 0"], cwd=tmp_path)
+    line = wait_for_text(term, str.isdigit)
+    assert line is not None
+    pid = int(line)
+    deadline = time.monotonic() + WAIT
+    while term.running and time.monotonic() < deadline:
+        term.pump()
+        time.sleep(POLL)
+    assert not term.running
+    term.pump()
+    assert not term.finished                       # the sleep holds the pty open
+    assert term.finished_or_orphaned(0.3) is False  # the exit is first seen here
+    time.sleep(0.3)
+    term.pump()
+    assert term.finished_or_orphaned(0.3) is True
+    assert term.finished
+    assert wait_gone(pid)
