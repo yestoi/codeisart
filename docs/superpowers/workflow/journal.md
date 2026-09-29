@@ -752,3 +752,129 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   entry's name never stands on the short strip (Q58 as answered); Q60 seen in the sheets (the ink view smears for a
   moment while source scrolls); the first playable by hand is `python -m show` with key 6 (hello is station 6).
 - Status: done
+
+## Iteration 13 — 2026-09-29
+- Verdict on the sheets (written 05:53 CDT, before any other tool call after the reading; the sheets are stamped 418ef74 clean, made from a detached checkout of HEAD; read with the Read tool: `it13-strobe.png`, a tile of `it13-strobe-distance-p2.png` (4.1 s to 4.9 s), `it13-presses-led-p1.png` and `-p2.png`, two tiles of the distance pages (1.0 s and 6.2 s), `it13-presses-poc-p1.png`, `it13-panels.png` at half size, `it13-grid-poc.png`): PASS.
+  - The strip's default look is now `bright-on-field` on both walls: bright letters on a dim field along row 24, no reverse video. At the distance look on the full wall `NOW: hello by Trey, 2026, Not A.I. | PLAYING` and `| NEXT: hello-2 (1 queued)` read without effort; at the led look the letters stand a little over the field's dots and read less well than at distance, as in iteration 12's strip sheets. On 128x64 the short strip reads `PRESS A BUTTON`, `PLAYING`, `QUEUED #1`, `Not A.I.`, `Trey, 2026` in letters as tall as the strip; the entry's name never stands on it (Q58 as answered).
+  - The show itself, full wall: attract (`CODE IS ART, A.I. IS NOT`, the cursor under it), the press at 1.0 s (`hello`, `Created by Trey, 2026, Not A.I.`, `$ cat hello.c`), the source typed, `QUEUED #1` at 3.0 s, `$ cc -Wall -o hello hello.c` with the one warning and its caret line, the `#` band sweeping, `NEXT: hello-2 (1 queued)`; the cursor is a lit cell at the end of the typed text; the text is legible at the led look. `held 0` through the whole session, flash area at most 0.0214, square flashes at most 4 of the budget of 6: normal play comes to two thirds of the budget (the scroll of the source and the band), which the curation at GATE C should know.
+  - The strobe, now visible on the sheet (sampled every 150 ms, three halves of the strobe's 50 ms): the screen is black with the strip from 3.0 s, the first lit frame stands at 4.2 s, then five cells in a row are black (4.4 s to 5.1 s, held rising 1, 3, 5, 8, 10, square flashes 6), then five cells in a row are lit (5.2 s to 5.9 s, square flashes falling 5, 4, 3). Ungoverned, neighbouring cells would alternate; governed, the wall changes three times in 1.7 s and then stands. Flash area 0.0000 on every label. The strip stays on row 24 through it; on the lit frames its field is hard to tell from the lit screen above it at the distance look (a strobing entry only).
+  - 128x64: the ink view of the source, the band as a diagonal of dots, the governor holds parts of the picture while the source scrolls (held 12 after the first play, 20 after the second; Q60, accepted), flash area at most 0.0422, square flashes at most 3.
+  - The pattern tool: `panels` at 512x192 shows 48 labels, `0,0` to `5,7`, grey (level 128), one at the top left of each 64x32 panel, upright, no outline; `grid` at 128x64 shows lines every 8 pixels, the first along the top and the left edge, none along the bottom and the right edge (the last line is at 120 and 56). Both far under half the wall lit.
+  - Pages: the full wall's session is nine pages of 2056 x 3924 (the last 796 tall), five cells a page, the title names the page; iteration 12's single sheets were 32076 and 43806 tall.
+- The short soaks (fake display, fake lights and sound, presses every 5 s, seed 0; `it13-soak/`, `it13-soak-poc/`), both exit 0 with no failure named:
+
+  | Wall | Minutes | Steps | Governed | Presses | Plays | Push failures | Errors | Children left | Held | Area max | Squares max | Step ms median, p95, worst | Governor ms median, p95, worst | fds first, last | rss first, last |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | 512x192 | 5 | 5508 | 5510 | 60 | 6 of 6 ended | 0 | 0 | 0 | 0 | 0.0137 | 4 | 6.3, 12.7, 40.2 | 5.5, 10.4, 40.0 | 4, 4 | 37776, 130592 |
+  | 128x64 | 2 | 2246 | 2248 | 24 | 1 of 1 ended | 0 | 0 | 0 | 7 | 0.0551 | 3 | 2.5, 4.9, 34.5 | 1.9, 2.6, 31.4 | 4, 4 | 35776, 46144 |
+
+  The loop ran at 18.4 steps a second under the soak, not 20 (5508 steps in 300 s): the soak's meter runs inside the loop's time. Slower is stricter for the governor, never laxer. The peak memory on the full wall rose from 114496 to 130592 in the last two minutes (a peak, reported only): the owner's overnight run shows whether it goes on rising. Governed is two over the steps: the two black frames of the close.
+- Stop: a real `python -m show --backend fake` under the dummy drivers, SIGTERM after 5 s: exit 0, 0.06 s after the signal, the log ends with `closing: the wall goes black, the lights off` and `stopped by SIGTERM, seen 1 times` (`stop.txt`). Before this iteration the process did not stop at all (SDL's mixer took the signal; the plan review's probe: still running after 20 s).
+- Plan: docs/superpowers/plans/2026-09-29-it13-pattern-and-soak.md (386d607), 299 lines, thin, a SAFETY SLICE (the
+  close path in `show/wall.py`, and the pattern tool's pushes). Written in 22 minutes; the plan review (one round and
+  its confirmation, evidence/it13/plan-review.md, plan-review-round2.md) blocked on two findings, both fixed in the
+  plan before any code: B1, the fallback for a broken show.toml kept the file's backend but not its brightness, so
+  the real wall could light at 0.15 when the file asked for less (now the lower of the file's and the default's
+  wins, for the level and the cap); B2, the pattern tool's AST test passed on `wall._send(frame)` and on
+  `send = display.push` (now every attribute node is checked, and `main` refuses before it makes a display).
+- Shipped: D4, the test pattern and the soak, with the nine points iteration 12 left; 386d607..418ef74, 15 commits,
+  17 files, 1632 insertions, 63 deletions. No file of the arcade changed; `arcade/flash.py`, `arcade/brightness.py`
+  and `show/display/colorlight.py` are unchanged since 0dae849.
+  - I0 (258d8d1): `bright-on-field` is the strip's default in `Config` and show.toml together (Q54), test first;
+    the one changed assert of the iteration is `tests/test_config.py:20` (`reverse` to `bright-on-field`).
+  - T-wall (8cc8d22, merged d8ad84d): `GovernedDisplay` knows whether its last send completed (`unsent`, `failed`,
+    `last`); `close` sends the counted frame again first when it did not, then the two governed black frames, and
+    closes the display in a `finally`. `tools/flash_meter.py`, a running measure of flash area and square flashes.
+  - T-main (6729d76, merged 3ee1431): `systemctl stop` now stops the show (a SIGTERM handler that raises in the
+    main thread the first time and counts the later ones); a broken show.toml keeps the file's display keys and the
+    lower brightness; the lights go off at the close; an fps the loop cannot use paces at 20; a test pins the
+    lights' tick on every step.
+  - T-deploy (1ec7c25, f4ec916, merged 2d68d5e and 418ef74): `deploy/README.md` says what stop, the watchdog (every
+    second) and a broken show.toml do, and gives the soak's and the pattern tool's commands; text only, never
+    installed.
+  - T-pattern (2f20c5a, merged 6dfde3c): `tools/wall_pattern.py` pushes only through `GovernedDisplay`; `grid` and
+    `panels` added, `--config`, `--gamma`; every refusal comes before a display is made; no `white` (Q64).
+  - T-shot (b9a4997, merged 5bd6c7e): the sheets come in pages of at most 4000 px, `--cols` is honoured or refused
+    with exit 2, and every label and the session line carry the flash area and the square flashes of what the wall
+    got.
+  - T-soak (2f7e496, merged de46e3f): `tools/show_soak.py`, a real `ShowLoop` with fake devices, buttons pressed by
+    a timer, a JSON report with the failures named; exit 1 on any.
+- Review: APPROVED after 1 round, no blocking finding (evidence/it13/reviewer.md, 17 probes in review-probes/; 13
+  minutes by the clock, 05:40 to 05:54).
+  - Every path to a display is governed: two callers make a display (`show/main.py:187`, `tools/wall_pattern.py:296`)
+    and each wraps it at once; the soak and the sheet tool make none; no alias, `getattr`, lambda or kept bound
+    method reaches a raw display.
+  - The exact safety tests (4 in `tests/test_wall_close.py`, 3 in `tests/test_wall_pattern_governed.py`) equal the
+    plan's text in every assert, input and number. One assert changed, the allowed one; no other line removed under
+    `tests/`.
+  - The close path under ten fault cases and two strobes: flash area 0.000 and at most 6 square transitions on the
+    modelled screen, except repeated torn pushes (see Carried, C51), which read the same at 386d607.
+  - B1 holds in the code: over 20 broken files the level is never above the file's valid value, 0.15, or the cap.
+  - The pattern tool: no flag or config gives a level over 0.4 or over the config's cap; `grid` lights 23.4 % of
+    the wall, `panels` 1.7 %.
+  - The flash meter agrees with `arcade.flash`'s own measures on 40 sequences, 0 disagreements. The soak fails on
+    every display fault the reviewer could make (22, 20 and 80 push failures counted).
+- Deploy: none (never deployed by the loop; nothing under `deploy/` installed or run).
+- Verify: 7 of 7 of the show daemon's checklist (item 5 dropped, as in iteration 12). 1 freshness: the sheets are
+  stamped 418ef74 = HEAD, clean, from a clean detached checkout; `git status` there was clean after every command.
+  2 the suite is green. 3 skips stay at 1 (`tests/test_sandbox.py:153`, the unshare test on the Mac). 4 collected
+  rose from 1064 to 1140. 6 evidence/it13/, the decision on the README's line 1. 7 the verdict above.
+- Tests: 1140 collected, 1139 passed, 1 skipped, 230.68 s with the reviewer's probes beside it (the orchestrator's
+  last run alone: 225.05 s; limit 245 s). The new tests take about 6.2 s of the 10 s allowed.
+- Minutes: about 111, from 04:08 to 05:59 CDT: orient 4, plan 22, plan review and its fix 24, implement 39 (I0 5,
+  group 1 10.5, group 2 9.5, integration 13), review 15 with verify beside it (14, of which the two soaks 7),
+  report 7.
+- Loop decisions and deviations:
+  - The iteration took about 111 minutes against a target of 90: a safety slice with a plan review (24 minutes,
+    two real findings), and two groups of tasks because the pattern tool needed the wall's new close and the soak
+    needed the SIGTERM handler.
+  - The full wall's 10 m pages (`it13-presses-distance-p1..p9.png`, `it13-strobe-distance-p1/p2.png`, 14 MB) are
+    not committed; five tiles of them are (evidence/it13/tiles/), and show-shot.txt's commands make them again.
+  - I0's suite run took 283.43 s, over the limit of 245 s; the two later runs took 220.22 s and 225.05 s, the
+    operator's 230.68 s. Read as machine load; the limit is not raised.
+  - T-wall's new tests take 1.46 s against the plan's 1 s. The bound is not loosened and no test changed; the
+    iteration's total stays inside its 10 s.
+  - The orchestrator merged T-deploy and T-main before T-wall's full suite had finished, and started group 2 from
+    that head in one message; the full suite ran after T-wall's merge and after the last merge. Accepted.
+  - T-shot changed two inputs of tests the plan had sketched (not exact tests): the long command and the strobe
+    label test's 0.9 s. The second never reaches the strobe; the operator's sheet (`--session strobe --seconds 6
+    --every-ms 150`) does, and shows held 10, area 0.0000, square flashes 6.
+  - `cd` was used three times by agents against Loop rule 9: the plan reviewer twice (read-only), T-wall's
+    implementer once (a profiling run in its own worktree). No git command and no edit followed any of them.
+  - An entry in state.md said "group 1's worktrees are locked" when two had been seen; corrected at once. State
+    holds what a check showed.
+  - Iteration 14 is a safety slice of the governor's three open gaps (C50, C51, C52), before the arcade's M7a: the
+    owner has the panels and the card in hand, the show can now be run on them, and two of the three gaps are in
+    what the wall gets. Decided by the loop (not a change of scope: all three are Carried fixes).
+  - The orchestrator's other readings are listed in evidence/it13/orchestrator-report.md; the reviewer judged them.
+- Carried forward:
+  - C51 (a safety gap; `show/wall.py` and the loop's `_push`; a safety slice): repeated torn pushes on the
+    Colorlight path let a 32x32 square make 7 transitions against the budget of 6
+    (evidence/it13/review-probes/p2_torn_base.txt; the same at 386d607, so older than this iteration). Q65.
+  - C52 (a safety gap; `arcade/flash.py`, frozen; with C50 in a safety slice): the governor's first frame passes
+    uncounted, so a strobe that starts on a dark wall with the governor's first frame reads 7 transitions in its
+    first second (p2_close_faults.txt, the "from dark" column).
+  - C50 stays (the arcade's unbounded gamma).
+- Noted, not carried (roadmap.md, "it13"):
+  - A first SIGTERM that arrives while `_close` already runs (after a Ctrl-C or `--play`) can skip the black or
+    leave the lights' close undone; the picture is static; systemd cannot cause it.
+  - A SIGTERM before `run`'s `try` raises out of `main`; no display is open yet.
+  - `load_config` checks neither `backend`'s type nor the sizes' sign: `backend = 3` retries forever with no error
+    frame, a width of -64 leaves the display unclosed; nothing is lit in either.
+  - A `--config` path that does not exist gives `Config()` silently, in the pattern tool and in the soak: 512x192
+    on a 128x64 bench wall; the level stays at or under 0.4.
+  - `_open_wall`'s retry can show a show behind the fallback governor (pace 20, governor 30); inside the budget.
+  - The soak reports clear when the show never set up (`errors_at_setup` is reported, not judged; as planned).
+  - The README's GATE C soak with `--real-devices` keeps the fake display: the Colorlight push is not soaked.
+  - Normal play on the full wall reaches 4 square flashes of 6 (the source's scroll, the band): the curated
+    entries with large motion will be held in places. For GATE C's curation.
+  - The soak's loop ran at 18.4 steps a second; its peak memory rose 16 MB in the last two of five minutes.
+  - On the lit frames of a strobing entry the `bright-on-field` strip is hard to tell from the screen above it.
+- Owner questions: Q63 (the unit's network target; default: unchanged), Q64 (a full `white` pattern; default: not
+  built), Q65 (what the wall does after repeated failed pushes; default: it holds the last governed frame and
+  takes no new one until a second has passed without a failure; it does not go dark). All three defaulted
+  (standing instruction). For the next check-in, besides these: `bright-on-field` is now the default look (the
+  pick stays the owner's); `systemctl stop` did not stop the show before this iteration; the overnight soak's
+  command is in `deploy/README.md` and is the owner's to run.
+- Status: done
+

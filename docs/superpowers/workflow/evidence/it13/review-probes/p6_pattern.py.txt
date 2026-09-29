@@ -1,0 +1,101 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+import tempfile
+from pathlib import Path
+
+import numpy as np
+
+from arcade.flash import BUDGET, flash_area, square_flashes
+from tests.test_wall import Recorder
+from tools import wall_pattern as wp
+
+made = []
+
+
+class Rec(Recorder):
+    def __init__(self):
+        super().__init__()
+        self.levels = []
+
+    def set_brightness(self, level):
+        super().set_brightness(level)
+        self.levels.append(level)
+
+
+def fake_make(cfg, on_key=None):
+    d = Rec()
+    made.append((dict(vars(cfg)), d))
+    return d
+
+
+wp.make_display = fake_make
+tmp = Path(tempfile.mkdtemp())
+
+
+def main(argv):
+    made.clear()
+    code = wp.main(argv)
+    if made:
+        cfg, d = made[-1]
+        return code, {k: cfg[k] for k in ("backend", "width", "height", "iface", "brightness")}, d
+    return code, None, None
+
+
+print("== mistyped --config paths")
+for argv in (["grid", "--backend", "colorlight", "--config", str(tmp / "show.poc.tml"), "--seconds", "0.2"],
+             ["grid", "--config", str(tmp / "nope.toml"), "--seconds", "0.2"],
+             ["grid", "--backend", "colorlight", "--config", str(tmp / "nope.toml"), "--brightness", "0.4",
+              "--seconds", "0.2"]):
+    code, cfg, d = main(argv)
+    print(argv[1:], "->", code, cfg, "levels", d.levels if d else None)
+
+print("== caps from a config")
+for cap_line, b in (("brightness_cap = 0.2", "0.2"), ("brightness_cap = 0.2", "0.25"), ("brightness_cap = 0.9", "0.41"),
+                    ("brightness_cap = 0.9", "0.4"), ("brightness_cap = true", "0.4"), ("brightness_cap = 0", "0.01"),
+                    ("backend = \"fake\"", "0.1")):
+    p = tmp / "c.toml"
+    p.write_text(cap_line + "\nbackend = \"colorlight\"\n" if "backend" not in cap_line else cap_line + "\n")
+    code, cfg, d = main(["grid", "--config", str(p), "--brightness", b, "--seconds", "0.1"])
+    print(cap_line, "--brightness", b, "->", code, "made" if cfg else "not made", "levels", d.levels if d else None)
+
+print("== refusals before make_display (fps, gamma, brightness)")
+for extra in (["--fps", "0"], ["--fps", "nan"], ["--fps", "61"], ["--gamma", "0.5"], ["--gamma", "3"],
+              ["--brightness", "0"], ["--brightness", "nan"], ["--brightness", "0.5"]):
+    code, cfg, d = main(["grid", "--backend", "colorlight"] + extra)
+    print(extra, "->", code, "made" if cfg else "not made")
+
+print("== governor fps vs push fps")
+for f in (0.5, 1, 2.0, 7.5, 20.0, 59.9, 60.0):
+    print(f, wp.governor_fps(f))
+
+print("== steps: device levels and times (fake clock)")
+now = [0.0]
+d = Rec()
+times = []
+orig = d.set_brightness
+
+
+def sb(level):
+    times.append((round(now[0], 2), level))
+    orig(level)
+
+
+d.set_brightness = sb
+
+
+def clock():
+    now[0] += 0.05
+    return now[0]
+
+
+print(wp.run("steps", d, 128, 64, brightness=0.4, seconds=10.0, fps=20, clock=clock, sleep=lambda s: None,
+             out=lambda s: None), times)
+print("max level", max(l for _, l in times))
+
+print("== lit share of each pattern, and flashes")
+for w, h in ((512, 192), (128, 64)):
+    for name in ("rgb", "index", "steps", "gamma", "grid", "panels"):
+        fr = wp.PATTERNS[name](w, h, 0.0)
+        lit = float((fr.max(axis=2) > 0).mean())
+        seq = [wp.PATTERNS[name](w, h, k * 0.05) for k in range(200)]
+        print(f"{w}x{h} {name:7s} lit share {lit:.3f}  raw area {flash_area(seq, fps=20):.3f} sq "
+              f"{square_flashes(seq, fps=20)}")

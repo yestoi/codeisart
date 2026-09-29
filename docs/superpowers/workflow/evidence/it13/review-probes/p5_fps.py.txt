@@ -1,0 +1,52 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 5: cfg.fps built in code: run's pace, the governor's fps, and whether a show (not the static frame) runs."""
+import dataclasses
+import logging
+import tempfile
+from pathlib import Path
+
+import show.main as sm
+from show.audio import FakeAudio
+from show.lights import FakeLights
+from show.main import ShowLoop
+from tests.test_main import StrobePlayer, small_cfg
+from tests.test_wall import Recorder
+
+logging.disable(logging.CRITICAL)
+sm.make_lights = lambda *a, **k: FakeLights()
+sm.make_buttons = lambda *a, **k: None
+sm.AudioCues = lambda *a, **k: FakeAudio()
+
+print("| cfg.fps | run's steps/s (fake clock) | min gap s | governor fps | show built | static | pace > governor fps with a show |")
+print("|---|---|---|---|---|---|---|")
+
+
+def case(fps, display_fails_first=False):
+    with tempfile.TemporaryDirectory() as d:
+        cfg = dataclasses.replace(small_cfg(Path(d)), fps=fps)
+        inner = Recorder()
+        loop = ShowLoop(cfg, display=inner, player_factory=StrobePlayer, notify=lambda s: None)
+        t, steps = [0.0], []
+        loop.clock, loop.sleep = (lambda: t[0]), (lambda s: t.__setitem__(0, t[0] + s))
+        real = loop.step
+
+        def step(now):
+            steps.append(now)
+            real(now)
+            t[0] += 0.001                       # a step takes 1 ms
+            if len(steps) == 1:
+                loop.presses.put(1)
+            if len(steps) >= 60:
+                raise KeyboardInterrupt
+        loop.step = step
+        loop.run()
+        gaps = [b - a for a, b in zip(steps, steps[1:])]
+        rate = (len(steps) - 1) / (steps[-1] - steps[0])
+        gf = loop.wall.governor.fps if loop.wall else None
+        faster = loop.show is not None and gf is not None and rate > gf + 1e-6
+        print(f"| {fps!r} | {rate:.2f} | {min(gaps):.4f} | {gf} | {loop.show is not None} | {loop._static} "
+              f"| {faster} |")
+
+
+for fps in (0, -1, 1, 2.5, True, 2, 20, 31, 60):
+    case(fps)

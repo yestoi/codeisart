@@ -1,0 +1,5 @@
+Config() bright-on-field
+show.toml bright-on-field
+show.poc.toml bright-on-field
+show.toml 512x192 view text: strip green values (count, value) [(np.int64(3602), np.int64(63)), (np.int64(256), np.int64(0)), (np.int64(238), np.int64(255))]; phosphor green 255
+show.poc.toml 128x64 view ink: strip green values (count, value) [(np.int64(810), np.int64(63)), (np.int64(214), np.int64(255))]; phosphor green 255

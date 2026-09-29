@@ -1,0 +1,124 @@
+{
+  "steps": 552,
+  "governed": 554,
+  "push_failures": 0,
+  "held_ticks": 0,
+  "presses": 6,
+  "plays_started": 0,
+  "plays_ended": 0,
+  "returns_to_attract": 0,
+  "errors_logged": 0,
+  "errors_at_setup": 0,
+  "errors": [],
+  "step_ms": {
+    "count": 552,
+    "median": 6.3,
+    "p95": 10.8,
+    "worst": 23.852
+  },
+  "governor_ms": {
+    "count": 554,
+    "median": 5.7,
+    "p95": 9.4,
+    "worst": 23.339
+  },
+  "governor": {
+    "held_ticks": 0,
+    "fps": 20
+  },
+  "meter": {
+    "frames": 552,
+    "area_max": 0.0,
+    "squares_max": 2,
+    "budget": 6
+  },
+  "windows": [
+    {
+      "t": 30.029,
+      "steps": 552,
+      "governed": 554,
+      "frames": 552,
+      "area_max": 0.0,
+      "squares_max": 2,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 130880
+    }
+  ],
+  "fds": {
+    "first": 4,
+    "last": 4
+  },
+  "rss_kb": {
+    "first": 36640,
+    "last": 130880
+  },
+  "children_left": 0,
+  "run_ended_early": 0,
+  "sha": "418ef74+dirty",
+  "config": {
+    "backend": "fake",
+    "width": 512,
+    "height": 192,
+    "brightness": 0.15,
+    "brightness_cap": 0.4,
+    "sdl_scale": 2,
+    "columns": 80,
+    "rows": 24,
+    "phosphor": "green",
+    "glow": false,
+    "view": "text",
+    "strip_look": "bright-on-field",
+    "gamma": 2.2,
+    "entries_dir": "/Users/trey/dev/codeisart/entries",
+    "audio_dir": "/Users/trey/dev/codeisart/audio",
+    "font_path": "/Users/trey/dev/codeisart/fonts/5x7.bin",
+    "button_pins": [
+      5,
+      6,
+      13,
+      19,
+      26
+    ],
+    "light_pins": [
+      12,
+      16,
+      20,
+      21,
+      25
+    ],
+    "lightbox_pins": [
+      17,
+      22,
+      23,
+      24,
+      27
+    ],
+    "ddp_host": "127.0.0.1",
+    "ddp_port": 4048,
+    "colorlight_iface": "eth0",
+    "dwell": 4.0,
+    "error_hold": 3.0,
+    "typewriter_cps": 400,
+    "attract_lps": 3.0,
+    "fps": 20,
+    "capture": false,
+    "volume": 0.6,
+    "quiet_hours": "",
+    "crowd_run_seconds": 10.0,
+    "idle_run_seconds": 40.0,
+    "attract_autoplay_minutes": 5.0,
+    "min_build_seconds": 1.5,
+    "pump_bytes": 4096,
+    "pump_ms": 8.0
+  },
+  "times": {
+    "started_at": "2026-09-29T05:43:40",
+    "elapsed_s": 30.032,
+    "minutes": 0.5,
+    "press_every": 5.0,
+    "seed": 0,
+    "window_s": 60.0
+  },
+  "failures": []
+}

@@ -1,0 +1,53 @@
+source | fps | secs | gov | meter area | flash_area | meter sq | square_flashes | agree
+strobe 10Hz | 20 | 3 | False | 1.0000 | 1.0000 | 20 | 20 | True
+strobe 10Hz | 20 | 3 | True | 0.0000 | 0.0000 | 6 | 6 | True
+strobe 5Hz | 20 | 3 | False | 1.0000 | 1.0000 | 10 | 10 | True
+strobe 5Hz | 20 | 3 | True | 0.0000 | 0.0000 | 6 | 6 | True
+noise | 20 | 3 | False | 0.9446 | 0.9446 | 0 | 0 | True
+noise | 20 | 3 | True | 0.0939 | 0.0939 | 0 | 0 | True
+scroll | 20 | 3 | False | 0.0104 | 0.0104 | 0 | 0 | True
+scroll | 20 | 3 | True | 0.0104 | 0.0104 | 0 | 0 | True
+ramp+strobe 10Hz | 20 | 3 | False | 1.0000 | 1.0000 | 20 | 20 | True
+ramp+strobe 10Hz | 20 | 3 | True | 0.0000 | 0.0000 | 6 | 6 | True
+strobe 10Hz | 20 | 10 | False | 1.0000 | 1.0000 | 20 | 20 | True
+strobe 10Hz | 20 | 10 | True | 0.0000 | 0.0000 | 6 | 6 | True
+strobe 5Hz | 20 | 10 | False | 1.0000 | 1.0000 | 10 | 10 | True
+strobe 5Hz | 20 | 10 | True | 0.0000 | 0.0000 | 6 | 6 | True
+noise | 20 | 10 | False | 0.9489 | 0.9489 | 0 | 0 | True
+noise | 20 | 10 | True | 0.0892 | 0.0892 | 0 | 0 | True
+scroll | 20 | 10 | False | 0.0107 | 0.0107 | 0 | 0 | True
+scroll | 20 | 10 | True | 0.0107 | 0.0107 | 0 | 0 | True
+ramp+strobe 10Hz | 20 | 10 | False | 1.0000 | 1.0000 | 20 | 20 | True
+ramp+strobe 10Hz | 20 | 10 | True | 0.0000 | 0.0000 | 6 | 6 | True
+strobe 10Hz | 30 | 3 | False | 1.0000 | 1.0000 | 20 | 20 | True
+strobe 10Hz | 30 | 3 | True | 0.0000 | 0.0000 | 6 | 6 | True
+strobe 5Hz | 30 | 3 | False | 1.0000 | 1.0000 | 10 | 10 | True
+strobe 5Hz | 30 | 3 | True | 0.0000 | 0.0000 | 6 | 6 | True
+noise | 30 | 3 | False | 0.9996 | 0.9996 | 0 | 0 | True
+noise | 30 | 3 | True | 0.0933 | 0.0933 | 0 | 0 | True
+scroll | 30 | 3 | False | 0.1104 | 0.1104 | 0 | 0 | True
+scroll | 30 | 3 | True | 0.1104 | 0.1104 | 0 | 0 | True
+ramp+strobe 10Hz | 30 | 3 | False | 1.0000 | 1.0000 | 20 | 20 | True
+ramp+strobe 10Hz | 30 | 3 | True | 0.0000 | 0.0000 | 6 | 6 | True
+strobe 10Hz | 30 | 10 | False | 1.0000 | 1.0000 | 20 | 20 | True
+strobe 10Hz | 30 | 10 | True | 0.0000 | 0.0000 | 6 | 6 | True
+strobe 5Hz | 30 | 10 | False | 1.0000 | 1.0000 | 10 | 10 | True
+strobe 5Hz | 30 | 10 | True | 0.0000 | 0.0000 | 6 | 6 | True
+noise | 30 | 10 | False | 1.0000 | 1.0000 | 0 | 0 | True
+noise | 30 | 10 | True | 0.1694 | 0.1694 | 0 | 0 | True
+scroll | 30 | 10 | False | 0.1117 | 0.1117 | 0 | 0 | True
+scroll | 30 | 10 | True | 0.1117 | 0.1117 | 0 | 0 | True
+ramp+strobe 10Hz | 30 | 10 | False | 1.0000 | 1.0000 | 20 | 20 | True
+ramp+strobe 10Hz | 30 | 10 | True | 0.0000 | 0.0000 | 6 | 6 | True
+
+running maxima against prefixes (noise, 20 fps, 60 frames):
+k=10: meter 0.0872/0 prefix 0.0872/0
+k=20: meter 0.9191/0 prefix 0.9191/0
+k=21: meter 0.9475/0 prefix 0.9475/0
+k=22: meter 0.9475/0 prefix 0.9475/0
+k=30: meter 0.9475/0 prefix 0.9475/0
+k=40: meter 0.9475/0 prefix 0.9475/0
+k=50: meter 0.9475/0 prefix 0.9475/0
+k=60: meter 0.9475/0 prefix 0.9475/0
+take(): (0.947509765625, 0) then (0.0, 0)
+disagreements: 0 prefix mismatches: 0

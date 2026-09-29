@@ -1,0 +1,187 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 2: what the wall SHOWS (a modelled screen) under display faults, through GovernedDisplay with the
+loop's push/repush pattern (show/main.py:304-317), then close. Measured with arcade.flash's own measures."""
+import logging
+import numpy as np
+from arcade.flash import BUDGET, flash_area, square_flashes
+from show.wall import GovernedDisplay
+
+H, W = 64, 128
+LIT = np.array((51, 255, 51), np.uint8)
+
+
+class Screen:
+    """A display: `fail` is a set of call numbers (1-based) or a predicate; mode 'raise' shows nothing new,
+    'torn' copies the top half rows then raises, 'kbi' raises KeyboardInterrupt."""
+    def __init__(self, fail, mode="raise", close_raises=False):
+        self.fail, self.mode = fail, mode
+        self.count, self.closed = 0, False
+        self.screen = np.zeros((H, W, 3), np.uint8)
+        self.shown = []            # the screen after every push call (what the wall shows next)
+        self.close_calls = 0
+
+    def _fails(self, n):
+        return n in self.fail if isinstance(self.fail, (set, frozenset)) else self.fail(n)
+
+    def push(self, frame):
+        self.count += 1
+        if self._fails(self.count):
+            if self.mode == "torn":
+                self.screen[:H // 2] = frame[:H // 2]
+                self.shown.append(self.screen.copy())
+                raise OSError("torn")
+            self.shown.append(self.screen.copy())
+            if self.mode == "kbi":
+                raise KeyboardInterrupt
+            raise OSError("failed")
+        self.screen = frame.copy()
+        self.shown.append(self.screen.copy())
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        self.close_calls += 1
+        self.closed = True
+
+
+def strobe(hz, fps, seconds):
+    out = []
+    for k in range(int(seconds * fps)):
+        lit = round(k / fps * 2 * hz) % 2 == 0
+        out.append(np.broadcast_to(LIT if lit else np.zeros(3, np.uint8), (H, W, 3)).copy())
+    return out
+
+
+def reversal(hz, fps, seconds):
+    out = []
+    for k in range(int(seconds * fps)):
+        a = round(k / fps * 2 * hz) % 2 == 0
+        f = np.zeros((H, W, 3), np.uint8)
+        if a:
+            f[H // 2:] = LIT
+        else:
+            f[:H // 2] = LIT
+        out.append(f)
+    return out
+
+
+def drive(frames, fps, disp):
+    """The loop's pattern, then close; a KeyboardInterrupt ends the loop and closes, as run's finally."""
+    wall = GovernedDisplay(disp, H, W, fps=fps)
+    failed = False
+    governed_out = []
+    try:
+        for f in frames:
+            try:
+                if failed:
+                    wall.repush()
+                out = wall.push(f)
+                governed_out.append(out.copy())
+            except Exception:
+                failed = True
+                if wall.last is not None and (not governed_out or not np.array_equal(governed_out[-1], wall.last)):
+                    pass
+                continue
+            failed = False
+    except KeyboardInterrupt:
+        pass
+    finally:
+        wall.close()
+    return wall
+
+
+def measure(seq, fps):
+    return flash_area(seq, fps=fps), square_flashes(seq, fps=fps)
+
+
+rows = []
+for name, src in (("strobe", strobe), ("reversal", reversal)):
+    for hz in (10, 5):
+        for fps in (20, 30):
+            frames = src(hz, fps, 3.0)
+            raw = measure(frames, fps)
+            cases = {
+                "clean": Screen(set()),
+                "fail before close (last)": Screen({len(frames)}),
+                "fail resend in close": Screen({len(frames), len(frames) + 1}),
+                "fail every 2nd push": Screen(lambda n: n % 2 == 0),
+                "fail every 3rd push": Screen(lambda n: n % 3 == 0),
+                "torn once (call 5)": Screen({5}, "torn"),
+                "torn every 2nd": Screen(lambda n: n % 2 == 0, "torn"),
+                "torn every 3rd": Screen(lambda n: n % 3 == 0, "torn"),
+                "kbi at call 20": Screen({20}, "kbi"),
+                "kbi in close resend": Screen({len(frames), len(frames) + 1}, "kbi"),
+            }
+            for cname, disp in cases.items():
+                try:
+                    wall = drive(frames, fps, disp)
+                    err = ""
+                except BaseException as e:           # a KeyboardInterrupt from inside close
+                    wall, err = None, type(e).__name__
+                seq = disp.shown                                     # from the first frame, as the governor counts
+                area0, sq0 = measure([np.zeros((H, W, 3), np.uint8)] + seq, fps)   # from a dark wall
+                area, sq = measure(seq, fps)
+                final_black = not disp.screen.any()
+                rows.append((name, hz, fps, cname, f"{raw[0]:.3f}/{raw[1]}", disp.count, f"{area:.3f}", sq, f"{area0:.3f}/{sq0}",
+                             "OVER" if (area > 0 or sq > BUDGET) else "ok", disp.closed, final_black, err))
+
+hdr = ("pattern", "Hz", "fps", "case", "raw area/sq", "calls", "shown area", "shown sq", "from dark area/sq", ">budget", "closed",
+       "ends black", "raised")
+print(" | ".join(hdr))
+for r in rows:
+    print(" | ".join(str(x) for x in r))
+
+
+# log.exception in close: a handler that raises, and one that blocks
+print("\n-- log.exception in close with a raising handler --")
+class Boom(logging.Handler):
+    def emit(self, record):
+        raise RuntimeError("handler boom")
+
+lg = logging.getLogger("show.wall")
+h = Boom()
+lg.addHandler(h)
+for raise_exc in (True, False):
+    logging.raiseExceptions = raise_exc
+    d = Screen({3, 4})
+    w = GovernedDisplay(d, H, W, fps=20)
+    w.push(np.zeros((H, W, 3), np.uint8)); w.push(np.zeros((H, W, 3), np.uint8))
+    try:
+        w.push(np.zeros((H, W, 3), np.uint8))
+    except OSError:
+        pass
+    try:
+        w.close()
+        print(f"raiseExceptions={raise_exc}: close returned; calls {d.count}, closed {d.closed}, black {not d.screen.any()}")
+    except BaseException as e:
+        print(f"raiseExceptions={raise_exc}: close raised {type(e).__name__}; closed {d.closed}")
+lg.removeHandler(h)
+logging.raiseExceptions = True
+
+class Kbi(logging.Handler):
+    def emit(self, record):
+        raise KeyboardInterrupt
+
+h = Kbi(); lg.addHandler(h)
+d = Screen({3, 4})
+w = GovernedDisplay(d, H, W, fps=20)
+w.push(np.zeros((H, W, 3), np.uint8)); w.push(np.zeros((H, W, 3), np.uint8))
+try:
+    w.push(np.zeros((H, W, 3), np.uint8))
+except OSError:
+    pass
+try:
+    w.close(); print("KBI-handler: close returned")
+except BaseException as e:
+    print(f"KBI-handler (a SIGTERM during the log): close raised {type(e).__name__}; calls {d.count}, "
+          f"closed {d.closed}, black sent after: {d.count > 4}")
+lg.removeHandler(h)
+
+print("\n-- close twice, close before any push --")
+d = Screen(set()); w = GovernedDisplay(d, H, W, fps=20)
+w.close(); print(f"close before push: calls {d.count}, closed {d.close_calls}, black {not d.screen.any()}")
+w.close(); print(f"close again: calls {d.count}, close() calls {d.close_calls}")
+d = Screen(set()); w = GovernedDisplay(d, H, W, fps=20)
+w.push(np.broadcast_to(LIT, (H, W, 3)).copy()); w.close(); w.close()
+print(f"push then close twice: calls {d.count} (1 + 2 + 2), display.close calls {d.close_calls}, black {not d.screen.any()}")

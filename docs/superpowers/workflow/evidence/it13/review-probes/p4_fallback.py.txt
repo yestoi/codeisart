@@ -1,0 +1,128 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 4: the broken show.toml fallback (config_from, _fallback): levels, kept display keys, backend = 3."""
+import logging
+import tempfile
+from pathlib import Path
+
+import show.main as sm
+from show.audio import FakeAudio
+from show.config import load_config
+from show.lights import FakeLights
+from show.main import ShowLoop, config_from, parse_args
+
+logging.disable(logging.CRITICAL)
+sm.make_lights = lambda *a, **k: FakeLights()
+sm.make_buttons = lambda *a, **k: None
+sm.AudioCues = lambda *a, **k: FakeAudio()
+tmp = Path(tempfile.mkdtemp())
+
+
+def cfg_of(text):
+    p = tmp / "show.toml"
+    p.write_text(text)
+    return config_from(parse_args(["--config", str(p)]))
+
+
+print("## levels (each file also has fps = 0, so load_config refuses it, and backend = \"colorlight\")")
+print("| brightness | brightness_cap | cfg.brightness | cfg.brightness_cap | effective | backend | error? |")
+print("|---|---|---|---|---|---|---|")
+BR = ["0.9", "0.05", "0", "-0.1", "1.5", "nan", "inf", "true", '"dim"', None]
+CAPS = ["0.1", "0.0", "1.0", "true", None]            # 0.0 is "0.05 below 0.05"
+rows = [(b, None) for b in BR] + [("0.05", c) for c in CAPS] + [("0.9", c) for c in CAPS] + [("0.15", "0.1")]
+worst = []
+for b, c in rows:
+    text = 'backend = "colorlight"\nfps = 0\n'
+    if b is not None:
+        text += f"brightness = {b}\n"
+    if c is not None:
+        text += f"brightness_cap = {c}\n"
+    cfg, err = cfg_of(text)
+    print(f"| {b} | {c} | {cfg.brightness} | {cfg.brightness_cap} | {cfg.effective_brightness} | {cfg.backend} "
+          f"| {err is not None} |")
+    worst.append(cfg.effective_brightness)
+print(f"highest effective level over all rows: {max(worst)} (default 0.15; cap default 0.40)")
+
+print("\n## kept display keys (fps = 0 forces the fallback; backend fake)")
+for extra in ['width = 128.0\nheight = 64.0', 'width = "128"\nheight = "64"', 'width = 100000\nheight = 100000',
+              'width = 0\nheight = 0', 'width = -64\nheight = 64', 'width = 128\nheight = 64',
+              'backend = 3', 'backend = "nope"', 'colorlight_iface = 7', 'ddp_port = true', 'ddp_port = 70000']:
+    text = 'backend = "fake"\nfps = 0\n' + extra + "\n"
+    if extra.startswith("backend"):
+        text = 'fps = 0\n' + extra + "\n"
+    cfg, err = cfg_of(text)
+    line = f"{extra!r}: kept backend={cfg.backend!r} {cfg.width}x{cfg.height} iface={cfg.colorlight_iface!r} " \
+           f"ddp_port={cfg.ddp_port!r}"
+    if "100000" in extra:
+        print(line + " -> not built (a 100000x100000 governor needs ~ 10^10 floats); see below")
+        continue
+    if cfg.backend in ("colorlight", "ddp", "sdl"):
+        print(line + " -> not built here (a real backend)")
+        continue
+    try:
+        loop = ShowLoop(cfg, notify=lambda s: None, config_error=err)
+        loop.start(0.0)
+        for k in range(1, 4):
+            loop.step(k / 20)
+        raw = loop.wall.display if loop.wall else None
+        print(line + f" -> wall={'yes' if loop.wall else 'None'} pushes={getattr(raw, 'count', None)} "
+              f"errors={[e[:70] for e in loop.errors]}")
+        loop._close()
+        print(f"    closed: {getattr(raw, 'closed', None)}")
+    except Exception as exc:
+        print(line + f" -> RAISED {type(exc).__name__}: {exc}")
+
+print("\n## 100000 x 100000 with a display object that counts open/close (governor build)")
+
+
+class Counting:
+    def __init__(self):
+        self.count, self.closed = 0, False
+
+    def push(self, f):
+        self.count += 1
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
+import show.wall as sw
+real_gov = sw.FlashGovernor
+
+
+class TinyGuard:                      # refuse at once what would allocate > 1 GB, so the probe does not
+    def __init__(self, h, w, *a, **k):   # page the machine; shows what a MemoryError in the governor does
+        if h * w > 10_000_000:
+            raise MemoryError(f"{h}x{w}")
+        self.inner = real_gov(h, w, *a, **k)
+
+
+cfg, err = cfg_of('backend = "fake"\nfps = 0\nwidth = 100000\nheight = 100000\n')
+sw.FlashGovernor = TinyGuard
+inner = Counting()
+try:
+    loop = ShowLoop(cfg, display=inner, notify=lambda s: None, config_error=err)
+    loop.start(0.0)
+    loop.step(0.05)
+    print(f"wall={loop.wall}; display pushes={inner.count}; display closed={inner.closed}; errors={loop.errors}")
+    loop._close()
+    print(f"after _close: display closed={inner.closed}")
+except BaseException as exc:
+    print(f"RAISED {type(exc).__name__}: {exc}")
+finally:
+    sw.FlashGovernor = real_gov
+
+print("\n## backend = 3 in an otherwise valid file (no fallback)")
+p = tmp / "ok.toml"
+p.write_text("backend = 3\n")
+cfg = load_config(p)
+print(f"load_config: backend={cfg.backend!r} (no error)")
+loop = ShowLoop(cfg, notify=lambda s: None)
+loop.start(0.0)
+loop.step(0.05)
+print(f"ShowLoop: wall={loop.wall}; errors={loop.errors}")
+loop.step(10.0)
+print(f"after a retry: wall={loop.wall}; errors={[e[:80] for e in loop.errors]}")
+loop._close()

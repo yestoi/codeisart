@@ -1,0 +1,2 @@
+display opens: 2; show built: True; static: True; governor fps: 30; pace: 20.00/s; pushed 63, distinct frames 4; errors ['flash governor: fps must be an int of at least 2, got 0']
+received: flash_area(fps=20) 0.0, square_flashes(fps=20) 6 (budget 6); at fps=30: 6

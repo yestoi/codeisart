@@ -1,0 +1,58 @@
+/Users/trey/dev/codeisart/arcade/flash.py:91: RuntimeWarning: invalid value encountered in divide
+  return sums / area
+## levels (each file also has fps = 0, so load_config refuses it, and backend = "colorlight")
+| brightness | brightness_cap | cfg.brightness | cfg.brightness_cap | effective | backend | error? |
+|---|---|---|---|---|---|---|
+| 0.9 | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| 0.05 | None | 0.05 | 0.4 | 0.05 | colorlight | True |
+| 0 | None | 0 | 0.4 | 0 | colorlight | True |
+| -0.1 | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| 1.5 | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| nan | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| inf | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| true | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| "dim" | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| None | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| 0.05 | 0.1 | 0.05 | 0.1 | 0.05 | colorlight | True |
+| 0.05 | 0.0 | 0.05 | 0.0 | 0.0 | colorlight | True |
+| 0.05 | 1.0 | 0.05 | 0.4 | 0.05 | colorlight | True |
+| 0.05 | true | 0.05 | 0.4 | 0.05 | colorlight | True |
+| 0.05 | None | 0.05 | 0.4 | 0.05 | colorlight | True |
+| 0.9 | 0.1 | 0.15 | 0.1 | 0.1 | colorlight | True |
+| 0.9 | 0.0 | 0.15 | 0.0 | 0.0 | colorlight | True |
+| 0.9 | 1.0 | 0.15 | 0.4 | 0.15 | colorlight | True |
+| 0.9 | true | 0.15 | 0.4 | 0.15 | colorlight | True |
+| 0.9 | None | 0.15 | 0.4 | 0.15 | colorlight | True |
+| 0.15 | 0.1 | 0.15 | 0.1 | 0.1 | colorlight | True |
+highest effective level over all rows: 0.15 (default 0.15; cap default 0.40)
+
+## kept display keys (fps = 0 forces the fallback; backend fake)
+'width = 128.0\nheight = 64.0': kept backend='fake' 512x192 iface='eth0' ddp_port=4048 -> wall=yes pushes=3 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: True
+'width = "128"\nheight = "64"': kept backend='fake' 512x192 iface='eth0' ddp_port=4048 -> wall=yes pushes=3 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: True
+'width = 100000\nheight = 100000': kept backend='fake' 100000x100000 iface='eth0' ddp_port=4048 -> not built (a 100000x100000 governor needs ~ 10^10 floats); see below
+'width = 0\nheight = 0': kept backend='fake' 0x0 iface='eth0' ddp_port=4048 -> wall=yes pushes=0 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: True
+'width = -64\nheight = 64': kept backend='fake' -64x64 iface='eth0' ddp_port=4048 -> wall=yes pushes=0 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: False
+'width = 128\nheight = 64': kept backend='fake' 128x64 iface='eth0' ddp_port=4048 -> wall=yes pushes=3 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: True
+'backend = 3': kept backend='sdl' 512x192 iface='eth0' ddp_port=4048 -> not built here (a real backend)
+'backend = "nope"': kept backend='nope' 512x192 iface='eth0' ddp_port=4048 -> wall=None pushes=None errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s', "display: unknown display backend 'nope'"]
+    closed: None
+'colorlight_iface = 7': kept backend='fake' 512x192 iface='eth0' ddp_port=4048 -> wall=yes pushes=3 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: True
+'ddp_port = true': kept backend='fake' 512x192 iface='eth0' ddp_port=4048 -> wall=yes pushes=3 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: True
+'ddp_port = 70000': kept backend='fake' 512x192 iface='eth0' ddp_port=70000 -> wall=yes pushes=3 errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/s']
+    closed: True
+
+## 100000 x 100000 with a display object that counts open/close (governor build)
+wall=None; display pushes=0; display closed=True; errors=['config: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp3ngtwii6/show.toml: fps must be an int of at least 2', 'flash governor: 100000x100000', 'flash governor (defaults): 100000x100000']
+after _close: display closed=True
+
+## backend = 3 in an otherwise valid file (no fallback)
+load_config: backend=3 (no error)
+ShowLoop: wall=None; errors=['display: unknown display backend 3']
+after a retry: wall=None; errors=['display: unknown display backend 3']

@@ -486,3 +486,11 @@ default: not built. `tools/wall_pattern.py` keeps its rule that no pattern light
 deadline: the full wall's bring-up
 answer:
 status: defaulted (standing instruction)
+
+### Q65: What should the wall do after repeated failed pushes (a torn frame the governor never saw)?
+asked: it13 (the review; evidence/it13/review-probes/p2_torn_base.txt)
+default: the wall holds. After a failed push the wall sends the last governed frame again and takes no new frame until one second has passed without a failed push; the governor goes on counting from the frame it holds. The wall does not go dark by itself (spec 4.6: the wall is never blank), and the failures are logged and counted as today. Why: the Colorlight push sends the frame packet and then the rows, so a send that fails between the rows leaves a mix of two frames on the card for a tick; with a failure on every second or third push a 32x32 square made 7 transitions against the budget of 6. A pulled cable fails at the first packet and shows nothing of this. The other choice is a dark wall after N failures in a row. Built in iteration 14's safety slice (C51), with a plan review
+deadline: the first run of the show on the real panels with people in front of it
+answer:
+status: defaulted (standing instruction)
+

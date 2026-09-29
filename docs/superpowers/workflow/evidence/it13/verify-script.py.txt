@@ -1,0 +1,71 @@
+import os, signal, subprocess, sys, time
+S = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad"
+CO = S + "/it13-verify-checkout"
+PY = "/Users/trey/dev/codeisart/.venv/bin/python"
+EV = S + "/it13-ev"
+os.makedirs(EV, exist_ok=True)
+ENV = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+SHEETS = [
+    ("it13-strobe", ["-m", "tools.show_shot", "--session", "strobe", "--seconds", "6", "--every-ms", "150",
+                     "--look", "plain", "--scale", "1", "--cols", "4", "--out", EV + "/it13-strobe"]),
+    ("it13-presses", ["-m", "tools.show_shot", "--session", "presses", "--every-ms", "1000", "--look", "both",
+                      "--out", EV + "/it13-presses"]),
+    ("it13-presses-poc", ["-m", "tools.show_shot", "--config", "show.poc.toml", "--session", "presses",
+                          "--every-ms", "1000", "--look", "led", "--out", EV + "/it13-presses-poc"]),
+    ("it13-cols", ["-m", "tools.show_shot", "--script", "strip", "--cols", "6", "--out", EV + "/it13-cols"]),
+    ("it13-panels", ["tools/wall_pattern.py", "panels", "--config", "show.toml", "--png", EV + "/it13-panels.png"]),
+    ("it13-grid-poc", ["tools/wall_pattern.py", "grid", "--config", "show.poc.toml", "--png",
+                       EV + "/it13-grid-poc.png"]),
+    ("it13-grid-sdl", ["tools/wall_pattern.py", "grid", "--backend", "sdl", "--config", "show.toml",
+                       "--seconds", "2"]),
+]
+SOAKS = [
+    ("it13-soak", ["-m", "tools.show_soak", "--minutes", "5", "--press-every", "5", "--out", EV + "/it13-soak"]),
+    ("it13-soak-poc", ["-m", "tools.show_soak", "--config", "show.poc.toml", "--minutes", "2", "--press-every", "5",
+                       "--out", EV + "/it13-soak-poc"]),
+]
+
+
+def status():
+    return subprocess.run(["git", "status", "--porcelain"], cwd=CO, capture_output=True, text=True).stdout.strip()
+
+
+def run(runs, logname):
+    with open(EV + "/" + logname, "a") as log:
+        for name, args in runs:
+            t = time.time()
+            r = subprocess.run([PY, *args], cwd=CO, env=ENV, capture_output=True, text=True, timeout=500)
+            shown = " ".join(a.replace(EV + "/", "") for a in args)
+            log.write(f"$ python {shown}\n" + r.stdout)
+            if r.stderr:
+                log.write("[stderr]\n" + r.stderr[-3000:])
+            log.write(f"[exit {r.returncode}, {time.time() - t:.1f} s; git status after: {status() or 'clean'}]\n\n")
+            print(name, r.returncode, f"{time.time() - t:.1f}s", "status:", status() or "clean")
+
+
+def stop():
+    with open(EV + "/stop.txt", "w") as log:
+        t = time.time()
+        p = subprocess.Popen([PY, "-m", "show", "--backend", "fake"], cwd=CO, env=ENV, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, text=True)
+        try:
+            time.sleep(5)
+            p.send_signal(signal.SIGTERM)
+            sent = time.time()
+            out, _ = p.communicate(timeout=30)
+            log.write("$ python -m show --backend fake   (SIGTERM after 5 s)\n" + out[-4000:])
+            log.write(f"[exit {p.returncode}, {time.time() - sent:.2f} s after SIGTERM, {time.time() - t:.1f} s in "
+                      f"all; git status after: {status() or 'clean'}]\n")
+            print("stop", p.returncode, f"{time.time() - sent:.2f}s after SIGTERM")
+        finally:
+            if p.poll() is None:
+                p.kill()
+                log.write("[killed by the script: it did not stop in 30 s]\n")
+                print("stop: KILLED")
+
+
+if sys.argv[1] == "sheets":
+    run(SHEETS, "show-shot.txt")
+    stop()
+else:
+    run(SOAKS, "soak.txt")

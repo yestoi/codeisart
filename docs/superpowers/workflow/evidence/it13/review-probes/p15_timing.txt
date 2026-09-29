@@ -1,0 +1,17 @@
+test_main_stop.py run 1: 9 passed in 0.48s | wall 0.7 s
+test_main_stop.py run 2: 9 passed in 0.56s | wall 0.7 s
+test_main_stop.py run 3: 9 passed in 0.54s | wall 0.7 s
+test_show_soak.py run 1: 11 passed in 1.26s | wall 1.4 s
+test_show_soak.py run 2: 11 passed in 1.22s | wall 1.4 s
+test_show_soak.py run 3: 11 passed in 1.28s | wall 1.5 s
+test_show_shot_pages.py run 1: 4 passed in 2.83s | wall 3.0 s
+test_show_shot_pages.py run 2: 4 passed in 2.79s | wall 3.0 s
+test_show_shot_pages.py run 3: 4 passed in 2.77s | wall 3.0 s
+test_wall_pattern_governed.py run 1: 32 passed in 0.38s | wall 0.5 s
+test_wall_pattern_governed.py run 2: 32 passed in 0.38s | wall 0.5 s
+test_wall_pattern_governed.py run 3: 32 passed in 0.38s | wall 0.5 s
+pgrep -fl python after:
+87194 /bin/zsh -c source /Users/trey/.claude/shell-snapshots/snapshot-zsh-1790625879398-ra59o5.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval '/Users/trey/dev/codeisart/.venv/bin/python /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-sheets.py soak' < /dev/null && pwd -P >| /tmp/claude-a550-cwd
+87196 /Users/trey/dev/codeisart/.venv/bin/python /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-sheets.py soak
+87197 /Users/trey/dev/codeisart/.venv/bin/python -m tools.show_soak --minutes 5 --press-every 5 --out /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-ev/it13-soak
+(end)

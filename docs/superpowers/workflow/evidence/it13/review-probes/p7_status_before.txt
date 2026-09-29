@@ -1,0 +1,3 @@
+ M docs/superpowers/workflow/state.md
+?? reports/
+?? research_notes/

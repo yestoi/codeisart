@@ -1,0 +1,55 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 3: a real `python -m show --backend fake` child, SIGTERM after "the show runs": exit code, seconds, log."""
+import os
+import signal
+import subprocess
+import threading
+import time
+
+ROOT = "/Users/trey/dev/codeisart"
+PY = f"{ROOT}/.venv/bin/python"
+
+
+def status():
+    return subprocess.run(["git", "-C", ROOT, "status", "--short"], capture_output=True, text=True).stdout
+
+
+before = status()
+env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy"}
+proc = subprocess.Popen([PY, "-m", "show", "--backend", "fake"], cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT, text=True)
+lines, seen = [], threading.Event()
+
+
+def read():
+    for line in proc.stdout:
+        lines.append(line.rstrip())
+        if "the show runs" in line:
+            seen.set()
+
+
+reader = threading.Thread(target=read, daemon=True)
+reader.start()
+try:
+    t0 = time.monotonic()
+    ok = seen.wait(30)
+    print(f"'the show runs' seen: {ok} after {time.monotonic() - t0:.2f} s")
+    time.sleep(1.0)
+    t1 = time.monotonic()
+    proc.send_signal(signal.SIGTERM)
+    code = proc.wait(timeout=15)
+    print(f"exit code {code}, {time.monotonic() - t1:.2f} s after SIGTERM")
+finally:
+    if proc.poll() is None:
+        proc.kill()
+        proc.wait()
+    reader.join(2)
+print("log's last lines:")
+for line in lines[-8:]:
+    print("  " + line)
+after = status()
+print(f"git status --short unchanged: {before == after}")
+if before != after:
+    print("before:", before, "after:", after)
+out = subprocess.run(["pgrep", "-fl", "python -m show"], capture_output=True, text=True).stdout
+print(f"pgrep 'python -m show' after: {out.strip() or 'none'}")

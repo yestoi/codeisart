@@ -1,0 +1,168 @@
+{
+  "steps": 5508,
+  "governed": 5510,
+  "push_failures": 0,
+  "held_ticks": 0,
+  "presses": 60,
+  "plays_started": 6,
+  "plays_ended": 6,
+  "returns_to_attract": 6,
+  "errors_logged": 0,
+  "errors_at_setup": 0,
+  "errors": [],
+  "step_ms": {
+    "count": 5508,
+    "median": 6.3,
+    "p95": 12.7,
+    "worst": 40.16
+  },
+  "governor_ms": {
+    "count": 5510,
+    "median": 5.5,
+    "p95": 10.4,
+    "worst": 40.031
+  },
+  "governor": {
+    "held_ticks": 0,
+    "fps": 20
+  },
+  "meter": {
+    "frames": 5508,
+    "area_max": 0.013682047526041666,
+    "squares_max": 4,
+    "budget": 6
+  },
+  "windows": [
+    {
+      "t": 60.052,
+      "steps": 1105,
+      "governed": 1105,
+      "frames": 1105,
+      "area_max": 0.0,
+      "squares_max": 2,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 114496
+    },
+    {
+      "t": 120.089,
+      "steps": 2209,
+      "governed": 2209,
+      "frames": 1104,
+      "area_max": 0.013682,
+      "squares_max": 4,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 114496
+    },
+    {
+      "t": 180.105,
+      "steps": 3313,
+      "governed": 3313,
+      "frames": 1104,
+      "area_max": 0.012227,
+      "squares_max": 4,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 114496
+    },
+    {
+      "t": 240.147,
+      "steps": 4414,
+      "governed": 4414,
+      "frames": 1101,
+      "area_max": 0.009155,
+      "squares_max": 4,
+      "held_ticks": 0,
+      "fds": 5,
+      "rss_kb": 115632
+    },
+    {
+      "t": 300.043,
+      "steps": 5508,
+      "governed": 5510,
+      "frames": 1094,
+      "area_max": 0.009084,
+      "squares_max": 4,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 130592
+    }
+  ],
+  "fds": {
+    "first": 4,
+    "last": 4
+  },
+  "rss_kb": {
+    "first": 37776,
+    "last": 130592
+  },
+  "children_left": 0,
+  "run_ended_early": 0,
+  "sha": "418ef74",
+  "config": {
+    "backend": "fake",
+    "width": 512,
+    "height": 192,
+    "brightness": 0.15,
+    "brightness_cap": 0.4,
+    "sdl_scale": 2,
+    "columns": 80,
+    "rows": 24,
+    "phosphor": "green",
+    "glow": false,
+    "view": "text",
+    "strip_look": "bright-on-field",
+    "gamma": 2.2,
+    "entries_dir": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-verify-checkout/entries",
+    "audio_dir": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-verify-checkout/audio",
+    "font_path": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-verify-checkout/fonts/5x7.bin",
+    "button_pins": [
+      5,
+      6,
+      13,
+      19,
+      26
+    ],
+    "light_pins": [
+      12,
+      16,
+      20,
+      21,
+      25
+    ],
+    "lightbox_pins": [
+      17,
+      22,
+      23,
+      24,
+      27
+    ],
+    "ddp_host": "127.0.0.1",
+    "ddp_port": 4048,
+    "colorlight_iface": "eth0",
+    "dwell": 4.0,
+    "error_hold": 3.0,
+    "typewriter_cps": 400,
+    "attract_lps": 3.0,
+    "fps": 20,
+    "capture": false,
+    "volume": 0.6,
+    "quiet_hours": "",
+    "crowd_run_seconds": 10.0,
+    "idle_run_seconds": 40.0,
+    "attract_autoplay_minutes": 5.0,
+    "min_build_seconds": 1.5,
+    "pump_bytes": 4096,
+    "pump_ms": 8.0
+  },
+  "times": {
+    "started_at": "2026-09-29T05:44:46",
+    "elapsed_s": 300.047,
+    "minutes": 5.0,
+    "press_every": 5.0,
+    "seed": 0,
+    "window_s": 60.0
+  },
+  "failures": []
+}

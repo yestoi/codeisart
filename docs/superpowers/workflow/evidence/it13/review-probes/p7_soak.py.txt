@@ -1,0 +1,140 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""p7: the soak's wrappers and must-be-zero counts, and what the meter can and cannot see."""
+import random
+import tempfile
+from pathlib import Path
+
+import numpy as np
+
+from arcade.flash import BUDGET, flash_area, square_flashes
+from show.audio import FakeAudio
+from show.lights import FakeLights
+from show.main import ShowLoop
+from tests.test_main import StrobePlayer, small_cfg
+from tests.test_show_soak import FakeClock, FakePlayer, run_soak
+from tests.test_wall import Recorder
+from tools.show_soak import failures, soak
+
+FPS = 20
+
+
+def section(t):
+    print(f"\n== {t}")
+
+
+with tempfile.TemporaryDirectory() as d:
+    tmp = Path(d)
+    cfg = small_cfg(tmp)
+
+    section("A. the wrapper test's session: does the strobe play, do frames change?")
+    report, display = run_soak(cfg, stations=(1, 2, 3), seed=7, player_factory=StrobePlayer)
+    rng = random.Random(7)
+    picks = [rng.choice((1, 2, 3)) for _ in range(report["presses"])]
+    print("steps", report["steps"], "presses", report["presses"], "picks", picks,
+          "plays_started", report["plays_started"], "held_ticks", report["held_ticks"])
+    n = report["steps"]
+    distinct = len({f.tobytes() for f in display.pushed[:n]})
+    print("distinct frames in the soak's first n pushes:", distinct)
+    # the same session without wrappers (as the test does)
+    rng = random.Random(7)
+    plain = Recorder()
+    loop = ShowLoop(cfg, display=plain, player_factory=StrobePlayer, notify=lambda s: None, rng=random.Random(7))
+    loop._devices = True
+    loop.lights, loop.audio = FakeLights(), FakeAudio()
+    loop.start(0.0)
+    for k in range(n):
+        if k % 10 == 0:
+            loop.presses.put(rng.choice((1, 2, 3)))
+        loop.step(k / FPS)
+    same = sum((a == b).all() for a, b in zip(display.pushed[:n], plain.pushed))
+    print(f"identical frames: {same}/{n}; plain held_ticks {loop.wall.governor.held_ticks}")
+    # a control: a different seed gives different frames? (is the comparison sensitive?)
+    report2, display2 = run_soak(cfg, stations=(1, 2, 3), seed=8, player_factory=StrobePlayer)
+    same2 = sum((a == b).all() for a, b in zip(display2.pushed[:n], plain.pushed))
+    print(f"control, seed 8 vs plain seed 7: identical {same2}/{min(n, len(display2.pushed))}")
+    # the soak's step times vs k / FPS
+    clock = FakeClock()
+    times = []
+    orig = ShowLoop.step
+
+    def spy(self, now):
+        times.append(now)
+        return orig(self, now)
+    ShowLoop.step = spy
+    try:
+        soak(cfg, 3.0 / 60, 0.5, clock=clock, sleep=clock.sleep, display=Recorder(), player_factory=FakePlayer)
+    finally:
+        ShowLoop.step = orig
+    print("soak step times differ from k/20 by at most", max(abs(t - k / FPS) for k, t in enumerate(times)))
+
+    section("B. must-be-zero counts")
+    class Failing(Recorder):
+        def push(self, frame):
+            raise OSError("no carrier")
+
+    class EveryOther(Recorder):
+        k = 0
+
+        def push(self, frame):
+            self.k += 1
+            if self.k % 2 == 0:
+                raise OSError("every other")
+            super().push(frame)
+
+    for name, disp in (("always failing", Failing()), ("fails every second push", EveryOther())):
+        r, _ = run_soak(cfg, seconds=1.0, display=disp, stations=(1,), player_factory=StrobePlayer)
+        print(f"{name}: push_failures {r['push_failures']} failures {failures(r)}")
+
+    class TornEveryOther(Recorder):
+        """shows the top half of every second frame, then raises: the wall shows a mix."""
+        k = 0
+
+        def __init__(self):
+            super().__init__()
+            self.screen = None
+            self.shown = []
+
+        def push(self, frame):
+            self.k += 1
+            if self.screen is None:
+                self.screen = np.zeros_like(frame)
+            if self.k % 2 == 0:
+                h = frame.shape[0] // 2
+                self.screen[:h] = frame[:h]
+                self.shown.append(self.screen.copy())
+                raise OSError("torn")
+            self.screen[:] = frame
+            self.shown.append(self.screen.copy())
+            super().push(frame)
+
+    torn = TornEveryOther()
+    r, _ = run_soak(cfg, seconds=4.0, display=torn, stations=(1,), player_factory=StrobePlayer)
+    print(f"torn every other push: push_failures {r['push_failures']} meter squares_max {r['meter']['squares_max']}"
+          f" windows squares_max {[w['squares_max'] for w in r['windows']]}; failures {failures(r)}")
+    print(f"  the modelled screen: flash_area {flash_area(torn.shown, fps=FPS):.4f} "
+          f"square_flashes {square_flashes(torn.shown, fps=FPS)} (budget {BUDGET})")
+
+    # the meter reads the governed frames; with a Recorder, compare to what the display got
+    rec = Recorder()
+    r, _ = run_soak(cfg, seconds=4.0, display=rec, stations=(1,), player_factory=StrobePlayer)
+    print(f"clean strobe soak: meter squares_max {r['meter']['squares_max']} area_max {r['meter']['area_max']};"
+          f" display.pushed square_flashes {square_flashes(rec.pushed, fps=FPS)} flash_area "
+          f"{flash_area(rec.pushed, fps=FPS)}; meter frames {r['meter']['frames']} pushed {len(rec.pushed)}")
+
+    section("C. the wrappers after soak returns")
+    import tools.show_soak as ss
+    captured = {}
+    real_init = ShowLoop.__init__
+
+    def keep(self, *a, **k):
+        real_init(self, *a, **k)
+        captured["loop"] = self
+    ShowLoop.__init__ = keep
+    try:
+        run_soak(cfg, seconds=0.5)
+    finally:
+        ShowLoop.__init__ = real_init
+    lp = captured["loop"]
+    print("loop.step is the instance wrapper:", "step" in vars(lp), "; governor.apply wrapped:",
+          "apply" in vars(lp.wall.governor), "; display closed:", lp.wall.display.closed,
+          "; soak returns no loop (local):", True)

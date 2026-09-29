@@ -1,0 +1,91 @@
+pattern | Hz | fps | case | raw area/sq | calls | shown area | shown sq | from dark area/sq | >budget | closed | ends black | raised
+strobe | 10 | 20 | clean | 1.000/20 | 62 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 20 | fail before close (last) | 1.000/20 | 63 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 20 | fail resend in close | 1.000/20 | 63 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 20 | fail every 2nd push | 1.000/20 | 120 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 20 | fail every 3rd push | 1.000/20 | 90 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 20 | torn once (call 5) | 1.000/20 | 63 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 20 | torn every 2nd | 1.000/20 | 120 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 20 | torn every 3rd | 1.000/20 | 90 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 20 | kbi at call 20 | 1.000/20 | 23 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 20 | kbi in close resend | 1.000/20 | 61 | 0.000 | 6 | 1.000/7 | ok | True | False | KeyboardInterrupt
+strobe | 10 | 30 | clean | 1.000/20 | 92 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 30 | fail before close (last) | 1.000/20 | 93 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 30 | fail resend in close | 1.000/20 | 93 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 30 | fail every 2nd push | 1.000/20 | 180 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 30 | fail every 3rd push | 1.000/20 | 135 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 30 | torn once (call 5) | 1.000/20 | 93 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 30 | torn every 2nd | 1.000/20 | 180 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 30 | torn every 3rd | 1.000/20 | 135 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 10 | 30 | kbi at call 20 | 1.000/20 | 23 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 10 | 30 | kbi in close resend | 1.000/20 | 91 | 0.000 | 6 | 1.000/7 | ok | True | False | KeyboardInterrupt
+strobe | 5 | 20 | clean | 1.000/10 | 62 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 20 | fail before close (last) | 1.000/10 | 63 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 20 | fail resend in close | 1.000/10 | 63 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 20 | fail every 2nd push | 1.000/10 | 120 | 0.000 | 6 | 0.000/6 | ok | True | False | OSError
+strobe | 5 | 20 | fail every 3rd push | 1.000/10 | 90 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 5 | 20 | torn once (call 5) | 1.000/10 | 63 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 20 | torn every 2nd | 1.000/10 | 120 | 0.000 | 6 | 0.000/6 | ok | True | False | OSError
+strobe | 5 | 20 | torn every 3rd | 1.000/10 | 90 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 5 | 20 | kbi at call 20 | 1.000/10 | 23 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 20 | kbi in close resend | 1.000/10 | 61 | 0.000 | 6 | 1.000/7 | ok | True | True | KeyboardInterrupt
+strobe | 5 | 30 | clean | 1.000/10 | 92 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 30 | fail before close (last) | 1.000/10 | 93 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 30 | fail resend in close | 1.000/10 | 93 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 30 | fail every 2nd push | 1.000/10 | 180 | 0.000 | 5 | 0.000/6 | ok | True | False | OSError
+strobe | 5 | 30 | fail every 3rd push | 1.000/10 | 135 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 5 | 30 | torn once (call 5) | 1.000/10 | 93 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 30 | torn every 2nd | 1.000/10 | 180 | 0.000 | 5 | 0.000/6 | ok | True | False | OSError
+strobe | 5 | 30 | torn every 3rd | 1.000/10 | 135 | 0.000 | 6 | 1.000/7 | ok | True | False | OSError
+strobe | 5 | 30 | kbi at call 20 | 1.000/10 | 23 | 0.000 | 6 | 1.000/7 | ok | True | False | 
+strobe | 5 | 30 | kbi in close resend | 1.000/10 | 91 | 0.000 | 6 | 1.000/7 | ok | True | False | KeyboardInterrupt
+reversal | 10 | 20 | clean | 1.000/20 | 62 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 20 | fail before close (last) | 1.000/20 | 63 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 20 | fail resend in close | 1.000/20 | 63 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 20 | fail every 2nd push | 1.000/20 | 120 | 0.000 | 6 | 0.500/7 | ok | True | False | OSError
+reversal | 10 | 20 | fail every 3rd push | 1.000/20 | 90 | 0.000 | 6 | 0.500/7 | ok | True | False | OSError
+reversal | 10 | 20 | torn once (call 5) | 1.000/20 | 63 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 20 | torn every 2nd | 1.000/20 | 120 | 0.000 | 7 | 0.500/7 | OVER | True | False | OSError
+reversal | 10 | 20 | torn every 3rd | 1.000/20 | 90 | 0.000 | 7 | 0.500/7 | OVER | True | False | OSError
+reversal | 10 | 20 | kbi at call 20 | 1.000/20 | 23 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 20 | kbi in close resend | 1.000/20 | 61 | 0.000 | 6 | 0.500/7 | ok | True | False | KeyboardInterrupt
+reversal | 10 | 30 | clean | 1.000/20 | 92 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 30 | fail before close (last) | 1.000/20 | 93 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 30 | fail resend in close | 1.000/20 | 93 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 30 | fail every 2nd push | 1.000/20 | 180 | 0.000 | 6 | 0.500/7 | ok | True | False | OSError
+reversal | 10 | 30 | fail every 3rd push | 1.000/20 | 135 | 0.000 | 6 | 0.500/7 | ok | True | False | OSError
+reversal | 10 | 30 | torn once (call 5) | 1.000/20 | 93 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 30 | torn every 2nd | 1.000/20 | 180 | 0.000 | 7 | 0.500/7 | OVER | True | False | OSError
+reversal | 10 | 30 | torn every 3rd | 1.000/20 | 135 | 0.000 | 7 | 0.500/7 | OVER | True | False | OSError
+reversal | 10 | 30 | kbi at call 20 | 1.000/20 | 23 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 10 | 30 | kbi in close resend | 1.000/20 | 91 | 0.000 | 6 | 0.500/7 | ok | True | False | KeyboardInterrupt
+reversal | 5 | 20 | clean | 1.000/10 | 62 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 20 | fail before close (last) | 1.000/10 | 63 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 20 | fail resend in close | 1.000/10 | 63 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 20 | fail every 2nd push | 1.000/10 | 120 | 0.000 | 6 | 0.000/6 | ok | True | False | OSError
+reversal | 5 | 20 | fail every 3rd push | 1.000/10 | 90 | 0.000 | 6 | 0.500/7 | ok | True | False | OSError
+reversal | 5 | 20 | torn once (call 5) | 1.000/10 | 63 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 20 | torn every 2nd | 1.000/10 | 120 | 0.000 | 7 | 0.000/6 | OVER | True | False | OSError
+reversal | 5 | 20 | torn every 3rd | 1.000/10 | 90 | 0.000 | 7 | 0.500/7 | OVER | True | False | OSError
+reversal | 5 | 20 | kbi at call 20 | 1.000/10 | 23 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 20 | kbi in close resend | 1.000/10 | 61 | 0.000 | 6 | 0.500/7 | ok | True | False | KeyboardInterrupt
+reversal | 5 | 30 | clean | 1.000/10 | 92 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 30 | fail before close (last) | 1.000/10 | 93 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 30 | fail resend in close | 1.000/10 | 93 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 30 | fail every 2nd push | 1.000/10 | 180 | 0.000 | 5 | 0.000/6 | ok | True | False | OSError
+reversal | 5 | 30 | fail every 3rd push | 1.000/10 | 135 | 0.000 | 6 | 0.500/7 | ok | True | False | OSError
+reversal | 5 | 30 | torn once (call 5) | 1.000/10 | 93 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 30 | torn every 2nd | 1.000/10 | 180 | 0.000 | 6 | 0.000/6 | ok | True | False | OSError
+reversal | 5 | 30 | torn every 3rd | 1.000/10 | 135 | 0.000 | 7 | 0.500/7 | OVER | True | False | OSError
+reversal | 5 | 30 | kbi at call 20 | 1.000/10 | 23 | 0.000 | 6 | 0.500/7 | ok | True | False | 
+reversal | 5 | 30 | kbi in close resend | 1.000/10 | 91 | 0.000 | 6 | 0.500/7 | ok | True | False | KeyboardInterrupt
+
+-- log.exception in close with a raising handler --
+raiseExceptions=True: close raised RuntimeError; closed True
+raiseExceptions=False: close raised RuntimeError; closed True
+KBI-handler (a SIGTERM during the log): close raised KeyboardInterrupt; calls 4, closed True, black sent after: False
+
+-- close twice, close before any push --
+close before push: calls 2, closed 1, black True
+close again: calls 4, close() calls 2
+push then close twice: calls 5 (1 + 2 + 2), display.close calls 2, black True

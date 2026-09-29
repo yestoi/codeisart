@@ -1,0 +1,25 @@
+exit 0 seconds 30.2
+stdout: 552 steps, 6 presses, step p95 10.8 ms, squares_max 2; report /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/soak-out/soak-20260929-054410.json
+stderr last lines:
+git status unchanged: True
+before: M docs/superpowers/workflow/state.md | ?? reports/ | ?? research_notes/
+after:  M docs/superpowers/workflow/state.md | ?? reports/ | ?? research_notes/
+steps: 552
+governed: 554
+push_failures: 0
+errors_logged: 0
+errors_at_setup: 0
+children_left: 0
+run_ended_early: 0
+presses: 6
+plays_started: 0
+plays_ended: 0
+returns_to_attract: 0
+held_ticks: 0
+errors kept: []
+governor: {'held_ticks': 0, 'fps': 20} meter: {'frames': 552, 'area_max': 0.0, 'squares_max': 2, 'budget': 6}
+windows squares_max: [2] max 2
+step_ms: {'count': 552, 'median': 6.3, 'p95': 10.8, 'worst': 23.852}
+governor_ms: {'count': 554, 'median': 5.7, 'p95': 9.4, 'worst': 23.339}
+fds: {'first': 4, 'last': 4} rss_kb: {'first': 36640, 'last': 130880} failures: [] times: {'started_at': '2026-09-29T05:43:40', 'elapsed_s': 30.032, 'minutes': 0.5, 'press_every': 5.0, 'seed': 0, 'window_s': 60.0}
+pgrep -P for the child (should be gone): 

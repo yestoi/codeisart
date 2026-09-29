@@ -1,0 +1,73 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 8: FlashMeter's maxima against flash_area and square_flashes on runs longer than one window."""
+import numpy as np
+from arcade.flash import FlashGovernor, flash_area, square_flashes
+from tools.flash_meter import FlashMeter
+
+H, W = 64, 128
+LIT = np.array((51, 255, 51), np.uint8)
+rng = np.random.default_rng(1)
+
+
+def strobe(hz, fps, n):
+    return [np.broadcast_to(LIT if round(k / fps * 2 * hz) % 2 == 0 else np.zeros(3, np.uint8), (H, W, 3)).copy()
+            for k in range(n)]
+
+
+def noise(fps, n):
+    return [(rng.random((H, W, 1)) < 0.5).astype(np.uint8) * LIT for _ in range(n)]
+
+
+def scroll(fps, n):
+    base = (rng.random((H, W)) < 0.15)
+    out = []
+    for k in range(n):
+        m = np.roll(base, -(k // 2), axis=0)          # text-like dots moving up a row every 2 frames
+        out.append(m[..., None].astype(np.uint8) * LIT)
+    return out
+
+
+def slow_ramp_then_strobe(hz, fps, n):     # 1 s of ramp, then a strobe: a window starting mid-run matters
+    ramp = [np.full((H, W, 3), int(255 * k / fps), np.uint8) for k in range(fps)]
+    return ramp + strobe(hz, fps, n - fps)
+
+
+def meter(frames, fps):
+    m = FlashMeter(fps)
+    per = [m.add(f) for f in frames]
+    return m.area_max, m.squares_max, per
+
+
+print("source | fps | secs | gov | meter area | flash_area | meter sq | square_flashes | agree")
+bad = 0
+for fps in (20, 30):
+    for secs in (3, 10):
+        n = fps * secs
+        for name, frames in (("strobe 10Hz", strobe(10, fps, n)), ("strobe 5Hz", strobe(5, fps, n)),
+                             ("noise", noise(fps, n)), ("scroll", scroll(fps, n)),
+                             ("ramp+strobe 10Hz", slow_ramp_then_strobe(10, fps, n))):
+            for gov in (False, True):
+                seq = frames
+                if gov:
+                    g = FlashGovernor(H, W, 2.2, fps=fps)
+                    seq = [g.apply(f).copy() for f in frames]
+                ma, ms, per = meter(seq, fps)
+                fa, sf = flash_area(seq, fps=fps), square_flashes(seq, fps=fps)
+                ok = (ma == fa) and (ms == sf)
+                bad += not ok
+                print(f"{name} | {fps} | {secs} | {gov} | {ma:.4f} | {fa:.4f} | {ms} | {sf} | {ok}")
+
+# per-frame: the meter's add() against flash_area / square_flashes of the prefix (the last frame's own number is
+# the max over prefixes minus the max over the shorter prefix only when it rises; check the running maximum)
+print("\nrunning maxima against prefixes (noise, 20 fps, 60 frames):")
+frames = noise(20, 60)
+m = FlashMeter(20)
+mism = 0
+for k, f in enumerate(frames, 1):
+    m.add(f)
+    if k % 10 == 0 or k in (21, 22):
+        fa, sf = flash_area(frames[:k], fps=20), square_flashes(frames[:k], fps=20)
+        mism += (m.area_max != fa) or (m.squares_max != sf)
+        print(f"k={k}: meter {m.area_max:.4f}/{m.squares_max} prefix {fa:.4f}/{sf}")
+print("take():", m.take(), "then", m.take())
+print("disagreements:", bad, "prefix mismatches:", mism)

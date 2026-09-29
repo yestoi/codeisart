@@ -1,0 +1,96 @@
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed
+closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 70, in close
+    self.repush()               # what the governor counted, before black follows it
+    ^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 57, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 81, in _send
+    self.display.push(frame)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review/p2_close_faults.py", line 36, in push
+    raise OSError("failed")
+OSError: failed

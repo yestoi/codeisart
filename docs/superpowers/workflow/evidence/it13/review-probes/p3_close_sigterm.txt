@@ -1,0 +1,5 @@
+A1 SIGTERM in the close's first black: outcome=KeyboardInterrupt out of run; pushes=10 governed=10; last three received=['lit', 'lit', 'lit']; wall ends lit=True; display closed=True; lights offs=1 modes={'off'} lights closed=True; handler after=0
+A2 SIGTERM in the close's second black: outcome=KeyboardInterrupt out of run; pushes=11 governed=11; last three received=['lit', 'lit', 'black']; wall ends lit=False; display closed=True; lights offs=1 modes={'off'} lights closed=True; handler after=0
+A3 SIGTERM in the close's lights.all_off (before the wall): outcome=KeyboardInterrupt out of run; pushes=10 governed=10; last three received=['lit', 'lit', 'lit']; wall ends lit=True; display closed=False; lights offs=1 modes={'off'} lights closed=False; handler after=0
+A0 control: Ctrl-C only: outcome=run returned 0; pushes=12 governed=12; last three received=['lit', 'black', 'black']; wall ends lit=False; display closed=True; lights offs=1 modes={'off'} lights closed=True; handler after=0
+B1: outcome=KeyboardInterrupt out of sigterm_raises's body (before run's try); display pushes=0 closed=False wall=None; lights made=False; handler after=0

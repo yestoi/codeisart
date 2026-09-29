@@ -1,0 +1,87 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 2: the torn-push square flashes, at HEAD's show/wall.py and at 386d607's (p2_base_wall.py), same loop
+pattern (show/main.py _push is unchanged). Also: what the tear adds by itself (clean vs torn, governed frames)."""
+import importlib.util
+import pathlib
+import numpy as np
+from arcade.flash import BUDGET, flash_area, square_flashes
+import show.wall as head_wall
+
+S = pathlib.Path(__file__).parent
+spec = importlib.util.spec_from_file_location("base_wall", S / "p2_base_wall.py")
+base_wall = importlib.util.module_from_spec(spec); spec.loader.exec_module(base_wall)
+
+sys.argv = ["x"]
+import runpy
+p2 = runpy.run_path(str(S / "p2_close_faults.py").replace(".py", ".py"), run_name="not_main") if False else None
+
+H, W = 64, 128
+LIT = np.array((51, 255, 51), np.uint8)
+
+
+class Screen:
+    def __init__(self, fail):
+        self.fail, self.count, self.closed = fail, 0, False
+        self.screen = np.zeros((H, W, 3), np.uint8)
+        self.shown = []
+
+    def push(self, frame):
+        self.count += 1
+        if self.fail(self.count):
+            self.screen[:H // 2] = frame[:H // 2]
+            self.shown.append(self.screen.copy())
+            raise OSError("torn")
+        self.screen = frame.copy()
+        self.shown.append(self.screen.copy())
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
+def reversal(hz, fps, seconds):
+    out = []
+    for k in range(int(seconds * fps)):
+        f = np.zeros((H, W, 3), np.uint8)
+        if round(k / fps * 2 * hz) % 2 == 0:
+            f[H // 2:] = LIT
+        else:
+            f[:H // 2] = LIT
+        out.append(f)
+    return out
+
+
+def drive(mod, frames, fps, disp):
+    wall = mod.GovernedDisplay(disp, H, W, fps=fps)
+    failed, governed = False, []
+    try:
+        for f in frames:
+            try:
+                if failed:
+                    wall.repush()
+                governed.append(wall.push(f).copy())
+            except Exception:
+                failed = True
+                continue
+            failed = False
+    finally:
+        try:
+            wall.close()
+        except OSError:
+            pass
+    return governed
+
+
+print("code | Hz | fps | tear | shown sq | shown area | governed sq (what the governor counted)")
+for mod, name in ((head_wall, "HEAD"), (base_wall, "386d607")):
+    for hz in (10, 5):
+        for fps in (20, 30):
+            for tear, pred in (("every 2nd", lambda n: n % 2 == 0), ("every 3rd", lambda n: n % 3 == 0),
+                               ("calls 9-12 only", lambda n: 9 <= n <= 12)):
+                d = Screen(pred)
+                gov = drive(mod, reversal(hz, fps, 3.0), fps, d)
+                print(f"{name} | {hz} | {fps} | {tear} | {square_flashes(d.shown, fps=fps)} | "
+                      f"{flash_area(d.shown, fps=fps):.3f} | {square_flashes(gov, fps=fps)}")
+print("BUDGET", BUDGET)

@@ -1,0 +1,52 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""p7: the soak CLI once, 0.5 min, a press every 5 s, --out in the scratch folder; git status before and after."""
+import json
+import os
+import subprocess
+import time
+from pathlib import Path
+
+S = Path("/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-review")
+OUT = S / "soak-out"
+PY = "/Users/trey/dev/codeisart/.venv/bin/python"
+env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+
+
+def status():
+    return subprocess.run(["git", "-C", "/Users/trey/dev/codeisart", "status", "--short"], capture_output=True,
+                          text=True).stdout
+
+
+before = status()
+proc = subprocess.Popen([PY, "-m", "tools.show_soak", "--minutes", "0.5", "--press-every", "5", "--out", str(OUT)],
+                        cwd="/Users/trey/dev/codeisart", env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        text=True)
+t0 = time.monotonic()
+try:
+    out, err = proc.communicate(timeout=120)
+finally:
+    if proc.poll() is None:
+        proc.kill()
+        proc.wait()
+print("exit", proc.returncode, "seconds", round(time.monotonic() - t0, 1))
+print("stdout:", out.strip())
+print("stderr last lines:", *err.strip().splitlines()[-6:], sep="\n  ")
+after = status()
+print("git status unchanged:", before == after)
+print("before:", before.strip().replace("\n", " | "))
+print("after: ", after.strip().replace("\n", " | "))
+path = sorted(OUT.glob("soak-*.json"))[-1]
+r = json.loads(path.read_text())
+keys = ("steps", "governed", "push_failures", "errors_logged", "errors_at_setup", "children_left",
+        "run_ended_early", "presses", "plays_started", "plays_ended", "returns_to_attract", "held_ticks")
+for k in keys:
+    print(f"{k}: {r[k]}")
+print("errors kept:", r["errors"])
+print("governor:", r["governor"], "meter:", r["meter"])
+print("windows squares_max:", [w["squares_max"] for w in r["windows"]], "max",
+      max(w["squares_max"] for w in r["windows"]))
+print("step_ms:", r["step_ms"])
+print("governor_ms:", r["governor_ms"])
+print("fds:", r["fds"], "rss_kb:", r["rss_kb"], "failures:", r["failures"], "times:", r["times"])
+print("pgrep -P for the child (should be gone):", subprocess.run(["pgrep", "-P", str(proc.pid)],
+                                                                  capture_output=True, text=True).stdout.strip())

@@ -1,0 +1,3 @@
+font missing: steps 20 governed 22 errors_at_setup 1 errors_logged 0 plays 0 failures [] errors ["show: setup: font: [Errno 2] No such file or directory: '/var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp4ta5kaul/nofont.bin'"]
+entries_dir missing: steps 20 governed 22 errors_at_setup 1 errors_logged 0 plays 0 failures [] errors ['show: setup: entries: /var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmp4ta5kaul/none: not a directory']
+fps 0 in code: steps 20 governed 22 errors_at_setup 2 errors_logged 0 plays 0 failures [] errors ['show: fps 0 is not an int of at least 2: run steps at 20 fps', 'show: the flash governor refused the config; the error frame only']

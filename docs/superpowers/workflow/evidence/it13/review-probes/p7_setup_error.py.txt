@@ -1,0 +1,17 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""p7: a show that cannot be set up (entries_dir or font missing): does the soak still say clear?"""
+import tempfile
+from dataclasses import replace
+from pathlib import Path
+from tests.test_main import small_cfg
+from tests.test_show_soak import run_soak
+from tools.show_soak import failures
+with tempfile.TemporaryDirectory() as d:
+    cfg = small_cfg(Path(d))
+    for name, c in (("font missing", replace(cfg, font_path=Path(d) / "nofont.bin")),
+                    ("entries_dir missing", replace(cfg, entries_dir=Path(d) / "none")),
+                    ("fps 0 in code", replace(cfg, fps=0))):
+        r, disp = run_soak(c, seconds=1.0, stations=(1,))
+        print(f"{name}: steps {r['steps']} governed {r['governed']} errors_at_setup {r['errors_at_setup']} "
+              f"errors_logged {r['errors_logged']} plays {r['plays_started']} failures {failures(r)} "
+              f"errors {r['errors'][:2]}")

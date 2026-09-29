@@ -1,0 +1,57 @@
+== mistyped --config paths
+['--backend', 'colorlight', '--config', '/var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpltwdsz1f/show.poc.tml', '--seconds', '0.2'] -> 0 {'backend': 'colorlight', 'width': 512, 'height': 192, 'iface': 'eth0', 'brightness': 0.1} levels [0.1]
+['--config', '/var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpltwdsz1f/nope.toml', '--seconds', '0.2'] -> 0 {'backend': 'sdl', 'width': 512, 'height': 192, 'iface': 'eth0', 'brightness': 0.1} levels [0.1]
+['--backend', 'colorlight', '--config', '/var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/tmpltwdsz1f/nope.toml', '--brightness', '0.4', '--seconds', '0.2'] -> 0 {'backend': 'colorlight', 'width': 512, 'height': 192, 'iface': 'eth0', 'brightness': 0.4} levels [0.4]
+== caps from a config
+brightness_cap = 0.2 --brightness 0.2 -> 0 made levels [0.2]
+wall_pattern: brightness must be over 0 and at most 0.2 (the power supply cap), got 0.25
+brightness_cap = 0.2 --brightness 0.25 -> 2 not made levels None
+wall_pattern: brightness must be over 0 and at most 0.4 (the power supply cap), got 0.41
+brightness_cap = 0.9 --brightness 0.41 -> 2 not made levels None
+brightness_cap = 0.9 --brightness 0.4 -> 0 made levels [0.4]
+brightness_cap = true --brightness 0.4 -> 0 made levels [0.4]
+wall_pattern: brightness must be over 0 and at most 0 (the power supply cap), got 0.01
+brightness_cap = 0 --brightness 0.01 -> 2 not made levels None
+wall_pattern: the tool has no 'fake' display; choose --backend from colorlight, sdl, ddp
+backend = "fake" --brightness 0.1 -> 2 not made levels None
+== refusals before make_display (fps, gamma, brightness)
+wall_pattern: fps must be over 0 and at most 60, got 0.0
+['--fps', '0'] -> 2 not made
+wall_pattern: fps must be over 0 and at most 60, got nan
+['--fps', 'nan'] -> 2 not made
+wall_pattern: fps must be over 0 and at most 60, got 61.0
+['--fps', '61'] -> 2 not made
+wall_pattern: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 0.5
+['--gamma', '0.5'] -> 2 not made
+wall_pattern: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got 3.0
+['--gamma', '3'] -> 2 not made
+wall_pattern: brightness must be over 0 and at most 0.4 (the power supply cap), got 0.0
+['--brightness', '0'] -> 2 not made
+wall_pattern: brightness must be over 0 and at most 0.4 (the power supply cap), got nan
+['--brightness', 'nan'] -> 2 not made
+wall_pattern: brightness must be over 0 and at most 0.4 (the power supply cap), got 0.5
+['--brightness', '0.5'] -> 2 not made
+== governor fps vs push fps
+0.5 2
+1 2
+2.0 2
+7.5 8
+20.0 20
+59.9 60
+60.0 60
+== steps: device levels and times (fake clock)
+0 [(0.0, 0.05), (2.05, 0.1), (4.1, 0.2), (6.1, 0.4), (8.1, 0.05)]
+max level 0.4
+== lit share of each pattern, and flashes
+512x192 rgb     lit share 0.999  raw area 0.000 sq 0
+512x192 index   lit share 0.079  raw area 0.000 sq 0
+512x192 steps   lit share 0.487  raw area 0.000 sq 0
+512x192 gamma   lit share 0.649  raw area 0.000 sq 0
+512x192 grid    lit share 0.234  raw area 0.000 sq 0
+512x192 panels  lit share 0.017  raw area 0.000 sq 0
+128x64 rgb     lit share 0.991  raw area 0.000 sq 0
+128x64 index   lit share 0.051  raw area 0.000 sq 0
+128x64 steps   lit share 0.461  raw area 0.000 sq 0
+128x64 gamma   lit share 0.645  raw area 0.000 sq 0
+128x64 grid    lit share 0.234  raw area 0.000 sq 0
+128x64 panels  lit share 0.017  raw area 0.000 sq 0

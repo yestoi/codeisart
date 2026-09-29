@@ -1,0 +1,17 @@
+
+== A. the wrapper test's session: does the strobe play, do frames change?
+steps 60 presses 6 picks [2, 1, 2, 3, 1, 1] plays_started 1 held_ticks 23
+distinct frames in the soak's first n pushes: 4
+identical frames: 60/60; plain held_ticks 23
+control, seed 8 vs plain seed 7: identical 12/60
+soak step times differ from k/20 by at most 2.6645352591003757e-15
+
+== B. must-be-zero counts
+always failing: push_failures 22 failures ['push_failures=22', 'errors_logged=3']
+fails every second push: push_failures 20 failures ['push_failures=20', 'errors_logged=2']
+torn every other push: push_failures 80 meter squares_max 0 windows squares_max [0]; failures ['push_failures=80', 'errors_logged=2']
+  the modelled screen: flash_area 0.0000 square_flashes 6 (budget 6)
+clean strobe soak: meter squares_max 6 area_max 0.0; display.pushed square_flashes 6 flash_area 0.0; meter frames 80 pushed 82
+
+== C. the wrappers after soak returns
+loop.step is the instance wrapper: True ; governor.apply wrapped: True ; display closed: True ; soak returns no loop (local): True

@@ -1,0 +1,8 @@
+$ python -m tools.show_soak --minutes 5 --press-every 5 --out it13-soak
+5508 steps, 60 presses, step p95 12.7 ms, squares_max 4; report /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-ev/it13-soak/soak-20260929-054946.json
+[exit 0, 300.3 s; git status after: clean]
+
+$ python -m tools.show_soak --config show.poc.toml --minutes 2 --press-every 5 --out it13-soak-poc
+2246 steps, 24 presses, step p95 4.9 ms, squares_max 3; report /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it13-ev/it13-soak-poc/soak-20260929-055147.json
+[exit 0, 120.3 s; git status after: clean]
+

@@ -1,0 +1,26 @@
+code | Hz | fps | tear | shown sq | shown area | governed sq (what the governor counted)
+HEAD | 10 | 20 | every 2nd | 7 | 0.000 | 0
+HEAD | 10 | 20 | every 3rd | 7 | 0.000 | 4
+HEAD | 10 | 20 | calls 9-12 only | 6 | 0.000 | 6
+HEAD | 10 | 30 | every 2nd | 7 | 0.000 | 0
+HEAD | 10 | 30 | every 3rd | 7 | 0.000 | 8
+HEAD | 10 | 30 | calls 9-12 only | 6 | 0.000 | 6
+HEAD | 5 | 20 | every 2nd | 7 | 0.000 | 0
+HEAD | 5 | 20 | every 3rd | 7 | 0.000 | 0
+HEAD | 5 | 20 | calls 9-12 only | 6 | 0.000 | 6
+HEAD | 5 | 30 | every 2nd | 6 | 0.000 | 0
+HEAD | 5 | 30 | every 3rd | 7 | 0.000 | 12
+HEAD | 5 | 30 | calls 9-12 only | 6 | 0.000 | 6
+386d607 | 10 | 20 | every 2nd | 7 | 0.000 | 0
+386d607 | 10 | 20 | every 3rd | 7 | 0.000 | 4
+386d607 | 10 | 20 | calls 9-12 only | 6 | 0.000 | 6
+386d607 | 10 | 30 | every 2nd | 7 | 0.000 | 0
+386d607 | 10 | 30 | every 3rd | 7 | 0.000 | 8
+386d607 | 10 | 30 | calls 9-12 only | 6 | 0.000 | 6
+386d607 | 5 | 20 | every 2nd | 7 | 0.000 | 0
+386d607 | 5 | 20 | every 3rd | 7 | 0.000 | 0
+386d607 | 5 | 20 | calls 9-12 only | 6 | 0.000 | 6
+386d607 | 5 | 30 | every 2nd | 6 | 0.000 | 0
+386d607 | 5 | 30 | every 3rd | 7 | 0.000 | 12
+386d607 | 5 | 30 | calls 9-12 only | 6 | 0.000 | 6
+BUDGET 6

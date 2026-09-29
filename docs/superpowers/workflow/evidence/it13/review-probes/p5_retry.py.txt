@@ -1,0 +1,42 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 5b: fps 0 in code, the display fails at the first open and opens at the retry: does a show run under
+the fallback governor (fps 30), and at what pace?"""
+import dataclasses, logging, tempfile
+from pathlib import Path
+import numpy as np
+import show.main as sm
+from show.audio import FakeAudio
+from show.lights import FakeLights
+from show.main import ShowLoop, RETRY_S
+from tests.test_main import StrobePlayer, small_cfg
+from tests.test_wall import Recorder
+from arcade.flash import flash_area, square_flashes, BUDGET
+logging.disable(logging.CRITICAL)
+sm.make_lights = lambda *a, **k: FakeLights()
+sm.make_buttons = lambda *a, **k: None
+sm.AudioCues = lambda *a, **k: FakeAudio()
+inner, calls = Recorder(), [0]
+def make_display(cfg, on_key=None):
+    calls[0] += 1
+    if calls[0] == 1:
+        raise OSError("no carrier yet")
+    return inner
+sm.make_display = make_display
+with tempfile.TemporaryDirectory() as d:
+    cfg = dataclasses.replace(small_cfg(Path(d)), fps=0)
+    loop = ShowLoop(cfg, player_factory=StrobePlayer, notify=lambda s: None)
+    t, steps = [0.0], []
+    loop.clock, loop.sleep = (lambda: t[0]), (lambda s: t.__setitem__(0, t[0] + s))
+    real = loop.step
+    def step(now):
+        steps.append(now); real(now)
+        if len(steps) == 1: loop.presses.put(1)
+        if now > RETRY_S + 3: raise KeyboardInterrupt
+    loop.step = step
+    loop.run()
+    distinct = len({f.tobytes() for f in inner.pushed})
+    print(f"display opens: {calls[0]}; show built: {loop.show is not None}; static: {loop._static}; "
+          f"governor fps: {loop.wall.governor.fps}; pace: {(len(steps)-1)/(steps[-1]-steps[0]):.2f}/s; "
+          f"pushed {len(inner.pushed)}, distinct frames {distinct}; errors {loop.errors}")
+    print(f"received: flash_area(fps=20) {flash_area(inner.pushed, fps=20)}, square_flashes(fps=20) "
+          f"{square_flashes(inner.pushed, fps=20)} (budget {BUDGET}); at fps=30: {square_flashes(inner.pushed, fps=30)}")

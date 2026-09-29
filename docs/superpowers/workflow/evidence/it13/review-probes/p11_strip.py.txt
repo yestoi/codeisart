@@ -1,0 +1,27 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+from pathlib import Path
+
+import numpy as np
+import pyte
+
+from show.config import Config, load_config
+from show.font import CELL_H, Font
+from show.renderer import renderer_for
+
+ROOT = Path("/Users/trey/dev/codeisart")
+print("Config()", Config().strip_look)
+for name in ("show.toml", "show.poc.toml"):
+    print(name, load_config(ROOT / name).strip_look)
+font = Font.load(ROOT / "fonts" / "5x7.bin")
+for name in ("show.toml", "show.poc.toml"):
+    cfg = load_config(ROOT / name)
+    r = renderer_for(cfg, font)
+    screen = pyte.Screen(cfg.columns, cfg.rows - 1)
+    pyte.Stream(screen).feed("int main(){puts(\"hello\");}\r\n")
+    frame = np.asarray(r.render(screen, strip="3 HELLO  press a button"))
+    strip = frame[-CELL_H:]                     # the strip's text row, at the bottom
+    g = strip[..., 1].astype(int)
+    vals, counts = np.unique(g, return_counts=True)
+    top = sorted(zip(counts, vals), reverse=True)[:4]
+    print(f"{name} {cfg.width}x{cfg.height} view {cfg.view}: strip green values (count, value) {top}; "
+          f"phosphor green {cfg.phosphor_rgb[1]}")

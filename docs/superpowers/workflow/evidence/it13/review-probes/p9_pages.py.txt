@@ -1,0 +1,71 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""p9: pages() keeps every cell in order and each page under PAGE_MAX_H; --cols honoured or refused; names."""
+import os
+import subprocess
+import tempfile
+from pathlib import Path
+
+import numpy as np
+
+from tools import show_shot as ss
+from tools.arcade_shot import fit_width
+
+PY = "/Users/trey/dev/codeisart/.venv/bin/python"
+env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+
+
+def cells_of(page, frames_h, scale):
+    return round((page.height - ss.TITLE_H) / (frames_h * scale + ss.CAP_H + ss.PAD))
+
+
+print("== pages()")
+print(f"{'size':>8} {'n':>3} {'scale':>5} {'cols':>4} {'cap':>5} | pages heights_max over cells_sum lost")
+bad = 0
+for (h, w) in ((192, 512), (64, 128), (192, 40), (7, 5)):
+    for n in (1, 2, 7, 30, 61):
+        for scale in (1, 4, 8, 16, 30):
+            for cols in (1, 2, 3, 6):
+                for cap in (ss.SHOW_MAX_WIDTH, ss.COLS_MAX_WIDTH):
+                    frames = [(f"f{k}", np.full((h, w, 3), (k % 250) + 1, np.uint8)) for k in range(n)]
+                    got = ss.pages(frames, "plain", scale, "t", 2.2, cols, cap)
+                    c, s = fit_width(w, ss.PAD, ss.PAD, cols, scale, cap)
+                    # count cells: rows per page * cols (last row may be partial: count from the chunking)
+                    rows = max(1, (ss.PAGE_MAX_H - ss.TITLE_H) // (h * s + ss.CAP_H + ss.PAD))
+                    per = rows * c
+                    total = sum(min(per, n - k * per) for k in range(len(got)))
+                    over = [p.height for p in got if p.height > ss.PAGE_MAX_H]
+                    heights_ok = all(p.height == ss.TITLE_H + (-(-min(per, n - k * per) // c)) * (h * s + ss.CAP_H
+                                     + ss.PAD) for k, p in enumerate(got))
+                    if over or total != n or not heights_ok:
+                        bad += 1
+                        print(f"{w}x{h:<4} {n:>3} {scale:>5} {cols:>4} {cap:>5} | {len(got)} "
+                              f"{max(p.height for p in got)} over={over[:3]} cells={total} heights_ok={heights_ok}"
+                              f" (fit cols {c} scale {s})")
+print("combinations with a page over PAGE_MAX_H or a cell lost:", bad)
+
+# order: the pixel of each page's first cell steps up
+frames = [(f"f{k}", np.full((192, 512, 3), k + 1, np.uint8)) for k in range(61)]
+got = ss.pages(frames, "plain", 4, "t", 2.2, 1)
+firsts = [p.getpixel((ss.PAD + 2, ss.TITLE_H + ss.CAP_H + 2))[0] for p in got]
+print("61 frames, scale 4, cols 1:", len(got), "pages; first cells' levels", firsts)
+
+print("\n== the CLI (--script strip), from the repository root, --out in a temp dir")
+before = subprocess.run(["git", "-C", "/Users/trey/dev/codeisart", "status", "--short"], capture_output=True,
+                        text=True).stdout
+with tempfile.TemporaryDirectory() as d:
+    for args in (["--cols", "3", "--scale", "1"], ["--cols", "6"], ["--cols", "4"], ["--cols", "0"],
+                 ["--cols", "1", "--scale", "20"], []):
+        out = Path(d) / ("o" + "_".join(a.strip("-") for a in args))
+        p = subprocess.run([PY, "-m", "tools.show_shot", "--script", "strip", "--out", str(out), *args],
+                           cwd="/Users/trey/dev/codeisart", env=env, capture_output=True, text=True, timeout=120)
+        made = sorted(x.name for x in Path(d).iterdir() if x.name.startswith(out.name + ".")
+                      or x.name.startswith(out.name + "-"))
+        from PIL import Image
+        dims = [(n, Image.open(Path(d) / n).size) for n in made]
+        print(f"{' '.join(args) or '(default)':>22}: exit {p.returncode} files {dims} "
+              f"err {p.stderr.strip().splitlines()[-1] if p.returncode else ''}")
+after = subprocess.run(["git", "-C", "/Users/trey/dev/codeisart", "status", "--short"], capture_output=True,
+                       text=True).stdout
+print("git status unchanged:", before == after)
+print("512 px frame widths: cols 3 scale 1 wants", ss.PAD + 3 * (512 + ss.PAD), "; cols 4 scale 4 wants",
+      ss.PAD + 4 * (2048 + ss.PAD))
