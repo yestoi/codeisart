@@ -285,7 +285,6 @@ is unmeasured. Glide removes the 10-steps-a-second jerk at 10. Owner question Q4
   `shake` keeps the scale.
 - Travel threshold 0.25 of the paddle's range (12 px): between a still body's 6 px (9.5 raw) and a slow player's 17.
 - `PADDLE_W` 3 so a smoothed control's 2-tick answer can reach spec 11's 12 px; S2's stub checks this first.
-- Bots move a body at most one range per 0.8 s; the ball is slowed for that (starting values above, tuned in P1).
 - C43: the runner knows whether tonight's best rose (`SessionResult.new_best`, a defaulted field outside the
   freeze); the card needs it and a score above 0.
 
