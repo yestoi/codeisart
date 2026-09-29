@@ -330,3 +330,38 @@ default: none taken; the loop is gated and the owner is in the session. The oper
 deadline: the arcade's next iteration
 answer: "yes, do it now as iteration 9. I was jerky and laggy. Didn't appear to have a good read on my hand." The body's distance from the camera moves Pong's paddle; it is built now, as iteration 9, before the show daemon (this changes Q33's order by one iteration; after iteration 9 the loop gates again). The hand path's faults (C44: jerky, laggy, a poor read of the hand) are fixed in the engine
 status: answered (owner, 2026-09-28 20:50 CDT)
+
+### Q43: In Pong by the body, which way does the paddle go?
+asked: it9
+default: stepping towards the camera moves the paddle up (`NEAR_IS_UP = True`)
+deadline: the second live smoke
+answer:
+status: defaulted (standing instruction)
+
+### Q44: Does the Mac's camera capture faster than 10 a second?
+asked: it9
+default: the default stays 10 in this iteration: `arcade.toml` must equal the defaults, every grace is sized in captures, and the noise and Pong's tuning were measured at 10. `Glide` moves the paddle on every tick between captures. For the owner's trial the file `arcade.mac.toml` sets `camera_fps = 30` (`arcade run --config arcade.mac.toml`); inference runs in the camera's own thread at about 11 ms a frame
+deadline: the second live smoke
+answer:
+status: defaulted (standing instruction)
+
+### Q45: How does Pong tell a player to move their body?
+asked: it9
+default: two lines at 1x in amber, "STEP IN = UP" and "STEP BACK = DOWN", at the first serve and again after 5 s in play without travel, fading in and out, drawn under the ball
+deadline: the second live smoke
+answer:
+status: defaulted (standing instruction)
+
+### Q46: What is Pong's pace for a body?
+asked: it9
+default: before tuning: the ball 55 to 95 px/s (gain 1.08, angle at most 50 degrees), the paddle 3 by 16 px, the CPU at 0.35 wall heights a second. This sets Q40's fast ball aside: it was tuned for a hand. No budget is loosened
+deadline: the second live smoke
+answer:
+status: defaulted (standing instruction)
+
+### Q47: How far must a player step?
+asked: it9
+default: about 0.5 m nearer to 0.7 m back from where they raised their hand covers the wall's height (`DEPTH_SPAN` 0.6); after 2 s at an end the middle follows the player. A still player scores nothing: a rally counts when the paddle travelled 12 px or more (C42, Q35)
+deadline: the second live smoke
+answer:
+status: defaulted (standing instruction)
