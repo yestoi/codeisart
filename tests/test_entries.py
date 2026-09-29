@@ -214,3 +214,38 @@ def test_sample_entry_runs_with_large_motion(tmp_path):
     assert len(frames) >= 40
     assert max(cols) - min(cols) >= 20
     assert not re.search(r"[^\x20-\x7e\n\x1b]", run.stdout)
+
+
+@NEEDS_CC
+def test_sample_entry_band_leaves_no_trail(tmp_path):
+    import pyte
+
+    entry, dst, proc = _built_copy(tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    env = {**os.environ, "LINES": "23", "COLUMNS": "80", "LC_ALL": "C"}
+    run = subprocess.run(entry.run, shell=True, cwd=dst, env=env,
+                         stdin=subprocess.DEVNULL, capture_output=True,
+                         text=True, timeout=entry.run_seconds)
+    assert run.returncode == 0
+    pieces = run.stdout.split("\x1b[H")
+    frames = [p.split("\x1b[2J")[0] for p in pieces[1:] if "#" in p]
+    assert len(frames) >= 40
+    screen = pyte.Screen(80, 23)
+    stream = pyte.Stream(screen)
+    stream.feed(pieces[0])
+    worst = (0, -1)
+    broken = 0   # rows that are not one band of at most 6 '#', over all frames
+    for n, frame in enumerate(frames):
+        # a tty turns \n into \r\n (onlcr); pyte does not, so do it here
+        stream.feed("\x1b[H" + frame.replace("\n", "\r\n"))
+        for row in screen.display:
+            body = row.strip(" ")
+            count = body.count("#")
+            if count > worst[0]:
+                worst = (count, n)
+            if count and not (count <= 6 and body == "#" * count):
+                broken += 1
+    print(f"frames {len(frames)}, worst row {worst[0]} '#' in frame {worst[1]}")
+    assert worst[0] <= 6 and broken == 0, (
+        f"a row holds {worst[0]} '#' in frame {worst[1]}; {broken} rows "
+        "are not one contiguous band of 6")

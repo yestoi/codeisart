@@ -32,6 +32,7 @@ int main(void)
             printf("%*s", col, "");
             for (int i = 0; i < width; i++)
                 putchar('#');
+            printf("\033[K");  /* erase the trail of earlier frames to the right */
             if (r < rows - 1)  /* no newline on the last row: it would scroll */
                 putchar('\n');
         }
