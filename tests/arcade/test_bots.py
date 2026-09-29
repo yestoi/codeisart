@@ -2,16 +2,19 @@ import math
 import sys
 import tomllib
 import types
+import zlib
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from arcade.bots import MAX_PLAY_SECONDS, Move, Nobody, Play, for_game, play, seeds, win_rate
+from arcade.bots import (BODY_HEIGHT, BODY_RANGE_SECONDS, MAX_PLAY_SECONDS, Move, Nobody, Play, for_game, play, seeds,
+                         win_rate)
 from arcade.config import ArcadeConfig
 from arcade.game import KINDS, Game, GameInfo
 from arcade.sensed import RIGHT_WRIST
-from arcade.sources.actors import TICK
+from arcade.input import DEPTH_SPAN, Depth
+from arcade.sources.actors import TICK, Person
 from tests.arcade.helpers import CROSS_ICON, SpyGame, spy, spy_info
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -231,3 +234,75 @@ def test_budget_file_parses_and_has_every_kind():
             assert all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in bounds.values())
             if len(bounds) == 2:
                 assert bounds["min"] < bounds["max"], f"{kind}.{metric}"
+
+
+class Deep(SpyGame):
+    """Reports the player's scale and what a fresh Depth, made at reset, reads from it."""
+
+    info = spy_info("deep")
+    finish_after = 80
+
+    def reset(self, size, rng, fx):
+        super().reset(size, rng, fx)
+        self.depth, self.near, self.scale = Depth(), None, None
+
+    def update(self, sensed, dt):
+        super().update(sensed, dt)
+        p = sensed.player
+        self.near = self.depth.update(p, sensed.t, sensed.camera_t)
+        self.scale = None if p is None else p.scale
+
+    def debug_state(self):
+        return {"updates": self.updates, "near": self.near, "scale": self.scale}
+
+
+def _body_scale(height):
+    return Person(0.5, height=height).body_at(0.0, 1).scale
+
+
+def test_move_near_sizes_the_body(font5x7):
+    centre = _body_scale(BODY_HEIGHT)
+    for v in (0.0, 0.25, 0.5, 0.75, 0.9, 1.0):
+        bot = Recorder(move=Move(near=v))
+        play(Deep, bot, seed=0, won=never, font=font5x7)
+        states = [s for s, _ in bot.seen[1:]]
+        assert states[0]["scale"] == pytest.approx(centre, rel=1e-9), f"near {v}: the first tick is the centre"
+        settled = [s["near"] for s in states[round(1.5 / TICK):round(2.2 / TICK)]]   # before a recentre at an end
+        assert all(n == pytest.approx(v, abs=0.02) for n in settled), f"near {v}: {min(settled)}..{max(settled)}"
+        assert states[-1]["scale"] == pytest.approx(centre * Depth.ratio(v), rel=1e-9), f"near {v}"
+    bot = Recorder(move=Move())                                          # near None: the start size, as before
+    play(Deep, bot, seed=0, won=never, font=font5x7)
+    assert {s["scale"] for s, _ in bot.seen[1:]} == {_body_scale(0.6)}
+    assert BODY_HEIGHT * Depth.ratio(0.0) == pytest.approx(0.52, abs=0.01)
+    assert BODY_HEIGHT * Depth.ratio(1.0) == pytest.approx(0.95, abs=0.01)
+
+
+class Stepper:
+    """Asks for near 0 until 1.5 s, then near 1; records the states it is given."""
+
+    reaction_ticks = 0
+
+    def __init__(self, noise=0.0):
+        self.noise, self.seen = noise, []
+
+    def __call__(self, state, t):
+        self.seen.append(state)
+        return Move(near=0.0 if t < 1.5 - 1e-9 else 1.0)
+
+
+def test_near_moves_at_a_bodys_pace(font5x7):
+    centre = _body_scale(BODY_HEIGHT)
+    step = TICK / BODY_RANGE_SECONDS
+    for noise in (0.0, 0.1):
+        seed = zlib.crc32(f"near-pace-{noise}".encode())
+        bot = Stepper(noise)
+        result = play(Deep, bot, seed, won=never, seconds=2.5, font=font5x7)
+        # The bodies play() fed, read back as the near they stand at (nothing smooths them on the way).
+        near = [0.5 + math.log(s["scale"] / centre) / DEPTH_SPAN for s in [*bot.seen[1:], result.state]]
+        assert len(near) == round(2.5 / TICK), f"seed {seed}"
+        assert all(abs(b - a) <= step + 1e-9 for a, b in zip(near, near[1:])), f"seed {seed}: faster than a body"
+        assert max(near) - min(near) > 0.9, f"seed {seed}: {min(near)}..{max(near)}"
+        if noise == 0.0:
+            left = max(i for i, n in enumerate(near) if n <= 1e-9)
+            there = next(i for i, n in enumerate(near) if n >= 1.0 - 1e-9)
+            assert (there - left) * TICK >= BODY_RANGE_SECONDS - 1e-9, f"seed {seed}: {there - left} ticks"

@@ -58,6 +58,7 @@ class Person:
         self._wrists: list[tuple[float, float, str, float, float]] = []
         self._poses: list[tuple[float, float, str]] = []
         self._jumps: list[tuple[float, float, float]] = []
+        self._scales: list[tuple[float, float, float, float]] = []
         self._arrive = 0.0
         self._leave: float | None = None
 
@@ -70,6 +71,19 @@ class Person:
                 x = xa + (xb - xa) * (t - t0) / (t1 - t0)
         return x
 
+    def _ratio_at(self, t: float) -> float:
+        ratio = 1.0
+        for t0, t1, ra, rb in self._scales:
+            if t >= t1:
+                ratio = rb
+            elif t0 <= t < t1:
+                ratio = ra + (rb - ra) * (t - t0) / (t1 - t0)
+        return ratio
+
+    def height_at(self, t: float) -> float:
+        """The body's height at t: its height times the ratio scale_to gives then."""
+        return self.h * self._ratio_at(t)
+
     def _lift_at(self, t: float) -> float:
         lift = 0.0
         for at, seconds, height in self._jumps:
@@ -81,6 +95,16 @@ class Person:
     def walk(self, x_to: float, seconds: float, at: float | None = None) -> "Person":
         t0 = (self._moves[-1][1] if self._moves else 0.0) if at is None else at
         self._moves.append((t0, t0 + seconds, self._x_at(t0), x_to))
+        return self
+
+    def scale_to(self, ratio: float, seconds: float, at: float | None = None) -> "Person":
+        """Grow (ratio over 1: nearer the camera) or shrink the body from its ratio at `at` (1 at the start) to
+        ratio times its height, linearly over seconds. Keypoints, box and so the measured scale grow about the hip
+        centre, whose y stays. With at None it starts where the last scale_to ended, or at 0."""
+        if not 0.0 < ratio < math.inf or not 0.0 < seconds < math.inf:
+            raise ValueError(f"scale_to needs a ratio and seconds over 0, got {ratio!r}, {seconds!r}")
+        t0 = (self._scales[-1][1] if self._scales else 0.0) if at is None else at
+        self._scales.append((t0, t0 + seconds, self._ratio_at(t0), ratio))
         return self
 
     def raise_hand(self, at: float, seconds: float = 0.5, hand: str = "right") -> "Person":
@@ -141,8 +165,8 @@ class Person:
 
     def _keypoints_at(self, t: float) -> list[Keypoint]:
         cx, cy = self._x_at(t), self.y0 - self._lift_at(t)
-        offsets = self._offsets_at(t)
-        pts = _points(cx, cy, self.h, tuple(offsets))
+        offsets, h = self._offsets_at(t), self.height_at(t)
+        pts = _points(cx, cy, h, tuple(offsets))
         for t0, t1, hand, y_from, y_to in self._wrists:
             if t0 <= t < t1:
                 v = y_from + (y_to - y_from) * (t - t0) / (t1 - t0)
@@ -151,8 +175,8 @@ class Person:
                 # body partly out of frame (keypoints clamped with confidence 0) still has one.
                 sx, sy = [(a + b) / 2 for a, b in zip(offsets[LEFT_SHOULDER], offsets[RIGHT_SHOULDER])]
                 hx, hy = [(a + b) / 2 for a, b in zip(offsets[LEFT_HIP], offsets[RIGHT_HIP])]
-                top = cy + (sy - REACH_TOP_TORSOS * math.hypot(sx - hx, sy - hy)) * self.h
-                y = top + v * (cy + hy * self.h - top)
+                top = cy + (sy - REACH_TOP_TORSOS * math.hypot(sx - hx, sy - hy)) * h
+                y = top + v * (cy + hy * h - top)
                 pts[wrist] = Keypoint(pts[wrist].x, y)
                 pts[elbow] = Keypoint((pts[shoulder].x + pts[wrist].x) / 2, (pts[shoulder].y + y) / 2)
         return pts
@@ -344,17 +368,18 @@ def _unit(tag: str, tick: int, body_id: int, joint: int) -> float:
     return zlib.crc32(f"{tag}:{tick}:{body_id}:{joint}".encode()) / 2**32
 
 
-def _noisy(body: Body, tick: int, tag: str, dropout: float, jitter: float) -> Body:
-    """body with its keypoints dropped and jittered. box, scale, vx and vy are kept: the box stands for the
-    detector's box, which does not lose a joint, and scale and velocity come from the tracker (core
-    Task 16), which smooths them over captures. Re-placing is the caller's job."""
+def _noisy(body: Body, tick: int, tag: str, dropout: float, jitter: float, rescale: bool = False) -> Body:
+    """body with its keypoints dropped and jittered. box, vx and vy are kept: the box stands for the detector's
+    box, which does not lose a joint, and velocity comes from the tracker (core Task 16), which smooths it over
+    captures. scale is kept too, unless rescale: then it is measured again from the noisy keypoints, as a raw
+    capture's is (the tracker smooths it, so this is the worst case). Re-placing is the caller's job."""
     pts = []
     for j, k in enumerate(body.keypoints):
         x = k.x + (2 * _unit(tag + "x", tick, body.id, j) - 1) * jitter
         y = k.y + (2 * _unit(tag + "y", tick, body.id, j) - 1) * jitter
         conf = 0.0 if _unit(tag + "drop", tick, body.id, j) < dropout else k.conf
         pts.append(Keypoint(x, y, conf))
-    return dataclasses.replace(body, keypoints=tuple(pts))
+    return dataclasses.replace(body, keypoints=tuple(pts), scale=0.0 if rescale else body.scale)
 
 
 def _placed_by(body: Body, cal: Calibration) -> bool:

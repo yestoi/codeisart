@@ -47,7 +47,11 @@ PRESENCE_WINDOW = 6.0              # seconds of idle_body compared; the value wh
 DEFAULTS = Path(__file__).with_name("feel_budgets.toml")
 INPUTS = {"cursor_x": lambda p: None if p.cursor is None else p.cursor[0],
           "cursor_y": lambda p: None if p.cursor is None else p.cursor[1],
-          "zone_x": lambda p: p.zone_x}
+          "zone_x": lambda p: p.zone_x,
+          # Depth (arcade/input.py) reads ln(scale) from where the body was first seen: nearer is larger. "far" is
+          # its negative, for a control whose axis grows away from the camera (Pong's paddle y grows downward).
+          "near": lambda p: math.log(p.scale) if p.scale > 0 else None,
+          "far": lambda p: -math.log(p.scale) if p.scale > 0 else None}
 BOUNDS = ("min", "max")
 
 

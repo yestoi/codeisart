@@ -22,6 +22,7 @@ import numpy as np
 from arcade.calibration import Calibration
 from arcade.config import ArcadeConfig
 from arcade.headless import RecordingDisplay, run_headless
+from arcade.input import Depth
 from arcade.sensed import MOTION_GRID, Audio, Sensed, place
 from arcade.sources.actors import TICK, Person
 from show.font import Font
@@ -30,21 +31,26 @@ if TYPE_CHECKING:
     from arcade.runner import Runner
 
 MAX_PLAY_SECONDS = 180.0
+BODY_HEIGHT = 0.7               # a bot's body at near 0.5; near 0 is 0.52 tall (in the zone), near 1 is 0.95
+BODY_RANGE_SECONDS = 0.8        # a bot's near moves at most 1 / this a second: a brisk step, not a teleport
 ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass(frozen=True)
 class Move:
     """A bot's actor spec for one tick, one body (id 1): hips at zone x (0 the zone's left edge, 1 its right);
-    the hand's wrist at reach-box v wrist_y (0 top, 1 hip height), or down with None."""
+    the hand's wrist at reach-box v wrist_y (0 top, 1 hip height), or down with None; near, the Depth value
+    (arcade/input.py) the body stands at: 0 far, 1 near, 0.5 its start. None: the start size (Person's)."""
 
     x: float = 0.5
     hand: str = "right"
     wrist_y: float | None = None
+    near: float | None = None
 
 
 class Bot(Protocol):
-    """reaction_ticks: the bot sees debug_state() that many ticks late; noise: the SD added to x and wrist_y."""
+    """reaction_ticks: the bot sees debug_state() that many ticks late; noise: the SD added to x, wrist_y and
+    near."""
 
     reaction_ticks: int
     noise: float
@@ -106,17 +112,28 @@ def _clamp01(v: float) -> float:
     return min(1.0, max(0.0, v))
 
 
+def _step(near: float, was: float | None) -> float:
+    """near approached from was at a body's pace, at most TICK / BODY_RANGE_SECONDS a tick; 0.5 when was is None
+    (a body's first tick stands where a fresh Depth centres)."""
+    if was is None:
+        return 0.5
+    most = TICK / BODY_RANGE_SECONDS
+    return min(near, was + most) if near > was else max(near, was - most)
+
+
 def _sensed(i: int, move: Move | None, before: float | None, cal: Calibration) -> tuple[Sensed, float | None]:
     """Tick i's record, shaped as actors._frames makes it, and the body's camera x (None without a body).
 
     The Move becomes a Person(x, id=1) with its hips at zone x, moved there from its x on the tick before (so
-    vx is the tick's step) and its wrist held at wrist_y, placed with cal."""
+    vx is the tick's step) and its wrist held at wrist_y, placed with cal. With near (already paced by play) the
+    body is BODY_HEIGHT * Depth.ratio(near) tall, else Person's own height."""
     t = i * TICK
     bodies, cx = (), None
     if move is not None:
         x0, _, x1, _ = cal.zone
         cx = min(x1, max(x0, x0 + move.x * (x1 - x0)))
-        person = Person(cx if before is None else before, id=1).walk(cx, TICK / 2, at=t - TICK)
+        size = {} if move.near is None else {"height": BODY_HEIGHT * Depth.ratio(move.near)}
+        person = Person(cx if before is None else before, id=1, **size).walk(cx, TICK / 2, at=t - TICK)
         if move.wrist_y is not None:
             person.wrist(move.hand, move.wrist_y, move.wrist_y, 2 * TICK, at=t - TICK)
         bodies = (place(person.body_at(t, 1), cal),)
@@ -139,10 +156,12 @@ def play(game_cls, bot: Bot, seed: int, layout: str | None = None, won: Callable
     game's one declared layout when it declares exactly one, else ArcadeConfig().layout.
 
     Each tick the bot gets the game's debug_state() of bot.reaction_ticks ticks ago ({} before there is one)
-    and the tick's t; noise from random.Random(seed), SD bot.noise, is added to the Move's x and wrist_y,
-    each clamped to 0..1. The feed stops after the tick on which the game is done() or its session ends
-    otherwise (left, inactive: the game gets no more updates), or after seconds. won defaults to the game's
-    for_game(...)[1], applied to the last debug_state().
+    and the tick's t; noise from random.Random(seed), SD bot.noise, is added to the Move's x, wrist_y and near,
+    each clamped to 0..1. near then moves from the body's last near at most TICK / BODY_RANGE_SECONDS a tick (a
+    body steps, it does not teleport). A body's first tick with near stands at 0.5, where a fresh Depth centres,
+    and so does the first after a tick without a body or with near None. The feed stops after the tick on which
+    the game is done() or its session ends otherwise (left, inactive: the game gets no more updates), or after
+    seconds. won defaults to the game's for_game(...)[1], applied to the last debug_state().
     """
     if won is None:
         won = for_game(game_cls)[1]
@@ -156,7 +175,7 @@ def play(game_cls, bot: Bot, seed: int, layout: str | None = None, won: Callable
 
     def feed(runner: Runner) -> Iterator[Sensed]:
         nonlocal ticks
-        cal, before = Calibration(), None
+        cal, before, near = Calibration(), None, None
         for i in range(round(seconds / TICK)):
             k = i - 1 - bot.reaction_ticks
             move = bot(states[k] if k >= 0 else {}, i * TICK)
@@ -164,6 +183,13 @@ def play(game_cls, bot: Bot, seed: int, layout: str | None = None, won: Callable
                 move = dataclasses.replace(move, x=_clamp01(move.x + noise.gauss(0.0, bot.noise)))
                 if move.wrist_y is not None:
                     move = dataclasses.replace(move, wrist_y=_clamp01(move.wrist_y + noise.gauss(0.0, bot.noise)))
+                if move.near is not None:
+                    move = dataclasses.replace(move, near=_clamp01(move.near + noise.gauss(0.0, bot.noise)))
+            if move is None or move.near is None:
+                near = None
+            else:
+                move = dataclasses.replace(move, near=_step(_clamp01(move.near), near))
+                near = move.near
             sensed, before = _sensed(i, move, before, cal)
             yield sensed
             ticks += 1

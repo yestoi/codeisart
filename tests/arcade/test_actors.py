@@ -182,3 +182,25 @@ def test_tempo_needs_a_positive_bpm():
     for bad in (0, -120, math.nan, math.inf):
         with pytest.raises(ValueError, match="bpm"):
             tempo(bad)
+
+
+def test_scale_to_grows_the_body_about_the_hips():
+    p = Person(0.5, height=0.6).scale_to(1.3, 1.0, at=0.5).scale_to(0.8, 1.0)
+    start, grown, shrunk = p.body_at(0.0, 0), p.body_at(1.5, 0), p.body_at(3.0, 0)
+    assert grown.scale == pytest.approx(1.3 * start.scale, abs=1e-6)
+    assert shrunk.scale == pytest.approx(0.8 * start.scale, abs=1e-6)          # chained: from 1.3 at 1.5 s
+    assert p.body_at(1.0, 0).scale == pytest.approx(1.15 * start.scale, abs=1e-6)   # halfway, halfway
+    assert p.body_at(2.0, 0).scale == pytest.approx(1.05 * start.scale, abs=1e-6)
+    assert [p.height_at(t) for t in (0.0, 1.0, 1.5, 3.0)] == pytest.approx([0.6, 0.69, 0.78, 0.48])
+    for body in (grown, shrunk):
+        assert body.hip_mid.y == pytest.approx(start.hip_mid.y, abs=1e-9)     # y stays
+        assert body.hip_mid.x == pytest.approx(start.hip_mid.x, abs=1e-9)
+    (a0, b0, c0, d0), (a1, b1, c1, d1) = start.box, grown.box
+    assert a1 < a0 and b1 < b0 and c1 > c0 and d1 > d0                        # the box grows
+    assert shrunk.box[3] - shrunk.box[1] < start.box[3] - start.box[1]
+    held = Person(0.5, height=0.6).scale_to(1.2, 0.5, at=0.0).wrist("right", 0.3, 0.3, 2.0, at=0.0).body_at(1.0, 0)
+    assert held.reach(held.right_wrist)[1] == pytest.approx(0.3, abs=1e-9)      # the wrist script scales too
+    for bad in ((0.0, 1.0), (-1.0, 1.0), (1.2, 0.0), (math.nan, 1.0), (math.inf, 1.0)):
+        with pytest.raises(ValueError, match="scale_to"):
+            Person().scale_to(*bad)
+

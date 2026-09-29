@@ -16,7 +16,8 @@ from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
 from arcade.game import KINDS, Game, GameInfo
 from arcade.headless import run_headless
-from arcade.sensed import Body
+from arcade.input import Depth
+from arcade.sensed import Body, Keypoint
 from arcade.sources.actors import TICK, Person, scene
 from tests.arcade.helpers import CROSS_ICON
 
@@ -25,7 +26,7 @@ ORANGE, GREEN, WHITE = (255, 120, 0), (0, 200, 0), (255, 255, 255)
 RAISE = 2.5                         # s: canonical's raised hand, which the lobby launches the stubs on
 CANONICAL = 8.0                     # s: the stubs' canonical, shorter than feel's window (feel measures what is there)
 BOTH = (1, 2)                       # the scales find_text looks at when a test says both
-STUBS = ("follower", "screensaver", "still", "scorer", "creeper", "pinned", "arrival", "tiny")
+STUBS = ("follower", "screensaver", "still", "scorer", "creeper", "pinned", "arrival", "tiny", "depth")
 
 
 def _cfg() -> ArcadeConfig:
@@ -576,3 +577,66 @@ def test_presence_answer_has_no_default_budget():
             failures = feel.judge({"presence_answer_seconds": value}, table)
             assert not [f for f in failures if f.startswith("presence_answer")], (kind, value, failures)
     assert feel.judge({"presence_answer_seconds": None}, {}) == []
+
+
+def test_near_and_far_read_the_log_scale():
+    for ratio in (0.74, 1.0, 1.35):
+        p = Person(0.5, height=0.7).scale_to(ratio, 0.5, at=0.0).body_at(1.0, 1)
+        assert feel.INPUTS["near"](p) == -feel.INPUTS["far"](p) == math.log(p.scale), ratio
+    assert feel.INPUTS["near"](p) > feel.INPUTS["near"](Person(0.5, height=0.7).body_at(1.0, 1))   # nearer is larger
+    nothing = Body(1, (0.0, 0.0, 0.0, 0.0), tuple(Keypoint(0.5, 0.5, 0.0) for _ in range(17)))
+    assert nothing.scale == 0.0 and feel.INPUTS["near"](nothing) is None and feel.INPUTS["far"](nothing) is None
+
+
+def stepping():
+    """Canonical for a body in depth: sweeping's walk-up and raised hand, then from RAISE + 1 s the body steps in
+    and out between ratios 0.78 and 1.28 of its first size, 0.8 s each way (Pong's canonical steps so), for
+    CANONICAL s in all."""
+    person, t = Person(0.3, height=bots.BODY_HEIGHT, id=1).arrive(2.0).raise_hand(RAISE, 0.5), RAISE + 1.0
+    person.scale_to(1.28, 0.8, at=t)
+    while t < CANONICAL:
+        t += 0.8
+        person.scale_to(0.78, 0.8, at=t).scale_to(1.28, 0.8, at=t + 0.8)
+        t += 0.8
+    return scene(persons=[person], ticks=round(CANONICAL / TICK))
+
+
+class DepthFollower(Stub):
+    """A 3 px wide, PADDLE_H tall paddle whose centre y is (1 - value) * (h - 1) from a Depth, nearer up (the
+    paddle may run off an edge). The Depth is fresh at reset, so it centres where the body stood at the launch."""
+
+    info = GameInfo(name="depth", title="Depth", verb="STEP", icon=CROSS_ICON, needs=frozenset({"pose"}))
+    SCENARIOS = {"canonical": stepping}
+    PADDLE_W, PADDLE_H = 3, 16
+
+    def reset(self, size, rng, fx):
+        super().reset(size, rng, fx)
+        self.depth, self.y = Depth(), None
+
+    def update(self, sensed, dt):
+        super().update(sensed, dt)
+        v = self.depth.update(sensed.player, sensed.t, sensed.camera_t)
+        if v is not None:
+            self.y = (1.0 - v) * (self.h - 1)
+
+    def draw(self, canvas):
+        if self.y is not None:
+            canvas.fill_rect(10, round(self.y - self.PADDLE_H / 2), self.PADDLE_W, self.PADDLE_H, ORANGE)
+
+    def debug_state(self):
+        state = {**super().debug_state(), "active": self.y is not None}
+        if self.y is not None:
+            state["paddle_xy"] = (11, round(self.y, 2))
+        return state
+
+
+def test_depth_follower_passes_fidelity_and_response(tmp_path, font5x7):
+    own = tmp_path / "depth_feel.toml"
+    own.write_text('[fidelity]\ninput = "far"\nxy = "paddle_xy"\naxis = 1\n')
+    assert feel.control(DepthFollower, own=own) == ("far", "paddle_xy", 1)
+    seed = bots.seeds(DepthFollower, WALL, 1)[0]
+    m = feel._canonical(_cfg(), font5x7, DepthFollower, seed, own)
+    got = {k: m[k] for k in ("fidelity", "range", "response_ticks", "response_px")}
+    assert m["fidelity"] >= 0.8 and m["range"] >= 0.6, f"seed {seed}: {got}"
+    assert m["response_ticks"] <= feel.LATENCY_TICKS, f"seed {seed}: {got}"
+    assert m["response_px"] >= feel.RESPONSE_PX, f"seed {seed}: {got}"
