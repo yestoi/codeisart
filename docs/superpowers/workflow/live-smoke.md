@@ -22,6 +22,26 @@ Date and build (git sha) of this smoke: 2026-09-28, 2e016e5 (the Mac's webcam, t
 | Strongman | 128x64 |  |  |  |  |  |
 | Freeze | 128x64 |  |  |  |  |  |
 
+## Pong by the body: the second smoke (it09, M4c)
+
+Pong's row above stays as the first smoke's verdict. Play this build and fill a new row: the whole body is the
+control now, not the hand.
+
+1. `.venv/bin/python -m arcade run -v` (the camera at 10 a second).
+2. Stand about 2 to 2.5 m from the camera with the hips in view. Raise a hand to start. Step in for up, step back for
+   down (the hint says "STEP IN = UP", "STEP BACK = DOWN" at the serve).
+3. Then the same with the Mac's trial config, the camera at 30 a second:
+   `.venv/bin/python -m arcade run -v --config arcade.mac.toml`.
+
+Report for each command: the lag (how long after a step the paddle moves), the jitter when standing still, whether
+both ends of the wall are reachable, whether the hint read, and the ball's pace (too slow, right, too fast). Say
+which of the two feels better and by how much.
+
+| command | lag | jitter when still | both ends reachable (y/n) | hint read (y/n) | ball's pace | notes |
+|---|---|---|---|---|---|---|
+| `run -v` |  |  |  |  |  |  |
+| `run -v --config arcade.mac.toml` |  |  |  |  |  |  |
+
 ## Walk-up flow
 
 | step | layout | responded (y/n) | understood (y/n) | want another go (1-5) | broken? | notes |
