@@ -33,6 +33,13 @@ control now, not the hand.
 3. Then the same with the Mac's trial config, the camera at 30 a second:
    `.venv/bin/python -m arcade run -v --config arcade.mac.toml`.
 
+The setup, from the owner's hand-read spike (docs/superpowers/reviews/2026-09-28-hand-read-spike.md on branch
+`spike/hand-read`): put the camera at chest height and let it look level, not up from a low table, so that the hips
+stay in the picture when you step in; keep lamps and bright fixtures out of the camera's view; light on the player
+helps. If the window shows black or the wrong room, the Mac has opened a nearby iPhone as camera 0: move the phone
+away or set `camera_index = 1` in the config. When the hips do leave the picture the paddle should hold its place
+and still follow a step (task S3, Q48): say if it jumps.
+
 Report for each command: the lag (how long after a step the paddle moves), the jitter when standing still, whether
 both ends of the wall are reachable, whether the hint read, and the ball's pace (too slow, right, too fast). Say
 which of the two feels better and by how much.

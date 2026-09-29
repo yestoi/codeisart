@@ -372,3 +372,10 @@ default: yes, as one more task of iteration 9 (S3, the plan's amendment). The ow
 deadline: the second live smoke
 answer:
 status: defaulted (standing instruction)
+
+### Q49: After iteration 9, does the loop stop at a gate?
+asked: it9
+default: by Q42 the loop gates after iteration 9 and waits for the owner before the show daemon
+deadline: none
+answer: the owner, 2026-09-28 23:10 CDT, before the gate was written: "I finished the spike. I will do the new pong smoke test in the morning. Lets continue onto the show daemon and other iterations until you need me next." The loop does not gate after iteration 9. It goes on to the show daemon's foundation tasks (Q33) and keeps iterating; it stops only for what config.md's rule 8 names (a destructive or irreversible action, a change of scope or end goal, the iteration cap). `iterations-per-run` is 6
+status: answered

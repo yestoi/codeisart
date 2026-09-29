@@ -8,8 +8,9 @@
 - Freshness check: every PNG in evidence/itNN/ carries the git sha in its header and it must equal HEAD. Before M4a, the evidence README records HEAD by hand (`git rev-parse --short HEAD`). A mismatch is a tooling defect, fixed before anything is judged.
 - Gates: gate-deploys: false, gate-iteration-plans: false
 - Plan review: only for a safety slice (Loop rule 4), one round. Verdict in evidence/itNN/plan-review.md. (Owner decision 2026-09-28; it replaces Q6's review of every plan.)
-- iterations-per-run: 1
-  (Owner decision Q42, 2026-09-28, answering the gate after iteration 8: iteration 9 is M4c, Pong by the body, then the loop gates and the operator moves to the show daemon.
+- iterations-per-run: 6
+  (Owner decision Q49, 2026-09-28 23:10, given as iteration 9 ended: "Lets continue onto the show daemon and other iterations until you need me next." The run starts at iteration 10, the show daemon's foundation tasks, and gates after iteration 15 or when rule 8 asks for the owner.
+  Before it, owner decision Q42, 2026-09-28, answering the gate after iteration 8: iteration 9 is M4c, Pong by the body, then the loop gates and the operator moves to the show daemon.
   Before it, owner decision Q33, answering the gate after iteration 7: iteration 8 is M4b, then the loop gates and the operator moves to the show daemon. Before it, Q21: iterations 6 and 7. The loop counts iterations itself and gates at step 8.)
 - stop-blocks: 6
   (How many times the Stop hook blocks with nothing committed between the blocks. Keep it below 8, Claude Code's consecutive Stop-hook block cap.)
