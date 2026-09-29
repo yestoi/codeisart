@@ -407,7 +407,8 @@ class Pong(Game):
         return seat.color if seat.ctrl is not None else CPU_COLOR
 
     def _masks(self, canvas: Canvas) -> dict:
-        """The net's and the hint's lit pixels on this canvas, drawn once (a bool mask each); the scores' by text.
+        """The net's and the hint's lit pixels on this canvas, drawn once (as row and column indices); the scores'
+        by text (a bool mask each).
         draw lights them in their colours, pixel for pixel what fill_rect and text would draw each tick."""
         key = (canvas.width, canvas.height, id(canvas.font), self.w, self.h)
         if self._mask_key != key:
@@ -417,7 +418,8 @@ class Pong(Game):
             net = scratch.frame.any(axis=2)
             scratch.clear()
             self._draw_hint(scratch, (255, 255, 255))
-            self._mask_key, self._mask = key, {"net": net, "hint": scratch.frame.any(axis=2), "score": {}}
+            self._mask_key, self._mask = key, {"net": net.nonzero(), "hint": scratch.frame.any(axis=2).nonzero(),
+                                               "score": {}}
         return self._mask
 
     def _score_mask(self, canvas: Canvas, masks: dict, text: str):
