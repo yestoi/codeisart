@@ -3,10 +3,10 @@
 **Status (2026-09-29, 15:10): card 2 (the spare) is set up and saved to its flash, and survives a power
 cycle; use card 2.** The fix was the row decoder: **ICN2018/3018** (the panels have serial row drivers), not
 138 (see "14:00" to "14:53" below). Final settings: `hardware/colorlight-outdoor-p5-2x2.rcvbp`. Card 1 has a
-hardware fault of its own and still holds its factory settings (see "13:20"). Left to do: the
-`wall_pattern.py` checks from Linux (close LEDVision, `vm stop`; they need sudo), including whether the Linux
-sender's picture is steady: the flicker seen through LEDVision comes from its stream (see "14:25" and
-"14:53"). How to continue: `.claude/skills/ledvision-card-setup/SKILL.md`, from the worktree
+hardware fault of its own and still holds its factory settings (see "13:20"). **The Linux driver
+(`show/display/colorlight.py`) does not yet work with this card** (firmware 13.17): it needs FPP's packet
+order, a steady ~60 fps output, BGR pixel order, and a fix for noise on the bottom rows (see "15:40"); the
+`wall_pattern.py` checks `index`, `steps`, `gamma` wait for that. How to continue: `.claude/skills/ledvision-card-setup/SKILL.md`, from the worktree
 `/Users/trey/dev/codeisart-ledvision` (branch `ledvision-card1`). Screenshots: `hardware/`.
 
 ### Where the last session stopped (2026-09-29, 12:05)
@@ -199,6 +199,32 @@ sender's picture is steady: the flicker seen through LEDVision comes from its st
   on firmware 13.17 (symptoms not given; fixed by going back to 11.04), and FPP sends its 0x0A brightness
   packet twice on firmware 13+. `show/display/colorlight.py` sends 0x0A every 3 pushes (10 Hz at 30 Hz): if
   the Linux sender's picture dips at that rhythm, send it less often before thinking of firmware.
+
+### 15:40: the Linux sender (card 2, flash settings, from the Omarchy box)
+
+- LEDVision closed, `vm stop`; the code copied to `~/Work/codeisart-wall` on the Omarchy box with its own uv
+  venv (numpy, Pillow, pyte). The owner enabled passwordless sudo for an hour so the agent could run tests.
+- **`wall_pattern.py rgb` (show/display/colorlight.py) did not reach the wall**: LEDVision's last frame (the
+  Mandelbrot) stayed up and flashed hard. The driver's packets are byte for byte FPP's; the difference is
+  FPP's firmware-13 handling: per frame brightness packet (x2 on firmware >= 13), the rows, then the sync
+  (show-frame) packet; the driver sends sync, brightness (every 3rd push), rows, once each.
+- A throwaway sender with FPP's order (`hardware/cl_fpp_test.py`, packets checked identical to the driver's)
+  put R/G/B/W bars on the wall. One variable at a time, 10 % brightness, the owner judging:
+  - 20 fps: bars, fast flicker. Brightness 23 % (the card's own level) instead of 10 %: same flicker.
+  - **60 fps: steady** (the saved timing, 960 Hz x16, is 60 x 16: the card repeats each frame 16 times and
+    waits for the next). 30 fps (the arcade's rate): some flicker. The show pushes 20 fps, the arcade 30.
+  - At 60 fps the **last row or two of the wall showed noise**; a 1 ms pause between the last row and the
+    sync cleared it but brought back a slight flicker (twice compared A/B; with busy-wait timing too, exactly
+    60.0 fps): no clean-and-steady combination yet.
+  - **Pixel order: sent R, G, B, W left to right, the wall showed Blue, Green, Red, White** (not a mirror):
+    the card takes raw pixels as **BGR** (as in Kubota's notes). LEDVision's picture was right because its
+    Guide 5 answers apply to its own stream only (`hardware/36-linux-bars-bgr-order.png`).
+  - Sync twice vs once: with the old ending (3 black frames at 20 fps) the wall kept a stale picture (top
+    bars / all bars); ending with 1 s of black at 60 fps clears it. The card seems to need a steady stream to
+    change picture; sync x1 vs x2 not settled.
+- For the driver (shared show/arcade code, not changed here): FPP's packet order for firmware 13; a steady
+  60 Hz output independent of the content rate (resend the last frame), or a card timing matched to the content
+  rate (a LEDVision test); BGR order; the bottom-row race. `index`, `steps`, `gamma` wait for that.
 
 ### What the 2026-09-29 session found
 
