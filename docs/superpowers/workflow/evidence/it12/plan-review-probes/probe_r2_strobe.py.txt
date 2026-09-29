@@ -1,0 +1,83 @@
+"""Read-only: B1 as the plan stands. (a) the plan's exact FILL and black feed (lines 189, 195), exec'd from the
+plan, through Terminal, Renderer (cursor blink 1 Hz, the strip notice) and the real governor; the fallback
+governor's attributes; (b) a STROBE_C written from T-shot's description, in real time through the pump."""
+import os, shutil, subprocess, tempfile, time
+from pathlib import Path
+import numpy as np
+from arcade.flash import BUDGET, FlashGovernor, concurrent_area, flash_area, square_flashes
+from show.config import Config
+from show.font import Font
+from show.renderer import Renderer
+from show.terminal import Terminal
+
+ROOT = Path("/Users/trey/dev/codeisart")
+PLAN = (ROOT / "docs/superpowers/plans/2026-09-29-it12-show-runs.md").read_text().splitlines()
+ns = {}
+exec(PLAN[188], ns)                                   # line 189: FILL
+exec("\n".join(PLAN[189:195]) + "\n", ns)             # lines 190-195: StrobePlayer
+font = Font.load(ROOT / "fonts" / "5x7.bin")
+H, W = 192, 512
+
+class T(Terminal): pass
+term = Terminal(80, 23)
+p = ns["StrobePlayer"](None, term, None); p.start(0.0)
+r = Renderer(font, W, H, 80, 24, (51, 255, 51), False, "text")
+rendered = []
+for k in range(1, 101):
+    now = k / 20
+    p.tick(now)
+    strip = "NOW: a by Test Author, 2026, Not A.I." + (" | PLAYING" if now < 2.0 else "")
+    rendered.append(r.render(term.screen, int(now * 2) % 2 == 0, strip).copy())
+g = FlashGovernor(H, W, 2.2, fps=20)
+pushed = [g.apply(f).copy() for f in rendered]
+print(f"(a) plan's exact feeds: raw area {flash_area(rendered, fps=20):.3f} (> 0.3), pushed area "
+      f"{flash_area(pushed, fps=20):.5f} (== 0.0), square_flashes {square_flashes(pushed, fps=20)} (<= {BUDGET}), "
+      f"held {g.held_ticks}")
+d = FlashGovernor(H, W)
+print(f"    FlashGovernor defaults: gamma {d.gamma!r}, fps {d.fps!r}; Config has gamma before I0: {'gamma' in Config.__dataclass_fields__} (I0 adds it; a dataclass takes -1.0 unchecked)")
+# the default governor (fps 30) on a 20 fps loop against a 10 Hz strobe, judged per real second
+on, off = np.full((H, W, 3), (51, 255, 51), np.uint8), np.zeros((H, W, 3), np.uint8)
+fr = [on if k % 2 == 0 else off for k in range(100)]
+out = [d.apply(f).copy() for f in fr]
+print(f"    default governor (fps 30) at a real 20 fps on a 10 Hz strobe: area {flash_area(out, fps=20):.3f}, "
+      f"square_flashes per real second {square_flashes(out, fps=20)}")
+
+C = r'''
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+int main(void) {
+    char line[81]; memset(line, ' ', 80); line[80] = 0;
+    printf("\033[?25l"); fflush(stdout);
+    for (int f = 0; f < 60; f++) {
+        if (f % 2 == 0) { printf("\033[H\033[7m"); for (int r = 0; r < 23; r++) printf(r < 22 ? "%s" : "%.79s", line); printf("\033[0m"); }
+        else printf("\033[H\033[2J");
+        fflush(stdout); usleep(50000);
+    }
+    printf("\033[H\033[2Jstrobe done\n"); fflush(stdout);
+    return 0;
+}
+'''
+if shutil.which("cc"):
+    for trial in range(3):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "s.c").write_text(C)
+            subprocess.run(["cc", "-o", f"{tmp}/s", f"{tmp}/s.c"], check=True, capture_output=True)
+            t = Terminal(80, 23); t.reset(23)
+            rr = Renderer(font, W, H, 80, 24, (51, 255, 51), False, "text")
+            gg = FlashGovernor(H, W, 2.2, fps=20)
+            t.run([f"{tmp}/s"], cwd=Path(tmp))
+            raw, shown = [], []
+            start = time.monotonic(); k = 0
+            while time.monotonic() - start < 4.0:
+                k += 1
+                target = start + k / 20
+                t.pump(4096, 8.0)
+                now = time.monotonic() - start
+                f = rr.render(t.screen, int(now * 2) % 2 == 0, "NOW: strobe by Test Author, 2026, Not A.I.").copy()
+                raw.append(f); shown.append(gg.apply(f).copy())
+                time.sleep(max(0.0, target - time.monotonic()))
+            t.kill()
+            print(f"(b) STROBE_C real time, trial {trial}: frames {len(raw)}, raw area {flash_area(raw, fps=20):.3f}, "
+                  f"pushed area {flash_area(shown, fps=20):.5f}, concurrent {concurrent_area(shown, fps=20):.4f}, "
+                  f"square_flashes {square_flashes(shown, fps=20)}, held {gg.held_ticks}")

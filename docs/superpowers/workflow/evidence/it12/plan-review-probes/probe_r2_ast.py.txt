@@ -1,0 +1,111 @@
+"""Read-only: the plan's AST test (lines 207-220, the text as it stands now, exec'd) against sample trees."""
+import ast, re, tempfile
+from pathlib import Path
+
+PLAN = Path("/Users/trey/dev/codeisart/docs/superpowers/plans/2026-09-29-it12-show-runs.md").read_text().splitlines()
+src = "\n".join(PLAN[206:220])            # lines 207-220
+assert src.startswith("def test_every_display_is_wrapped"), src[:60]
+
+GOOD_WALL = '''
+from arcade.flash import FlashGovernor
+class GovernedDisplay:
+    def push(self, frame):
+        out = self.governor.apply(frame); self._last = out; self._send(out); return out
+    def repush(self):
+        self._send(self._last)
+    def close(self):
+        for _ in range(2): self._send(self.governor.apply(self.black))
+        self.display.close()
+    def _send(self, frame):
+        self.display.push(frame); self.governed += 1
+'''
+BYPASS_WALL = GOOD_WALL.replace("self._send(self.governor.apply(self.black))", "self._send(self.black)")
+NATURAL = '''
+from show.display import make_display
+class ShowLoop:
+    def open(self):
+        try:
+            self.wall = GovernedDisplay(make_display(self.cfg), 1, 2, self.cfg.fps, self.cfg.gamma)
+        except ValueError:
+            self.wall = GovernedDisplay(self.raw, 1, 2)   # needs the display: lost above
+    def step(self):
+        self.wall.push(self.frame)
+'''
+HOISTED = '''
+from show.display import make_display
+class ShowLoop:
+    def open(self):
+        raw = self.given if self.given is not None else make_display(self.cfg)
+        try:
+            self.wall = GovernedDisplay(raw, 1, 2, self.cfg.fps, self.cfg.gamma)
+        except ValueError:
+            self.wall = GovernedDisplay(raw, 1, 2)
+    def step(self):
+        self.wall.push(self.frame)
+'''
+WALRUS = '''
+from show.display import make_display
+class ShowLoop:
+    def open(self):
+        try:
+            self.wall = GovernedDisplay((raw := self.given if self.given is not None else make_display(self.cfg)),
+                                        1, 2, self.cfg.fps, self.cfg.gamma)
+        except ValueError:
+            self.wall = GovernedDisplay(raw, 1, 2)
+    def step(self):
+        self.wall.push(self.frame)
+'''
+MAIN_SEND = HOISTED.replace("self.wall.push(self.frame)", "self.wall.push(self.frame)\n    def raw(self):\n        self.wall._send(self.frame)")
+MAIN_SEND = WALRUS.replace("self.wall.push(self.frame)", "self.wall.push(self.frame)\n    def raw(self):\n        self.wall._send(self.frame)")
+
+def run(main_src, wall_src):
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d); (root / "show").mkdir(); (root / "tools").mkdir()
+        (root / "show" / "main.py").write_text(main_src); (root / "show" / "wall.py").write_text(wall_src)
+        (root / "tools" / "show_shot.py").write_text("from show.main import ShowLoop\n")
+        ns = {"ast": ast, "ROOT": root}
+        exec(src, ns)
+        try:
+            ns["test_every_display_is_wrapped_by_the_governor_at_birth"](); return "PASSES"
+        except AssertionError as e:
+            return f"fails ({e})" if str(e) else "fails"
+
+EXTRA = '''
+def extra(root):
+    main_text = (root / "show" / "main.py").read_text()
+    wall = ast.parse((root / "show" / "wall.py").read_text())
+    assert "_send" not in main_text
+    sends = [n for n in ast.walk(wall) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+             and n.func.attr == "_send"]
+    assert len(sends) == 2          # push's (apply's output) and repush's (the last governed frame)
+'''
+CLOSE_VIA_PUSH = GOOD_WALL.replace("self._send(self.governor.apply(self.black))", "self.push(self.black)")
+BYPASS_VIA_PUSH_WALL = CLOSE_VIA_PUSH.replace("self.push(self.black)", "self._send(self.black)")
+def run_extra(main_src, wall_src):
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d); (root / "show").mkdir()
+        (root / "show" / "main.py").write_text(main_src); (root / "show" / "wall.py").write_text(wall_src)
+        ns = {"ast": ast}; exec(EXTRA, ns)
+        try:
+            ns["extra"](root); return "PASSES"
+        except AssertionError:
+            return "fails"
+
+for name, m, w in (("walrus main, good wall", WALRUS, GOOD_WALL),
+                   ("natural main (make_display inline, fallback loses the display)", NATURAL, GOOD_WALL),
+                   ("hoisted main (display kept in a local, then wrapped)", HOISTED, GOOD_WALL),
+                   ("wall.close sends a raw black via _send", WALRUS, BYPASS_WALL),
+                   ("main.py calls self.wall._send(raw frame)", MAIN_SEND, GOOD_WALL)):
+    print(f"{name:66s} plan's test: {run(m, w)}")
+print("proposed extra asserts (close calls self.push twice):")
+for name, m, w in (("walrus main, close via self.push", WALRUS, CLOSE_VIA_PUSH),
+                   ("wall.close sends a raw black via _send", WALRUS, BYPASS_VIA_PUSH_WALL),
+                   ("main.py calls self.wall._send(raw frame)", MAIN_SEND, CLOSE_VIA_PUSH)):
+    print(f"   {name:63s} extra: {run_extra(m, w)}")
+print("round-1 samples against the plan's current text:")
+ALIAS = WALRUS.replace("from show.display import make_display", "from show.display import make_display\nfrom show.display import make_display as md") + "    def raw(self):\n        d = md(self.cfg)\n"
+BOUND = WALRUS + "    def raw(self):\n        p = self.raw.push\n        p(self.frame)\n"
+PUSH_WALL = GOOD_WALL.replace("self.display.close()", "self.display.push(self.black)\n        self.display.close()")
+for name, m, w in (("alias md = make_display", ALIAS, GOOD_WALL), ("bound method p = self.raw.push", BOUND, GOOD_WALL),
+                   ("wall.close pushes black with display.push", WALRUS, PUSH_WALL)):
+    print(f"   {name:63s} plan's test: {run(m, w)}")

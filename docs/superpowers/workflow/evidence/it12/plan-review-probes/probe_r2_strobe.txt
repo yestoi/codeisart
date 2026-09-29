@@ -1,0 +1,6 @@
+(a) plan's exact feeds: raw area 0.898 (> 0.3), pushed area 0.00000 (== 0.0), square_flashes 6 (<= 6), held 35
+    FlashGovernor defaults: gamma 2.2, fps 30; Config has gamma before I0: False (I0 adds it; a dataclass takes -1.0 unchecked)
+    default governor (fps 30) at a real 20 fps on a 10 Hz strobe: area 0.000, square_flashes per real second 6
+(b) STROBE_C real time, trial 0: frames 80, raw area 0.898, pushed area 0.00000, concurrent 0.0000, square_flashes 6, held 39
+(b) STROBE_C real time, trial 1: frames 80, raw area 0.898, pushed area 0.00000, concurrent 0.0000, square_flashes 6, held 40
+(b) STROBE_C real time, trial 2: frames 80, raw area 0.898, pushed area 0.00000, concurrent 0.0000, square_flashes 6, held 40

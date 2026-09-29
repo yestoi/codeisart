@@ -1,0 +1,13 @@
+walrus main, good wall                                             plan's test: PASSES
+natural main (make_display inline, fallback loses the display)     plan's test: PASSES
+hoisted main (display kept in a local, then wrapped)               plan's test: fails
+wall.close sends a raw black via _send                             plan's test: PASSES
+main.py calls self.wall._send(raw frame)                           plan's test: PASSES
+proposed extra asserts (close calls self.push twice):
+   walrus main, close via self.push                                extra: PASSES
+   wall.close sends a raw black via _send                          extra: fails
+   main.py calls self.wall._send(raw frame)                        extra: fails
+round-1 samples against the plan's current text:
+   alias md = make_display                                         plan's test: fails
+   bound method p = self.raw.push                                  plan's test: fails
+   wall.close pushes black with display.push                       plan's test: fails
