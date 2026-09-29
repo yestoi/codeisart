@@ -2,15 +2,20 @@
 
 `GovernedDisplay` wraps the display the loop opened, at birth: `push` runs `FlashGovernor.apply` and sends what
 it returns, `repush` sends the last governed frame again (after a failed push, so the wall shows what the
-governor counted), and `close` darkens the wall with governed black. `_send` is the only way to the display.
-No software brightness: the device holds the level (daemon plan amendment for Task 5).
+governor counted), and `close` darkens the wall with governed black, sending the counted frame first when the
+last send did not complete (it13 T-wall). `_send` is the only way to the display. No software brightness: the
+device holds the level (daemon plan amendment for Task 5).
 """
 from __future__ import annotations
+
+import logging
 
 import numpy as np
 
 from arcade.flash import FlashGovernor
 from show.display import Display
+
+log = logging.getLogger(__name__)
 
 GAMMA_MIN, GAMMA_MAX = 1.0, 2.2   # the card applies gamma .. the card sends bytes as they are (as show.config checks)
 
@@ -26,6 +31,17 @@ class GovernedDisplay:
         self.display = display
         self.governed = 0                       # frames governed and pushed
         self._last: np.ndarray | None = None    # the last governed frame, a copy
+        self.unsent = False                     # a send began and display.push has not returned (it raised)
+        self.failed = 0                         # sends that raised an Exception, all told
+
+    @property
+    def last(self) -> np.ndarray | None:
+        """The last governed frame, a read-only view; None before any push."""
+        if self._last is None:
+            return None
+        view = self._last.view()
+        view.flags.writeable = False
+        return view
 
     def push(self, frame: np.ndarray) -> np.ndarray:
         """Govern the frame, then send it; returns what was sent. A frame of another shape raises, unsent."""
@@ -44,14 +60,26 @@ class GovernedDisplay:
         self.display.set_brightness(level)
 
     def close(self) -> None:
-        """Two governed black frames, then the display closed, whatever the pushes do."""
+        """The counted frame again if the last send did not complete, then two governed black frames, then the
+        display closed, whatever the pushes do. A failed repush still lets the black go."""
         black = np.zeros(self.governor.shape, np.uint8)
         push = self.push                       # the governed path; _send stays push's and repush's alone
         try:
+            if self.unsent:
+                try:
+                    self.repush()               # what the governor counted, before black follows it
+                except Exception:
+                    log.exception("closing: resending the last governed frame failed; black still goes")
             for _ in range(2):
                 push(black)
         finally:
             self.display.close()
 
     def _send(self, frame: np.ndarray) -> None:
-        self.display.push(frame)
+        self.unsent = True
+        try:
+            self.display.push(frame)
+        except Exception:
+            self.failed += 1
+            raise
+        self.unsent = False
