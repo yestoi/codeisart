@@ -6,7 +6,9 @@ Two seats, a (left, player 1's) and b (right). A human seat reads its body throu
 input.py): the hand's height in the reach box, v from V_TOP to V_BOTTOM, is the bar's y from BAR_TOP to BAR_BOTTOM
 (scaled to the wall's height), and the DRAW_V line is where the bar draws. A bar draws only after it sat ARM_PX below
 the line during the round's play, so a still hand never draws (C41, C42). Solo, a best is stored at the match's end
-when player 1 won a round by a draw (Q72: rounds won); a game that ever had a human in seat b stores none (Q23).
+when player 1 won a round by a draw (Q72: rounds won); a game that ever had a human in seat b stores none (Q23),
+nor does one in which seat a went to a body id other than its first (it15 N1: a stranger or a player back after
+the grace, whom the game cannot tell apart; the seat keeps its rounds and play goes on).
 
 Seat a is player 1's and never the CPU's: while player 1 is gone it is empty (its bar down, no draw, no round), so
 their rounds and best are only the ones they won (Q72); their leaving is the runner's to end.
@@ -126,6 +128,8 @@ class Quickdraw(Game):
         self._flashed = False
         self._assigned = False
         self._duel = False              # a human ever sat in seat b: no best (Q23)
+        self._first_a: int | None = None    # the first body id seat a held in this match
+        self._swapped = False           # seat a went to another body id after its first: no best (it15 N1)
         self._drew = False              # player 1 won a round by a draw: a best needs it (C41)
         self._winner: int | None = None
         self._soon: int | None = None   # the seat that drew too soon in the last round
@@ -168,6 +172,10 @@ class Quickdraw(Game):
             if seat.ctrl is None and candidates:
                 seat.take(candidates.pop(0), self.t)
                 self._duel = self._duel or seat.index == 1
+                if seat.index == 0:
+                    if self._first_a is None:
+                        self._first_a = seat.ctrl
+                    self._swapped = self._swapped or seat.ctrl != self._first_a
 
     # ----- the tick -----
 
@@ -309,7 +317,7 @@ class Quickdraw(Game):
         winner = a if a.rounds >= b.rounds else b
         if self._humans() == 1 and not self._duel and winner is a and a.ctrl is not None:
             self.fx.celebrate(a.color)
-        if not self._duel and self._drew:
+        if not self._duel and not self._swapped and self._drew:
             self.scores.record(a.rounds)
         self._set("over")
 

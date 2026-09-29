@@ -17,11 +17,12 @@ from arcade.calibration import Calibration
 from arcade.canvas import Canvas
 from arcade.game import REQUIRED_SCENARIOS, reserved
 from arcade.games import MENU_ORDER, get_game
-from arcade.games.quickdraw import (ACTIVE_PX, ARM_PX, BAR_BOTTOM, CPU_COLOR, CPU_DRAW, DRAW_COLOR, DRAW_TIMEOUT,
+from arcade.games.quickdraw import (ACTIVE_PX, ARM_PX, BAR_BOTTOM, CAMERA_FPS, CPU_COLOR, CPU_DRAW, DRAW_COLOR, DRAW_TIMEOUT,
                                     GAME, GLYPH_H, HINT_IDLE_SECONDS, HINT_LINES, LINE_COLOR, LINE_Y, OVER_SECONDS,
                                     READY_SECONDS, RESULT_SECONDS, WAIT_SECONDS, WIN_ROUNDS, Quickdraw, idle_body)
 from arcade.games.quickdraw_bots import Good
 from arcade.headless import OPENING_NIGHT, RecordingDisplay, run_headless
+from arcade.input import capture_grace
 from arcade.juice import PLAYER_COLORS, Juice
 from arcade.scores import Scores
 from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
@@ -413,6 +414,74 @@ def test_a_player_back_after_the_grace_gets_seat_a_with_their_rounds_only():
     state = game.debug_state()
     assert game.seats[0].ctrl == 3 and state["phase"] == "ready", (round(game.t, 2), state)
     assert (state["left"], state["humans"], state["cpu"]) == (1, 1, "right") and state["right"] >= 1, state
+
+
+N1_SEEDS = (1057892440, 1208555726, 3506456948)       # seeds(Quickdraw, "128x64", 3), the review's probe
+
+
+def _leaves_in_result_and_a_body_is_back(s: int, font, gap: float, back_id: int):
+    """it15 review N1's probe as a test: the good bot plays through the real runner, wins 2 rounds, is out of view
+    from the first `result` tick with 2 rounds won for `gap` s, then a body with id `back_id` (the bot's own id is
+    1) plays on as the good bot. Returns the runner, the ids seat a held in order, and the last debug_state."""
+    bot = Good()
+    states, log, held = [], {}, []
+
+    def feed(runner):
+        cal, before = Calibration(), None
+        for i in range(round(80 / TICK)):
+            t = i * TICK
+            now = states[-1] if states else {}
+            if "gone" not in log and now.get("score", 0) >= 2 and now.get("phase") == "result":
+                log["gone"] = t
+            gone = "gone" in log and t < log["gone"] + gap
+            back = "gone" in log and not gone
+            k = i - 1 - bot.reaction_ticks
+            move = None if gone else bot(states[k] if k >= 0 else {}, t)
+            sensed, before = _sensed(i, move, before, cal)
+            if back:
+                sensed = dataclasses.replace(sensed, bodies=tuple(dataclasses.replace(b, id=back_id)
+                                                                  for b in sensed.bodies))
+            yield sensed
+            states.append(dict(runner.game.debug_state()))
+            ctrl = runner.game.seats[0].ctrl
+            if ctrl is not None and (not held or held[-1] != ctrl):
+                held.append(ctrl)
+            if runner.current_name != "quickdraw":
+                return
+
+    _, runner = run_headless(make_cfg(WALL), font, Quickdraw, feed, seed=s, display=RecordingDisplay(keep_all=False))
+    assert "gone" in log and runner.current_name != "quickdraw" and runner.lobby.results, (s, states[-1])
+    return runner, held, states[-1]
+
+
+def test_another_body_in_seat_a_after_the_grace_banks_no_best(font5x7):
+    """it15 review N1: player 1 (id 1) wins 2 rounds and leaves in `result`; 2 s later a body with another id (the
+    next in the queue, or player 1 back with a new id: the game cannot tell) takes the empty seat a, which keeps its
+    2 rounds, and wins the third. More than one body id sat in seat a, so the match banks no best, as a duel does:
+    the stored best stays None and the session's result names no new best."""
+    out = {}
+    for s in N1_SEEDS:
+        runner, held, last = _leaves_in_result_and_a_body_is_back(s, font5x7, gap=2.0, back_id=7)
+        result = runner.lobby.results[-1]
+        out[s] = (held, last["phase"], last["left"], last["right"], runner.game.scores.best(), result.best,
+                  result.new_best)
+        assert held == [1, 7], (s, out[s])                   # the other body did sit in seat a
+        assert runner.game.scores.best() is None, (s, out[s])
+        assert result.best is None and result.new_best is False, (s, out[s])
+
+
+def test_a_player_back_inside_the_grace_still_banks_their_best(font5x7):
+    """it15 review N1, ruling 2: player 1 out of view for 0.15 s in `result`, inside the grace, keeps seat a (the
+    same body id, never released) and plays on to 3 rounds: the match banks their best, as before."""
+    assert 0.15 < capture_grace(CAMERA_FPS)
+    out = {}
+    for s in N1_SEEDS:
+        runner, held, last = _leaves_in_result_and_a_body_is_back(s, font5x7, gap=0.15, back_id=1)
+        result = runner.lobby.results[-1]
+        out[s] = (held, last["phase"], last["left"], last["right"], runner.game.scores.best(), result.new_best)
+        assert held == [1] and last["left"] == WIN_ROUNDS, (s, out[s])
+        assert runner.game.scores.best() == WIN_ROUNDS, (s, out[s])
+        assert result.best == WIN_ROUNDS and result.new_best is True, (s, out[s])
 
 
 def test_the_hint_is_not_drawn_over_the_reaction_time():
