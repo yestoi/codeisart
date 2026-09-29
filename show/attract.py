@@ -35,16 +35,19 @@ class Attract:
         self._i = 0
         self._source_lines = 0
         self._t0: float | None = None
+        self._idle_t0: float | None = None
         self._emitted = 0
 
-    def start(self, now: float) -> None:
+    def start(self, now: float, idle_from: float | None = None) -> None:
+        """Banner and scroll from `now`; the idle clock counts from `idle_from` (a rebuild keeps it), else now."""
+        self._t0 = now
+        self._idle_t0 = now if idle_from is None else idle_from
+        self._emitted = 0
         self.term.reset(self.rows)
         self.term.feed(BANNER)
-        self._t0 = now
-        self._emitted = 0
 
     def idle_seconds(self, now: float) -> float:
-        return 0.0 if self._t0 is None else now - self._t0
+        return 0.0 if self._idle_t0 is None else now - self._idle_t0
 
     def tick(self, now: float) -> None:
         try:
@@ -54,12 +57,16 @@ class Attract:
             n = min(want - self._emitted, MAX_LINES_PER_TICK)
             for _ in range(n):
                 line, is_source = self.lines[self._i % len(self.lines)]
-                self.term.feed(line + b"\n")
+                # The index moves on before the feed: a line pyte rejects is fed once, not on every tick.
                 self._i += 1
+                self._emitted += 1
+                banner = False
                 if is_source:
                     self._source_lines += 1
-                    if self._source_lines % BANNER_EVERY == 0:
-                        self.term.feed(BANNER)
+                    banner = self._source_lines % BANNER_EVERY == 0
+                self.term.feed(line + b"\n")
+                if banner:
+                    self.term.feed(BANNER)
             self._emitted = max(want, self._emitted)
         except Exception:
             log.exception("attract: tick failed")

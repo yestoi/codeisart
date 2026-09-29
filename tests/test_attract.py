@@ -98,6 +98,28 @@ def test_an_unreadable_source_is_skipped(tmp_path, caplog):
     assert "int gone;" not in text
 
 
+def test_a_line_pyte_rejects_is_fed_once(tmp_path, caplog):
+    # pyte raises on this private-mode cursor move; the index moves on first, so the next tick does not retry it
+    a = load_entry(write_entry(tmp_path, "a", 1, "int a;\n\x1b[?3A\nint after;\n"))
+    term = Terminal()
+    attract = Attract([a], term, lines_per_second=1.0)
+    attract.start(0.0)
+    fed: list[bytes] = []
+    real_feed = term.feed
+
+    def spy(data: bytes) -> None:
+        fed.append(data)
+        real_feed(data)
+
+    term.feed = spy
+    with caplog.at_level(logging.ERROR, logger="show.attract"):
+        for n in range(1, 3 + 3 + 1):  # 3 header lines, then int a;, the bad line, int after;
+            attract.tick(float(n))
+    assert fed.count(b"\x1b[?3A\n") == 1
+    assert "int after;" in _text(term)
+    assert any("tick failed" in r.getMessage() for r in caplog.records)
+
+
 def test_a_late_tick_feeds_at_most_a_screen(tmp_path):
     src = "".join(f"int v{i};\n" for i in range(200))
     a = load_entry(write_entry(tmp_path, "a", 1, src))
