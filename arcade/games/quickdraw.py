@@ -8,10 +8,13 @@ input.py): the hand's height in the reach box, v from V_TOP to V_BOTTOM, is the 
 the line during the round's play, so a still hand never draws (C41, C42). Solo, a best is stored at the match's end
 when player 1 won a round by a draw (Q72: rounds won); a game that ever had a human in seat b stores none (Q23).
 
+Seat a is player 1's and never the CPU's: while player 1 is gone it is empty (its bar down, no draw, no round), so
+their rounds and best are only the ones they won (Q72); their leaving is the runner's to end.
+
 debug_state: phase, signal ("wait" or "draw" in play, else None), round, score (player 1's rounds), left, right (the
-seats' rounds), cpu ("left", "right" or None), humans, active, hint (the hand-up hint is wanted), hand_xy (player 1's
-bar centre), left_xy, right_xy (the bars), wait_left (s until DRAW while waiting, to 0.1, else None) and react (the
-last winning draw's time, s, or None)."""
+seats' rounds), cpu ("right" or None: seat a is never the CPU), humans, active, hint (the hand-up hint is wanted),
+hand_xy (player 1's bar centre), left_xy, right_xy (the bars), wait_left (s until DRAW while waiting, to 0.1, else
+None) and react (the last winning draw's time, s, or None)."""
 from __future__ import annotations
 
 import math
@@ -37,7 +40,7 @@ ARM_PX = 6                  # a bar draws only after it sat this far below the l
 ACTIVE_PX = 3               # a bar this far from its anchor is input
 HINT_IDLE_SECONDS = 2.0
 HINT_FADE = 0.3             # s in and out: never a blink
-CAMERA_FPS = 10             # capture_grace(10): what a human may be missing before the CPU takes the seat
+CAMERA_FPS = 10             # capture_grace(10): what a human may be missing before leaving the seat
 V_TOP, V_BOTTOM = 0.25, 0.75        # the reach box's v that is the bar's top and bottom
 DRAW_V = 0.45                       # the line, in the same v: a hand at shoulder height (0.51) is below it
 BAR_TOP, BAR_BOTTOM = 16, 56        # px at 64 rows (scaled with the height)
@@ -75,7 +78,8 @@ ICON = icon_from_rows([
 
 
 class Seat:
-    """One side's player: a human (ctrl is a body id) or the CPU (None), with the rounds it has won."""
+    """One side's player: a human (ctrl is a body id) or, with ctrl None, the CPU in seat b and nobody in seat a
+    (player 1's: never the CPU's), with the rounds it has won."""
 
     def __init__(self, index: int, grace: float, y: float):
         self.index, self.grace = index, grace
@@ -141,14 +145,22 @@ class Quickdraw(Game):
     def _humans(self) -> int:
         return sum(seat.ctrl is not None for seat in self.seats)
 
+    @staticmethod
+    def _is_cpu(seat: Seat) -> bool:
+        """Only seat b is ever the CPU; seat a without a human is empty: it draws nothing and wins nothing."""
+        return seat.ctrl is None and seat.index == 1
+
+    def _color(self, seat: Seat):
+        return CPU_COLOR if self._is_cpu(seat) else seat.color
+
     def _release_stale(self) -> None:
         for seat in self.seats:
             if seat.ctrl is not None and self.t - seat.seen > self.grace:
                 seat.release()
 
     def _assign(self, sensed: Sensed) -> None:
-        """Settle the seats for a round: a human missing longer than the grace gives its seat to the CPU, and the
-        bodies not seated take the free seats, seat a first."""
+        """Settle the seats for a round: a human missing longer than the grace leaves its seat (seat b to the CPU,
+        seat a empty, rounds kept), and the bodies not seated take the free seats, seat a first."""
         self._release_stale()
         bound = {seat.ctrl for seat in self.seats}
         candidates = [b for b in (sensed.player, sensed.player2) if b is not None and b.id not in bound]
@@ -194,6 +206,10 @@ class Quickdraw(Game):
 
     def _move_bars(self, sensed: Sensed, found: dict, dt: float) -> None:
         for seat in self.seats:
+            if seat.ctrl is None and not self._is_cpu(seat):
+                seat.y = self.bar_bottom                # empty seat a: down, as a seat in dropout; never input
+                seat.anchor, seat.idle = seat.y, 0.0
+                continue
             if seat.ctrl is None:
                 target = self.bar_top if seat.cpu_up else self.bar_bottom
                 step = CPU_BAR_SPEED * self.h / 64 * dt
@@ -248,7 +264,7 @@ class Quickdraw(Game):
             winner = min(crossed, key=lambda s: (s.y, s.index))       # a tie on the tick goes to the higher hand
             self._won(winner.index, since, "draw")
             return
-        due = [seat for seat in self.seats if seat.ctrl is None and since >= self._cpu[seat.index] - 1e-9]
+        due = [seat for seat in self.seats if self._is_cpu(seat) and since >= self._cpu[seat.index] - 1e-9]
         if due:
             winner = min(due, key=lambda s: (self._cpu[s.index], s.index))
             self._won(winner.index, self._cpu[winner.index], "draw")
@@ -256,11 +272,12 @@ class Quickdraw(Game):
             self._void()
 
     def _too_soon(self, soon: list) -> None:
-        if len(soon) == len(self.seats) or self._humans() == 0:
-            self._void()
+        other = self.seats[1 - soon[0].index]
+        if len(soon) == len(self.seats) or self._humans() == 0 or (other.ctrl is None and not self._is_cpu(other)):
+            self._void()                        # nobody in the other seat to give the round to: an empty seat a
             return
         self._soon = soon[0].index
-        self._won(1 - self._soon, None, "soon")
+        self._won(other.index, None, "soon")
 
     def _void(self) -> None:
         self._to_ready_void()
@@ -281,7 +298,7 @@ class Quickdraw(Game):
         if seat.ctrl is None and how == "draw":
             seat.cpu_up = True
         cx = self._bar_x(index)
-        color = seat.color if seat.ctrl is not None else CPU_COLOR
+        color = self._color(seat)
         self.fx.burst(cx, seat.y, color)
         if seat.ctrl is not None:
             self.fx.echo(index + 1, "ok")
@@ -323,7 +340,7 @@ class Quickdraw(Game):
 
     def draw(self, canvas: Canvas) -> None:
         k = self.h / 64
-        if self._hint_level > 0.0:
+        if self._hint_level > 0.0 and self.phase != "result":       # never over the time under DRAW!
             color = tuple(round(c * self._hint_level) for c in LINE_COLOR)
             for n, line in enumerate(HINT_LINES):
                 self._center(canvas, line, HINT_TOP * k + n * (GLYPH_H + 2), color)
@@ -332,11 +349,11 @@ class Quickdraw(Game):
             text = str(seat.rounds)
             width = canvas.text_width(text, SCORE_SCALE)
             canvas.text((self.w // 4 if seat.index == 0 else 3 * self.w // 4) - width // 2, 1, text,
-                        seat.color if seat.ctrl is not None else CPU_COLOR, SCORE_SCALE)
+                        self._color(seat), SCORE_SCALE)
             canvas.fill_rect(cx - BAR_W // 2 - TICK_GAP - TICK_W, self.line_y - 1, TICK_W, 2, LINE_COLOR)
             canvas.fill_rect(cx + BAR_W // 2 + TICK_GAP, self.line_y - 1, TICK_W, 2, LINE_COLOR)
             canvas.fill_rect(cx - BAR_W / 2, seat.y - BAR_H / 2, BAR_W, BAR_H,
-                             seat.color if seat.ctrl is not None else CPU_COLOR)
+                             self._color(seat))
         top = self.line_y - CELL_H
         if self.phase in ("play", "result"):
             if self._signal == "draw":
@@ -354,13 +371,12 @@ class Quickdraw(Game):
 
     def debug_state(self) -> dict:
         a, b = self.seats
-        cpus = [side for side, seat in (("left", a), ("right", b)) if seat.ctrl is None]
         cap = lambda v, top: min(max(0.0, v), top - 0.01)
         bar = lambda seat: (float(self._bar_x(seat.index)), round(cap(seat.y, self.h), 2))
         waiting = self.phase == "play" and self._signal == "wait"
         return {"phase": self.phase, "signal": self._signal if self.phase == "play" else None,
                 "round": self.round, "score": a.rounds, "left": a.rounds, "right": b.rounds,
-                "cpu": cpus[0] if len(cpus) == 1 else None, "humans": self._humans(), "active": bool(self._active),
+                "cpu": "right" if self._is_cpu(b) else None, "humans": self._humans(), "active": bool(self._active),
                 "hint": bool(self._shows_hint()), "hand_xy": bar(a), "left_xy": bar(a), "right_xy": bar(b),
                 "wait_left": round(max(0.0, self._wait - self.phase_t), 1) if waiting else None,
                 "react": self._react}

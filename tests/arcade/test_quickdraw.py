@@ -12,14 +12,16 @@ import pytest
 
 from arcade import feel
 from arcade.attract.lobby import Lobby
-from arcade.bots import for_game, seeds
+from arcade.bots import _sensed, for_game, seeds
+from arcade.calibration import Calibration
 from arcade.canvas import Canvas
 from arcade.game import REQUIRED_SCENARIOS, reserved
 from arcade.games import MENU_ORDER, get_game
-from arcade.games.quickdraw import (ACTIVE_PX, ARM_PX, CPU_COLOR, CPU_DRAW, DRAW_TIMEOUT, GAME, HINT_IDLE_SECONDS,
-                                    HINT_LINES, LINE_COLOR, OVER_SECONDS, READY_SECONDS, RESULT_SECONDS, WAIT_SECONDS,
-                                    WIN_ROUNDS, Quickdraw, idle_body)
-from arcade.headless import OPENING_NIGHT, run_headless
+from arcade.games.quickdraw import (ACTIVE_PX, ARM_PX, BAR_BOTTOM, CPU_COLOR, CPU_DRAW, DRAW_COLOR, DRAW_TIMEOUT,
+                                    GAME, GLYPH_H, HINT_IDLE_SECONDS, HINT_LINES, LINE_COLOR, LINE_Y, OVER_SECONDS,
+                                    READY_SECONDS, RESULT_SECONDS, WAIT_SECONDS, WIN_ROUNDS, Quickdraw, idle_body)
+from arcade.games.quickdraw_bots import Good
+from arcade.headless import OPENING_NIGHT, RecordingDisplay, run_headless
 from arcade.juice import PLAYER_COLORS, Juice
 from arcade.scores import Scores
 from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
@@ -342,6 +344,92 @@ def test_a_player_who_leaves_gives_the_seat_to_the_cpu():
     advance(game, frames, "result")
     assert game.debug_state()["right"] >= 1, game.debug_state()      # the CPU draws for seat b
     assert game.scores.best() is None
+
+
+def _leaves_in_result_after_two_rounds(s: int, font):
+    """The good bot plays through the real runner (closed loop, as arcade/bots.py plays; `_sensed` is its private
+    helper) and walks out of view, no body at all, on the first `result` tick with 2 rounds won. Returns the
+    debug_state after every tick, the index of the first state after the leave, and the runner."""
+    bot = Good()
+    states, gone_at = [], []
+
+    def feed(runner):
+        cal, before = Calibration(), None
+        for i in range(round(60 / TICK)):
+            k = i - 1 - bot.reaction_ticks
+            now = states[-1] if states else {}
+            if not gone_at and now.get("score", 0) >= 2 and now.get("phase") == "result":
+                gone_at.append(len(states))
+            move = None if gone_at else bot(states[k] if k >= 0 else {}, i * TICK)
+            sensed, before = _sensed(i, move, before, cal)
+            yield sensed
+            states.append(dict(runner.game.debug_state()))
+            if runner.current_name != "quickdraw":
+                return
+
+    _, runner = run_headless(make_cfg(WALL), font, Quickdraw, feed, seed=s, display=RecordingDisplay(keep_all=False))
+    assert gone_at and runner.current_name != "quickdraw" and runner.lobby.results, (s, states[-1])
+    return states, gone_at[0], runner
+
+
+def test_a_solo_player_who_leaves_in_result_banks_no_round_they_did_not_play(font5x7):
+    """it15 review B1: a solo player wins 2 rounds and walks away during `result`. Seat a is player 1's and never
+    the CPU's: empty, it draws nothing and wins nothing, so player 1's rounds stay 2 until the runner's leave rule
+    ends the session, and the score and best recorded are never over 2."""
+    out = {}
+    for s in seeds(Quickdraw, "128x64", 5):
+        states, at, runner = _leaves_in_result_after_two_rounds(s, font5x7)
+        gone_at = [at]
+        after = states[at:]
+        result, best = runner.lobby.results[-1], runner.game.scores.best()
+        out[s] = (result.score, best, after[-1]["left"], after[-1]["right"])
+        assert states[gone_at[0] - 1]["left"] == 2, (s, states[gone_at[0] - 1])
+        assert max(st["left"] for st in after) == 2, (s, out[s])                   # no round for an empty seat
+        assert result.score <= 2 and (best is None or best <= 2), (s, out[s])
+        assert all(st["cpu"] != "left" for st in after), s
+        empty = [st for st in after if st["humans"] == 0]
+        assert empty, (s, after[-1])
+        assert all(st["cpu"] == "right" for st in empty), (s, [st["cpu"] for st in empty][:5])  # seat b's CPU only
+        assert all(st["left_xy"][1] == BAR_BOTTOM for st in empty), (s, [st["left_xy"] for st in empty])
+
+
+def test_a_player_back_after_the_grace_gets_seat_a_with_their_rounds_only():
+    """Player 1 wins round 1 by a draw, walks out during its result and comes back, a new body, 5 s later. While
+    seat a is empty the CPU there would draw first (each round pinned so seat a's CPU, were there one, beats seat
+    b's), yet seat a wins nothing; back, the player sits in seat a with the 1 round they won, nothing more."""
+    game = make()
+    frames = scene(persons=[hand(Person(0.3, id=1), at=3.13).leave(4.0), Person(0.3, id=3).arrive(9.0)],
+                   ticks=900)
+    advance(game, frames, "play")
+    pinned(game, wait=2.0, cpu=0.4)
+    advance(game, frames, "result")
+    assert game.debug_state()["left"] == 1 and game.seats[0].ctrl == 1, game.debug_state()
+    playing = False
+    for _ in drive(game, frames, until=lambda g: g.seats[0].ctrl == 3):
+        if game.phase == "play" and not playing:
+            game._wait, game._cpu = 2.0, [0.3, 0.6]
+        playing = game.phase == "play"
+        assert game.debug_state()["left"] == 1, (round(game.t, 2), game.debug_state())
+    state = game.debug_state()
+    assert game.seats[0].ctrl == 3 and state["phase"] == "ready", (round(game.t, 2), state)
+    assert (state["left"], state["humans"], state["cpu"]) == (1, 1, "right") and state["right"] >= 1, state
+
+
+def test_the_hint_is_not_drawn_over_the_reaction_time():
+    """In `result` the hint line is not drawn, so the time under DRAW! has its rows to itself: an idle hand, the
+    hint up, loses the first round to the CPU's draw, and the rows of the time hold only its white text."""
+    game = make()
+    advance(game, idle_body(), "result")
+    state = game.debug_state()
+    assert state["react"] is not None and game._hint_level > 0.0, (state, game._hint_level)
+    canvas = Canvas(*WALL, feel_font())
+    game.draw(canvas)
+    top = round(LINE_Y + 9)
+    rows = canvas.frame[top:top + GLYPH_H]
+    lit = rows.any(axis=2)
+    assert (rows[lit] == DRAW_COLOR).all(), sorted({tuple(int(c) for c in px) for px in rows[lit]})
+    found = feel.find_text(canvas.frame, feel_font(), f"{state['react']:.2f}", scales=(1,))
+    assert found is not None and found[1] == top, (state["react"], found and found[:2])
 
 
 def test_debug_state_is_clean():
