@@ -50,11 +50,14 @@ from show.pipeline import EntryPlayer, Phase                                    
 from show.renderer import STRIP_LOOKS, renderer_for                               # noqa: E402
 from show.state import ALTERNATE_S, NOTICE_S, SHORT_BELOW, Show, strip_chars      # noqa: E402
 from show.terminal import Terminal                                                # noqa: E402
+from tools.flash_meter import FlashMeter                                          # noqa: E402
 from tools.arcade_shot import BACKGROUND, CAP_H, INK, PAD, TITLE_H, TITLE_INK, fit_width, git_sha, save_png  # noqa: E402
 
 ATTRACT_STRIP = "PRESS A BUTTON ON ANY PORTRAIT"
 PLAY_STRIP = "NOW: hello by Trey, 2026, Not A.I. | NEXT: -"       # a sample until D3's strip() (Q52)
 SHOW_MAX_WIDTH = 2080                                             # one 512 px frame at the led look's scale 4
+COLS_MAX_WIDTH = 4 * SHOW_MAX_WIDTH                               # an explicit --cols is honoured up to this width, px
+PAGE_MAX_H = 4000                                                 # a written page is at most this tall, px
 DISTANCE_METRES = 10.0
 DISTANCE_MIN_SCALE = 4
 
@@ -324,19 +327,22 @@ def _session_entries(name: str, cfg: Config, dest: Path) -> None:
 
 
 def frames_from_session(name: str, cfg: Config, seconds: float = SESSION_SECONDS, every_ms: int = 500,
-                        presses: list[tuple[float, int]] | None = None
+                        presses: list[tuple[float, int]] | None = None, meter: FlashMeter | None = None
                         ) -> tuple[list[tuple[str, np.ndarray]], list[str], int]:
     """The show itself: a ShowLoop on a fake display, stepped at most at cfg.fps in real time (its children are
     real), button presses put on loop.presses at their times (`presses` overrides the session's). The frames are
     what the governor let through (the display's last push), one every every_ms and one at each press, labelled
-    `<t>s held <n>` with the governor's held ticks so far; then the strip text of each frame and the governor's
-    held_ticks at the end. Built in a temporary copy of the entries: nothing lands in the checkout."""
+    `<t>s held <n> area <a> sq <s>`: the governor's held ticks so far, and the flash area and square flashes the
+    meter (made from the governor's fps and gamma when None) gave the frames pushed since the last cell; then
+    the strip text of each frame and the governor's held_ticks at the end.
+    Built in a temporary copy of the entries: nothing lands in the checkout."""
     if name not in SESSIONS:
         raise ValueError(f"session must be one of {SESSIONS}, got {name!r}")
     todo = sorted(PRESSES[name] if presses is None else presses)
     frames: list[tuple[str, np.ndarray]] = []
     strips: list[str] = []
     held_ticks = 0
+    seen = 0                                       # display.count at the last step
     with tempfile.TemporaryDirectory() as tmp:
         entries = Path(tmp) / "entries"
         _session_entries(name, cfg, entries)
@@ -364,9 +370,16 @@ def frames_from_session(name: str, cfg: Config, seconds: float = SESSION_SECONDS
                     pressed = True
                 loop.step(t)
                 due = t + period
+                if display.count > seen and display.last is not None:      # a frame pushed: after the governor
+                    seen = display.count
+                    if meter is None and loop.wall is not None:
+                        meter = FlashMeter(loop.wall.governor.fps, loop.wall.governor.gamma)
+                    if meter is not None:
+                        meter.add(display.last)
                 if (pressed or t >= next_keep) and display.last is not None:
                     held_ticks = loop.wall.governor.held_ticks
-                    frames.append((f"{t:.1f}s held {held_ticks}", display.last.copy()))
+                    area, squares = meter.take() if meter is not None else (0.0, 0)
+                    frames.append((f"{t:.1f}s held {held_ticks} area {area:.4f} sq {squares}", display.last.copy()))
                     strips.append(loop.show.strip(t) if loop.show is not None else "")
                     if t >= next_keep:
                         next_keep = t + every_ms / 1000.0
@@ -419,10 +432,11 @@ def frames_from_strips(cfg: Config, font: Font) -> list[tuple[str, np.ndarray]]:
     return frames
 
 
-def sheet(frames, look: str, scale: int, title: str, gamma: float, cols: int) -> Image.Image:
+def sheet(frames, look: str, scale: int, title: str, gamma: float, cols: int,
+          cap: int = SHOW_MAX_WIDTH) -> Image.Image:
     """The frames as captioned cells, cols to a row, under a title band."""
     h, w = frames[0][1].shape[:2]
-    cols, scale = fit_width(w, PAD, PAD, cols, scale, SHOW_MAX_WIDTH)
+    cols, scale = fit_width(w, PAD, PAD, cols, scale, cap)
     cw, ch = w * scale, h * scale
     rows = -(-len(frames) // cols)
     image = Image.new("RGB", (PAD + cols * (cw + PAD), TITLE_H + rows * (ch + CAP_H + PAD)), BACKGROUND)
@@ -436,6 +450,18 @@ def sheet(frames, look: str, scale: int, title: str, gamma: float, cols: int) ->
             else render(frame, look, scale, gamma)
         image.paste(Image.fromarray(cell), (x, y + CAP_H))
     return image
+
+
+def pages(frames, look: str, scale: int, title: str, gamma: float, cols: int, cap: int = SHOW_MAX_WIDTH,
+          max_height: int = PAGE_MAX_H) -> list[Image.Image]:
+    """sheet()'s cells in pages of whole rows (one row at least), each titled `<title> page <k>/<n>`."""
+    h, w = frames[0][1].shape[:2]
+    cols, scale = fit_width(w, PAD, PAD, cols, scale, cap)
+    rows = max(1, (max_height - TITLE_H) // (h * scale + CAP_H + PAD))
+    per = rows * cols
+    chunks = [frames[k : k + per] for k in range(0, len(frames), per)]
+    return [sheet(chunk, look, scale, f"{title} page {k}/{len(chunks)}", gamma, cols, cap)
+            for k, chunk in enumerate(chunks, 1)]
 
 
 def _crop(text: str) -> tuple[int, int, int, int]:
@@ -480,7 +506,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--cwd", type=Path)
     ap.add_argument("--allow-black", action="store_true")
     ap.add_argument("--scale", type=int, default=4)
-    ap.add_argument("--cols", type=int, default=2)
+    ap.add_argument("--cols", type=int, default=None,
+                    help="columns to a row: default 2 fitted to the width; given, honoured up to 8320 px")
     ap.add_argument("--config", type=Path, default=ROOT / "show.toml")
     ap.add_argument("--build", metavar="CMD", help="with --entry: replace the copy's build command")
     ap.add_argument("--capture-first", action="store_true",
@@ -505,10 +532,11 @@ def main(argv: list[str] | None = None) -> int:
         what_text = f"entry {args.entry.name}"
     elif args.session:
         seconds = SESSION_SECONDS if args.seconds is None else args.seconds
-        frames, strips, held_ticks = frames_from_session(args.session, cfg, seconds, args.every_ms)
+        meter = FlashMeter(cfg.fps, cfg.gamma)
+        frames, strips, held_ticks = frames_from_session(args.session, cfg, seconds, args.every_ms, meter=meter)
         for (label, _), text in zip(frames, strips):
             print(f"{label}  {text}")
-        print(f"held {held_ticks}")
+        print(f"held {held_ticks} area {meter.area_max:.4f} squares {meter.squares_max}")
         what_text = f"session {args.session} held {held_ticks}"
     elif args.strips:
         frames = frames_from_strips(cfg, font)
@@ -532,19 +560,28 @@ def main(argv: list[str] | None = None) -> int:
     if args.crop:
         x, y, w, h = _crop(args.crop)
         frames = [(label, f[y : y + h, x : x + w].copy()) for label, f in frames]
+    cols, cap = (2, SHOW_MAX_WIDTH) if args.cols is None else (args.cols, COLS_MAX_WIDTH)
+    if args.cols is not None:
+        w = frames[0][1].shape[1]
+        fit = min((cap - PAD) // (w * scale + PAD) for scale in (args.scale, max(DISTANCE_MIN_SCALE, args.scale)))
+        if args.cols > fit:
+            ap.error(f"--cols {args.cols} does not fit: {fit} columns fit at --scale {args.scale} in {cap} px")
     sha = git_sha()
     base = (f"{sha} {'dirty' if sha.endswith('+dirty') else 'clean'} {what_text} gamma {args.gamma} "
             f"crop {args.crop or 'none'}")
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
+
+    def write(stem: str, look: str, scale: int, title: str) -> None:
+        made = pages(frames, look, scale, title, args.gamma, cols, cap)
+        for k, page in enumerate(made, 1):
+            save_png(page, out.with_name(stem + (f"-p{k}" if len(made) > 1 else "") + ".png"), sha)
+
     looks = ["plain", "led"] if args.look == "both" else [args.look]
     for look in looks:
-        name = f"{out.name}-{look}.png" if args.look == "both" else out.name + ".png"
-        save_png(sheet(frames, look, args.scale, f"{base} look {look}", args.gamma, args.cols),
-                 out.with_name(name), sha)
-    save_png(sheet(frames, "distance", max(DISTANCE_MIN_SCALE, args.scale),
-                   f"{base} look distance ({DISTANCE_METRES:.0f} m)", args.gamma, args.cols),
-             out.with_name(out.name + "-distance.png"), sha)
+        write(f"{out.name}-{look}" if args.look == "both" else out.name, look, args.scale, f"{base} look {look}")
+    write(out.name + "-distance", "distance", max(DISTANCE_MIN_SCALE, args.scale),
+          f"{base} look distance ({DISTANCE_METRES:.0f} m)")
     return 0
 
 
