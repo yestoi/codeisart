@@ -17,6 +17,7 @@ def test_defaults_when_file_missing(tmp_path):
     assert cfg.lightbox_pins == [17, 22, 23, 24, 27]
     assert cfg.fps == 20 and cfg.volume == 0.6 and cfg.pump_bytes == 4096
     assert not hasattr(cfg, "matrix_multiplexing")
+    assert cfg.strip_look == "reverse" and cfg.gamma == 2.2
 
 
 def test_values_from_file(tmp_path):
@@ -59,3 +60,17 @@ def test_repo_poc_toml_is_the_128x64_ink_view():
     cfg = load_config(ROOT / "show.poc.toml")
     assert (cfg.width, cfg.height, cfg.view) == (128, 64, "ink")
     assert (cfg.columns, cfg.rows) == (80, 24)
+
+
+def test_strip_look_gamma_and_fps_are_checked(tmp_path):
+    p = tmp_path / "show.toml"
+    for bad in ('strip_look = "stripes"', "gamma = 0", "gamma = -1.0", "gamma = 0.22", "gamma = 22.0",
+                "fps = 20.0", "fps = 0", "fps = 1"):
+        p.write_text(bad + "\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+    for look in ("reverse", "dim-reverse", "bright-on-field"):
+        p.write_text(f'strip_look = "{look}"\n')
+        assert load_config(p).strip_look == look
+    p.write_text("gamma = 1.0\n")
+    assert load_config(p).gamma == 1.0

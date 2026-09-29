@@ -9,6 +9,7 @@ PHOSPHORS: dict[str, tuple[int, int, int]] = {
     "green": (51, 255, 51),
     "amber": (255, 176, 0),
 }
+STRIP_LOOKS = ("reverse", "dim-reverse", "bright-on-field")
 
 
 @dataclass
@@ -24,6 +25,8 @@ class Config:
     phosphor: str = "green"
     glow: bool = False
     view: str = "text"       # text | ink (one dot a cell, for a wall smaller than the terminal: the 128x64 PoC)
+    strip_look: str = "reverse"   # the strip's look (Q54); show.toml carries the pick
+    gamma: float = 2.2            # the governor's light model: 1.0 (the card applies gamma) to 2.2 (bytes as they are)
     entries_dir: Path = Path("entries")
     audio_dir: Path = Path("audio")
     font_path: Path = Path("fonts/5x7.bin")
@@ -71,6 +74,12 @@ def load_config(path: Path) -> Config:
         raise ValueError(f"{path}: phosphor must be one of {sorted(PHOSPHORS)}")
     if cfg.view not in ("text", "ink"):
         raise ValueError(f"{path}: view must be text or ink")
+    if cfg.strip_look not in STRIP_LOOKS:
+        raise ValueError(f"{path}: strip_look must be one of {STRIP_LOOKS}")
+    if isinstance(cfg.gamma, bool) or not isinstance(cfg.gamma, (int, float)) or not 1.0 <= cfg.gamma <= 2.2:
+        raise ValueError(f"{path}: gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are)")
+    if isinstance(cfg.fps, bool) or not isinstance(cfg.fps, int) or cfg.fps < 2:
+        raise ValueError(f"{path}: fps must be an int of at least 2")
     if not 0.0 <= cfg.brightness_cap <= 1.0:
         raise ValueError(f"{path}: brightness_cap must be between 0 and 1")
     return cfg
