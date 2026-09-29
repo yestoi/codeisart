@@ -405,22 +405,22 @@ status: defaulted (standing instruction)
 asked: it10
 default: the sheets render the full 512x192 wall: 128x64 cannot hold 80 columns of 6 px. The prototype shows a 128x64 window of the wall, 21 columns by 8 rows, in the sheets by `--crop` and on the panels by D4's test pattern. No scaled-down terminal mode is built
 deadline: GATE C
-answer: relayed 2026-09-29 00:32 CDT by the owner's other session (codeisart-5d), not said to the operator: "yes, add the ink mode for the PoC". The 2 x 2 128x64 panels are the proof of concept only; the full 80x23 wall stays the goal. This replaces the default's "No scaled-down terminal mode is built": the ink view (`Config.view = "ink"`, show.poc.toml) was built by that session on branch `show-ink-view` (5211a49) and merged by the operator (c28c027). The terminal stays 80x23; each cell is one dot lit by its glyph's ink. The sheets of the full wall stay 512x192
-status: answered (by relay; the owner confirms at the next check-in)
+answer: relayed 2026-09-29 00:32 CDT by the owner's other session (codeisart-5d), not said to the operator: "yes, add the ink mode for the PoC". The 2 x 2 128x64 panels are the proof of concept only; the full 80x23 wall stays the goal. This replaces the default's "No scaled-down terminal mode is built": the ink view (`Config.view = "ink"`, show.poc.toml) was built by that session on branch `show-ink-view` (5211a49) and merged by the operator (c28c027). The terminal stays 80x23; each cell is one dot lit by its glyph's ink. The sheets of the full wall stay 512x192. Confirmed by the owner to the operator, 2026-09-29 00:46 CDT: "yes to Q53, the ink mode merge is confirmed"
+status: answered
 
 ### Q54: Is the attribution strip legible in reverse video on LEDs?
 asked: it10
 default: the spec's reverse video stays through D1 and D2. The sheets of iteration 10 (evidence/it10/it10-prototype-window.png at the led look, it10-cc-distance.png at 10 m) show the strip's dark letters closing up inside the lit field, while normal text reads well. The strip carries the attribution ("the year is the proof"), so it must read from 15 to 40 feet. D3's plan draws three variants in sheets (reverse at 70 % as now; reverse on a field at about 35 %; bright letters on a field at about 25 %), makes the choice a key in show.toml, and takes the one that reads best at the led and distance looks as the default. The owner judges on the real panels (the 128x64 prototype can show the strip's window: `--crop 16,128,128,64`)
 deadline: the plan of D3; the panels at GATE C
-answer:
-status: defaulted (standing instruction)
+answer: the owner, 2026-09-29 00:52 CDT: "For Q54, draw the three strip variants in D3". D3's plan draws the three variants in sheets (reverse at 70 % as now; reverse on a field at about 35 %; bright letters on a field at about 25 %) at the led and distance looks, on the full wall and on the 128x64 proof of concept, and makes the strip's look a key in show.toml. Which variant becomes the default is still the owner's to pick, from the sheets and on the panels; until then the loop takes the one that reads best in the sheets
+status: answered (the variants are drawn in D3; the pick is open)
 
 ### Q58: What does the strip show on the 128x64 proof of concept?
 asked: it11 (raised by the owner's other session, codeisart-5d, 2026-09-29)
 default: on 128x64 only 21 characters fit on the strip's text row, so "NOW: hello by Trey, 2026, Not A.I." shows as "NOW: hello by Trey, 2" and the attribution's "Not A.I." is lost. Until the owner decides, D3's `strip()` builds a short form when fewer than 40 characters fit: it alternates every 3 s between "<author>, <year>" and "Not A.I.", each cut to the width (no marquee: scrolling text on a strip that is already hard to read in reverse video, Q54, reads worse). D1 and D2 change nothing: the renderer cuts the text it is given. The full wall's strip is not changed by this
 deadline: the plan of D3
-answer:
-status: defaulted (standing instruction)
+answer: the owner, 2026-09-29 00:49 CDT: "For Q58, i'll take your suggestion." When fewer than 40 characters fit on the strip (the 128x64 proof of concept: 21), D3's `strip()` alternates every 3 s between "<author>, <year>" and "Not A.I.", each cut to the width; no marquee. The full wall's strip is not changed
+status: answered
 
 ### Q55: How are the portrait lightboxes wired, and do they dim?
 asked: it11
