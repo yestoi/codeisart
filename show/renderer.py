@@ -1,4 +1,8 @@
-"""Terminal cells to wall pixels: a 6x8 dot-matrix font in one phosphor color, and the strip on the last row."""
+"""Terminal cells to wall pixels: a 6x8 dot-matrix font in one phosphor color, and the strip on the last row.
+
+The "ink" view is for a wall too small for the terminal's text (the 128x64 proof of concept): every cell becomes
+one dot lit by how much ink its glyph has, so ASCII art reads as the picture it stands for, and the strip keeps
+the bottom text row."""
 from __future__ import annotations
 
 import numpy as np
@@ -8,6 +12,7 @@ from show.font import CELL_H, CELL_W, Font
 
 NORMAL = 0.7            # normal text at 70 % of the phosphor, bold at 100 %
 QUESTION = ord("?")     # stands in for anything outside Latin-1
+VIEWS = ("text", "ink")
 
 
 def _code(ch: str) -> int:
@@ -17,15 +22,25 @@ def _code(ch: str) -> int:
 
 class Renderer:
     def __init__(self, font: Font, width: int, height: int, columns: int, rows: int,
-                 phosphor: tuple[int, int, int], glow: bool = False):
-        if columns * CELL_W > width or rows * CELL_H > height:
+                 phosphor: tuple[int, int, int], glow: bool = False, view: str = "text"):
+        if view not in VIEWS:
+            raise ValueError(f"view must be one of {VIEWS}, got {view!r}")
+        if view == "text" and (columns * CELL_W > width or rows * CELL_H > height):
             raise ValueError(f"{columns}x{rows} terminal does not fit a {width}x{height} display")
+        if view == "ink" and height <= CELL_H:
+            raise ValueError(f"the ink view needs more than {CELL_H} rows of pixels, got {height}")
         self.width, self.height, self.columns, self.rows = width, height, columns, rows
-        self.glow = glow
-        self.x0 = (width - columns * CELL_W) // 2
-        self.y0 = (height - rows * CELL_H) // 2
+        self.glow, self.view = glow, view
+        self.x0 = max(0, (width - columns * CELL_W) // 2)
+        self.y0 = max(0, (height - rows * CELL_H) // 2)
+        self._font = font
         self._atlas = font.atlas()
+        ink = self._atlas.reshape(len(self._atlas), -1).sum(axis=1).astype(np.float64)
+        self._ink = np.clip(ink / max(ink[32:127].max(), 1.0), 0.0, 1.0)   # the densest printable glyph is full
+        # ink view: pixels per column, the cell's 6:8 shape kept, every row fitting above the strip's text row
+        self.dot = min(width / columns, (height - CELL_H) / (rows * CELL_H / CELL_W))
         bold_rgb = np.array(phosphor, dtype=np.float64)
+        self._phosphor = bold_rgb
         # palette index 0 black, 1 normal, 2 bold
         self._palette = np.array([(0, 0, 0), bold_rgb * NORMAL, bold_rgb], dtype=np.float64).astype(np.uint8)
         self._frame: np.ndarray | None = None
@@ -68,6 +83,11 @@ class Renderer:
                     level_row[x] = 2
                 if ch.reverse:
                     rev_row[x] = True
+        if self.view == "ink":
+            frame = self._ink_frame(codes[:program_rows], level[:program_rows], rev[:program_rows])
+            if show_strip:
+                self._ink_strip(frame, strip)
+            return apply_glow(frame) if self.glow else frame
         if show_strip:
             codes[-1] = [_code(ch) for ch in strip[:columns].ljust(columns)]
             level[-1] = 1
@@ -84,6 +104,28 @@ class Renderer:
         if self.glow:
             frame = apply_glow(frame)
         return frame
+
+    def _ink_frame(self, codes: np.ndarray, level: np.ndarray, rev: np.ndarray) -> np.ndarray:
+        """One dot per cell, sampled nearest to fill the cells' shape, centred above the strip's text row."""
+        ink = self._ink[codes]
+        lum = np.where(rev, 1.0 - ink, ink) * np.where(level == 2, 1.0, NORMAL)
+        rows, columns = codes.shape
+        dot_w, dot_h = self.dot, self.dot * CELL_H / CELL_W
+        area_h = self.height - CELL_H
+        ow, oh = min(self.width, round(columns * dot_w)), min(area_h, round(rows * dot_h))
+        xs = np.minimum(((np.arange(ow) + 0.5) / dot_w).astype(np.intp), columns - 1)
+        ys = np.minimum(((np.arange(oh) + 0.5) / dot_h).astype(np.intp), rows - 1)
+        x0, y0 = (self.width - ow) // 2, (area_h - oh) // 2
+        frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        frame[y0 : y0 + oh, x0 : x0 + ow] = (lum[np.ix_(ys, xs)][:, :, None] * self._phosphor).astype(np.uint8)
+        return frame
+
+    def _ink_strip(self, frame: np.ndarray, strip: str) -> None:
+        """The strip in the font on the bottom text row, reverse video as in the text view, cut to the width."""
+        fits = self.width // CELL_W
+        y = self.height - CELL_H
+        frame[y:] = self._palette[1]
+        draw_text(frame, (self.width - fits * CELL_W) // 2, y, strip[:fits], self._font, (0, 0, 0))
 
 
 def apply_glow(frame: np.ndarray, amount: float = 0.3) -> np.ndarray:

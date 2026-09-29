@@ -101,3 +101,19 @@ def test_cc_script_compiles_and_runs():
     text = "\n".join(screen.display)
     assert "warning" in text
     assert "result 42" in text
+
+
+def test_poc_config_writes_ink_sheets_at_128x64(tmp_path):
+    stem = tmp_path / "poc"
+    code = ss.main(["--config", "show.poc.toml", "--command", "printf '%0.s#' $(seq 1 400)",
+                    "--seconds", str(CHILD_SECONDS), "--look", "plain", "--out", str(stem)])
+    assert code == 0
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["poc-distance.png", "poc.png"]
+
+
+def test_program_black_in_the_ink_view_is_any_lit_dot(real_font):
+    cfg = Config(width=128, height=64, view="ink")
+    frames = ss.frames_from_steps([ss.Step("blank")], cfg, real_font)
+    assert ss._program_black(frames, cfg)
+    frames = ss.frames_from_steps([ss.Step("dot", b".")], cfg, real_font)
+    assert not ss._program_black(frames, cfg)

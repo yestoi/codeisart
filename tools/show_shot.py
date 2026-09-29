@@ -3,6 +3,7 @@
     python -m tools.show_shot --script strip --look both --out sheets/strip
     python -m tools.show_shot --command "seq 1 60" --seconds 2 --every-ms 250 --look both --out sheets/seq
     python -m tools.show_shot --script strip --crop 0,0,128,64 --look led --out sheets/prototype
+    python -m tools.show_shot --config show.poc.toml --command "./donut" --look led --out sheets/poc-donut
 
 Scripts: strip, edges, fullscreen, cc. Writes OUT.png (or OUT-plain.png and OUT-led.png with --look both) and
 OUT-distance.png (10 m, the middle of spec 1's 15 to 40 feet), each stamped with the git sha. Exits 1 and writes
@@ -114,7 +115,7 @@ SCRIPTS: dict[str, Callable[[], list[Step]]] = {
 
 
 def _renderer(cfg: Config, font: Font) -> Renderer:
-    return Renderer(font, cfg.width, cfg.height, cfg.columns, cfg.rows, cfg.phosphor_rgb, cfg.glow)
+    return Renderer(font, cfg.width, cfg.height, cfg.columns, cfg.rows, cfg.phosphor_rgb, cfg.glow, cfg.view)
 
 
 def frames_from_steps(steps: list[Step], cfg: Config, font: Font) -> list[tuple[str, np.ndarray]]:
@@ -192,7 +193,10 @@ def _program_black(frames, cfg: Config) -> bool:
     """No frame's rows above the strip hold anything but the cursor's block on a blank cell.
 
     Counted by cells (the wall's text grid): a glyph is a partly lit cell, and more than one fully lit cell
-    is more than the cursor. With glow on, the cursor's neighbours are partly lit: judge black by eye then."""
+    is more than the cursor. With glow on, the cursor's neighbours are partly lit: judge black by eye then.
+    The ink view draws no cursor: any lit pixel above the strip's text row is a program."""
+    if cfg.view == "ink":
+        return all(frame[: cfg.height - CELL_H].max() == 0 for _, frame in frames)
     y0 = (cfg.height - cfg.rows * CELL_H) // 2
     x0 = (cfg.width - cfg.columns * CELL_W) // 2
     rows = cfg.rows - 1
@@ -219,9 +223,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--allow-black", action="store_true")
     ap.add_argument("--scale", type=int, default=4)
     ap.add_argument("--cols", type=int, default=2)
+    ap.add_argument("--config", type=Path, default=ROOT / "show.toml")
     args = ap.parse_args(argv)
 
-    cfg = load_config(ROOT / "show.toml")
+    cfg = load_config(args.config if args.config.is_absolute() else ROOT / args.config)
     font = Font.load(cfg.font_path if cfg.font_path.is_absolute() else ROOT / cfg.font_path)
     if args.script:
         frames = frames_from_steps(SCRIPTS[args.script](), cfg, font)

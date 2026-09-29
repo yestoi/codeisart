@@ -1,0 +1,5 @@
+# The 128x64 proof of concept: four 64x32 panels, 2 x 2. Keys not set here take show.config.Config's defaults.
+# The terminal stays 80x23 (entries see the size they were written for); the ink view draws each cell as one dot.
+width = 128
+height = 64
+view = "ink"
