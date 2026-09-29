@@ -328,5 +328,5 @@ status: defaulted (standing instruction)
 asked: 2026-09-28, by the owner after the first live smoke ("it could be funner moving your whole body back and forth towards the camera to be the paddle control")
 default: none taken; the loop is gated and the owner is in the session. The operator's lean: the body's distance, read from `Body.scale` (nose to hip in the frame, already in `Sensed`), smoothed, with the raised hand kept only to start the game; the ball slowed to a body's speed. The hand path's faults (C44) are fixed in the engine either way, because other games point with a hand
 deadline: the arcade's next iteration
-answer:
-status: open (owner's proposal)
+answer: "yes, do it now as iteration 9. I was jerky and laggy. Didn't appear to have a good read on my hand." The body's distance from the camera moves Pong's paddle; it is built now, as iteration 9, before the show daemon (this changes Q33's order by one iteration; after iteration 9 the loop gates again). The hand path's faults (C44: jerky, laggy, a poor read of the hand) are fixed in the engine
+status: answered (owner, 2026-09-28 20:50 CDT)
