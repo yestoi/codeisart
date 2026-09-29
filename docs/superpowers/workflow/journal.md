@@ -545,3 +545,79 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
     merge into bars, the band is a clean stripe, and the strip's thin letters thin out in reverse (`hello` reads
     `he l o`, `NOW:` and `Trey` hold): one more reason for D3's three strip variants to be drawn on the 128x64 wall
     too.
+- Verdict on the sheets after the fix (the operator, read with the Read tool at 01:46 CDT, before any other tool
+  call): accepted. The review blocked on note 1 above (the wedge), the sample entry was fixed (89e9259, merged
+  14728d4: `\033[K` after the band) and the four sheet runs were made again from a clean detached checkout of
+  14728d4 (the stamp on the 128x64 sheet reads "14728d4 clean").
+  - `it11-hello` (led) and `it11-hello-poc`: the band is one stripe of 6 `#` on every row in both directions: at
+    6.8 s it slants down to the right, at 8.3 s down to the left, and nothing stays behind it. All the rest reads as
+    before: the title and plaque, `$ cat hello.c`, the source, `$ cc -Wall -o hello hello.c`, the warning
+    `hello.c:21:9: warning: unused variable 'leftover' [-Wunused-variable]` (still line 21), `$ ./hello`,
+    `hello, world`, the strip in reverse on row 24 (`NOW: hello by Trey, 2` on 128x64, no cursor there). Phases:
+    source 0.00, build 3.66, run 5.20, dwell 9.33, done 13.35 s (the build on the wall 1.54 s).
+  - `it11-hello-fallback`: the error, `*** build failed (exit 1) ***` held 3.04 s, `$ ./hello   (recording)`, and
+    the replayed band is the same clean stripe in both directions; `failure: build failed (exit 1)`.
+  - `it11-attract` (led): the banner, hello's header, the source scrolling, the banner again after 40 lines, the
+    entry again; the strip `PRESS A BUTTON ON ANY PORTRAIT`.
+  - Note 4: the fix's own source line is longer than 80 columns (its comment), so it wraps on the wall like the
+    `moving rippl` / `e */` line. Cosmetic, in the sample entry only; D3's plan may shorten both comments.
+- Plan: docs/superpowers/plans/2026-09-29-it11-show-one-entry-end-to-end.md (8080527), 294 lines, thin, written by the
+  plan writer in 18 minutes and revised once for the ink view, which was merged while the plan was being written. Not a
+  safety slice: no plan review. BASE d7e1599 (the orchestrator's I0 commit); the review's range starts at ebd367c so
+  that it covers the ink view.
+- Shipped: D2, one entry end to end; ebd367c..14728d4, 32 files, 2622 insertions. No file of the arcade changed; the
+  safety files (`arcade/flash.py`, `arcade/brightness.py`, `show/display/colorlight.py`) are unchanged.
+  - The ink view (5211a49, merged c28c027; built by the owner's other session, Q53): `view = "ink"` in the config,
+    `show.poc.toml` for the 128x64 proof of concept, `show_shot --config`. The text view is byte-identical to before
+    (the reviewer compared 320 frames).
+  - I0 (d7e1599): `lightbox_pins` (Q55).
+  - T-pipe (5ef04bd, 78afb5c, merged c0955ba): `show/terminal.py` forgets a finished process group (C48) and drains
+    the pty after the exit (`DRAIN_MAX` 2.0 s); `show/pipeline.py`, the `EntryPlayer`: SOURCE, BUILD, RUN, ERROR_HOLD,
+    FALLBACK, DWELL, DONE, crowd mode, the capture of a fallback recording, `tick()` never raises.
+  - T-hello (ccf35ab, merged 906301c; fixed 89e9259, merged 14728d4): `entries/hello`, station 6, one deliberate
+    `-Wall` warning.
+  - T-attract (b1decce, merged 5a86f5d): `show/attract.py`. T-io (b8cac6d, merged 67eac25): `show/input.py`,
+    `show/lights.py`, `show/audio.py` with fakes, `tools/make_cues.py`, four WAVs in `audio/`.
+  - T-shot (6a76791, merged 08cc0fa): `show_shot --entry`, `--build`, `--capture-first`, `--attract`.
+- Review: APPROVED after 2 rounds (evidence/it11/reviewer-round1.md, reviewer-round2.md). Round 1 BLOCKED on one
+  finding: the sample entry did not erase to the end of the row, so the band left a wedge behind (up to 70 `#` on a
+  row); the operator had read the same wedge in the sheets. Fixed test first (at BASE the new test fails with "a row
+  holds 72 '#' in frame 59"), one line in `hello.c`; round 2 confirms 6 `#` at most over all 60 frames, one warning
+  still, no scroll, capture and replay intact. No assert removed or changed in the range (1294 insertions, 0
+  deletions under tests/ in round 1; the fix adds 35 lines). The ten points put to the reviewer: C48 fixed, the drain
+  loses nothing on the finished path and never blocks, the CPU limit and the sandbox wrap hold, the cue generator's
+  bound was not loosened; two are noted for D3 (`start()` may raise; `stop()` can raise, which is C49).
+- Deploy: none (never deployed by the loop).
+- Verify: 7 of 7 of the show daemon's checklist, done twice (at 72f0654 before the fix, at 14728d4 after it; item 5,
+  `arcade doctor`, is dropped: no camera or display path touched). 1 freshness: sheets stamped 14728d4 = HEAD at
+  verify, clean, from a clean detached checkout. 2 the suite is green. 3 skips stay at 1 (the unshare test on the
+  Mac). 4 collected rose from 888 to 966 (901 with the ink view, 965 after D2, 966 with the fix's test). 6
+  evidence/it11/. 7 the two verdicts above.
+- Tests: 966 collected, 965 passed, 1 skipped, 202.18 s with the sheet runs and the reviewer's probes beside it (the
+  orchestrator's run alone: 197.96 s; limit 215 s; it10: 888, 168.8 s). D2's tests play entries in real time: T-shot's
+  add about 10.2 s (its share was 7 s), the fix's test 3.5 s.
+- Minutes: about 90, from 00:20 to 01:50 CDT: orient 2, plan 18, implement 40 (serial 3.5, parallel tasks 20.1,
+  integration 16.3), review round 1 9 with verify beside it, the fix 9, review round 2 2 with the second verify
+  beside it (4), report 6.
+- Loop decisions and deviations:
+  - The ink view was merged into main during the plan phase at the request of the owner's other session; the operator
+    read its diff first (additive, the default unchanged, no safety file, no test line removed) and the owner
+    confirmed it afterwards (Q53).
+  - The operator wrote the spawn time 00:43 from memory; the clock read 00:41; corrected.
+  - The plan's fourth I2 command was run third, so that the run that writes a recording comes last; every run left the
+    checkout clean.
+  - The fix is one commit (test and fix together), not two. The plan limited hello's escapes to four; `ESC[K` is a
+    fifth, needed by the plan's own "a band".
+  - T-io's first error cue had 5.1 % of its samples near the peak against the 5 % bound: the generator was changed,
+    the bound was not.
+  - The orchestrator's other choices are listed in evidence/it11/orchestrator-report.md; the reviewer judged them.
+- Carried forward: C49 (`Terminal.kill()` can raise from its pump, so `EntryPlayer.stop()` raises and the master fd
+  stays open until the next `run()`; probe in evidence/it11/). C48 closed (5ef04bd).
+- Notes for later tasks (roadmap.md): for D3's plan, the guards on `start()` and `stop()`, attract's stuck line on a
+  raw escape, the banner cutting a function, hello's two comments that wrap; for every plan, the suite's time (about
+  200 s) and `tests/test_show_shot.py:153`, which fails on an uncommitted edit under `entries/`; for GATE C, a crash
+  within `drain_max` of the run's timeout reads as a normal end on Linux, and `RLIMIT_CPU` sums a process's threads.
+- Owner questions: Q55 (lightbox pins and levels), Q56 (`entries/hello` is not on the festival wall), Q57 (the
+  transcript's words), Q58 (the short strip on 128x64): all four answered by the owner during the iteration, with Q53
+  (the ink view) and Q54 (the three strip variants are drawn in D3; the pick stays open).
+- Status: done

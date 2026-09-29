@@ -1,0 +1,15 @@
+"""entries/hello: the screen at frames 30 and 59 (the band should be 6 '#' a row)."""
+import subprocess, sys
+from pathlib import Path
+import pyte
+exe = Path(__file__).with_name("hello") / "hello"
+out = subprocess.run([str(exe)], env={"LINES": "23", "COLUMNS": "80"}, capture_output=True, timeout=10).stdout
+frames = out.split(b"\x1b[H")
+scr = pyte.Screen(80, 23); scr.set_mode(pyte.modes.LNM); st = pyte.ByteStream(scr)
+st.feed(frames[0])
+for i, f in enumerate(frames[1:61], start=0):
+    st.feed(b"\x1b[H" + f)
+    if i in (30, 45, 58):
+        counts = [row.count("#") for row in scr.display]
+        print(f"frame {i}: '#' per row min {min(counts)} max {max(counts)}")
+        print("   row 0:", scr.display[0])

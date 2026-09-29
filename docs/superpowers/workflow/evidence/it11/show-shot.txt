@@ -1,0 +1,35 @@
+$ python -m tools.show_shot --entry entries/hello --every-ms 1500 --look both --out it11-hello
+  0.00s  source
+  3.66s  build
+  5.20s  run
+  9.33s  dwell
+ 13.35s  done
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 15.4 s; git status after: clean]
+
+$ python -m tools.show_shot --attract entries --seconds 20 --every-ms 2500 --look both --out it11-attract
+[exit 0, 21.9 s; git status after: clean]
+
+$ python -m tools.show_shot --config show.poc.toml --entry entries/hello --every-ms 1500 --look led --out it11-hello-poc
+  0.00s  source
+  3.69s  build
+  5.21s  run
+  8.94s  dwell
+ 12.95s  done
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 13.3 s; git status after: clean]
+
+$ python -m tools.show_shot --entry entries/hello --build cc -Wall -Werror -o hello hello.c --capture-first --every-ms 1500 --look both --out it11-hello-fallback
+  0.00s  source
+  3.68s  build
+  5.21s  error_hold
+  8.25s  fallback
+ 11.98s  dwell
+ 16.01s  done
+failure: build failed (exit 1)
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 31.1 s; git status after: clean]
+

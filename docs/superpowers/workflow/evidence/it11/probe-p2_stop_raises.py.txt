@@ -1,0 +1,40 @@
+"""stop() while a malformed escape waits in the pty: the pump inside kill() raises out of stop()."""
+import os, signal, tempfile, time
+from pathlib import Path
+from show.config import Config
+from show.entries import load_entry
+from show.pipeline import EntryPlayer, Phase
+from show.terminal import Terminal
+from tests.show_helpers import write_entry
+
+ESCAPE_C = ('#include <stdio.h>\n#include <unistd.h>\n'
+            'int main(void){printf("\\033[?3A");fflush(stdout);sleep(30);return 0;}\n')
+cfg = Config(typewriter_cps=1_000_000, dwell=0.0, error_hold=0.1, min_build_seconds=0.0)
+with tempfile.TemporaryDirectory() as d:
+    p = EntryPlayer(load_entry(write_entry(Path(d), "esc", 1, ESCAPE_C)), Terminal(cfg.columns, cfg.rows - 1), cfg)
+    p.start(time.monotonic())
+    deadline = time.monotonic() + 10
+    while p.phase != Phase.RUN and time.monotonic() < deadline:
+        p.tick(time.monotonic()); time.sleep(0.005)
+    print("phase", p.phase)
+    pid = p.term.proc.pid
+    time.sleep(0.3)  # the escape is written; no tick pumps it (the loop is between frames or preempting)
+    try:
+        p.stop()
+        print("stop returned")
+    except Exception as e:
+        print("stop raised", type(e).__name__, e)
+    print("phase after", p.phase, "master_fd", p.term.master_fd, "pgid kept", p.term._pgid)
+    time.sleep(0.2)
+    try:
+        os.kill(pid, 0); print("child alive?", p.term.proc.poll())
+    except ProcessLookupError:
+        print("child gone")
+    # clean up whatever is left
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    p.term.proc.wait()
+    if p.term.master_fd is not None:
+        os.close(p.term.master_fd)
