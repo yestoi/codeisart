@@ -314,3 +314,91 @@ def test_render_is_fast(font):
     print(f"render median {median * 1000:.2f} ms, max {max(times) * 1000:.2f} ms, "
           f"min {min(times) * 1000:.2f} ms over {RENDER_SAMPLES}")
     assert median < RENDER_BUDGET_S
+
+
+# The ink view: the 128x64 proof of concept, one dot a cell (show.poc.toml)
+
+PW, PH = 128, 64
+PSTRIP_Y = PH - 8                             # 56: the strip keeps the bottom text row
+INK_Y0, INK_H = 3, 49                         # 23 rows at 1.6 px a column and 6:8 cells, centred in 56
+
+
+def ink_renderer(font: Font, **kw) -> Renderer:
+    return Renderer(font, PW, PH, COLS, ROWS, GREEN, view="ink", **kw)
+
+
+def half_a_font() -> Font:
+    """'A' as in font3, and '.' holding the first half of A's ink by columns."""
+    data = bytearray(256 * 5)
+    data[65 * 5 : 66 * 5] = A_COLUMNS
+    data[46 * 5 : 46 * 5 + 2] = A_COLUMNS[:2]
+    return Font(bytes(data))
+
+
+def test_ink_view_takes_the_80x24_terminal_on_128x64(font):
+    frame = ink_renderer(font).render(make_screen(), strip="NOW")
+    assert frame.shape == (PH, PW, 3)
+    assert frame[:PSTRIP_Y].sum() == 0
+    assert lit_fraction(frame[PSTRIP_Y:]) > 0.5              # reverse video: mostly lit
+
+
+def lit_fraction(region: np.ndarray) -> float:
+    return float((region.max(axis=2) > 0).mean())
+
+
+def test_ink_view_fills_its_area_with_a_screen_of_ink(font):
+    frame = ink_renderer(font).render(make_screen("A" * COLS * (ROWS - 1)))
+    area = frame[INK_Y0 : INK_Y0 + INK_H]
+    assert (area == np.array(DIM, dtype=np.uint8)).all()
+    assert frame[:INK_Y0].sum() == 0 and frame[INK_Y0 + INK_H : PSTRIP_Y].sum() == 0
+
+
+def test_ink_view_lights_a_dot_by_the_glyphs_ink():
+    font = half_a_font()
+    a = ink_renderer(font).render(make_screen("A" * COLS))[INK_Y0, 0, 1]
+    dot = ink_renderer(font).render(make_screen("." * COLS))[INK_Y0, 0, 1]
+    ink_a, ink_dot = font.atlas()[ord("A")].sum(), font.atlas()[ord(".")].sum()
+    assert a == int(255 * NORMAL)
+    assert dot == int(255 * NORMAL * ink_dot / ink_a)
+    assert 0 < dot < a
+
+
+def test_ink_view_bold_is_full_and_reverse_inverts(font):
+    bold = ink_renderer(font).render(make_screen("\x1b[1m" + "A" * COLS))
+    assert bold[INK_Y0, 0].tolist() == list(GREEN)
+    reverse = ink_renderer(font).render(make_screen("\x1b[7m" + " " * COLS))
+    assert reverse[INK_Y0, 0].tolist() == list(DIM)
+    reverse_a = ink_renderer(font).render(make_screen("\x1b[7m" + "A" * COLS))
+    assert reverse_a[INK_Y0, 0].sum() == 0
+
+
+def test_ink_view_strip_is_the_font_cut_to_the_width(font):
+    frame = ink_renderer(font).render(make_screen(), strip="A" * 40)
+    x0 = (PW - 21 * 6) // 2                              # 21 characters fit 128 px
+    lit = frame[PSTRIP_Y:].any(axis=2)
+    for k in range(21):
+        assert (lit[:, x0 + k * 6 : x0 + k * 6 + 6] == ~mask(font, "A")).all()
+    assert lit[:, :x0].all() and lit[:, x0 + 21 * 6 :].all()
+
+
+def test_ink_view_full_screen_without_the_strip_draws_every_row(font):
+    frame = ink_renderer(font).render(make_screen("A" * COLS * ROWS, lines=ROWS), full_screen=True,
+                                      strip_visible=False)
+    rows_lit = frame.any(axis=2).all(axis=1)
+    assert rows_lit[2 : 2 + 51].all()                   # 24 rows are 51 px, centred in 56
+    assert not rows_lit[:2].any() and not rows_lit[2 + 51 :].any()
+
+
+def test_ink_view_draws_no_cursor(font):
+    frame = ink_renderer(font).render(make_screen(), cursor_on=True)
+    assert frame[:PSTRIP_Y].sum() == 0
+
+
+def test_unknown_view_rejected(font):
+    with pytest.raises(ValueError):
+        Renderer(font, W, H, COLS, ROWS, GREEN, view="blocks")
+
+
+def test_text_view_still_refuses_the_128x64_wall(font):
+    with pytest.raises(ValueError):
+        Renderer(font, PW, PH, COLS, ROWS, GREEN)

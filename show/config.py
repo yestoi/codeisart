@@ -23,6 +23,7 @@ class Config:
     rows: int = 24
     phosphor: str = "green"
     glow: bool = False
+    view: str = "text"       # text | ink (one dot a cell, for a wall smaller than the terminal: the 128x64 PoC)
     entries_dir: Path = Path("entries")
     audio_dir: Path = Path("audio")
     font_path: Path = Path("fonts/5x7.bin")
@@ -67,6 +68,8 @@ def load_config(path: Path) -> Config:
         setattr(cfg, key, value)
     if cfg.phosphor not in PHOSPHORS:
         raise ValueError(f"{path}: phosphor must be one of {sorted(PHOSPHORS)}")
+    if cfg.view not in ("text", "ink"):
+        raise ValueError(f"{path}: view must be text or ink")
     if not 0.0 <= cfg.brightness_cap <= 1.0:
         raise ValueError(f"{path}: brightness_cap must be between 0 and 1")
     return cfg

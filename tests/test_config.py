@@ -44,3 +44,17 @@ def test_unknown_key_rejected(tmp_path):
 
 def test_repo_show_toml_matches_defaults():
     assert load_config(ROOT / "show.toml") == Config()
+
+
+def test_view_defaults_to_text_and_rejects_others(tmp_path):
+    assert Config().view == "text"
+    p = tmp_path / "show.toml"
+    p.write_text('view = "blocks"\n')
+    with pytest.raises(ValueError):
+        load_config(p)
+
+
+def test_repo_poc_toml_is_the_128x64_ink_view():
+    cfg = load_config(ROOT / "show.poc.toml")
+    assert (cfg.width, cfg.height, cfg.view) == (128, 64, "ink")
+    assert (cfg.columns, cfg.rows) == (80, 24)
