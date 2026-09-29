@@ -323,3 +323,10 @@ default: only when this session set tonight's new best, and only for a score abo
 deadline: the next arcade iteration
 answer:
 status: defaulted (standing instruction)
+
+### Q42: What controls Pong's paddle: the hand's height, or the body's distance from the camera?
+asked: 2026-09-28, by the owner after the first live smoke ("it could be funner moving your whole body back and forth towards the camera to be the paddle control")
+default: none taken; the loop is gated and the owner is in the session. The operator's lean: the body's distance, read from `Body.scale` (nose to hip in the frame, already in `Sensed`), smoothed, with the raised hand kept only to start the game; the ball slowed to a body's speed. The hand path's faults (C44) are fixed in the engine either way, because other games point with a hand
+deadline: the arcade's next iteration
+answer:
+status: open (owner's proposal)

@@ -23,6 +23,7 @@ Deadline: none (the loop waits for the owner; nothing is in flight)
 | Q23 | A duel's end card shows player 1's points. **Reads wrong**: a winner as player 2 sees "PONG 0" | Both scores, in the players' colours |
 | Q35, C42 | A point counts if the paddle moved 1 px on any tick of the rally. Camera jitter counts as movement; a slow player loses points | Judge the paddle's travel over the whole rally, above the jitter |
 | Q41, C43 | The card says "BEST!" for a round lost 0 to 5, and again on a repeat of the best | Only for a new best above 0 |
+| Q42, C44 | First live smoke: the hand control is "wonky". The owner's idea: the body's distance from the camera moves the paddle | Build it, from `Body.scale`; fix the hand path in the engine too |
 | Q40 | Pong is faster: rounds end by points in 34 to 73 s. The CPU is easy, the ball is fast | Keep it until the owner has played it |
 
 ## Decisions taken by default, for the owner to confirm or change (decisions.md)
