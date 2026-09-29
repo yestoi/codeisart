@@ -208,24 +208,8 @@ def test_without_a_clock_a_failed_push_does_not_hold():
     assert np.array_equal(inner.sent[-1][1], out) and np.array_equal(wall.last, out)
 
 
-def test_close_during_the_hold_sends_the_counted_frame_then_black():
-    now = [0.0]
-    inner = Clocked({3}, lambda: now[0])
-    wall = GovernedDisplay(inner, H, W, fps=16, from_dark=True, clock=lambda: now[0])
-    frames = strobe(1, 16, 4)
-    for f in frames[:2]:
-        wall.push(f)
-    now[0] = 2 / 16
-    with pytest.raises(OSError):
-        wall.push(frames[2])                                      # call 3: governed and counted, never shown
-    counted = wall.last.copy()
-    now[0] = 3 / 16
-    assert wall.push(frames[3]) is None and wall.holding          # held, nothing sent
-    wall.close()                                                  # no wait: calls 4 (counted), 5 and 6 (black)
-    assert inner.closed and inner.calls == 6 and not wall.unsent
-    assert [t for t, _ in inner.sent[2:]] == [3 / 16] * 3
-    assert np.array_equal(inner.sent[2][1], counted)
-    assert not inner.sent[3][1].any() and not inner.sent[4][1].any() and wall.governed == 4   # governed black
+# it15 T-close (C53): the close in the hold waits it out; its test is test_wall_close_hold.py's
+# test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black, which replaces the one here.
 
 
 def test_a_held_loop_step_counts_toward_the_dark_lights(tmp_path):

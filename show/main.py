@@ -187,7 +187,7 @@ class ShowLoop:
         try:
             self.wall = GovernedDisplay((raw := self._display if self._display is not None else make_display(
                 cfg, on_key=lambda i: self.presses.put(i + 1))), cfg.height, cfg.width, cfg.fps, cfg.gamma,
-                from_dark=True, clock=lambda: self._now)
+                from_dark=True, clock=lambda: self._now, sleep=lambda s: self.sleep(s))   # late bound: C53
         except Exception as exc:
             if raw is None:
                 log.exception("the display could not be opened")
@@ -197,7 +197,8 @@ class ShowLoop:
             self._static, self._wall_retry = True, False
             self._fixed.append(f"flash governor: {exc}")
             try:
-                self.wall = GovernedDisplay(raw, cfg.height, cfg.width, from_dark=True, clock=lambda: self._now)
+                self.wall = GovernedDisplay(raw, cfg.height, cfg.width, from_dark=True, clock=lambda: self._now,
+                                            sleep=lambda s: self.sleep(s))
             except Exception as exc2:
                 log.exception("no flash governor can be built; the display is closed and the wall stays dark")
                 self._fixed.append(f"flash governor (defaults): {exc2}")
@@ -423,6 +424,7 @@ class ShowLoop:
                 log.exception("closing the lights failed")
         if self.wall is not None:
             try:
+                self._now = self.clock()                      # the wall's clock at the close: its wait (C53)
                 self.wall.close()
             except Exception:
                 log.exception("closing the wall failed")
