@@ -1,12 +1,13 @@
 import math
+import zlib
 
 import numpy as np
 import pytest
 
 from arcade.poses import POSES
-from arcade.sensed import LEFT_WRIST, NOSE, RIGHT_WRIST, Keypoint
-from arcade.sources.actors import (TICK, Person, claps, level_ramp, loud, make_keypoints, motion_rect,
-                                   moving_blob, scene, silence, tempo)
+from arcade.sensed import LEFT_WRIST, NOSE, RIGHT_WRIST, Body, Keypoint
+from arcade.sources.actors import (REAL_NOISE, TICK, Person, claps, degrade, level_ramp, loud, make_keypoints,
+                                   motion_rect, moving_blob, scene, shake, silence, tempo)
 
 
 def test_make_keypoints_is_a_standing_figure():
@@ -204,3 +205,17 @@ def test_scale_to_grows_the_body_about_the_hips():
         with pytest.raises(ValueError, match="scale_to"):
             Person().scale_to(*bad)
 
+
+def test_degrade_puts_real_jitter_on_the_scale():
+    body_id = zlib.crc32(b"scale-jitter") % 1000
+    source = list(scene(persons=[Person(0.5, height=0.7, id=body_id)], ticks=round(30.0 / TICK)))
+    clean = {b.scale for s in source for b in s.bodies}
+    assert len(clean) == 1, f"body id {body_id}: {clean}"
+    captures = [f.bodies[0] for f in degrade(iter(source), **REAL_NOISE) if f.camera_fresh and f.bodies]
+    logs = np.log([b.scale for b in captures])
+    assert 0.01 <= logs.std() <= 0.05, f"body id {body_id}: SD of ln(scale) {logs.std():.4f}"
+    again = [Body(b.id, b.box, b.keypoints).scale for b in captures]           # measured from the noisy keypoints
+    assert [b.scale for b in captures] == again, f"body id {body_id}"
+    shaken = list(shake(0.0, 30.0)(iter(source)))
+    assert {b.scale for s in shaken for b in s.bodies} == clean, f"body id {body_id}"
+    assert any(a.bodies[0].keypoints != b.bodies[0].keypoints for a, b in zip(shaken, source))

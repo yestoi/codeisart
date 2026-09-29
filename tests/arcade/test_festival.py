@@ -1,3 +1,4 @@
+import dataclasses
 import inspect
 import os
 import subprocess
@@ -230,6 +231,8 @@ def test_scene_refuses_duplicate_ids_and_crowd_takes_an_id_base():
 
 def test_festival_guard_rails():
     # C16: headlamp blobs stay on the wall; camp_kick(0) is a ValueError; degrade keeps the detector box.
+    # it09 (Q42, the plan's decision): degrade measures the scale again from its noisy keypoints, as a raw
+    # capture's would be, so the scale is no longer the truth's; box and velocity still are.
     assert all(0.0 <= b.x <= 1.0 for f in scene(blobs=headlamps(), ticks=600) for b in f.blobs)
     with pytest.raises(ValueError, match="bpm"):
         camp_kick(0)
@@ -237,4 +240,5 @@ def test_festival_guard_rails():
     for f in degrade(iter(source)):
         for b in f.bodies:
             truth = source[round(f.camera_t / TICK)].bodies[0]
-            assert (b.box, b.scale, b.vx, b.vy) == (truth.box, truth.scale, truth.vx, truth.vy)
+            assert (b.box, b.vx, b.vy) == (truth.box, truth.vx, truth.vy)
+            assert b.scale == dataclasses.replace(b, scale=0.0).scale
