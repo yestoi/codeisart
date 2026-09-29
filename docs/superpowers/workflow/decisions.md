@@ -405,12 +405,40 @@ status: defaulted (standing instruction)
 asked: it10
 default: the sheets render the full 512x192 wall: 128x64 cannot hold 80 columns of 6 px. The prototype shows a 128x64 window of the wall, 21 columns by 8 rows, in the sheets by `--crop` and on the panels by D4's test pattern. No scaled-down terminal mode is built
 deadline: GATE C
-answer:
-status: defaulted (standing instruction)
+answer: relayed 2026-09-29 00:32 CDT by the owner's other session (codeisart-5d), not said to the operator: "yes, add the ink mode for the PoC". The 2 x 2 128x64 panels are the proof of concept only; the full 80x23 wall stays the goal. This replaces the default's "No scaled-down terminal mode is built": the ink view (`Config.view = "ink"`, show.poc.toml) was built by that session on branch `show-ink-view` (5211a49) and merged by the operator (c28c027). The terminal stays 80x23; each cell is one dot lit by its glyph's ink. The sheets of the full wall stay 512x192
+status: answered (by relay; the owner confirms at the next check-in)
 
 ### Q54: Is the attribution strip legible in reverse video on LEDs?
 asked: it10
 default: the spec's reverse video stays through D1 and D2. The sheets of iteration 10 (evidence/it10/it10-prototype-window.png at the led look, it10-cc-distance.png at 10 m) show the strip's dark letters closing up inside the lit field, while normal text reads well. The strip carries the attribution ("the year is the proof"), so it must read from 15 to 40 feet. D3's plan draws three variants in sheets (reverse at 70 % as now; reverse on a field at about 35 %; bright letters on a field at about 25 %), makes the choice a key in show.toml, and takes the one that reads best at the led and distance looks as the default. The owner judges on the real panels (the 128x64 prototype can show the strip's window: `--crop 16,128,128,64`)
 deadline: the plan of D3; the panels at GATE C
+answer:
+status: defaulted (standing instruction)
+
+### Q58: What does the strip show on the 128x64 proof of concept?
+asked: it11 (raised by the owner's other session, codeisart-5d, 2026-09-29)
+default: on 128x64 only 21 characters fit on the strip's text row, so "NOW: hello by Trey, 2026, Not A.I." shows as "NOW: hello by Trey, 2" and the attribution's "Not A.I." is lost. Until the owner decides, D3's `strip()` builds a short form when fewer than 40 characters fit: it alternates every 3 s between "<author>, <year>" and "Not A.I.", each cut to the width (no marquee: scrolling text on a strip that is already hard to read in reverse video, Q54, reads worse). D1 and D2 change nothing: the renderer cuts the text it is given. The full wall's strip is not changed by this
+deadline: the plan of D3
+answer:
+status: defaulted (standing instruction)
+
+### Q55: How are the portrait lightboxes wired, and do they dim?
+asked: it11
+default: 12 V through a MOSFET each, on the PWM pins [17, 22, 23, 24, 27] (`lightbox_pins`, a new key in show.toml; no pin shared with the buttons or the rings, none on I2C, SPI or UART). Level 0.4 when idle or queued, 1.0 while that station plays. The button rings stay on `light_pins`. show.toml changes when the owner's boards are built
+deadline: GATE C (the hardware)
+answer:
+status: defaulted (standing instruction)
+
+### Q56: Does `entries/hello` play on the festival wall?
+asked: it11
+default: no. It stays in `entries/` for tests, demos and the sheets (station 6, no portrait). Once any entry on stations 1 to 5 is loaded, D3's attract mode and autoplay leave out stations above 5
+deadline: the plan of D3
+answer:
+status: defaulted (standing instruction)
+
+### Q57: What does the wall print around an entry?
+asked: it11
+default: the spec (4.3) names the phases, not the words. A shell transcript: the title, the plaque, a blank line, `$ cat <source>` and the source typed, `$ <build>` and the compiler's real output, `$ <run>` and the program. On a failure `*** <reason> ***`, then `$ <run>   (recording)` over the replay of the fallback
+deadline: the owner's first look at `python -m show` (D3)
 answer:
 status: defaulted (standing instruction)
