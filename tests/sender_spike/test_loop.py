@@ -219,7 +219,43 @@ def test_frames_that_miss_their_tick_are_counted_and_still_sent():
     bench = Bench(per_send=300_000)                        # 68 packets take 20 ms: more than a period
     frames = bench.run(["--seconds", "1", "--tail-seconds", "0"])
     assert len(frames) == 60
-    assert bench.log.late >= 58
+    assert bench.log.late >= 40 and bench.log.slips >= 5
+
+
+class Stalling(Bench):
+    """A bench where one packet takes 50 ms to hand over: the process was set aside."""
+
+    def __init__(self, at, stall=50_000_000):
+        super().__init__()
+        self.at, self.stall = at, stall
+
+    def send(self, packet):
+        super().send(packet)
+        if len(self.sent) == self.at:
+            self.t += self.stall
+
+
+@pytest.mark.parametrize("order", ["rows-sync", "sync-rows"])
+def test_after_a_stall_the_frames_do_not_come_in_a_burst(order):
+    bench = Stalling(at=68 * 20 + 30)                      # in the middle of frame 20
+    frames = bench.run(["--order", order, "--seconds", "1", "--tail-seconds", "0"])
+    assert len(frames) == 60                               # every frame is still sent
+    starts = [f[0][0] for f in frames]
+    gaps = [b - a for a, b in zip(starts, starts[1:])]
+    period = 1e9 / 60
+    assert min(gaps) >= period - 1_000                     # none closer than a period: no catching up
+    assert sum(1 for g in gaps if g > period + 1_000) == 1 # the stall itself
+    assert bench.log.slips == 1 and bench.log.late == 1
+    after = starts[22:]
+    assert all(abs((b - a) - period) <= 1 for a, b in zip(after, after[1:]))     # and the grid holds again
+
+
+def test_a_frame_late_by_less_than_a_period_keeps_the_grid():
+    bench = Stalling(at=68 * 20 + 30, stall=20_000_000)    # frame 21 starts about 3.5 ms late
+    frames = bench.run(["--order", "sync-rows", "--seconds", "1", "--tail-seconds", "0"])
+    starts = [f[0][0] for f in frames]
+    assert bench.log.slips == 0 and bench.log.late == 1
+    assert abs(starts[30] - starts[10] - 20 * 1e9 / 60) <= 2       # the grid did not move
 
 
 @pytest.mark.parametrize("argv", [[], ["--s2"], ["--s2-header"], ["--picture", "scroll"],
@@ -258,6 +294,18 @@ def test_the_guard_refuses_any_other_packet(packet):
         send.guard([packet])
 
 
+@pytest.mark.parametrize("builder", ["sync_packet", "brightness_packet", "row_packets"])
+def test_a_packet_of_another_type_never_leaves_the_loop(builder, monkeypatch):
+    detect = send.DST + send.SRC + bytes([0x07]) + bytes(271)
+    real = getattr(send, builder)
+    monkeypatch.setattr(send, builder, lambda *a, **k: [detect] * 64 if builder == "row_packets" else detect)
+    bench = Bench()
+    with pytest.raises(ValueError, match="0x01, 0x55"):
+        send.run(send.plan_from(["--seconds", "1", "--counter", "on"]), bench.send, bench.now, bench.wait)
+    assert bench.sent == []
+    monkeypatch.setattr(send, builder, real)
+
+
 def test_run_checks_its_plan():
     import dataclasses
     plan = dataclasses.replace(send.plan_from(["--s2"]), pixel=128)
@@ -275,4 +323,4 @@ def test_late_is_counted_from_when_the_frame_was_due(order):
     due = [t + (a if order == "sync-rows" else 0) for t, a in zip(log.ticks, log.added)]
     late = sum(1 for f, d in zip(frames, due) if f[0][0] - d > 1_000_000)
     assert 0 < late < 60
-    assert log.late == late
+    assert log.late == late + log.slips                    # a frame that made the grid move was late too

@@ -152,14 +152,17 @@ def test_s2_sync_against_the_capture_file():
     sys.path.insert(0, str(ROOT / "tools/sender_spike"))
     import pcapng
     syncs = [b for ts, b, orig in pcapng.read(str(CAPTURE)) if b[12] == 0x01]
+    import dataclasses
+    assert len(syncs) == 818
     plain = [s for s in syncs if s[37] == 0]
     assert len(plain) == 815
-    for s in plain[:300]:
-        spec = send.S2_SYNC.__class__(**{**send.S2_SYNC.__dict__, "counter_start": s[14]})
-        assert send.sync_packet(spec, 0) == s
-    marked = [s for s in syncs if s[37] == 1][0]
-    spec = send.S2_SYNC.__class__(**{**send.S2_SYNC.__dict__, "counter_start": marked[14], "mark37_every": 1})
-    assert send.sync_packet(spec, 1)[:14] + bytes([marked[14]]) + send.sync_packet(spec, 1)[15:] == marked
+    for s in plain:
+        assert send.sync_packet(dataclasses.replace(send.S2_SYNC, counter_start=s[14]), 0) == s
+    marked = [s for s in syncs if s[37] == 1]
+    assert len(marked) == 3
+    for s in marked:                                       # frame 1 of a spec that marks every sync
+        spec = dataclasses.replace(send.S2_SYNC, counter_start=(s[14] - 1) % 256, mark37_every=1)
+        assert send.sync_packet(spec, 1) == s
 
 
 def test_s2_rows_against_the_capture_header():

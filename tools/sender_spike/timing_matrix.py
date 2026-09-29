@@ -21,17 +21,21 @@ SEND = os.path.join("tools", "sender_spike", "send.py")
 
 
 def commands(iface, python, out, seconds, dry_run=False):
-    """[(name, argv)]: the twelve runs with the sync on the tick, then two in the base's order.
+    """[(name, argv)]: the run sheet's own command first, to prove the stamps it uses; then the twelve
+    runs with the sync on the tick, then two in the base's order.
     A dry matrix opens no socket: the loop's clock alone, and the queue is left out."""
     runs = [(wait, sched, queue, "sync-rows") for wait in ("sleep", "hybrid", "spin")
             for sched in ("other", "fifo50") for queue in (("qdisc",) if dry_run else ("qdisc", "bypass"))]
     runs += [("hybrid", sched, "qdisc", "rows-sync") for sched in ("other", "fifo50")]
+    if not dry_run:                               # the run sheet's own command, with the stamps it uses
+        runs.insert(0, ("hybrid", "fifo50", "qdisc", "stamp-sw"))
     out_runs = []
     for wait, sched, queue, order in runs:
-        name = "-".join([wait, sched, queue] + (["rows-sync"] if order == "rows-sync" else []))
+        name = "-".join([wait, sched, queue] + ([order] if order != "sync-rows" else []))
+        stamps = "--dry-run" if dry_run else "--stamp" if order == "stamp-sw" else "--stamp-hw"
+        order = "rows-sync" if order == "stamp-sw" else order
         argv = (["chrt", "-f", "50"] if sched == "fifo50" else []) + [
-            python, SEND, "--iface", iface, "--order", order, "--wait", wait,
-            "--dry-run" if dry_run else "--stamp-hw", "--pixel", "25",
+            python, SEND, "--iface", iface, "--order", order, "--wait", wait, stamps, "--pixel", "25",
             "--seconds", "%g" % seconds, "--tail-seconds", "0.2", "--log", os.path.join(out, name + ".csv")]
         out_runs.append((name, argv + (["--qdisc-bypass"] if queue == "bypass" else [])))
     return out_runs
@@ -48,6 +52,7 @@ def parse(text):
         if "scheduling: " in line:
             got["scheduling"] = line.split("scheduling: ")[1]
         elif m := re.search(r"and \d+ black; (\d+) late", line):
+            got["slips"] = int(s.group(1)) if (s := re.search(r"(\d+) slips", line)) else 0
             got["late"] = int(m.group(1))
         elif m := re.search(r"(\d+) not ours", line):
             got["not ours"] = int(m.group(1))

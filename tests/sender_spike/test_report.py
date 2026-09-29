@@ -83,7 +83,14 @@ def test_the_report_counts_late_frames_and_says_when_it_was_interrupted():
     bench.run([])
     text = send.report(bench.plan, bench.log)
     assert "10 frames" in text and "60 black" in text and "interrupted" in text
-    assert "0 late" in text
+    assert "0 late" in text and "0 slips" in text
+
+
+def test_the_report_counts_the_slips():
+    from tests.sender_spike.test_loop import Stalling
+    bench = Stalling(at=68 * 20 + 30)
+    bench.run(["--seconds", "1"])
+    assert "1 late; 1 slips" in send.report(bench.plan, bench.log)
 
 
 def test_the_report_of_a_run_too_short_to_measure():
@@ -234,3 +241,49 @@ def test_the_port_counter_reads_the_systems_file(tmp_path):
     (tmp_path / "eth9" / "statistics" / "tx_packets").write_text("35391282\n")
     assert send.port_counter("eth9", root=str(tmp_path)) == 35391282
     assert send.port_counter("eth8", root=str(tmp_path)) is None
+
+
+class Pipe:
+    """Standard output into a pipe whose reader goes away, as `tee` does on Ctrl-C."""
+
+    def __init__(self):
+        self.broken, self.text = False, ""
+
+    def write(self, text):
+        if self.broken:
+            raise BrokenPipeError(32, "Broken pipe")
+        self.text += text
+
+    def flush(self):
+        if self.broken:
+            raise BrokenPipeError(32, "Broken pipe")
+
+
+def test_a_reader_that_went_away_does_not_lose_the_log(tmp_path, monkeypatch):
+    c, s, pipe = Clock(oversleep=0, per_read=1000), Sockets(), Pipe()
+    path = tmp_path / "a.csv"
+    monkeypatch.setattr("sys.stdout", pipe)
+
+    def open_sink(plan):
+        def send_and_break(packet):
+            s.sent.append(packet)
+            pipe.broken = len(s.sent) > 100                # the reader dies during the run
+        return send.Plain(send_and_break, s.close)
+
+    assert send.main(["--seconds", "1", "--log", str(path)], now=c.now, sleep=c.sleep, open_sink=open_sink,
+                     port_counter=lambda iface: None) == 0
+    assert len(s.sent) == 68 * 120 and s.closed == 1       # the run went on to its black end
+    assert len(path.read_text().splitlines()) == 2 + 120   # and the log has all of it
+    assert "sync to sync" not in pipe.text
+
+
+def test_the_report_is_kept_beside_the_log(tmp_path, capsys):
+    c, s = Clock(oversleep=0, per_read=1000), Sockets()
+    path = tmp_path / "a.csv"
+    send.main(["--seconds", "1", "--log", str(path)], now=c.now, sleep=c.sleep, open_sink=s.open,
+              port_counter=lambda iface: None)
+    lines = path.read_text().splitlines()
+    out = capsys.readouterr().out
+    kept = (tmp_path / "a.report.txt").read_text()
+    assert "sync to sync, ms" in kept and "60 fps for 1 s" in kept
+    assert kept.strip() in out

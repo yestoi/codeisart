@@ -23,7 +23,8 @@ send: from the queue to the driver, us: mean 4.1 sd 2.0 min 2.0 max 31.5 p50 3.9
 def test_the_matrix_is_every_wait_with_every_scheduling_and_queue():
     runs = tm.commands("enp5s0", "/v/bin/python", "/out", 10)
     names = [name for name, argv in runs]
-    assert len(names) == len(set(names)) == 14
+    assert len(names) == len(set(names)) == 15
+    assert names[0] == "hybrid-fifo50-qdisc-stamp-sw"      # the wall's own form of the command, first
     for wait in ("sleep", "hybrid", "spin"):
         for sched in ("other", "fifo50"):
             for queue in ("qdisc", "bypass"):
@@ -37,13 +38,14 @@ def test_a_run_of_the_matrix_is_a_send_command_that_the_safety_rules_allow():
         assert argv[:at] in ([], ["chrt", "-f", "50"])
         assert argv[at + 1].endswith("tools/sender_spike/send.py")
         plan = send.plan_from(argv[at + 2:])
-        assert plan.iface == "enp5s0" and plan.stamp == "hw" and plan.seconds == 10 and plan.pixel == 25
+        assert plan.stamp == ("sw" if name.endswith("stamp-sw") else "hw")
+        assert plan.iface == "enp5s0" and plan.seconds == 10 and plan.pixel == 25
         assert plan.sync == send.SyncSpec() and plan.bright_reps == 2 and plan.sync_reps == 2   # base packets
         assert plan.log == "/out/%s.csv" % name
         assert (argv[:at] != []) == ("fifo50" in name)
         assert plan.qdisc_bypass == ("bypass" in name)
         assert plan.wait == name.split("-")[0]
-        assert plan.order == ("rows-sync" if name.endswith("rows-sync") else "sync-rows")
+        assert plan.order == ("sync-rows" if name.count("-") == 2 else "rows-sync")
 
 
 def test_a_runs_output_is_read_into_numbers():

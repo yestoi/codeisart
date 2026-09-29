@@ -1,0 +1,2 @@
+$ chrt -f 50 /home/trey/Work/codeisart-wall/.venv/bin/python tools/sender_spike/send.py --iface enp5s0 --order sync-rows --wait hybrid --dry-run --pixel 25 --seconds 10 --tail-seconds 0.2 --log /tmp/spike-timing-dry-2/hybrid-fifo50-qdisc.csv
+chrt: failed to set pid 0's policy: Operation not permitted

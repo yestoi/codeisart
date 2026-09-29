@@ -36,12 +36,6 @@ def test_no_flags_is_the_test_sender_at_60():
     (["--gap-ms", "12"], {"gap_ms": 12.0}),
     (["--order", "sync-rows"], {"order": "sync-rows"}),
     (["--jitter-ms", "0.25"], {"jitter_ms": 0.25}),
-    (["--sync-len", "1036"], {"sync.length": 1036}),
-    (["--row-tail", "0000"], {"row_tail": b"\x00\x00"}),
-    (["--counter", "on"], {"sync.counter": True}),
-    (["--bytes16", "ffffff"], {"sync.bytes16": b"\xff\xff\xff"}),
-    (["--byte26", "01"], {"sync.byte26": 1}),
-    (["--declared-rate", "013c"], {"sync.declared_rate": b"\x01\x3c"}),
     (["--picture", "scroll"], {"picture": "scroll"}),
     (["--pixel", "25"], {"pixel": 25}),
     (["--wait", "spin"], {"wait": "spin"}),
@@ -52,17 +46,25 @@ def test_no_flags_is_the_test_sender_at_60():
     (["--brightness", "0.2"], {"bright_level": 51, "sync.level": 51}),
     (["--bright-level", "0.2"], {"bright_level": 51}),
     (["--sync-level", "0.2"], {"sync.level": 51}),
+    (["--sync-level", "0.4"], {"sync.level": 102}),
 ])
 def test_a_flag_changes_one_variable(argv, change):
     assert differs(send.plan_from(argv)) == change
 
 
-# Flags that leave the card's brightness in doubt dim the picture as well (safety rule 3).
+# A flag that changes what a packet holds, or takes the brightness packet away, leaves the card's
+# brightness in doubt: nobody knows what the fields mean. It dims the picture as well (safety rule 3).
 @pytest.mark.parametrize("argv, change", [
     (["--source-type", "00"], {"sync.source_type": 0}),
     (["--byte36", "00"], {"sync.byte36": 0}),
     (["--bright-reps", "0"], {"bright_reps": 0}),
-    (["--sync-level", "1.0"], {"sync.level": 255}),
+    (["--sync-len", "1036"], {"sync.length": 1036}),
+    (["--row-tail", "0000"], {"row_tail": b"\x00\x00"}),
+    (["--counter", "on"], {"sync.counter": True}),
+    (["--bytes16", "ffffff"], {"sync.bytes16": b"\xff\xff\xff"}),
+    (["--byte26", "01"], {"sync.byte26": 1}),
+    (["--declared-rate", "013c"], {"sync.declared_rate": b"\x01\x3c"}),
+    (["--declared-rate", "011e"], {"sync.declared_rate": b"\x01\x1e"}),
 ])
 def test_a_flag_that_touches_brightness_changes_one_variable_against_the_dim_base(argv, change):
     plan = send.plan_from(argv)
@@ -87,10 +89,10 @@ def test_s2_is_the_whole_imitation():
 
 
 def test_a_flag_overrides_its_field_of_a_preset():
-    plan = send.plan_from(["--s2", "--sync-reps", "2", "--source-type", "07", "--counter", "off"])
-    assert plan.sync_reps == 2 and plan.sync.source_type == 7 and plan.sync.counter is False
+    plan = send.plan_from(["--s2", "--sync-reps", "2", "--byte36", "05", "--counter", "off"])
+    assert plan.sync_reps == 2 and plan.sync.byte36 == 5 and plan.sync.counter is False
     assert differs(plan, send.plan_from(["--s2"])) == {
-        "sync_reps": 2, "sync.source_type": 7, "sync.counter": False}
+        "sync_reps": 2, "sync.byte36": 5, "sync.counter": False}
 
 
 def test_h3_declares_30():
@@ -106,8 +108,20 @@ def test_h3_declares_30():
     (["--source-type", "00", "--pixel", "128"], "25"),
     (["--s2", "--pixel", "26"], "25"),
     (["--bright-reps", "0", "--pixel", "128"], "25"),
-    (["--sync-level", "1.0", "--pixel", "128"], "25"),
-    (["--sync-level", "1.0", "--pixel", "128", "--level-field-proven"], "25"),
+    (["--sync-level", "1.0"], "source type 00"),                          # 0xff is the S2's own, no one else's
+    (["--sync-level", "0.41", "--pixel", "25"], "source type 00"),
+    (["--sync-level", "1.0", "--pixel", "25", "--level-field-proven"], "source type 00"),
+    (["--s2", "--source-type", "07"], "source type 00"),
+    (["--s2-header", "--source-type", "07", "--pixel", "25"], "source type 00"),
+    (["--source-type", "00", "--sync-level", "1.0", "--pixel", "128"], "25"),
+    (["--source-type", "00", "--sync-level", "1.0", "--pixel", "128", "--level-field-proven"], "25"),
+    (["--bytes16", "ffffff", "--pixel", "128"], "25"),
+    (["--byte26", "01", "--pixel", "128"], "25"),
+    (["--declared-rate", "013c", "--pixel", "128"], "25"),
+    (["--counter", "on", "--pixel", "128"], "25"),
+    (["--row-tail", "0000", "--pixel", "128"], "25"),
+    (["--sync-len", "1036", "--pixel", "26"], "25"),
+    (["--pixel", "-1"], "128"),
     (["--s2", "--pixel", "128", "--level-field-proven"], "25"),          # the S2's level is 0xff
     (["--s2", "--sync-level", "0.1", "--pixel", "128"], "25"),
     (["--pixel", "129"], "128"),
@@ -118,15 +132,40 @@ def test_h3_declares_30():
     (["--sync-reps", "0"], "sync"),
     (["--sync-reps", "4"], "sync"),
     (["--bright-reps", "3"], "bright"),
-    (["--sync-len", "60"], "112"),
-    (["--sync-len", "1515"], "1514"),
+    (["--sync-len", "60"], "112 or 1036"),
+    (["--sync-len", "1515"], "112 or 1036"),
+    (["--sync-len", "500"], "112 or 1036"),
     (["--jitter-ms", "6"], "jitter"),
     (["--order", "sync-rows", "--gap-ms", "5"], "gap"),
     (["--gap-ms", "16"], "period"),                                       # 16 + rows does not fit in 16.7
     (["--fps", "120", "--gap-ms", "5", "--jitter-ms", "3"], "period"),
-    (["--row-tail", "00"], "two bytes"),
-    (["--declared-rate", "3c"], "two bytes"),
-    (["--bytes16", "ff"], "three bytes"),
+    # a field takes the values seen on the wire, and the brief's, and no other
+    (["--row-tail", "00"], "0888 or 0000"),
+    (["--row-tail", "ffff"], "0888 or 0000"),
+    (["--row-tail", "0880"], "0888 or 0000"),
+    (["--declared-rate", "3c"], "0000, 013c or 011e"),
+    (["--declared-rate", "0114"], "0000, 013c or 011e"),
+    (["--bytes16", "ff"], "000000 or ffffff"),
+    (["--bytes16", "010203"], "000000 or ffffff"),
+    (["--source-type", "01"], "00 or 07"),
+    (["--source-type", "zz"], "00 or 07"),
+    (["--byte26", "02"], "00 or 01"),
+    (["--byte36", "ff"], "00 or 05"),
+    # numbers are numbers
+    (["--fps", "nan"], "fps"),
+    (["--fps", "inf"], "fps"),
+    (["--seconds", "nan"], "seconds"),
+    (["--seconds", "inf"], "seconds"),
+    (["--tail-seconds", "nan"], "tail"),
+    (["--gap-ms", "nan"], "gap"),
+    (["--gap-ms", "-1"], "gap"),
+    (["--jitter-ms", "nan"], "jitter"),
+    (["--jitter-ms", "-0.5"], "jitter"),
+    (["--spin-ms", "nan"], "spin"),
+    (["--brightness", "nan"], "brightness"),
+    (["--brightness", "-0.1"], "brightness"),
+    (["--sync-level", "nan"], "sync-level"),
+    (["--bright-level", "nan"], "bright-level"),
 ])
 def test_what_the_safety_rules_forbid_is_refused(argv, words):
     with pytest.raises(ValueError, match=words):
@@ -147,6 +186,17 @@ def test_there_is_no_flag_for_byte_37():
     # its meaning is not known; the S2 sets it every 4 s. Not sent without the owner's word and a code change.
     with pytest.raises(SystemExit):
         send.plan_from(["--mark37-every", "241"])
+
+
+def test_describe_names_the_owners_flag():
+    text = send.describe(send.plan_from(["--s2", "--sync-level", "0.1", "--level-field-proven"]))
+    assert "level field proven" in text and "pixel 128" in text
+    assert "level field proven" not in send.describe(send.plan_from(["--s2"]))
+
+
+def test_the_hex_flags_take_either_case():
+    assert send.plan_from(["--bytes16", "FFFFFF"]).sync.bytes16 == b"\xff\xff\xff"
+    assert send.plan_from(["--declared-rate", "013C"]).sync.declared_rate == b"\x01\x3c"
 
 
 def test_describe_names_every_variable_that_left_the_base():

@@ -142,8 +142,10 @@ def level_byte(level):
 
 
 def brightness_in_doubt(plan):
-    """True when the plan leaves the fields by which the base sets the wall's brightness."""
-    return (plan.sync.source_type != 0x07 or plan.sync.byte36 != 0x05 or plan.bright_reps == 0
+    """True when a packet holds anything the base's does not, or the brightness packet is gone.
+    What the fields mean is not known, so what the card then does with the brightness is not known."""
+    base = SyncSpec(level=plan.sync.level, counter_start=plan.sync.counter_start)
+    return (plan.sync != base or plan.row_tail != Plan.row_tail or plan.bright_reps == 0
             or plan.sync.level > level_byte(LEVEL_CAP))
 
 
@@ -155,13 +157,43 @@ def pixel_cap(plan):
     return DIM_PIXEL
 
 
+# A field takes the values seen on the wire (the base's and the S2's) and the brief's H3, and no other:
+# the card is the only good one, and nobody knows what another value would ask of it.
+SEEN = {
+    "--source-type": (0x07, 0x00),
+    "--bytes16": (b"\x00\x00\x00", b"\xff\xff\xff"),
+    "--byte26": (0x00, 0x01),
+    "--declared-rate": (b"\x00\x00", b"\x01\x3c", b"\x01\x1e"),
+    "--byte36": (0x05, 0x00),
+    "--row-tail": (b"\x08\x88", b"\x00\x00"),
+    "--sync-len": (112, 1036),
+}
+SEEN_AS = {"--source-type": "00 or 07", "--bytes16": "000000 or ffffff", "--byte26": "00 or 01",
+           "--declared-rate": "0000, 013c or 011e", "--byte36": "00 or 05", "--row-tail": "0888 or 0000",
+           "--sync-len": "112 or 1036"}
+
+
+def seen(flag, value):
+    if value not in SEEN[flag]:
+        raise ValueError("%s is %s: the values seen on the wire, and no other" % (flag, SEEN_AS[flag]))
+    return value
+
+
 def check(plan):
     """Raise ValueError for a plan the brief's safety rules forbid, or that cannot be sent."""
     cap = level_byte(LEVEL_CAP)
-    if plan.bright_level > cap:
+    for flag, value in (("--source-type", plan.sync.source_type), ("--bytes16", plan.sync.bytes16),
+                        ("--byte26", plan.sync.byte26), ("--declared-rate", plan.sync.declared_rate),
+                        ("--byte36", plan.sync.byte36), ("--row-tail", plan.row_tail),
+                        ("--sync-len", plan.sync.length)):
+        seen(flag, value)
+    if not 0 <= plan.bright_level <= cap:
         raise ValueError("the brightness packet's level is above the cap of %g" % LEVEL_CAP)
-    if plan.sync.level > cap and not brightness_in_doubt(plan):
-        raise ValueError("the sync's level is above the cap of %g" % LEVEL_CAP)
+    if not 0 <= plan.sync.level <= 255:
+        raise ValueError("the sync's level is a byte")
+    if plan.sync.level > cap and plan.sync.source_type != 0x00:
+        raise ValueError("the sync's level is above the cap of %g: only the S2's own sync (source type 00) "
+                         "carries its 0xff, and then the pixels are dim" % LEVEL_CAP)
     if not 0 <= plan.pixel <= BASE_PIXEL:
         raise ValueError("--pixel is 0 to %d" % BASE_PIXEL)
     if plan.pixel > pixel_cap(plan):
@@ -179,11 +211,11 @@ def check(plan):
         raise ValueError("--sync-reps is 1 to 3: a frame has its sync")
     if not 0 <= plan.bright_reps <= 2:
         raise ValueError("--bright-reps is 0 to 2")
-    if not 112 <= plan.sync.length <= 1514:
-        raise ValueError("--sync-len is 112 to 1514")
     if not 0 <= plan.jitter_ms <= 5:
         raise ValueError("--jitter-ms is 0 to 5")
-    if plan.gap_ms < 0 or (plan.gap_ms and plan.order != "rows-sync"):
+    if not 0 <= plan.gap_ms < 1000:
+        raise ValueError("--gap-ms is 0 or more, and less than the period")
+    if plan.gap_ms and plan.order != "rows-sync":
         raise ValueError("--gap-ms is the pause between the rows and the sync: it needs --order rows-sync")
     if plan.gap_ms + plan.jitter_ms + ROOM_MS >= 1000 / plan.fps:
         raise ValueError("the gap, the jitter and %g ms for the rows do not fit in the period of %.3f ms"
@@ -195,25 +227,18 @@ def check(plan):
     return plan
 
 
-def hex_bytes(flag, text, n):
-    words = {2: "two", 3: "three"}[n]
+def hex_bytes(flag, text):
     try:
-        value = bytes.fromhex(text)
+        return seen(flag, bytes.fromhex(text))
     except ValueError:
-        value = b""
-    if len(value) != n:
-        raise ValueError("%s takes %s bytes of hex" % (flag, words))
-    return value
+        return seen(flag, None)
 
 
 def hex_byte(flag, text):
     try:
-        value = int(text, 16)
+        return seen(flag, int(text, 16))
     except ValueError:
-        value = -1
-    if not 0 <= value <= 255:
-        raise ValueError("%s takes one byte of hex" % flag)
-    return value
+        return seen(flag, None)
 
 
 def parser():
@@ -245,7 +270,7 @@ def parser():
     g.add_argument("--counter", choices=("on", "off"), help="byte 14 counts the frames (base off, S2 on)")
     g.add_argument("--bytes16", metavar="HEX", help="bytes 16 to 18 (base 000000, S2 ffffff)")
     g.add_argument("--byte26", metavar="HEX", help="byte 26 (base 00, S2 01)")
-    g.add_argument("--declared-rate", metavar="HEX", help="bytes 31, 32 (base 0000, S2 013c)")
+    g.add_argument("--declared-rate", metavar="HEX", help="bytes 31, 32 (base 0000, S2 013c; 011e for H3)")
     g.add_argument("--byte36", metavar="HEX", help="byte 36 (base 05, S2 00)")
     g.add_argument("--sync-len", type=int, help="length of the sync packet (base 112, S2 1036)")
     g = a.add_argument_group("the rows and the picture")
@@ -255,7 +280,9 @@ def parser():
                                              "in doubt)" % (BASE_PIXEL, DIM_PIXEL))
     g = a.add_argument_group("brightness (0 to 1, capped at %g)" % LEVEL_CAP)
     g.add_argument("--brightness", type=float, default=0.1, help="the level in both packets")
-    g.add_argument("--sync-level", type=float, help="the sync's level alone (S2: 1.0, then pixels are dim)")
+    g.add_argument("--sync-level", type=float,
+                   help="the sync's level alone. --brightness does not reach an S2-style sync, which carries "
+                        "its own 1.0; this flag does")
     g.add_argument("--bright-level", type=float, help="the brightness packet's level alone")
     g.add_argument("--level-field-proven", action="store_true",
                    help="the owner's word that a run has shown which level field the card obeys: "
@@ -291,11 +318,11 @@ def plan_from(argv):
     if args.counter is not None:
         fields["counter"] = args.counter == "on"
     if args.bytes16 is not None:
-        fields["bytes16"] = hex_bytes("--bytes16", args.bytes16, 3)
+        fields["bytes16"] = hex_bytes("--bytes16", args.bytes16)
     if args.byte26 is not None:
         fields["byte26"] = hex_byte("--byte26", args.byte26)
     if args.declared_rate is not None:
-        fields["declared_rate"] = hex_bytes("--declared-rate", args.declared_rate, 2)
+        fields["declared_rate"] = hex_bytes("--declared-rate", args.declared_rate)
     if args.byte36 is not None:
         fields["byte36"] = hex_byte("--byte36", args.byte36)
     if args.sync_level is not None:
@@ -314,7 +341,7 @@ def plan_from(argv):
         sync_reps=pick(args.sync_reps, 1, 2),
         bright_reps=pick(args.bright_reps, 0, 2),
         bright_level=level_byte(args.brightness if args.bright_level is None else args.bright_level),
-        row_tail=hex_bytes("--row-tail", pick(args.row_tail, "0000", "0888"), 2),
+        row_tail=hex_bytes("--row-tail", pick(args.row_tail, "0000", "0888")),
         order=pick(args.order, "sync-rows", "rows-sync"),
         gap_ms=args.gap_ms, fps=args.fps, seconds=args.seconds, tail_seconds=args.tail_seconds,
         picture=args.picture, jitter_ms=args.jitter_ms, seed=args.seed,
@@ -339,9 +366,10 @@ def describe(plan):
     timing = "wait %s" % plan.wait + (" (spin %g ms)" % plan.spin_ms if plan.wait == "hybrid" else "") \
         + (", qdisc bypass" if plan.qdisc_bypass else "") \
         + {"": "", "sw": ", stamps", "hw": ", stamps with the port's clock"}[plan.stamp]
-    return "%g fps for %g s, then %g s black; %s; %s; %s; row tail %s; %s at pixel %d; %s" % (
+    proven = ", level field proven (the owner's word)" if plan.level_field_proven else ""
+    return "%g fps for %g s, then %g s black; %s; %s; %s; row tail %s; %s at pixel %d%s; %s" % (
         plan.fps, plan.seconds, plan.tail_seconds, cycle, sync, bright,
-        " ".join("%02x" % b for b in plan.row_tail), plan.picture, plan.pixel, timing)
+        " ".join("%02x" % b for b in plan.row_tail), plan.picture, plan.pixel, proven, timing)
 
 
 def guard(packets):
@@ -362,6 +390,7 @@ class Log:
     added: list = field(default_factory=list)     # the random time its sync was held back by
     bursts: list = field(default_factory=list)    # from its first packet to the end of its last
     late: int = 0                                 # frames that started after their tick
+    slips: int = 0                                # times the grid was moved, a frame being a period late
     interrupted: bool = False
 
 
@@ -375,24 +404,33 @@ def run(plan, send, now, wait):
     top, gap = int(plan.jitter_ms * 1e6), int(plan.gap_ms * 1e6)
     sync_first = plan.order == "sync-rows"
 
-    bright = guard([brightness_packet(plan.bright_level)] * plan.bright_reps)
+    bright = [brightness_packet(plan.bright_level)] * plan.bright_reps
     pictures, body = {}, []
     for n in range(n_picture):
         rows = picture(plan.picture, plan.pixel, n, plan.fps)
         if rows[0] not in pictures:
-            pictures[rows[0]] = bright + guard(row_packets(rows, plan.row_tail))
+            pictures[rows[0]] = bright + row_packets(rows, plan.row_tail)
         body.append(pictures[rows[0]])
-    dark = bright + guard(row_packets(black(), plan.row_tail))
+    dark = bright + row_packets(black(), plan.row_tail)
     fixed = not plan.sync.counter and not plan.sync.mark37_every
-    one = guard([sync_packet(plan.sync, 0)])
-    syncs = [one * plan.sync_reps if fixed else guard([sync_packet(plan.sync, n)]) * plan.sync_reps
-             for n in range(n_picture + n_black)]
+    one = [sync_packet(plan.sync, 0)] * plan.sync_reps
+    syncs = [one if fixed else [sync_packet(plan.sync, n)] * plan.sync_reps for n in range(n_picture + n_black)]
+    for packets in list(pictures.values()) + [dark] + ([one] if fixed else syncs):
+        guard(packets)                            # everything the loop will send, before it sends anything
 
     log = Log(frames=n_picture)
+    moved = 0                                     # what the slips have added to the grid
 
     def frame(n, tick, packets):
+        nonlocal moved
         added = jitter.randrange(top + 1) if top else 0
+        tick += moved
         due = tick + added if sync_first else tick
+        behind = now() - due
+        if behind > period:                       # set aside for a period or more: move the grid,
+            moved, tick, due = moved + behind, tick + behind, due + behind    # never catch up in a burst
+            log.slips += 1
+            log.late += 1
         wait(due)
         first = now()
         if first - due > LATE_NS:
@@ -424,7 +462,7 @@ def run(plan, send, now, wait):
             done = n + 1
     except KeyboardInterrupt:
         log.interrupted = True
-        start = now() + int(period) - round(done * period)
+        start, moved = now() + int(period) - round(done * period), 0
     log.frames = done
     for n in range(done, done + n_black):
         frame(n, start + round(n * period), dark)
@@ -485,8 +523,8 @@ def spread_line(title, values, unit_ns, digits, names=("mean", "sd", "min", "max
 
 def report(plan, log):
     total = len(log.syncs)
-    out = ["send: sent %d frames and %d black; %d late%s" % (
-        log.frames, total - log.frames, log.late, "; interrupted" if log.interrupted else "")]
+    out = ["send: sent %d frames and %d black; %d late; %d slips%s" % (
+        log.frames, total - log.frames, log.late, log.slips, "; interrupted" if log.interrupted else "")]
     gaps = intervals(log)
     if len(gaps) < 2:
         return "\n".join(out + ["send: too few frames to measure"])
@@ -684,9 +722,9 @@ def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_s
         plan = plan_from(argv)
     except ValueError as e:
         parser().error(str(e))
-    print("send: %s" % describe(plan), flush=True)
-    print("send: %s; scheduling: %s" % ("dry run, no socket" if plan.dry_run else "on " + plan.iface,
-                                        scheduling()), flush=True)
+    head = "send: %s\nsend: %s; scheduling: %s" % (
+        describe(plan), "dry run, no socket" if plan.dry_run else "on " + plan.iface, scheduling())
+    print(head, flush=True)
     sink = Plain() if plan.dry_run else open_sink(plan)
     before = None if plan.dry_run else port_counter(plan.iface)
     gc.disable()
@@ -698,17 +736,27 @@ def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_s
     finally:
         gc.enable()
         sink.close()
-    print(report(plan, log), flush=True)
+    text = [report(plan, log)]
     after = None if before is None else port_counter(plan.iface)
     if after is not None:
         ours = len(log.syncs) * (plan.sync_reps + plan.bright_reps + H)
-        print("send: the port sent %d packets during the run: %d ours, %d not ours"
-              % (after - before, ours, after - before - ours), flush=True)
+        text.append("send: the port sent %d packets during the run: %d ours, %d not ours"
+                    % (after - before, ours, after - before - ours))
     if plan.stamp:
-        print(stamp_report(plan, log.frames, sink.stamps), flush=True)
-    if plan.log:
+        text.append(stamp_report(plan, log.frames, sink.stamps))
+    if plan.log:                                          # the files first: a pipe's reader may be gone
         write_log(plan.log, plan, log, sink.stamps)
-        print("send: a line a frame in %s" % plan.log, flush=True)
+        kept = os.path.splitext(plan.log)[0] + ".report.txt"
+        with open(kept, "w") as f:
+            f.write("\n".join([head] + text) + "\n")
+        text.append("send: a line a frame in %s, this report in %s" % (plan.log, kept))
+    try:
+        print("\n".join(text), flush=True)
+    except BrokenPipeError:                               # Ctrl-C took `tee` too; the files have the run
+        try:
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        except (AttributeError, OSError, ValueError):
+            pass
     return 0
 
 

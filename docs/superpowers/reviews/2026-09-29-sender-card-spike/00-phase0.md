@@ -1,6 +1,6 @@
 # Sender-card spike, phase 0: what the desk work found
 
-2026-09-29, 17:14 to 17:49 CDT. Brief: `docs/superpowers/specs/2026-09-29-sender-card-spike.md`.
+2026-09-29, 17:14 to 18:22 CDT. Brief: `docs/superpowers/specs/2026-09-29-sender-card-spike.md`.
 No packet was sent to the card. The run sheet for the wall is beside this file (`01-run-sheet.md`).
 
 Labels: MEASURED (on a capture or on our machine, by a tool in `tools/sender_spike/`), SOURCE (someone else
@@ -13,22 +13,23 @@ says so), INFERENCE (my reading), UNKNOWN.
 2. The capture cannot show a start of stream or a handshake. It begins in mid-stream, and all three captures
    of issue 1849 begin and end on a sync packet, which chance does not explain: they were trimmed. (MEASURED,
    INFERENCE)
-3. INFERENCE: no receiver card was in the S2 capture. The PC stood where the receiver stands ("capture an
-   incoming from the sender card"). So the capture shows what an S2 sends with nothing answering it, and it
-   cannot answer "was the receiver on firmware 13".
+3. INFERENCE: no receiver card was in the S2 capture. The PC stood where the receiver stands (its maker:
+   "it's the first time I tried to capture an incoming form the sender card"). So the capture shows what an
+   S2 sends with nothing answering it, and it cannot answer "was the receiver on firmware 13".
 4. Two of the brief's hypotheses have been tried by others, on a 5A-75B. Source type 0x00 with byte 36 = 0x00
-   gave a picture on 13.13 and no change in flicker that the tester reported (cpinkham). The S2's exact
-   packets from a computer gave no picture (mjunek), but that was sent in Falcon Player's old layout, one
-   sync, everything in one burst, which gives no picture on 13.x with any header. So the failed replay says
-   little about the header.
-5. A new hypothesis, H10: **the doubled sync is the disturbance.** A PC-style sender needs two syncs on 13.x;
-   the S2 sends one. If an S2-style sync is accepted once, the second sync is what a computer adds and a
-   sender card does not.
-6. The spike sender is built and tested (229 tests). With no flags its packets are the test sender's byte for
+   gave a picture on 13.13 (cpinkham, SOURCE). The S2's exact packets from a computer gave no picture
+   (mjunek, SOURCE); how they were sent is not recorded, so the failed replay cannot be laid on the header
+   or on the layout (section 4).
+5. A new hypothesis, H10: **the doubled sync is the disturbance.** A PC-style sender needs two syncs on 13.x
+   (cpinkham, menull); the S2 sends one (MEASURED). If an S2-style sync is accepted once, the second sync is
+   what a computer adds and a sender card does not.
+6. The spike sender is built and tested (285 tests). With no flags its packets are the test sender's byte for
    byte; `--s2` sends the capture's sync byte for byte except the counter.
-7. On the Omarchy box the loop's own clock holds the sync to 2 us (sd) with a sleep followed by a 2 ms
-   busy-wait, against 57 us with `time.sleep` alone. What the queue and the driver add is not measured yet:
-   that needs root and a link (section 7).
+7. On the Omarchy box the loop's own clock holds the sync to 2 us or better (sd) with a sleep followed by a
+   2 ms busy-wait, against about 60 us with `time.sleep` alone. What the queue and the driver add is not
+   measured yet: that needs root and a link (section 7).
+8. A fresh review of the branch found no critical fault and six important ones; all are dealt with
+   (section 10). Three questions are the owner's (section 9).
 
 ## 2. The field table, completed
 
@@ -38,7 +39,7 @@ flags. The last column is empty until phase 1: nothing here is measured on our c
 | Field | S2 (MEASURED on the capture) | PC, ours | What is known of its meaning | On our card |
 |---|---|---|---|---|
 | Length of the sync | 1036 | 112 | UNKNOWN. No source mentions the length | |
-| Byte 13 | 0x00 | 0x07 | SOURCE (Falcon Player's header): "0x00 sent from S2 sender, 0x07 sent from PC/netcard". SOURCE (cpinkham, 13.13): "the 13.x receiver works both ways" | |
+| Byte 13 | 0x00 | 0x07 | SOURCE (Falcon Player's header, in my words): 0x00 is sent by the S2, 0x07 by a PC's network card. SOURCE (cpinkham, 13.13): "The 13.x receiver works both ways" | |
 | Byte 14 | counts 0 to 255, +1 a frame, 817 steps of +1 in 817 | 0 | SOURCE (cpinkham): "what appears to be a 8-bit frame counter" | |
 | Bytes 16 to 18 | ff ff ff | 0 | UNKNOWN | |
 | Byte 19 | 0 | 0 | SOURCE (PanelPlayer, counting from byte 13: "offset 6"): "appears to be incremented by the receiving card". INFERENCE: a hop count along a chain of cards | |
@@ -91,17 +92,21 @@ brightness packet, no packet from any other address.
 Read in full: Falcon Player issues 1849 (37 comments) and 2242 (6), with 1911, 2420 and chubby75 94.
 
 - **mjunek's replay** (1849): "Replicating the exact data in the Sender Card packet did not produce an
-  output, it's likely packet timing related however." How is not recorded, but the date is: it was before
-  the firmware-13 patch, when Falcon Player sent sync, brightness and rows in one `sendmmsg`, the sync first,
-  once. That layout gives no picture on 13.x with the PC's own header either (the issue's first report, and
-  our repo driver on our wall). INFERENCE: the replay failed for the layout, and the header was never tested
-  in a layout that works.
+  output, it's likely packet timing related however." How it was sent is not recorded. In the same comment he
+  says his build with doubled packets gave a picture ("When testing with this from FPP, I could get an
+  output, although insanely lagged"), so he had a layout that worked; whether the replay used it is not
+  said. It was before the firmware-13 patch, when Falcon Player's own layout was sync, brightness and rows
+  in one `sendmmsg`, the sync first, once: a layout that gives no picture on 13.x with the PC's header
+  either (the issue's first report; our repo driver on our wall). INFERENCE, and no more than that: a
+  replay that was exact also sent one sync a frame, and one sync from a computer is what cpinkham and menull
+  found not to be enough. The replay does not tell the header from the count or from the layout.
 - **cpinkham's test** (1849): "My current code also allows me to test with 0x01 packets with the next byte
   being 0x00 and byte offset 23 being 0x00 as sent by the S2 sender [...]. The 13.x receiver works both ways,
   so I don't think this is a PC vs S2 issue, I think it is something to do with the 0x01 packet timing."
   That is byte 13 and byte 36, in a 112-byte sync, sent twice, on 13.13, with 32x16 P10 panels. He did not
   test the counter, bytes 16 to 18, byte 26, bytes 31 and 32, the length, the row tail, or one sync alone.
-  He saw no flicker on his panels with either header, so his test cannot say whether the header changes it.
+  Of his patched build he says "I do not see flicker when driving newer 13.x firmware". INFERENCE: with no
+  flicker to change, his test cannot say whether the header changes it.
 - **cpinkham on the doubled sync**: "the old firmware flickers some when sending the two 0x01 packets", and
   "I'm also wondering whether the flicker with 13.x firmware is related to this double-0x01 packet and the
   timing." Nobody followed that up. It is H10.
@@ -113,6 +118,15 @@ Read in full: Falcon Player issues 1849 (37 comments) and 2242 (6), with 1911, 2
   build a hardware sender of his own. This is the strongest evidence for H1 and against a fix by bytes.
 - **2242** adds nothing on the protocol. It is where 13.17 with a 64x32 P5 panel is reported to flicker
   under the patched Falcon Player, and LEDVision 8.6 too.
+- **menull's warning about the sync before the rows** (his protocol notes, 13.39, a 5A-75B): his table of
+  sequences that do not work has "`0x0101` before pixels (init-style) | Brief flash, then card stops
+  responding", one line above the one that became the brief's safety rule 2. What "init-style" was is not
+  said: a sync once at the start, or a sync before each frame's rows. The S2, LEDVision and Falcon Player
+  put the sync before the rows in every frame, and the brief's H4 asks for that order. MEASURED in our own
+  record (`05-session-history.md`): the repo driver, which sends its sync first and once, ran on our card on
+  2026-09-29 at 16:06; no picture; no power cycle followed (the link did not drop between 14:56 and 16:27);
+  at 16:12 the test sender put bars on the wall. A sync-first stream has not locked our card. The run
+  sheet asks for the owner's word before its first sync-first run all the same.
 
 ## 5. Hypotheses after phase 0
 
@@ -130,30 +144,41 @@ The brief's nine stand. Changes:
 | File | What it is |
 |---|---|
 | `tools/sender_spike/send.py` | The sender. `--help` lists the flags; one flag, one variable |
-| `tools/sender_spike/timing_matrix.py` | Step 6 as one command: 14 runs, one table |
+| `tools/sender_spike/timing_matrix.py` | Step 6 as one command: 15 runs, one table |
 | `tools/sender_spike/pcap_detail.py` | Section 3 of this file |
-| `tests/sender_spike/` | 229 tests; no socket, no wall clock. They also hold every command of the run sheet |
+| `tests/sender_spike/` | 285 tests; no socket, no wall clock. They also hold every command of the run sheet |
 
 What the tests hold:
 
 - With no flags the sync, the brightness packet and the rows are `cl_fpp_test.py`'s, byte for byte.
 - `--s2` is the capture's sync, byte for byte except the counter. The test reads the capture file itself where
-  it exists (815 syncs compared) and a copy of its first 41 bytes elsewhere.
+  it exists (all 818 syncs compared, the three with byte 37 set among them) and a copy of its first 41 bytes
+  elsewhere.
 - Each flag changes the bytes it names and no others; each flag changes one variable of the plan.
 - The safety rules of the brief, in the code:
-  - Rule 1: every packet passes a guard that lets through types 0x01, 0x55 and 0x0A to the card's address,
-    and nothing else. There is no code that builds any other packet.
+  - Rule 1: everything the loop is going to send passes a guard before the first packet goes: types 0x01,
+    0x55 and 0x0A to the card's address, and nothing else. There is no code that builds any other packet.
+    A field of a packet takes the values seen on the wire, and 0x011e for H3, and no other.
   - Rule 2: every sync has its 64 rows. `--sync-reps` is 1 to 3.
-  - Rule 3: when a plan leaves the fields by which the base sets the brightness (source type, byte 36, a
-    sync level above the cap, no brightness packet), the pixels hold 25 or less. `--level-field-proven`
-    lifts that, and only while every level byte is within 0.4; with the S2's own 0xff nothing lifts it.
+  - Rule 3: when a packet holds anything the base's does not (any field of the sync, its length, the row
+    header), or no brightness packet is sent, the pixels hold 25 or less. `--level-field-proven` lifts that,
+    and only while every level byte is within 0.4. A level above 0.4 goes out only in a sync with the S2's
+    source type, and then nothing lifts the pixel cap.
   - Rule 4: a run is at most 60 s; rates are 15 to 240; the pictures are still bars or bars moving 8 pixels
-    a second. Every run ends in black, after Ctrl-C too.
-- Eight faults put into the code on purpose (the pixel cap, the guard, the level cap, the black tail, the
-  tick grid, a sync byte, the jitter, the plan check) each made tests fail.
+    a second. A run that ends by itself or by one Ctrl-C ends in black. A run that ends by an error of the
+    socket, a second Ctrl-C or a hangup does not: the card then holds the last frame.
+- After a stall the frames do not come in a burst: a frame that is a period late moves the grid, and the
+  report counts it ("slips").
+- The log and the report are written to files before anything is printed, so a run stopped by Ctrl-C keeps
+  its data when the pipe's reader is gone.
+- Sixteen faults put into the code on purpose each made tests fail; four more (a guard taken away in one of
+  several places) did not, which is why the guard is now one pass in one place.
 
-What the tests do not hold: the transmit stamps (`--stamp`, `--stamp-hw`) have run against a stand-in for the
-socket only. The first run with a real socket is step 6, with the card out of the way.
+What the tests do not hold: everything that needs a kernel. The raw socket, `PACKET_QDISC_BYPASS`, the
+transmit stamps (`--stamp`, `--stamp-hw`) and the port's time stamp setting have run against a stand-in
+only, and their constants and layouts were checked by reading, from memory of the Linux headers, by the
+author and by the reviewer. The first run with a real socket is step 6, with the card out of the way; its
+first row is the run sheet's own command.
 
 Decisions taken while building, each open to the owner's veto:
 
@@ -162,21 +187,24 @@ Decisions taken while building, each open to the owner's veto:
   kernel such as the Pi's. `--wait sleep` is the old test sender's way.
 - `--gap-ms` means what it means in `cl_fpp_test.py`: a pause after the last row. The layout with exact
   timing is `--order sync-rows`, where the sync sits on the tick.
-- Runs that leave the base's brightness fields are dim (pixel 25). Their comparison is the base at
+- Runs whose packets hold anything the base's do not are dim (pixel 25). Their comparison is the base at
   `--pixel 25`, not the base.
+- `--brightness` does not reach an S2-style sync, which carries its own level; `--sync-level` does.
 
 ## 7. Timing: what is measured and what is not
 
-MEASURED on the Omarchy box at 17:43, the loop's own clock, no socket, plain scheduling, 60 frames a second,
-600 frames each (`timing_matrix.py --dry-run`):
+MEASURED on the Omarchy box, the loop's own clock, no socket, plain scheduling, 60 frames a second, 600
+frames each (`timing_matrix.py --dry-run`). sd of sync to sync, and the interval furthest from 16.667 ms,
+in microseconds:
 
-| Wait | sd of sync to sync | The interval furthest from 16.667 ms |
-|---|---|---|
-| `time.sleep` | 57 us | 164 us |
-| sleep, then busy-wait 2 ms | 2 us | 22 us |
-| busy-wait | 1 us | 17 us |
+| Wait | 17:30 | 17:43 | 18:19 (raw output kept in `timing-dry/`) |
+|---|---|---|---|
+| `time.sleep` | 76, 180 | 57, 164 | 56, 286 |
+| sleep, then busy-wait 2 ms | 1, 17 | 2, 22 | 0, 1 |
+| busy-wait | 10, 186 | 1, 17 | 15, 253 |
 
-An earlier run of 10 s each gave 76, 1 and 10 us; the busy-wait lost one slice of 186 us to another task.
+The busy-wait lost a slice of about 0.2 ms to another task in two runs of three; the sleep followed by a
+busy-wait did not. The first two runs' raw output was not kept.
 
 This is the clock the sender reads before it hands the packet over. It is not the wire. NOT MEASURED: the
 same under `chrt -f 50`, what the port's queue (fq_codel) and the driver add, and what bypassing the queue
@@ -212,10 +240,49 @@ sudo .venv/bin/python tools/sender_spike/timing_matrix.py --iface enp5s0 --out t
 - `tcpdump` is not installed. The stamps replace it for timing. A capture of our own stream, for the record,
   would still need it or a listener.
 
-## 9. Open after phase 0
+## 9. Questions that are the owner's
+
+1. **Rule 3 against itself.** The brief lets an S2-style sync go out, which carries level 0xff, and says
+   "never a level above 0.4". The sender allows 0xff only in a sync with the S2's source type, with dim
+   pixels. Is that the rule?
+2. **The sync before the rows** (section 4, menull's warning): the owner's word before B1.
+3. **Step 6:** root, and the wall's cable in another gigabit port (section 7).
+
+Open after phase 0:
 
 - Step 6 of the brief, beyond the loop's clock (section 7).
 - Whether the S2 sends anything that a PC's port does not deliver to a capture (frames with a bad checksum,
   idle patterns). Thacher's "saturates the link" hints at it. Only a sender card on the bench can say
   (phase 2).
 - What byte 37 asks for.
+
+## 10. The review of the branch
+
+A reviewer with no part in the work read the branch (9a0f5ef to f5d7dcb) against the brief. No critical
+finding. What it found and what was done:
+
+| Finding | Done |
+|---|---|
+| Ctrl-C can take `tee` with it; the report and the log were then lost | The files are written first; a broken pipe is survived; the run sheet uses `tee -i` |
+| The stamps have never met a kernel, and the run sheet read as if they had | The sheet has a gate; the timing matrix starts with the sheet's own command |
+| menull's warning about the sync before the rows was in neither document | Section 4 here; the owner's word in the run sheet; our own record added |
+| mjunek's replay was read as fact | Section 4 rewritten; labelled |
+| The dim base may be too dim to judge | A brighter dim base (A3b) in the run sheet |
+| The cap on the sync's level could not fire, and C1 sent 1.0 against the letter of rule 3 | 0xff only with the S2's source type; C1 sends 0.4; question 1 above |
+| Hex flags took values never seen on the wire | They take the values seen, and H3's |
+| Unknown fields (bytes 16 to 18 and others) did not dim the picture | Anything the base's packets do not hold dims it |
+| After a stall the frames came in a burst | The grid moves; "slips" are counted |
+| `--gap-ms nan` passed the check | Refused |
+| The guard inside the loop was held by no test | One pass in one place; a test; a fault put in on purpose is caught |
+| The capture test read 300 syncs of 815 | It reads all 818 |
+| "Every run ends in black" said too much; quotes not exact | Corrected |
+| The run sheet: one name for three runs, H7's and H8's missing corners, A1 against A2 two variables | B9a to B9c, D6, C3, A1b |
+| The timing numbers had no raw output | `timing-dry/` |
+
+Left as they are, by decision:
+
+- A tail of one frame in the sync-first order would not show black (the last rows get no sync). The tail is
+  1 s, 60 frames.
+- "N ours" in the line about the port's other traffic counts whole frames; after Ctrl-C it is off by the
+  broken frame's packets.
+- No test holds the Linux constants: a test that repeats a number proves nothing. Step 6 does.
