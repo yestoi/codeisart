@@ -114,3 +114,21 @@ def test_distance_look_needs_sdl_scale_4(tmp_path):
             load_config(write(tmp_path, f'look = "distance"\nsdl_scale = {scale}'))
     assert load_config(write(tmp_path, 'look = "distance"\nsdl_scale = 4')).sdl_scale == 4
     assert load_config(write(tmp_path, 'look = "plain"\nsdl_scale = 1')).sdl_scale == 1
+
+
+@pytest.mark.parametrize("value", [0.22, 22.0, 0.5, 2.3])
+def test_gamma_outside_1_to_2_2_is_refused(tmp_path, value):
+    # C50: the governor models the wall's light by this gamma; the show's is bound the same (1.0 to 2.2).
+    with pytest.raises(ValueError, match="gamma"):
+        load_config(write(tmp_path, f"gamma = {value}"))
+
+
+def test_gamma_1_and_2_2_are_taken(tmp_path):
+    assert load_config(write(tmp_path, "gamma = 1.0")).gamma == 1.0
+    assert load_config(write(tmp_path, "gamma = 2.2")).gamma == 2.2
+
+
+def test_the_shipped_arcade_configs_are_in_the_gamma_bound():
+    root = Path(__file__).resolve().parents[2]
+    for name in ("arcade.toml", "arcade.mac.toml"):
+        assert 1.0 <= load_config(root / name).gamma <= 2.2, name

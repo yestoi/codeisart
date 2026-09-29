@@ -103,6 +103,8 @@ def load_config(path: Path | str) -> ArcadeConfig:
             raise ValueError(f"{name} must be greater than 0, got {getattr(cfg, name)}")
     if not math.isfinite(cfg.gamma):
         raise ValueError(f"gamma must be finite, got {cfg.gamma}")
+    if not 1.0 <= cfg.gamma <= 2.2:
+        raise ValueError(f"gamma must be 1.0 (the card applies gamma) to 2.2 (bytes as they are), got {cfg.gamma}")
     if cfg.sdl_scale < 1:
         raise ValueError(f"sdl_scale must be at least 1, got {cfg.sdl_scale}")
     if cfg.look == "distance" and cfg.sdl_scale < DISTANCE_MIN_SCALE:
