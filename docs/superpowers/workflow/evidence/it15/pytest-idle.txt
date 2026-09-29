@@ -1,0 +1,125 @@
+checkout /Users/trey/dev/codeisart
+HEAD 77c11d4
+start 11:17:16, load before: 11:17  up 73 days, 19:08, 6 users, load averages: 4.49 3.26 2.77
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 16%]
+........................................................................ [ 21%]
+...................................................
+strobe 128x32: tick mean 0.353 ms, p95 0.385 ms, governor 0.189 ms (53% of the tick), held 200 ticks
+.
+strobe 64x64: tick mean 0.377 ms, p95 0.414 ms, governor 0.202 ms (54% of the tick), held 200 ticks
+.
+strobe 128x64: tick mean 0.543 ms, p95 0.587 ms, governor 0.354 ms (65% of the tick), held 200 ticks
+.
+static 128x32: tick mean 0.362 ms, p95 0.421 ms, governor 0.179 ms (49% of the tick), held 0 ticks
+.
+static 64x64: tick mean 0.371 ms, p95 0.436 ms, governor 0.193 ms (52% of the tick), held 0 ticks
+.
+static 128x64: tick mean 0.542 ms, p95 0.632 ms, governor 0.336 ms (62% of the tick), held 0 ticks
+................ [ 27%]
+........................................................................ [ 32%]
+........................................................................ [ 38%]
+........................................................................ [ 43%]
+........................................................................ [ 49%]
+........................................................................ [ 54%]
+........................................................................ [ 60%]
+........................................................................ [ 65%]
+........................................................................ [ 71%]
+........................................................................ [ 76%]
+..............................s......................................... [ 82%]
+........................................................................ [ 87%]
+........................................................................ [ 93%]
+........................................................................ [ 98%]
+.................                                                        [100%]
+============================= slowest 15 durations =============================
+61.94s setup    tests/arcade/test_oracle.py::test_feel_pong_meets_its_budgets
+26.80s call     tests/arcade/test_oracle.py::test_feel_meets_its_budgets[quickdraw]
+7.90s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-128x64]
+6.43s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-96x48]
+6.14s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-128x64]
+5.10s call     tests/test_show_shot.py::test_entry_and_attract_modes_write_stamped_sheets
+4.94s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+4.47s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-96x48]
+4.47s call     tests/test_entries.py::test_sample_entry_runs_with_large_motion
+3.81s call     tests/test_entries.py::test_sample_entry_band_leaves_no_trail
+3.67s call     tests/arcade/test_first_playable.py::test_first_playable_keeps_the_flash_rule
+3.66s call     tests/test_show_shot.py::test_strobe_session_is_held
+3.56s call     tests/test_show_shot.py::test_entry_mode_with_a_broken_build_replays_the_captured_fallback
+3.43s call     tests/arcade/test_oracle.py::test_evidence_package_for_pong
+3.18s call     tests/arcade/test_lobby.py::test_mirror_under_real_noise_keeps_the_area_rule[128x64]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_sandbox.py:153: needs a working unshare -rn (Linux with unprivileged user namespaces); macOS has no unshare
+1312 passed, 1 skipped in 301.32s (0:05:01)
+
+[exit 0, wall 301.8 s; end 11:22:18, load after: 11:22  up 73 days, 19:13, 6 users, load averages: 11.58 6.19 4.02]
+git status after: M docs/superpowers/workflow/decisions.md
+ M docs/superpowers/workflow/journal.md
+ M docs/superpowers/workflow/roadmap.md
+ M docs/superpowers/workflow/state.md
+?? docs/superpowers/workflow/evidence/it15/arcade.txt
+?? docs/superpowers/workflow/evidence/it15/arcade/
+?? docs/superpowers/workflow/evidence/it15/dodge-83fe13a/
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p1.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p2.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p3.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p4.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p5.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p6.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p7.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p8.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-led-p9.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p1.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p2.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p3.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p4.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p5.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p6.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p7.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p8.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-plain-p9.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-poc-distance-p1.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-poc-distance-p2.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-poc-led-p1.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-poc-led-p2.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-poc-plain-p1.png
+?? docs/superpowers/workflow/evidence/it15/it15-presses-poc-plain-p2.png
+?? docs/superpowers/workflow/evidence/it15/it15-soak-poc/
+?? docs/superpowers/workflow/evidence/it15/it15-soak/
+?? docs/superpowers/workflow/evidence/it15/it15-strobe.png
+?? docs/superpowers/workflow/evidence/it15/orchestrator-report-n1.md
+?? docs/superpowers/workflow/evidence/it15/pytest-idle-with-dodge.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_duel.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_duel.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_hint.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_hint.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_leave.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_leave.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_nobody.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_nobody.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_stranger.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r2_stranger.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r3_stranger.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/probe_r3_stranger.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/quickdraw_01bfd95.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/quickdraw_44a9dd2.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/r3_probe_r2_duel.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/r3_probe_r2_leave.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/r3_probe_r2_nobody.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/r3_probe_r2_stranger.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/run_new_tests_on_old.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/run_new_tests_on_old.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/run_r3_tests_on_old.py.txt
+?? docs/superpowers/workflow/evidence/it15/review-arcade-probes/run_r3_tests_on_old.txt
+?? docs/superpowers/workflow/evidence/it15/review-close-probes/
+?? docs/superpowers/workflow/evidence/it15/reviewer-arcade-round2.md
+?? docs/superpowers/workflow/evidence/it15/reviewer-arcade-round3.md
+?? docs/superpowers/workflow/evidence/it15/reviewer-close.md
+?? docs/superpowers/workflow/evidence/it15/show-shot.txt
+?? docs/superpowers/workflow/evidence/it15/soak.txt
+?? docs/superpowers/workflow/evidence/it15/stop.txt
+?? docs/superpowers/workflow/evidence/it15/verify-arcade-script.py.txt
+?? docs/superpowers/workflow/evidence/it15/verify-script.py.txt
+?? docs/superpowers/workflow/evidence/it15/verify-suite-script.py.txt
+?? reports/
+?? research_notes/

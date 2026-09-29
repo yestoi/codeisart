@@ -1,0 +1,17 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Round 2: a launch with nobody in view, the trace of phase and signal (why one flash in 30 s)."""
+from arcade.bots import ROOT, _font
+from arcade.games.quickdraw import GAME, nobody
+from arcade.headless import run_headless
+from tests.arcade.helpers import make_cfg
+cfg = make_cfg((128, 64))
+font = _font(ROOT / cfg.font_path)
+frames, runner = run_headless(cfg, font, GAME, nobody(), seed=5, trace=True)
+prev = None
+for i, st in enumerate(runner.trace):
+    key = (st.get("phase"), st.get("signal"), st.get("left"), st.get("right"), st.get("round"))
+    if key != prev:
+        print(f"tick {i:4d} t {i / 30:6.2f}: phase {key[0]} signal {key[1]} {key[2]}-{key[3]} round {key[4]} "
+              f"wait_left {st.get('wait_left')}")
+        prev = key
+print("game._wait", runner.game._wait, "phase_t", round(runner.game.phase_t, 2), "seats", [(s.ctrl, s.y, s.armed) for s in runner.game.seats])

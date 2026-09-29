@@ -1,0 +1,320 @@
+{
+ "quickdraw": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.0,
+    "response_px": 72.0,
+    "fidelity": 0.9891453410470045,
+    "range": 0.6349206349206349,
+    "lit_fraction": 0.08018625193628771,
+    "dim_fraction": 0.016693187224199872,
+    "liveliness": 0.01293628931560475,
+    "flash_area_raw": 0.0,
+    "square_flashes": 2.0,
+    "score_visible": 0.978448275862069,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 0.0,
+    "win_good": 1.0,
+    "win_lazy": 0.45,
+    "win_none": 0.0,
+    "round_seconds": 20.983333333333334,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ },
+ "dodge": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.0,
+    "response_px": 100.0,
+    "fidelity": 0.9934354469467519,
+    "range": 0.9606299212598425,
+    "lit_fraction": 0.03347015380859375,
+    "dim_fraction": 0.0033956124285703057,
+    "liveliness": 0.0044351334705723545,
+    "flash_area_raw": 0.0,
+    "square_flashes": 0.0,
+    "score_visible": 1.0,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 0.0,
+    "win_good": 0.95,
+    "win_lazy": 0.35,
+    "win_none": 0.0,
+    "round_seconds": 49.5,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ },
+ "pong": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.0,
+    "response_px": 12.0,
+    "fidelity": 0.9947065884969134,
+    "range": 0.6287301587301587,
+    "lit_fraction": 0.039030667009024786,
+    "dim_fraction": 0.11466779905499498,
+    "liveliness": 0.0035442574750269976,
+    "flash_area_raw": 0.0,
+    "square_flashes": 0.0,
+    "score_visible": 1.0,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 0.0,
+    "win_good": 1.0,
+    "win_lazy": 0.25,
+    "win_none": 0.0,
+    "round_seconds": 66.06666666666666,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.3,
+     "reason": "the dashed centre net is deliberately dim (0, 0, 96) so it never competes with the ball and paddles"
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ }
+}

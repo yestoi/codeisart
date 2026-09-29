@@ -1,0 +1,135 @@
+{
+  "steps": 2203,
+  "governed": 2205,
+  "push_failures": 0,
+  "held_ticks": 9,
+  "presses": 24,
+  "plays_started": 1,
+  "plays_ended": 1,
+  "returns_to_attract": 1,
+  "errors_logged": 0,
+  "errors_at_setup": 0,
+  "errors": [],
+  "step_ms": {
+    "count": 2203,
+    "median": 0.4,
+    "p95": 0.9,
+    "worst": 7.606
+  },
+  "governor_ms": {
+    "count": 2205,
+    "median": 0.3,
+    "p95": 0.4,
+    "worst": 2.354
+  },
+  "governor": {
+    "held_ticks": 9,
+    "fps": 20
+  },
+  "meter": {
+    "frames": 2203,
+    "area_max": 0.041748046875,
+    "squares_max": 3,
+    "budget": 6
+  },
+  "windows": [
+    {
+      "t": 60.039,
+      "steps": 1103,
+      "governed": 1103,
+      "frames": 1103,
+      "area_max": 0.0,
+      "squares_max": 1,
+      "held_ticks": 0,
+      "fds": 4,
+      "rss_kb": 41904
+    },
+    {
+      "t": 120.011,
+      "steps": 2203,
+      "governed": 2205,
+      "frames": 1100,
+      "area_max": 0.041748,
+      "squares_max": 3,
+      "held_ticks": 9,
+      "fds": 4,
+      "rss_kb": 41904
+    }
+  ],
+  "fds": {
+    "first": 4,
+    "last": 4
+  },
+  "rss_kb": {
+    "first": 36032,
+    "last": 41904
+  },
+  "children_left": 0,
+  "run_ended_early": 0,
+  "sha": "01bfd95",
+  "config": {
+    "backend": "fake",
+    "width": 128,
+    "height": 64,
+    "brightness": 0.15,
+    "brightness_cap": 0.4,
+    "sdl_scale": 2,
+    "columns": 80,
+    "rows": 24,
+    "phosphor": "green",
+    "glow": false,
+    "view": "ink",
+    "strip_look": "bright-on-field",
+    "gamma": 2.2,
+    "entries_dir": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-verify-checkout/entries",
+    "audio_dir": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-verify-checkout/audio",
+    "font_path": "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-verify-checkout/fonts/5x7.bin",
+    "button_pins": [
+      5,
+      6,
+      13,
+      19,
+      26
+    ],
+    "light_pins": [
+      12,
+      16,
+      20,
+      21,
+      25
+    ],
+    "lightbox_pins": [
+      17,
+      22,
+      23,
+      24,
+      27
+    ],
+    "ddp_host": "127.0.0.1",
+    "ddp_port": 4048,
+    "colorlight_iface": "eth0",
+    "dwell": 4.0,
+    "error_hold": 3.0,
+    "typewriter_cps": 400,
+    "attract_lps": 3.0,
+    "fps": 20,
+    "capture": false,
+    "volume": 0.6,
+    "quiet_hours": "",
+    "crowd_run_seconds": 10.0,
+    "idle_run_seconds": 40.0,
+    "attract_autoplay_minutes": 5.0,
+    "min_build_seconds": 1.5,
+    "pump_bytes": 4096,
+    "pump_ms": 8.0
+  },
+  "times": {
+    "started_at": "2026-09-29T10:37:56",
+    "elapsed_s": 120.015,
+    "minutes": 2.0,
+    "press_every": 5.0,
+    "seed": 0,
+    "window_s": 60.0
+  },
+  "failures": []
+}

@@ -1,0 +1,29 @@
+using /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-review-arcade/quickdraw_44a9dd2.py
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+__________ test_another_body_in_seat_a_after_the_grace_banks_no_best ___________
+
+font5x7 = <show.font.Font object at 0x1032656a0>
+
+    def test_another_body_in_seat_a_after_the_grace_banks_no_best(font5x7):
+        """it15 review N1: player 1 (id 1) wins 2 rounds and leaves in `result`; 2 s later a body with another id (the
+        next in the queue, or player 1 back with a new id: the game cannot tell) takes the empty seat a, which keeps its
+        2 rounds, and wins the third. More than one body id sat in seat a, so the match banks no best, as a duel does:
+        the stored best stays None and the session's result names no new best."""
+        out = {}
+        for s in N1_SEEDS:
+            runner, held, last = _leaves_in_result_and_a_body_is_back(s, font5x7, gap=2.0, back_id=7)
+            result = runner.lobby.results[-1]
+            out[s] = (held, last["phase"], last["left"], last["right"], runner.game.scores.best(), result.best,
+                      result.new_best)
+            assert held == [1, 7], (s, out[s])                   # the other body did sit in seat a
+>           assert runner.game.scores.best() is None, (s, out[s])
+E           AssertionError: (1057892440, ([1, 7], 'over', 3, 1, 3.0, 3.0, ...))
+E           assert 3.0 is None
+E            +  where 3.0 = best()
+E            +    where best = <arcade.scores.GameScores object at 0x103233e30>.best
+E            +      where <arcade.scores.GameScores object at 0x103233e30> = <arcade.games.quickdraw.Quickdraw object at 0x103118920>.scores
+E            +        where <arcade.games.quickdraw.Quickdraw object at 0x103118920> = <arcade.runner.Runner object at 0x103199670>.game
+
+tests/arcade/test_quickdraw.py:469: AssertionError
+1 failed, 1 passed, 37 deselected in 1.78s

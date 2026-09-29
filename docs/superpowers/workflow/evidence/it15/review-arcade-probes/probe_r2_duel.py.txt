@@ -1,0 +1,66 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Round 2 (c99d463): duels where player 1 or player 2 leaves (closed loop: each present player draws a fixed time
+after DRAW), and a launch with nobody in view through the real runner (flash spacing, rounds, best)."""
+import dataclasses
+import random
+from arcade.bots import ROOT, _font
+from arcade.brightness import apl
+from arcade.games.quickdraw import GAME, Quickdraw, nobody
+from arcade.headless import OPENING_NIGHT, run_headless
+from arcade.juice import Juice
+from arcade.scores import Scores
+from arcade.sensed import Body
+from arcade.sources.actors import TICK, body_box, make_keypoints, scene
+from tests.arcade.helpers import make_cfg
+
+
+def game_for(i):
+    g = Quickdraw()
+    g.scores = Scores(None, lambda: OPENING_NIGHT).for_game("quickdraw", "128x64")
+    g.reset((128, 64), random.Random(2000 + i), Juice(random.Random(1), (128, 64)))
+    return g
+
+
+def duel(i, p1_leave=None, p2_leave=None, seconds=60):
+    g = game_for(i)
+    draw_t, log = None, []
+    for f in scene(ticks=round(seconds / TICK)):
+        st = g.debug_state()
+        draw_t = (draw_t if draw_t is not None else g.t) if st["phase"] == "play" and st["signal"] == "draw" else None
+        bodies = []
+        for pid, x, react, leave in ((1, 0.3, 0.30, p1_leave), (2, 0.7, 0.40, p2_leave)):
+            if leave is not None and g.t >= leave:
+                continue
+            up = draw_t is not None and g.t - draw_t >= react
+            kps = make_keypoints(x, 0.55, 0.6, right_up=up)
+            bodies.append(Body(pid, body_box(kps), kps))
+        f = dataclasses.replace(f, bodies=tuple(bodies), player=next((b for b in bodies if b.id == 1), None)
+                                or (bodies[0] if bodies else None),
+                                player2=next((b for b in bodies if b.id == 2), None) if any(b.id == 1 for b in bodies)
+                                else None)
+        before = (st["left"], st["right"])
+        g.update(f, TICK)
+        st2 = g.debug_state()
+        if p1_leave is not None and g.t >= p1_leave + 0.5 and st2["left"] > before[0]:
+            log.append(("a rose while p1 gone", round(g.t, 2)))
+        if g.done():
+            break
+    st = g.debug_state()
+    return st["phase"], st["left"], st["right"], st["humans"], st["cpu"], g.scores.best(), log
+
+
+for i in range(3):
+    print(f"duel seed {i}, nobody leaves : {duel(i)}")
+    print(f"duel seed {i}, p1 leaves 8 s : {duel(i, p1_leave=8.0)}")
+    print(f"duel seed {i}, p2 leaves 8 s : {duel(i, p2_leave=8.0)}")
+
+cfg = make_cfg((128, 64))
+font = _font(ROOT / cfg.font_path)
+frames, runner = run_headless(cfg, font, GAME, nobody(), seed=5, raw=True, trace=True)
+fl = [i for i, f in enumerate(runner.raw_frames) if apl(f, cfg.gamma) > 0.9]
+starts = [i for i in fl if i - 1 not in fl]
+gaps = [round((b - a) * TICK, 2) for a, b in zip(starts, starts[1:])]
+g = runner.game
+print(f"launch with nobody (30 s, NullLobby: no leave end): state {g.debug_state()['phase']} "
+      f"{g.debug_state()['left']}-{g.debug_state()['right']} best {g.scores.best()} flashes at {starts} gaps {gaps} "
+      f"held {runner.governor.held_ticks}")

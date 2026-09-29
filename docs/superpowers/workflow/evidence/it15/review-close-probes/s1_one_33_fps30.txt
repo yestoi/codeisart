@@ -1,0 +1,46 @@
+real show.wall; fps 30 models both tearsets ['one'] splits [33] calls 1-22 closetear False
+  rev rows b16 ph0 10Hz    probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  rev rows b16 ph0 10Hz    card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  rev rows b16 ph1 10Hz    probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 195
+  rev rows b16 ph1 10Hz    card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 217
+  rev rows b32 ph0 10Hz    probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  rev rows b32 ph0 10Hz    card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  rev rows b32 ph1 10Hz    probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  rev rows b32 ph1 10Hz    card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  rev rows b48 ph0 10Hz    probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 195
+  rev rows b48 ph0 10Hz    card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 217
+  rev rows b48 ph1 10Hz    probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  rev rows b48 ph1 10Hz    card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  rev rows b32 ph1 5Hz     probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 253
+  rev rows b32 ph1 5Hz     card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 271
+  rev rows b24 ph1 5Hz     probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 253
+  rev rows b24 ph1 5Hz     card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 271
+  rev cols ph0 10Hz        probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  rev cols ph0 10Hz        card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  rev cols ph1 10Hz        probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  rev cols ph1 10Hz        card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  checks off0 10Hz         probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  checks off0 10Hz         card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  checks off0 5Hz ph1      probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 253
+  checks off0 5Hz ph1      card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 271
+  checks off16 10Hz        probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 198
+  checks off16 10Hz        card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 220
+  checks off16 5Hz ph1     probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 253
+  checks off16 5Hz ph1     card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 271
+  block strobe 10Hz        probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 132
+  block strobe 10Hz        card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 151
+  block strobe 5Hz ph1     probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 116
+  block strobe 5Hz ph1     card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 126
+  scroll 1 row             probe worst squares 2 area 0.000 held-closes-lit 0 unheld-closes-lit 0
+  scroll 1 row             card  worst squares 2 area 0.000 held-closes-lit 0 unheld-closes-lit 0
+  scroll 3 rows            probe worst squares 5 area 0.000 held-closes-lit 0 unheld-closes-lit 0
+  scroll 3 rows            card  worst squares 5 area 0.000 held-closes-lit 0 unheld-closes-lit 0
+  hash band                probe worst squares 0 area 0.094 held-closes-lit 0 unheld-closes-lit 0
+  hash band                card  worst squares 0 area 0.094 held-closes-lit 0 unheld-closes-lit 0
+  full strobe 10Hz         probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 132
+  full strobe 10Hz         card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 151
+  full strobe 5Hz ph1      probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 116
+  full strobe 5Hz ph1      card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 126
+closes measured 33264 flagged 0 longest sleep 1.967
+cross-checks (k==2, sq same, area same): 712 all agree: True
+secs 197.6

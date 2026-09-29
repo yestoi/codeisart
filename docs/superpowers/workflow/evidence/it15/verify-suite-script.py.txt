@@ -1,0 +1,17 @@
+"""One timed run of the full suite. Usage: it15-suite.py <checkout> <output file>"""
+import os, subprocess, sys, time
+CO, OUT = sys.argv[1], sys.argv[2]
+PY = "/Users/trey/dev/codeisart/.venv/bin/python"
+ENV = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+def sh(*a):
+    return subprocess.run(a, cwd=CO, capture_output=True, text=True).stdout.strip()
+head, before, t0 = sh("git", "rev-parse", "--short", "HEAD"), sh("uptime"), time.strftime("%H:%M:%S")
+t = time.time()
+r = subprocess.run([PY, "-m", "pytest", "-q", "-rs", "-p", "no:cacheprovider", "--durations=15", CO], cwd=CO, env=ENV,
+                   capture_output=True, text=True)
+with open(OUT, "w") as f:
+    f.write(f"checkout {CO}\nHEAD {head}\nstart {t0}, load before: {before}\n")
+    f.write(r.stdout[-6000:] + ("\n[stderr]\n" + r.stderr[-2000:] if r.stderr.strip() else ""))
+    f.write(f"\n[exit {r.returncode}, wall {time.time() - t:.1f} s; end {time.strftime('%H:%M:%S')}, load after: {sh('uptime')}]\n")
+    f.write("git status after: " + (sh("git", "status", "--porcelain") or "clean") + "\n")
+print(open(OUT).read()[-2500:])

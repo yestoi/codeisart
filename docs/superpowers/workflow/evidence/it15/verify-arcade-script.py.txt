@@ -1,0 +1,34 @@
+"""Iteration 15's arcade evidence at the final head. Usage: it15-arcade-final.py <checkout> <games, comma separated>
+The doctor runs from the main checkout (models/ is not in git); the rest from the clean detached checkout."""
+import os, subprocess, sys, time
+S = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad"
+MAIN = "/Users/trey/dev/codeisart"
+CO, GAMES = sys.argv[1], sys.argv[2]
+PY = MAIN + "/.venv/bin/python"
+EV = S + "/it15-ev"
+ENV = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+RUNS = [(MAIN, ["-m", "arcade", "doctor"]),
+        (CO, ["-m", "tools.arcade_evidence", "--iteration", "15", "--games", GAMES, "--seeds", "20",
+              "--out", EV + "/arcade"])]
+for g in GAMES.split(","):
+    if g != "pong":
+        RUNS.append((CO, ["-m", "tools.arcade_shot", g, "--lobby", "small", "--scenario", "canonical",
+                          "--raw-vs-pushed", "--out", EV + "/it15-" + g]))
+
+
+def status(where):
+    return subprocess.run(["git", "status", "--porcelain"], cwd=where, capture_output=True, text=True).stdout.strip()
+
+
+with open(EV + "/arcade.txt", "a") as log:
+    for where, args in RUNS:
+        t = time.time()
+        r = subprocess.run([PY, *args], cwd=where, env=ENV, capture_output=True, text=True, timeout=580)
+        shown = " ".join(a.replace(EV + "/", "") for a in args)
+        place = "the main checkout" if where == MAIN else "the detached checkout"
+        log.write(f"$ python {shown}   (from {place})\n" + r.stdout)
+        if r.stderr:
+            log.write("[stderr]\n" + r.stderr[-3000:])
+        after = "not read (the operator's files are open there)" if where == MAIN else (status(where) or "clean")
+        log.write(f"[exit {r.returncode}, {time.time() - t:.1f} s; git status after: {after}]\n\n")
+        print(args[1], r.returncode, f"{time.time() - t:.1f}s", after)

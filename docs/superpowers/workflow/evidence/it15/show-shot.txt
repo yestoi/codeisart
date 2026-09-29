@@ -1,0 +1,138 @@
+$ python -m tools.show_shot --session strobe --seconds 6 --every-ms 150 --look plain --scale 1 --cols 4 --out it15-strobe
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.2s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.3s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.5s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.7s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+0.8s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+1.0s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+1.0s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.1s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.3s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.5s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.6s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.8s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+1.9s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.1s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.3s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.4s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.6s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.8s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+2.9s held 0 area 0.0000 sq 0  NOW: strobe by Trey, 2026, Not A.I. | PLAYING
+3.1s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.3s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.4s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.6s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.8s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+3.9s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+4.1s held 0 area 0.0000 sq 1  NOW: strobe by Trey, 2026, Not A.I.
+4.2s held 0 area 0.0000 sq 3  NOW: strobe by Trey, 2026, Not A.I.
+4.4s held 0 area 0.0000 sq 3  NOW: strobe by Trey, 2026, Not A.I.
+4.6s held 0 area 0.0000 sq 5  NOW: strobe by Trey, 2026, Not A.I.
+4.7s held 0 area 0.0000 sq 5  NOW: strobe by Trey, 2026, Not A.I.
+4.9s held 1 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.1s held 3 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.2s held 5 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.4s held 5 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.6s held 6 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.7s held 6 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+5.9s held 8 area 0.0000 sq 6  NOW: strobe by Trey, 2026, Not A.I.
+held 9 area 0.0000 squares 6
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 9.8 s; git status after: clean]
+
+$ python -m tools.show_shot --session presses --every-ms 1000 --look both --out it15-presses
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+1.0s held 0 area 0.0000 sq 0  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+2.1s held 0 area 0.0000 sq 1  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+3.0s held 0 area 0.0003 sq 2  NOW: hello by Trey, 2026, Not A.I. | QUEUED #1
+3.1s held 0 area 0.0019 sq 2  NOW: hello by Trey, 2026, Not A.I. | QUEUED #1
+3.5s held 0 area 0.0209 sq 3  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+4.2s held 0 area 0.0162 sq 3  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+5.2s held 0 area 0.0000 sq 3  NOW: hello by Trey, 2026, Not A.I. | PLAYING
+6.3s held 0 area 0.0000 sq 4  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+7.3s held 0 area 0.0000 sq 2  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+8.3s held 0 area 0.0000 sq 4  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+9.4s held 0 area 0.0000 sq 4  NOW: hello by Trey, 2026, Not A.I. | NEXT: hello-2 (1 queued)
+10.4s held 0 area 0.0000 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+11.4s held 0 area 0.0000 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+12.5s held 0 area 0.0045 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+13.5s held 0 area 0.0123 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+14.5s held 0 area 0.0188 sq 3  NOW: hello-2 by Trey, 2026, Not A.I.
+15.6s held 0 area 0.0000 sq 3  NOW: hello-2 by Trey, 2026, Not A.I.
+16.6s held 0 area 0.0000 sq 4  NOW: hello-2 by Trey, 2026, Not A.I.
+17.7s held 0 area 0.0000 sq 3  NOW: hello-2 by Trey, 2026, Not A.I.
+18.7s held 0 area 0.0000 sq 4  NOW: hello-2 by Trey, 2026, Not A.I.
+19.7s held 0 area 0.0000 sq 4  NOW: hello-2 by Trey, 2026, Not A.I.
+20.8s held 0 area 0.0000 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+21.8s held 0 area 0.0000 sq 2  NOW: hello-2 by Trey, 2026, Not A.I.
+22.9s held 0 area 0.0000 sq 0  NOW: hello-2 by Trey, 2026, Not A.I.
+23.9s held 0 area 0.0000 sq 0  NOW: hello-2 by Trey, 2026, Not A.I.
+24.9s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+26.0s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+27.0s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+28.1s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+29.1s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+30.1s held 0 area 0.0000 sq 0  PRESS A BUTTON ON ANY PORTRAIT
+31.2s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+32.2s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+33.2s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+34.3s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+35.3s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+36.4s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+37.4s held 0 area 0.0000 sq 1  PRESS A BUTTON ON ANY PORTRAIT
+38.4s held 0 area 0.0000 sq 2  PRESS A BUTTON ON ANY PORTRAIT
+39.5s held 0 area 0.0000 sq 2  PRESS A BUTTON ON ANY PORTRAIT
+held 0 area 0.0209 squares 4
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 47.0 s; git status after: clean]
+
+$ python -m tools.show_shot --config show.poc.toml --session presses --every-ms 1000 --look both --out it15-presses-poc
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.1s held 0 area 0.0000 sq 1  PLAYING
+3.0s held 0 area 0.0016 sq 1  QUEUED #1
+3.1s held 0 area 0.0154 sq 1  QUEUED #1
+3.6s held 8 area 0.0149 sq 1  PLAYING
+4.1s held 13 area 0.0083 sq 1  PLAYING
+5.2s held 13 area 0.0000 sq 1  PLAYING
+6.2s held 13 area 0.0000 sq 3  Not A.I.
+7.3s held 13 area 0.0000 sq 3  Trey, 2026
+8.3s held 13 area 0.0000 sq 2  Trey, 2026
+9.3s held 13 area 0.0000 sq 2  Trey, 2026
+10.4s held 13 area 0.0000 sq 2  Trey, 2026
+11.4s held 13 area 0.0000 sq 3  Trey, 2026
+12.5s held 13 area 0.0112 sq 1  Trey, 2026
+13.5s held 14 area 0.0536 sq 1  Not A.I.
+14.5s held 22 area 0.0454 sq 2  Not A.I.
+15.6s held 22 area 0.0002 sq 1  Not A.I.
+16.6s held 22 area 0.0000 sq 3  Trey, 2026
+17.7s held 22 area 0.0000 sq 3  Trey, 2026
+18.7s held 22 area 0.0000 sq 2  Trey, 2026
+19.7s held 22 area 0.0000 sq 3  Not A.I.
+20.7s held 22 area 0.0000 sq 2  Not A.I.
+21.7s held 22 area 0.0000 sq 1  Not A.I.
+22.8s held 22 area 0.0000 sq 1  Trey, 2026
+23.8s held 22 area 0.0000 sq 1  PRESS A BUTTON
+24.8s held 22 area 0.0000 sq 0  PRESS A BUTTON
+25.9s held 22 area 0.0000 sq 1  PRESS A BUTTON
+26.9s held 22 area 0.0000 sq 1  ON ANY PORTRAIT
+27.9s held 22 area 0.0000 sq 1  ON ANY PORTRAIT
+29.0s held 22 area 0.0000 sq 1  ON ANY PORTRAIT
+30.0s held 22 area 0.0000 sq 1  PRESS A BUTTON
+31.0s held 22 area 0.0000 sq 1  PRESS A BUTTON
+32.1s held 22 area 0.0000 sq 1  PRESS A BUTTON
+33.1s held 22 area 0.0000 sq 1  ON ANY PORTRAIT
+34.1s held 22 area 0.0000 sq 1  ON ANY PORTRAIT
+35.2s held 22 area 0.0000 sq 1  ON ANY PORTRAIT
+36.2s held 22 area 0.0000 sq 1  PRESS A BUTTON
+37.2s held 22 area 0.0000 sq 1  PRESS A BUTTON
+38.2s held 22 area 0.0000 sq 1  PRESS A BUTTON
+39.2s held 22 area 0.0000 sq 1  ON ANY PORTRAIT
+held 22 area 0.0536 squares 3
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 40.9 s; git status after: clean]
+

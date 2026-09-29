@@ -1028,6 +1028,32 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
     ends the game; the rest of the sheet is the lobby's invite. The wall is sparse (lit 0.033) but reads.
   - `python -m arcade doctor` in the detached checkout: exit 1, camera ok, mic ok, pose UNAVAILABLE because
     `models/` is not in git and so not in that checkout. Not a finding; it is run again from the main checkout.
+- Verdict on the arcade's sheets at the head with both review fixes (written before any other tool call after
+  the reading; the evidence was made 11:08 to 11:09 CDT). The sheets are stamped 77c11d4 clean, made from a
+  detached checkout of 77c11d4; `git status` there was clean after every command. Games: Quick Draw and Pong
+  (Dodge was not on main then; see Tests and Q77). Read with the Read tool: `arcade.txt`, `games.md`,
+  `feel.json`, `it15-quickdraw.png`, `it15-quickdraw-raw-vs-pushed.png`, `quickdraw-128x64-led.png`,
+  `quickdraw-128x64-distance.png`. PASS.
+  - The feel table: every metric of both games is in its band, `failures` is empty for each, no band is
+    overridden but Pong's `dim_fraction` (it09's, with its reason). Quick Draw's row is the row of the early
+    read and of the orchestrator's reports after each fix: response_px 72.0, fidelity 0.9891, range 0.6349, lit
+    0.0794, dim 0.0119, liveliness 0.0122, flash area 0.0, square flashes 2.0, score visible 0.9784, win 1.0,
+    0.45, 0.0, round 20.98 s. Pong's row equals it09's in every number again.
+  - Quick Draw's pictures are the early read's, with one change: point 2 is closed. In `result` the reaction
+    time stands alone under `DRAW!` (0.36, 0.75, 0.55, 0.39, 0.65, 0.61 on the sheet; ticks 871 to 874 of the
+    raw-vs-pushed sheet read `DRAW!` and `0.55` with no hint under or over them). While the signal is up and
+    nobody has drawn, the hint `HAND UP ON DRAW!` still stands under `DRAW!` (ticks 860 to 870): that is the
+    play phase and it reads well.
+  - Point 1 stands as it was: the raw frame is the whole wall white for ticks 855 to 859, the pushed frame is
+    mid grey for those ticks, and the pushed picture is dimmer than the raw one to the sheet's end (tick 874).
+    Held 0 of 1800, flash area 0.000 raw and pushed, concurrent area 0.001, square flashes 4 of 6. Q76.
+  - The rest as before: the lobby's title, mirror figure and pictogram; `TOO SOON` in red with the point to the
+    other side; `HANDS DOWN` in `ready` while the hand is still up; the card `DRAW! 0`, `HAND UP = AGAIN`. The
+    canonical actor wins no round (0:3, 0:3, 0:2 at the end), so no sheet shows a won round or a best; the
+    tests and the review's probes are the evidence for those. At 10 m the scores, WAIT, DRAW!, TOO SOON and
+    the hint read; the reaction time is small and reads.
+  - `python -m arcade doctor` from the main checkout: exit 0; camera ok (device 0, 1920x1080), mic ok, pose ok
+    (mediapipe 1.0.0, the landmarker ran in 18 ms).
 - Verdict on the show's sheets (written before any other tool call after the reading; the sheets were made 10:34
   to 10:36 CDT). They are stamped 01bfd95 clean, made from a detached checkout of 01bfd95 (T-close merged);
   `git status` there was clean after every command. Read with the Read tool: `it15-strobe.png`,
@@ -1063,3 +1089,176 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 
   Governed is two over the steps (the two black frames of the close), as in it14: without a hold the close sends
   what it sent before. it14's soaks read held 0 and 7, area 0.0119 and 0.0568, squares 4 and 3.
+- Plan: two plans, one a lane, written at the same time by two writers (a loop decision: the lanes share no
+  file). Lane A, the arcade: docs/superpowers/plans/2026-09-29-it15-arcade-pose-games.md (f24cd3d), 299 lines,
+  thin, not a safety slice; written in 11 minutes (08:22 to 08:33); no plan review. Lane B, the show's close, a
+  SAFETY task: docs/superpowers/plans/2026-09-29-it15-close-in-a-hold.md (14d2f07), 297 lines; written in 23
+  minutes (08:22 to 08:45), reviewed in 42 (08:46 to 09:28), fixed in 2, confirmed in 3 (09:30 to 09:33). Lane
+  A's plan phase kept the rule's 30 minutes; lane B's took 71.
+  - The plan review (evidence/it15/plan-review.md) BLOCKED on two findings, both fixed in the plan before any
+    code and confirmed in round 2 (plan-review-round2.md, no new finding). B1: a close that does not make the
+    governor again before the black passed all 10 exact tests and leaves the wall LIT on a 5 Hz strobe at the
+    budget. B2: a wait that reads the wall's clock in a loop passed all 10 and hangs the real stop (the loop's
+    clock does not move in a sleep) until systemd kills the service at 90 s. Each got one exact test; the plan
+    has 12. The reviewer swept the planned close: 162,640 closes, worst 6 square transitions, area 0.000, no
+    close that ends lit or leaves the display open; today's close in the same sweep reads 8 (C53 reproduced).
+  - The budget test was changed in the fix to measure the whole run from dark (the reviewer's cold-tracker
+    note) and to close only at the ticks where the sends differ; round 2 judged it at least as strong.
+  - The owner's questions from the plan phase: Q68, Q69 (the close), Q70 to Q75 (the arcade); all defaulted.
+- Shipped: both lanes; f24cd3d..c99d463 without `docs/`: 21 files, 1788 insertions, 59 deletions.
+  `arcade/flash.py`, `arcade/brightness.py` and `show/display/colorlight.py` are unchanged since 0dae849;
+  `arcade/runner.py`, `tools/` and `deploy/` are unchanged since f24cd3d.
+  - I0 (bef4c17): the oracle judges every game. `PLAYS`, `play_key` and `played` moved to
+    `tests/arcade/helpers.py`; `test_oracle.py` gains a feel test and a bot-rank test for every game but Pong.
+  - E1 (380f11d), C47 and C46: `Body.measured` and `Body.torso_per_width`. The tracker learns the torso per
+    shoulder width; `Depth` takes a new centre on the first measured capture, once a `reset()` (Q75), so hips
+    that arrive late move no paddle. Eleven plan tests, each seen failing first. Pong's feel row is equal to
+    it09's in every number.
+  - E2 (21813e7), C45: duplicate poses of one person are merged (`DUP_DISTANCE = 0.04`, `merge_duplicates`).
+    The hand point (the mean of wrist, pinky and index) was CUT: it changes two asserts the plan does not name.
+  - G1 (23f0156, merged 5fdb93d): Quick Draw, M7a's first game. The first hand up on DRAW wins a round; a hand
+    up early reads TOO SOON; solo against a CPU in seat b, or two players. 34 tests. No budget override.
+  - The review's fix B1 (c99d463): seat a is never the CPU's; an empty seat a draws and wins nothing; the hint
+    is not drawn in `result` (the flaw of the early read's point 2). Three tests, each seen failing first.
+  - I1 (8ddba28): one line in the game guide on `Body.measured` and `Depth`'s first measure.
+  - G2 (c49d902), Dodge: built whole (43 tests, the feel in band), merged (83fe13a), then taken off main by a
+    revert (16dbb91) under the plan's cut order, step 1: the suite with it read 334.84 s against 330 s. It is
+    whole on its branch; see Tests and Q77 for its return.
+  - T-close (378191d, merged 01bfd95), C53: `GovernedDisplay` takes `sleep=`. A close in a hold reads the clock
+    once, waits out the hold's quiet second, sends the counted frame once if no counted send went since the
+    failure (a failure there is logged), waits `HOLD_S`, makes the governor again, then sends the two governed
+    black frames; the display is closed whatever raised. The loop passes its own sleep, late bound, and sets
+    its clock before the close. `tests/test_wall_close_hold.py`, 16 tests in 2.53 s: the plan's 12 exact ones
+    (equal to the plan by an AST compare, test by test) and four from the plan's prose.
+  - The one replaced test: `tests/test_wall_hold.py`'s
+    `test_close_during_the_hold_sends_the_counted_frame_then_black`, which the plan names, became the exact
+    `test_close_in_the_hold_waits_then_the_counted_frame_waits_then_black`. Its five asserts are the only
+    removed lines holding `assert` under `tests/` in the whole range; the plan review judged the replacement
+    stronger. Lane A removed no assert. `tests/test_wall_close.py` gains one line (`loop.sleep = lambda s:
+    None`) and loses none.
+- Review, lane B (the close, a safety task): APPROVED after 1 round, no blocking finding
+  (evidence/it15/reviewer-close.md, 15 files in review-close-probes/; 24 minutes, 10:34 to 10:58).
+  - The budget holds on the real wall: 178,236 closes, worst 6 square transitions, area 0.000 but for the `#`
+    band's 0.063 to 0.094, which reads the same with no tear. No close in a hold ends lit; none leaves the
+    display open. The cases the plan review left out were swept and read 6: splits 8, 20 and 56 at calls 1 to
+    14, a second tear 4 to 30 calls after the first, and the close's own counted send tearing. The same sweep
+    on the wall before the fix reads 8 (C53 reproduced).
+  - The wait ends: with the real sleep and clock a close at the tear takes 2.003 s, 0.6 s after it 1.398 s,
+    after the first counted send 0.784 s; the real `run()` stopped by SIGTERM in a hold ends 1.770 s after
+    the signal, exit 0, the wall black. At most 2 s plus the sends; no path waits forever.
+  - A failed counted send in the close is logged and black still goes. A failed black raises, is logged, and
+    the display is closed; the wall is left at the counted frame. Ctrl-C in the wait closes the display and
+    sends nothing; the wall stays as the tear left it (as the plan says).
+  - Not holding, or with no clock (`tools/wall_pattern.py`): the close is unchanged and never sleeps.
+  - `_send(` has two call sites and nothing else in `show/` pushes to a display.
+  - The exact tests equal the plan's node for node (20 nodes, 12 collected).
+- Review, lane A (the arcade): APPROVED after 3 rounds. BLOCKED in round 1 on B1, fixed (c99d463); in round 2
+  B1 LIFTED and BLOCKED on a new finding N1, fixed (77c11d4); in round 3 N1 LIFTED, no new finding
+  (evidence/it15/reviewer-arcade.md, reviewer-arcade-round2.md, reviewer-arcade-round3.md, 32 files in
+  review-arcade-probes/; 11 minutes, 10:18 to 10:29; 5 minutes, 10:52 to 10:56; 3 minutes, 11:07 to 11:09).
+  - C47, C46 and C45 pass the reviewer's probes: hips that arrive late move the paddle 0.000 px; hips that
+    flicker give no new centre; two people shoulder to shoulder at 2 m and 3 m stay two; a child in front of
+    an adult stays unmerged. Pong's numbers are equal. The frozen protocol is untouched; nothing half built
+    is left of the cut hand point.
+  - The DRAW flash (a safety point, measured through the real runner): it goes through `fx.flash`, the pushed
+    level is 0.502 for 5 ticks, the governor holds 0 ticks, square transitions 4 of 6, flash area 0.0001; at
+    most one full-field flash in any 4.5 s (4.77 s the shortest measured). Inside the rules; Q76 puts it to
+    the owner.
+  - B1 (round 1): a solo player who leaves in `result` had seat a given to the CPU, and the CPU's round was
+    banked as the player's: best 3.0 on 2 seeds of 5 through the real runner. Fixed under five rulings of
+    the operator (seat a is never the CPU's). Round 2: 10 of 10 seeds and a leave in every phase bank
+    nothing unearned; the three new tests fail on the old file and pass on the new.
+  - N1 (round 2, new; at 01bfd95 too): a body with another id that takes the empty seat a inherits player 1's
+    rounds and the game banks a best of 3 where the newcomer won 1: 3 seeds of 3. The tracker gives a player
+    who is back after the grace a new id too, so the game cannot tell the two apart. The operator's ruling
+    (Q78): a match in which more than one id sat in seat a banks no best.
+  - Round 3, on 77c11d4: the stranger's three seeds bank nothing (best None, no new best) and the rounds stay
+    with the seat; a new id inside the grace banks nothing either; a player alone still banks (a leave in
+    `over` after 3 wins; back inside the grace). The new test fails on the old file and passes on the new; no
+    assert was removed or changed. The duel, the launch with nobody in view and the flash spacing are as in
+    round 2. The reviewer's probes bring the player back with the SAME id 1, and that still banks (the
+    orchestrator's smallest reading of the ruling: "an id other than the first"); the ruling's price shows
+    only when the tracker gives a new id, as the real one does after its drop time.
+- Deploy: none (never deployed by the loop; nothing under `deploy/` installed or run).
+- Verify: 7 of 7 of the checklist (item 5 dropped, as before), for both lanes. 1 freshness: the show's sheets
+  and soaks are stamped 01bfd95 (nothing under `show/` or `tests/test_wall*` changed after it), the arcade's
+  77c11d4, the final code head; each from a clean detached checkout, `git status` there clean after every
+  command. 2 the suite is green at 77c11d4. 3 skips stay at 1 (`tests/test_sandbox.py:153`). 4 collected rose
+  from 1231 to 1313 (lane A without Dodge 62, lane B 15 net of the one replaced test, B1's fix 3, N1's 2).
+  6 evidence/it15/, the decision on the README's line 1. 7 the three verdicts above; the doctor exits 0 from
+  the main checkout.
+- Tests: 1313 collected, 1312 passed, 1 skipped, 301.32 s at 77c11d4 in the main checkout (11:17 to 11:22;
+  limit 330 s; `pytest-idle.txt`). The machine was not quiet: load 4.5 at the start and 11.6 at the end, from
+  the desktop's own processes (no agent ran). The orchestrator's run on the same tree read 281.71 s at a load
+  of about 2. The limit is not raised.
+  - With Dodge (Q77; a scratch worktree, 77c11d4 plus the revert of 16dbb91, there only): 1364 passed, 2
+    skipped (the second is the pose model, which a scratch checkout does not have), 335.87 s, 11:11 to 11:16,
+    load 1.7 at the start and 6.1 at the end (`pytest-idle-with-dodge.txt`). The three runs with Dodge read
+    321.11, 334.84 and 335.87 s: the suite with Dodge stands at its limit, so Dodge stays off main, whole on
+    c49d902. It costs about 45 s, 26 s of it the oracle's 20-seed feel report.
+  - The new close tests take 2.53 s of the 5 s allowed; Quick Draw's file 15.77 s for 39 tests.
+- Minutes: about 200, from 08:18 to 11:22 CDT plus the report: orient 4; plan 71 (lane A's plan 11; lane B's
+  plan 23, its review 42, the fix and the confirmation 5; lane A's build ran beside lane B's plan review);
+  implement 121 (08:36 to 10:37: lane A 98, of it serial 43, parallel 24, integration 21; lane B 21 from
+  10:16, after 44 minutes unstarted); review 51 (10:18 to 11:09: lane A's rounds 11, 5 and 3 with the fixes
+  12 and 8 between them; lane B's review 24 beside them), verify beside it; the timed runs 11; the report
+  about 15. Over the target of 90: two lanes in one iteration, lane B's plan review, the message that was
+  not read, and the third review round.
+- Loop decisions and deviations:
+  - Two plans, two plan writers and two reviewers, one a lane (the rules name one of each): the lanes share no
+    file, and one agent for both would not have held the time. Lane A's review started before lane B was
+    built.
+  - Lane B sat unstarted for 44 minutes (09:32 to 10:16). The operator sent the confirmed plan to the running
+    orchestrator by message; a message to a running agent is read only when its turn ends, not between its
+    tool calls. The operator did not spawn T-close itself (two spawners on one checkout risk double work).
+    Nothing was lost but time: the lanes share no file. The lesson: a second lane is in the orchestrator's
+    brief from the start, or it has its own orchestrator.
+  - Three review rounds in lane A where the rule says two. It was not a deadlock: round 2 lifted B1 and found
+    N1, a new finding older than the fix. N1 is a reproduced wrong result on main in the run's last iteration
+    and its fix was 12 lines, so it was fixed at once and not carried (Q78 holds the ruling).
+  - The hint drawn over the reaction time (the early read's point 2) was fixed inside B1's task and needs no
+    carried fix.
+  - Dodge was cut by the orchestrator under the plan's cut order on one suite run made under load; the
+    operator judged the cut again on the idle machine (Q77; see Tests).
+  - The hand point was cut by the implementer before any code: it changes two asserts the plan does not name
+    (`tests/arcade/test_pose_mediapipe.py`'s `test_landmark_mapping`, wrist x 0.15 to 0.17, and the fixture
+    of `test_raised_right_hand_gives_right_wrist_x_over_half`). It waits for the owner's word or a plan that
+    names both.
+  - The operator's first evidence run (10:09 to 10:12) ran beside the orchestrator's suite run; that run
+    still read 293.57 s, under the limit, and nothing was cut on it.
+  - The orchestrator amended the messages of two commits on main that were not pushed (558e1fb became
+    380f11d, 71d326e became 16dbb91; the same trees), for the trailer and the revert's reason. The operator
+    told it at 10:31 not to amend a commit on main again.
+  - Slips against the no-`cd` rule, none with an effect: the close's plan writer, E1's implementer (two
+    read-only commands), the close's reviewer (a no-op `cd /tmp`), N1's implementer (the feel report's
+    command). One state note of the operator held backticks inside a double-quoted shell argument; the shell
+    tried to run a path and refused; the state helper now reads its text from stdin.
+  - Twice the operator wrote a time from memory (10:16 for 10:14, 10:20 for 10:18) and three times a check's
+    minute one ahead of the clock; each was corrected to the clock's value.
+  - The full wall's 10 m pages are not committed, as in it13 and it14; show-shot.txt's commands make them
+    again.
+- Carried forward:
+  - Nothing new is carried. C52, the arcade's half, still waits on Q67 (the runner's governor is not primed;
+    one assert would change).
+  - Closed: C45, C46, C47, C53 (roadmap.md, "Closed").
+  - For the next run's first plan, not a fix: the suite's time before M7a's next game, then Dodge's return by
+    a revert of 16dbb91 (roadmap.md, the note "it15 (every plan; before M7a's next game)").
+- Noted, not carried (roadmap.md, "it15"): the learned torso ratio has no upper bound (a side-on first capture
+  teaches 13.54 where the truth is 2.03); without hips a hanging hand can hold the `Cursor` and the player
+  loses 0-3 (a synthetic probe; whether real captures do it needs the owner's recordings); a wrist dropout
+  longer than the grace arms the bar; `_to_ready_void` skips `_assign`; a stranger who finishes a match in
+  seat a is celebrated with the seat's score (nothing is banked); in a duel with player 1 gone one round can
+  go to seat a; an empty seat a is drawn until the leave rule ends the session; the `duel` scenario never
+  reaches DRAW; `_flashed` and `_winner` are unused; `CPU_DRAW` (0.25, 0.80) is worth a human's check; after
+  each DRAW the limiter shows the wall at 51 to 71 percent light for the first 0.67 s; an unheld close after
+  a hold's end can end lit on a strobe (it13's behaviour, at most 6); a first black that fails leaves the
+  wall at the counted frame; three tests fail under heavy load and pass alone
+  (`tests/arcade/test_headless.py`'s two tick-budget tests, `tests/test_show_shot.py`'s
+  `test_strobe_session_is_held`).
+- Owner questions: Q68, Q69 (the close's time and form), Q70 to Q75 (Dodge's form, Quick Draw's WAIT and score,
+  the full model, the raise line, `Depth`'s first measure), Q76 (Quick Draw's full-wall flash), Q77 (Dodge's
+  return), Q78 (no best when another body sat in seat a); all defaulted.
+- The run: iteration 15 is the sixth of the run that Q49 started (iterations 10 to 15; config.md
+  `iterations-per-run: 6`). The loop stops here for the iteration cap and writes gate.md with the list for the
+  owner.
+- Status: done

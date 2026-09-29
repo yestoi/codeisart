@@ -1,0 +1,73 @@
+using /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-review-arcade/quickdraw_01bfd95.py
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+___ test_a_solo_player_who_leaves_in_result_banks_no_round_they_did_not_play ___
+
+font5x7 = <show.font.Font object at 0x1018cdbb0>
+
+    def test_a_solo_player_who_leaves_in_result_banks_no_round_they_did_not_play(font5x7):
+        """it15 review B1: a solo player wins 2 rounds and walks away during `result`. Seat a is player 1's and never
+        the CPU's: empty, it draws nothing and wins nothing, so player 1's rounds stay 2 until the runner's leave rule
+        ends the session, and the score and best recorded are never over 2."""
+        out = {}
+        for s in seeds(Quickdraw, "128x64", 5):
+            states, at, runner = _leaves_in_result_after_two_rounds(s, font5x7)
+            gone_at = [at]
+            after = states[at:]
+            result, best = runner.lobby.results[-1], runner.game.scores.best()
+            out[s] = (result.score, best, after[-1]["left"], after[-1]["right"])
+            assert states[gone_at[0] - 1]["left"] == 2, (s, states[gone_at[0] - 1])
+>           assert max(st["left"] for st in after) == 2, (s, out[s])                   # no round for an empty seat
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: (1057892440, (3.0, 3.0, 3, 0))
+E           assert 3 == 2
+E            +  where 3 = max(<generator object test_a_solo_player_who_leaves_in_result_banks_no_round_they_did_not_play.<locals>.<genexpr> at 0x1018d9560>)
+
+tests/arcade/test_quickdraw.py:387: AssertionError
+____ test_a_player_back_after_the_grace_gets_seat_a_with_their_rounds_only _____
+
+    def test_a_player_back_after_the_grace_gets_seat_a_with_their_rounds_only():
+        """Player 1 wins round 1 by a draw, walks out during its result and comes back, a new body, 5 s later. While
+        seat a is empty the CPU there would draw first (each round pinned so seat a's CPU, were there one, beats seat
+        b's), yet seat a wins nothing; back, the player sits in seat a with the 1 round they won, nothing more."""
+        game = make()
+        frames = scene(persons=[hand(Person(0.3, id=1), at=3.13).leave(4.0), Person(0.3, id=3).arrive(9.0)],
+                       ticks=900)
+        advance(game, frames, "play")
+        pinned(game, wait=2.0, cpu=0.4)
+        advance(game, frames, "result")
+        assert game.debug_state()["left"] == 1 and game.seats[0].ctrl == 1, game.debug_state()
+        playing = False
+        for _ in drive(game, frames, until=lambda g: g.seats[0].ctrl == 3):
+            if game.phase == "play" and not playing:
+                game._wait, game._cpu = 2.0, [0.3, 0.6]
+            playing = game.phase == "play"
+>           assert game.debug_state()["left"] == 1, (round(game.t, 2), game.debug_state())
+E           AssertionError: (8.1, {'phase': 'result', 'signal': None, 'round': 2, 'score': 2, ...})
+E           assert 2 == 1
+
+tests/arcade/test_quickdraw.py:412: AssertionError
+______________ test_the_hint_is_not_drawn_over_the_reaction_time _______________
+
+    def test_the_hint_is_not_drawn_over_the_reaction_time():
+        """In `result` the hint line is not drawn, so the time under DRAW! has its rows to itself: an idle hand, the
+        hint up, loses the first round to the CPU's draw, and the rows of the time hold only its white text."""
+        game = make()
+        advance(game, idle_body(), "result")
+        state = game.debug_state()
+        assert state["react"] is not None and game._hint_level > 0.0, (state, game._hint_level)
+        canvas = Canvas(*WALL, feel_font())
+        game.draw(canvas)
+        top = round(LINE_Y + 9)
+        rows = canvas.frame[top:top + GLYPH_H]
+        lit = rows.any(axis=2)
+>       assert (rows[lit] == DRAW_COLOR).all(), sorted({tuple(int(c) for c in px) for px in rows[lit]})
+E       AssertionError: [(227, 107, 0), (255, 255, 255)]
+E       assert np.False_
+E        +  where np.False_ = <built-in method all of numpy.ndarray object at 0x1018e3f30>()
+E        +    where <built-in method all of numpy.ndarray object at 0x1018e3f30> = array([[255, ..., dtype=uint8) == (255, 255, 255)
+E             
+E             Use -v to get more diff.all
+
+tests/arcade/test_quickdraw.py:430: AssertionError
+3 failed, 34 deselected in 0.47s

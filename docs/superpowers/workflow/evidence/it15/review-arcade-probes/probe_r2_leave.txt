@@ -1,0 +1,48 @@
+== leave in result, never back, 10 seeds
+  1057892440: gone 11.37 back None end 19.33 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 4.77
+  1208555726: gone 9.47 back None end 17.43 final ready 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 4.9
+  3506456948: gone 13.5 back None end 21.47 final result 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 7.27
+  2785507810: gone 12.73 back None end 20.7 final result 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 6.43
+  946072641: gone 9.73 back None end 17.7 final result 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 5.73
+  1332010199: gone 11.27 back None end 19.23 final result 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 5.77
+  3597503853: gone 9.77 back None end 17.73 final result 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 6.13
+  2708127227: gone 13.13 back None end 21.1 final result 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 6.37
+  836083818: gone 11.87 back None end 19.83 final result 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 6.67
+  1188204796: gone 13.77 back None end 21.73 final ready 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 5.67
+== leave in ready (after 2 rounds), never back, 5 seeds
+  1057892440: gone 12.87 back None end 20.83 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 4.77
+  1208555726: gone 10.97 back None end 18.93 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 4.9
+  3506456948: gone 15.0 back None end 22.97 final ready 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 7.27
+  2785507810: gone 14.23 back None end 22.2 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 6.43
+  946072641: gone 11.23 back None end 19.2 final ready 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 5.73
+== leave in wait (after 2 rounds), never back, 5 seeds
+  1057892440: gone 13.87 back None end 21.83 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 4 min-gap 4.77
+  1208555726: gone 11.97 back None end 19.93 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 4.9
+  3506456948: gone 16.0 back None end 23.97 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 7.27
+  2785507810: gone 15.23 back None end 23.2 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 6.43
+  946072641: gone 12.23 back None end 20.2 final play 2-1 humans 0 cpu right best None a-rose-while-gone False flashes 3 min-gap 5.73
+== leave in signal (after 2 rounds), never back, 5 seeds
+  1057892440: gone 15.9 back None end 23.87 final ready 2-2 humans 0 cpu right best None a-rose-while-gone False flashes 4 min-gap 4.77
+  1208555726: gone 14.93 back None end 22.9 final result 2-2 humans 0 cpu right best None a-rose-while-gone False flashes 4 min-gap 4.9
+  3506456948: gone 20.93 back None end 28.9 final result 2-2 humans 0 cpu right best None a-rose-while-gone False flashes 4 min-gap 6.43
+  2785507810: gone 18.93 back None end 26.9 final result 2-2 humans 0 cpu right best None a-rose-while-gone False flashes 4 min-gap 6.43
+  946072641: gone 16.8 back None end 24.77 final ready 2-2 humans 0 cpu right best None a-rose-while-gone False flashes 4 min-gap 5.33
+== leave in over (player won 3): never back
+  1057892440: gone 17.63 back None end 20.1 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 4.77
+  1208555726: gone 16.67 back None end 19.13 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 4.9
+  3506456948: gone 22.67 back None end 25.13 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 7.27
+== leave in result after 1 round, back after 0.15 s (inside the grace) and after 3 s
+  1057892440 back 0.15: gone 6.03 back 6.2 end 20.1 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 4.77
+  1057892440 back 3.0 : gone 6.03 back 9.03 end 25.67 final over 3-1 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 4 min-gap 5.13
+  1208555726 back 0.15: gone 4.57 back 4.73 end 19.13 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 4.9
+  1208555726 back 3.0 : gone 4.57 back 7.57 end 25.17 final over 3-1 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 4 min-gap 4.9
+  3506456948 back 0.15: gone 6.23 back 6.4 end 25.13 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 7.27
+  3506456948 back 3.0 : gone 6.23 back 9.27 end 31.4 final over 3-1 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 4 min-gap 6.17
+  2785507810 back 0.15: gone 5.17 back 5.33 end 23.13 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 6.43
+  2785507810 back 3.0 : gone 5.17 back 8.2 end 29.5 final over 3-1 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 4 min-gap 6.2
+  946072641 back 0.15: gone 4.0 back 4.17 end 21.0 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 5.73
+  946072641 back 3.0 : gone 4.0 back 7.0 end 26.6 final over 3-1 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 4 min-gap 5.07
+== leave in wait after 1 round, back after 3 s
+  1057892440: gone 8.53 back 11.53 end 20.3 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 4.97
+  1208555726: gone 7.07 back 10.07 end 25.17 final over 3-1 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 4 min-gap 4.9
+  3506456948: gone 8.73 back 11.73 end 25.13 final over 3-0 humans 1 cpu right best 3.0 a-rose-while-gone False flashes 3 min-gap 7.27

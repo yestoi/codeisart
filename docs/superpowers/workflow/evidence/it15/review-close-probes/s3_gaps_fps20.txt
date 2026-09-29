@@ -1,0 +1,14 @@
+real show.wall; fps 20 models both tearsets ['g4', 'g5', 'g6', 'g8', 'g12', 'g20', 'g30'] splits [8, 33] calls 18-22 closetear False
+  rev rows b32 ph1 10Hz    probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 700
+  rev rows b32 ph1 10Hz    card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 750
+  rev rows b32 ph1 5Hz     probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 652
+  rev rows b32 ph1 5Hz     card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 724
+  checks off16 5Hz ph1     probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 652
+  checks off16 5Hz ph1     card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 724
+  full strobe 10Hz         probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 308
+  full strobe 10Hz         card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 330
+  full strobe 5Hz ph1      probe worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 500
+  full strobe 5Hz ph1      card  worst squares 6 area 0.000 held-closes-lit 0 unheld-closes-lit 556
+closes measured 26700 flagged 0 longest sleep 1.95
+cross-checks (k==2, sq same, area same): 577 all agree: True
+secs 185.1

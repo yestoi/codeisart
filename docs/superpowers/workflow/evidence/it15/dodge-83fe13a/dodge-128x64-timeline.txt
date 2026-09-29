@@ -1,0 +1,10 @@
+0.03 lobby/attract
+2.03 lobby/mirror
+3.53 lobby/invite
+4.53 dodge
+4.57 dodge/ready
+10.67 dodge/hit
+11.43 dodge/over
+13.93 lobby
+13.97 lobby/card
+16.97 lobby/invite

@@ -1,0 +1,49 @@
+The operator's checks from state.md's `in_flight:` line that were written after the commit 44a9dd2 (the checks
+from 08:31 to 10:52 are in `git show 44a9dd2:docs/superpowers/workflow/state.md`). Times are CDT, 2026-09-29.
+
+10:54 check: the operator's workflow files and evidence/it15 committed by name (44a9dd2; HEAD before it c99d463).
+ListAgents: it15-reviewer-arcade running (round 2, asked 10:52), it15-reviewer-close running (20 minutes; sweeps
+s3_gaps_fps20.txt written 10:52, s4_closetear_fps20.txt open and empty); no report file from either yet. Load 2.89.
+The idle suite runs and the arcade's evidence wait for both reviewers.
+
+10:57 check: the arcade's round 2 report is in (10:56, evidence/it15/reviewer-arcade-round2.md): B1 LIFTED on
+c99d463 (10 seeds and the leave in every phase; the three new tests fail on 01bfd95 and pass on c99d463; no assert
+removed), BLOCKED on a new finding N1 (a body with another id that takes the empty seat a inherits player 1's rounds
+and banks a best of 3; 3 seeds of 3; at 01bfd95 too). Loop decision: fixed now, not carried (a reproduced wrong
+result on main in the run's last iteration; small); rulings sent to it15-orchestrator 10:57 (the message names
+10:58) (idle, keeps context; report to scratchpad it15-orchestrator-report-n1.md); a third round, the confirmation,
+follows (not a deadlock: B1 is lifted, N1 is new). Q78 written and defaulted. it15-reviewer-close still running, no
+report.
+
+10:58 check: the close's review is in (written 10:57, evidence/it15/reviewer-close.md, probes in
+review-close-probes/): APPROVED, no blocking finding, 1 round, 24 minutes (10:34 to 10:58). 178,236 closes on the
+real wall, worst 6 square transitions, area 0.000 (the hash band as with no tear), no held close ends lit, none
+leaves the display open, longest wait 2.0 s; the cases the plan review left out (splits 8, 20, 56 at calls 1 to 14;
+a second tear 4 to 30 calls later; the close's own counted send tearing) read 6; the exact tests equal the plan node
+for node. it15-reviewer-close done. Waiting on it15-orchestrator's fix of N1 only.
+
+11:04 check: it15-orchestrator running (N1's fix, its implementer 6 minutes in); `arcade/games/quickdraw.py` and
+`tests/arcade/test_quickdraw.py` changed in the main checkout, not committed; the full suite runs (pid 60231); HEAD
+44a9dd2; no report yet. Both reviewers idle (the close's APPROVED, the arcade's waits for round 3). The old scratch
+worktree it15-arcade-checkout is removed. Load 2.74.
+
+11:10 check: it15-orchestrator's report on N1 is in (11:06; evidence/it15/orchestrator-report-n1.md): 77c11d4 on
+main, its suite 1312 passed, 1 skipped, 281.71 s. The arcade's round 3 is in (11:09;
+evidence/it15/reviewer-arcade-round3.md): APPROVED, N1 lifted, no new finding, 3 minutes. Both reviews are closed:
+lane A APPROVED after 3 rounds (B1, then N1), lane B APPROVED after 1. The arcade's evidence was made at 77c11d4
+(Quick Draw and Pong) 11:08 to 11:09 and its verdict is in the journal (PASS); the doctor from the main checkout
+exits 0. No agent runs. Next: the suite with Dodge in the scratch worktree it15-dodge-timing (77c11d4 plus a revert
+of 16dbb91, there only), one run, on the idle machine (Q77); then the suite at the final head.
+
+11:13 check: no agent runs; the suite with Dodge runs in the scratch worktree it15-dodge-timing (9791b7c there:
+77c11d4 plus the revert of 16dbb91; pid 62545, started 11:11; load 1.54); its output goes to scratchpad
+it15-ev/pytest-idle-with-dodge.txt; the harness tells the operator when it ends. HEAD 77c11d4.
+
+11:17 check: the suite with Dodge ended 11:16:43: 1364 passed, 2 skipped (the second skip is the pose model, which
+is not in the scratch checkout), 335.87 s, over 330 s (load 1.7 at the start, 6.1 at the end; the desktop's own
+processes, no agent). With 321.11 and 334.84 before it: Dodge stays cut, whole on c49d902 (Q77's outcome is
+written). The suite at the final head 77c11d4 runs in the main checkout from 11:17 (output to scratchpad
+it15-ev/pytest-idle.txt). Then the report.
+
+11:22: the suite at 77c11d4 ended: 1313 collected, 1312 passed, 1 skipped, 301.32 s (load 4.5 to 11.6 from the
+desktop). 11:26: gate.md written for the iteration cap; state.md set to gated.

@@ -1,0 +1,195 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Lane B review: closes j ticks after a tear against the REAL show.wall.GovernedDisplay.
+One tick = one loop push; the close's sleeps move the tick on (rounded up), as test_wall_close_hold.Ticks.
+Measured on the whole run from dark (warm tracker), in real time, as in_time with k = 2 slots a tick (the close's
+two blacks share a tick; every other tick has at most one call: checked), the close's wait and sends counted.
+The prefix (ticks before the close) is tracked once per run and copied at each close (same numbers as the full
+in_time measure: cross-checked on a sample, see 'check').
+argv: fps models(probe|card|both) tearsets splits calls(a-b) pics(all|i,j) [closetear]
+tearsets: one | c1 c2 new (second tear at n+1, n+2, n+3) | gN (second tear at n+N) | several comma-separated."""
+import copy
+import logging
+import math
+import os
+import random
+import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+logging.disable(logging.CRITICAL)
+import numpy as np  # noqa: E402
+
+import pics  # noqa: E402
+from arcade.flash import (BUDGET, THRESHOLD, WINDOW, _Transitions, _Window, flash_area, signals,  # noqa: E402
+                          square_flashes, square_means)
+from show.wall import GovernedDisplay  # noqa: E402  (the real wall)
+if os.environ.get("OLDWALL"):                          # the sanity check only: the wall at 16dbb91 (today's close)
+    import old_wall  # noqa: E402
+    _Old = old_wall.GovernedDisplay
+
+    def GovernedDisplay(*a, sleep=None, **kw):  # noqa: F811
+        return _Old(*a, **kw)
+from tests.test_wall_hold import DARK, TornDisplay, in_time  # noqa: E402
+
+K = int(os.environ.get("K", "2"))
+fps = int(sys.argv[1])
+models = {"probe": [False], "card": [True], "both": [False, True]}[sys.argv[2]]
+tearsets = sys.argv[3].split(",")
+splits = [int(s) for s in sys.argv[4].split(",")]
+a, b = (int(x) for x in sys.argv[5].split("-"))
+names = list(pics.PICS) if sys.argv[6] == "all" else [list(pics.PICS)[int(i)] for i in sys.argv[6].split(",")]
+closetear = len(sys.argv) > 7 and sys.argv[7] == "closetear"
+
+
+def second(ts):
+    if ts == "one":
+        return None
+    return {"c1": 1, "c2": 2, "new": 3}.get(ts) or int(ts[1:])
+
+
+class Ticks:
+    def __init__(self, inner):
+        self.inner, self.slept = inner, []
+
+    def __call__(self):
+        return self.inner.tick / fps
+
+    def sleep(self, s):
+        self.slept.append(s)
+        self.inner.tick += math.ceil(s * fps - 1e-9)
+
+
+class Track:
+    """The measure of square_flashes and flash_area, one slot at a time (fps * K slots a second)."""
+    def __init__(self):
+        self.px = self.sq = None
+        self.max_sq, self.max_area, self.last = 0, 0.0, None
+        self.n = fps * K
+
+    def feed(self, frame):
+        if frame is self.last and self._repeat_ok:
+            s, m = self._s, self._m
+        else:
+            s = signals(np.asarray(frame), 2.2)
+            m = square_means(s, WINDOW)
+            self._s, self._m, self.last, self._repeat_ok = s, m, frame, True
+        if self.px is None:
+            self.px, self.pw = _Transitions(s, THRESHOLD), _Window(self.n, s.shape[1:])
+            self.sq, self.sw = _Transitions(m, THRESHOLD), _Window(self.n, m.shape[1:])
+            return
+        flip, up = self.px.flips(s)
+        f = flip.any(axis=0)
+        self.max_area = max(self.max_area, float(((self.pw.count - self.pw.ring[self.pw.i] + f) > BUDGET).mean()))
+        self.px.advance(s, flip, up)
+        self.pw.push(f)
+        flip, up = self.sq.flips(m)
+        f = flip.any(axis=0)
+        self.max_sq = max(self.max_sq, int((self.sw.count - self.sw.ring[self.sw.i] + f).max()))
+        self.sq.advance(m, flip, up)
+        self.sw.push(f)
+
+
+def feed_ticks(track, entries, t0, t1, last):
+    """Feed ticks t0..t1 (inclusive) of entries [(tick, frame)] into track, K slots a tick; returns the last frame."""
+    by = {}
+    for tk, f in entries:
+        by.setdefault(tk, []).append(f)
+    for tk in range(t0, t1 + 1):
+        fr = by.get(tk) or [last]
+        if len(fr) > K:
+            raise RuntimeError(f"{len(fr)} calls in tick {tk}")
+        for f in fr + [fr[-1]] * (K - len(fr)):
+            track.feed(f)
+        last = fr[-1]
+    return last
+
+
+worst = {}
+flags = []
+checks = []
+measured = distinct = 0
+longest = 0.0
+random.seed(1)
+t_start = time.time()
+for name in names:
+    pic = pics.PICS[name]
+    for card in models:
+        for ts in tearsets:
+            for split in splits:
+                for n in range(a, b + 1):
+                    g = second(ts)
+                    fails = {n} if g is None else {n, n + g}
+                    inner = TornDisplay(lambda c, fails=fails: c in fails, split=split, card=card)
+                    ticks = Ticks(inner)
+                    wall = GovernedDisplay(inner, 64, 128, fps=fps, from_dark=True, clock=ticks, sleep=ticks.sleep)
+                    T0 = n - 1
+                    # the last tear's call is at tick (last - 1) when no push was dropped before it; a hold drops
+                    # pushes, so run on until the wall has not held for 1 s + 2 ticks after the last tear
+                    track = Track()
+                    for _ in range(K):
+                        track.feed(DARK)
+                    lastf, done_tick, k, last_state, not_held_since = DARK, -1, 0, None, None
+                    hist = []
+                    while True:
+                        inner.tick = k
+                        # the prefix: ticks before k
+                        if k > 0:
+                            ent = [e for e in inner.shown if e[0] == k - 1]
+                            lastf = feed_ticks(track, ent, k - 1, k - 1, lastf)
+                            hist += inner.shown
+                            inner.shown = []
+                        torn_all = inner.calls >= max(fails)
+                        if torn_all and not wall.holding:
+                            not_held_since = k if not_held_since is None else not_held_since
+                        if k > T0:
+                            state = (wall.holding, wall._since, wall._settled, wall.failed, wall.governed,
+                                     inner.calls)
+                            if not (wall.holding and state == last_state):
+                                last_state = state
+                                w, t, tr = copy.deepcopy((wall, ticks, track))
+                                held, settled = w.holding, w._settled
+                                c0 = inner.calls + 1
+                                w.display.tears = ((lambda c, c0=c0: c == c0) if closetear and held and settled == 0
+                                                   else (lambda c: False))
+                                raised = None
+                                try:
+                                    w.close()
+                                except BaseException as e:  # noqa: B036
+                                    raised = type(e).__name__
+                                ent = w.display.shown
+                                if ent:
+                                    feed_ticks(tr, ent, k, max(e[0] for e in ent), lastf)
+                                d = w.display
+                                lit = bool(d.screen.any() or d.rows.any())
+                                slept = sum(t.slept)
+                                longest = max(longest, slept)
+                                measured += 1
+                                if random.random() < float(os.environ.get('CHECK', '0.02')):
+                                    seq, m = in_time(hist + list(ent), fps)
+                                    checks.append((m == fps * K, square_flashes(seq, fps=m) == tr.max_sq,
+                                                   flash_area(seq, fps=m) == tr.max_area))
+                                wk = (name, "card" if card else "probe")
+                                o = worst.get(wk, (0, 0.0, 0, 0))
+                                worst[wk] = (max(o[0], tr.max_sq), max(o[1], tr.max_area),
+                                             o[2] + (lit and held), o[3] + (lit and not held))
+                                if (tr.max_sq > BUDGET or (tr.max_area > 0 and name != "hash band") or
+                                        (lit and held) or not d.closed or slept > 2 + 1e-9 or raised):
+                                    flags.append((name, wk[1], ts, split, n, k - T0, tr.max_sq,
+                                                  round(tr.max_area, 3), lit, held, d.closed, round(slept, 3),
+                                                  raised))
+                        if not_held_since is not None and k >= not_held_since + fps + 2:
+                            break
+                        try:
+                            wall.push(pic(k, fps))
+                        except OSError:
+                            pass
+                        k += 1
+print(f"{'OLD 16dbb91 wall' if os.environ.get('OLDWALL') else 'real show.wall'}; fps {fps} models {sys.argv[2]} tearsets {tearsets} splits {splits} calls {a}-{b} "
+      f"closetear {closetear}")
+for wk, v in worst.items():
+    print(f"  {wk[0]:24s} {wk[1]:5s} worst squares {v[0]} area {v[1]:.3f} held-closes-lit {v[2]} "
+          f"unheld-closes-lit {v[3]}")
+print("closes measured", measured, "flagged", len(flags), "longest sleep", round(longest, 3))
+for f in flags[:20]:
+    print("  FLAG", f)
+print("cross-checks (k==2, sq same, area same):", len(checks), "all agree:", all(all(c) for c in checks))
+print("secs", round(time.time() - t_start, 1))

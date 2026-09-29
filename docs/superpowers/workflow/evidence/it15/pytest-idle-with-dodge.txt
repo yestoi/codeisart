@@ -1,0 +1,57 @@
+checkout /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-dodge-timing
+HEAD 9791b7c
+start 11:11:07, load before: 11:11  up 73 days, 19:01, 6 users, load averages: 1.69 2.31 2.48
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 21%]
+........................................................................ [ 26%]
+..............................
+strobe 128x32: tick mean 0.379 ms, p95 0.439 ms, governor 0.203 ms (54% of the tick), held 200 ticks
+.
+strobe 64x64: tick mean 0.395 ms, p95 0.440 ms, governor 0.213 ms (54% of the tick), held 200 ticks
+.
+strobe 128x64: tick mean 0.579 ms, p95 0.684 ms, governor 0.378 ms (65% of the tick), held 200 ticks
+.
+static 128x32: tick mean 0.352 ms, p95 0.376 ms, governor 0.172 ms (49% of the tick), held 0 ticks
+.
+static 64x64: tick mean 0.373 ms, p95 0.437 ms, governor 0.191 ms (51% of the tick), held 0 ticks
+.
+static 128x64: tick mean 0.514 ms, p95 0.535 ms, governor 0.318 ms (62% of the tick), held 0 ticks
+..................................... [ 31%]
+........................................................................ [ 36%]
+........................................................................ [ 42%]
+.....................s.................................................. [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 63%]
+........................................................................ [ 68%]
+........................................................................ [ 73%]
+........................................................................ [ 79%]
+...........s............................................................ [ 84%]
+........................................................................ [ 89%]
+........................................................................ [ 94%]
+......................................................................   [100%]
+============================= slowest 15 durations =============================
+62.59s setup    tests/arcade/test_oracle.py::test_feel_pong_meets_its_budgets
+25.65s call     tests/arcade/test_oracle.py::test_feel_meets_its_budgets[dodge]
+25.64s call     tests/arcade/test_oracle.py::test_feel_meets_its_budgets[quickdraw]
+7.29s call     tests/arcade/test_dodge.py::test_good_beats_lazy_beats_nobody
+5.79s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-128x64]
+5.78s call     tests/test_show_shot.py::test_entry_and_attract_modes_write_stamped_sheets
+5.43s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-96x48]
+4.50s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+4.31s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-128x64]
+3.92s call     tests/test_entries.py::test_sample_entry_runs_with_large_motion
+3.60s call     tests/arcade/test_first_playable.py::test_first_playable_keeps_the_flash_rule
+3.59s call     tests/test_show_shot.py::test_strobe_session_is_held
+3.57s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-96x48]
+3.55s call     tests/test_entries.py::test_sample_entry_band_leaves_no_trail
+3.51s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[dodge-128x64]
+=========================== short test summary info ============================
+SKIPPED [1] tests/arcade/test_pose_mediapipe.py:303: no model at /private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it15-dodge-timing/models/pose_landmarker_lite.task
+SKIPPED [1] tests/test_sandbox.py:153: needs a working unshare -rn (Linux with unprivileged user namespaces); macOS has no unshare
+1364 passed, 2 skipped in 335.87s (0:05:35)
+
+[exit 0, wall 336.3 s; end 11:16:43, load after: 11:16  up 73 days, 19:07, 6 users, load averages: 6.14 3.41 2.81]
+git status after: clean

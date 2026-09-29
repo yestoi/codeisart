@@ -1,0 +1,4 @@
+phase ready  : ticks   89, ticks with hint pixels   60, ticks with debug hint True   60
+phase play   : ticks  292, ticks with hint pixels  262, ticks with debug hint True  262
+phase result : ticks  135, ticks with hint pixels    0, ticks with debug hint True    0
+phase over   : ticks   76, ticks with hint pixels    0, ticks with debug hint True    0

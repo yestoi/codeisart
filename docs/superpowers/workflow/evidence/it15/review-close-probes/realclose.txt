@@ -1,0 +1,157 @@
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show.wall ERROR closing: resending the last governed frame failed; black still goes
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/wall.py", line 139, in close
+    self.repush()
+  File "/Users/trey/dev/codeisart/show/wall.py", line 117, in repush
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR closing the wall failed
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 428, in _close
+    self.wall.close()
+  File "/Users/trey/dev/codeisart/show/wall.py", line 150, in close
+    self._govern(black)             # not held: the governed path, never push's hold
+    ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+    log show ERROR the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/Users/trey/dev/codeisart/show/main.py", line 309, in _push
+    sent = self.wall.push(frame)              # after a failure the wall holds, then the counted frame
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 89, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/trey/dev/codeisart/show/wall.py", line 110, in _govern
+    self._send(self._last)
+  File "/Users/trey/dev/codeisart/show/wall.py", line 157, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+A close in the hold (tear just now): 2.003 s, calls 6, sent after the tear 3 (black: [False, True, True]), last shown black True, closed True, raised None 
+A2 close 0.6 s after the tear: 1.398 s, calls 6, sent after the tear 3 (black: [False, True, True]), last shown black True, closed True, raised None 
+   A3 before: calls 4 settled 1 holding True
+A3 close after the first counted send: 0.784 s, calls 6, sent after the tear 3 (black: [False, True, True]), last shown black True, closed True, raised None 
+B second SIGTERM at 0.3 s in the wait: 1.996 s, calls 6, sent after the tear 3 (black: [False, True, True]), last shown black True, closed True, raised None seen 2
+C Ctrl-C at 0.3 s in the wait: 0.305 s, calls 3, sent after the tear 0 (black: []), last shown black False, closed True, raised KeyboardInterrupt 
+D the close's counted send fails: 2.010 s, calls 6, sent after the tear 2 (black: [True, True]), last shown black True, closed True, raised None 
+E the first black fails: 2.004 s, calls 5, sent after the tear 1 (black: [False]), last shown black False, closed True, raised None 
+F close not holding: 0.001 s, calls 4, sent after the tear 2 (black: [True, True]), last shown black True, closed True, raised None slept []
+   G the tear at call 3; holding at the stop: False; seen 1
+G run() stopped by SIGTERM 0.35 s in: 1.770 s, calls 6, sent after the tear 3 (black: [False, True, True]), last shown black True, closed True, raised None exit 0
+tmp removed True

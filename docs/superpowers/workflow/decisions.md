@@ -573,7 +573,14 @@ status: defaulted (standing instruction)
 
 ### Q77: May Dodge return to main if the suite with it reads under its limit on an idle machine?
 asked: it15 (the operator; the orchestrator cut Dodge by the plan's cut order when a suite run read 334.84 s against 330 s under load)
-default: yes. The limit is the loop's own number and is not raised. The run that cut Dodge was made at a load of 2.4 to 4.3 with other sessions on the machine; the run before it, with Dodge, read 321.11 s. The operator times the suite with Dodge on the idle machine; under 330 s Dodge returns by a revert of 16dbb91, else it stays cut and whole on commit c49d902. The arcade's review found nothing else that blocks it
+default: yes. The limit is the loop's own number and is not raised. The run that cut Dodge was made at a load of 2.4 to 4.3 with other sessions on the machine; the run before it, with Dodge, read 321.11 s. The operator times the suite with Dodge on the idle machine; under 330 s Dodge returns by a revert of 16dbb91, else it stays cut and whole on commit c49d902. The arcade's review found nothing else that blocks it. The outcome (2026-09-29 11:16): the operator's run with Dodge, no agent beside it, read 335.87 s (1364 passed; load 1.7 at the start, 6.1 at the end from the desktop's own processes). Three runs with Dodge now read 321.11, 334.84 and 335.87 s: the suite with Dodge stands at its limit, so Dodge stays cut. It returns by a revert of 16dbb91 once the suite has room: Dodge costs about 45 s, 26 s of it the oracle's 20-seed feel report; a plan that shares or marks the oracle's reports comes first (roadmap.md, the it07 note), or the owner raises the limit
 deadline: iteration 15's report
+answer:
+status: defaulted (standing instruction)
+
+### Q78: In Quick Draw, when player 1 leaves and a body with another id takes their seat, is a best banked?
+asked: it15 (the arcade's reviewer, round 2, finding N1: evidence/it15/reviewer-arcade-round2.md; reproduced 3 seeds of 3 through the real runner)
+default: no. A match in which more than one body id sat in seat a banks no best, as a duel banks none (Q23). The rounds stay with the seat and the play goes on. The tracker gives a player who is back after the grace a new id too, so the game cannot tell them from the next person in the queue: a player who steps out for longer than the grace and comes back plays on with their rounds and banks no best for that match. A player back inside the grace banks as before. The other choices: the seat's rounds go to 0 for a new id (a player who is back loses their rounds); or the match ends when player 1 is gone longer than the grace (the runner's leave rule does that after 8 s with nobody in view, but a newcomer's presence keeps the session alive)
+deadline: the owner's first play of Quick Draw on the panels
 answer:
 status: defaulted (standing instruction)

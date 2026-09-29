@@ -1,0 +1,3 @@
+tests/test_wall_pattern_governed.py::test_a_config_that_does_not_load_is_refused
+
+1311 tests collected in 0.33s

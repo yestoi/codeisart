@@ -1,0 +1,10 @@
+duel seed 0, nobody leaves : ('over', 3, 0, 2, None, None, [])
+duel seed 0, p1 leaves 8 s : ('over', 1, 3, 1, None, None, [])
+duel seed 0, p2 leaves 8 s : ('over', 3, 0, 1, 'right', None, [])
+duel seed 1, nobody leaves : ('over', 3, 0, 2, None, None, [])
+duel seed 1, p1 leaves 8 s : ('over', 1, 3, 1, None, None, [])
+duel seed 1, p2 leaves 8 s : ('over', 3, 0, 1, 'right', None, [])
+duel seed 2, nobody leaves : ('over', 3, 0, 2, None, None, [])
+duel seed 2, p1 leaves 8 s : ('over', 1, 3, 1, None, None, [])
+duel seed 2, p2 leaves 8 s : ('over', 3, 0, 1, 'right', None, [])
+launch with nobody (30 s, NullLobby: no leave end): state play 0-1 best None flashes at [108] gaps [] held 0

@@ -1,0 +1,8 @@
+tick    0 t   0.00: phase ready signal None 0-0 round 1 wait_left None
+tick   29 t   0.97: phase play signal wait 0-0 round 1 wait_left 2.6
+tick  108 t   3.60: phase play signal draw 0-0 round 1 wait_left None
+tick  125 t   4.17: phase result signal None 0-1 round 1 wait_left None
+tick  170 t   5.67: phase ready signal None 0-1 round 2 wait_left None
+tick  200 t   6.67: phase play signal wait 0-1 round 2 wait_left 4.5
+tick  239 t   7.97: phase None signal None None-None round None wait_left None
+game._wait 4.53768372429853 phase_t 1.27 seats [(None, 56.0, False), (None, 56.0, False)]

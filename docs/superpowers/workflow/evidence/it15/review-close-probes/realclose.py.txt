@@ -1,0 +1,149 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Point 2 and 4: the REAL ShowLoop._close() (and run()) in a hold, the real time.sleep and time.monotonic.
+Fakes: the display (FailingPushes), lights, buttons, audio, as tests/test_main.py's no_devices. No window, no sound."""
+import logging
+import os
+import signal
+import tempfile
+import threading
+import time
+from pathlib import Path
+
+import numpy as np
+
+import show.main as show_main
+from show.main import ShowLoop, sigterm_raises
+from tests import test_main as tm
+
+logging.basicConfig(level=logging.ERROR, format="    log %(name)s %(levelname)s %(message).90s")
+show_main.make_lights = lambda *a, **k: tm.Lights()
+show_main.make_buttons = lambda *a, **k: None
+show_main.AudioCues = lambda *a, **k: tm.FakeAudio()
+TMP = tempfile.mkdtemp(dir=os.path.dirname(os.path.abspath(__file__)))
+
+
+def loop_in_hold(fail, name):
+    """A playing loop on the real clock; calls 1, 2 go, call 3 fails (the hold starts at that step's now)."""
+    d = Path(TMP) / name
+    d.mkdir()
+    inner = tm.FailingPushes(fail)
+    loop = ShowLoop(tm.small_cfg(d), display=inner, player_factory=tm.StrobePlayer, notify=lambda s: None)
+    t = time.monotonic()
+    loop.start(t)
+    loop.presses.put(1)
+    loop.step(time.monotonic())
+    loop.step(time.monotonic())
+    loop.step(time.monotonic())
+    assert inner.calls == 3 and loop.wall.holding, (inner.calls, loop.wall.holding)
+    return loop, inner
+
+
+def report(name, loop, inner, t0, raised=None, extra=""):
+    dt = time.monotonic() - t0
+    black = [not p.any() for p in inner.pushed[2:]]
+    print(f"{name}: {dt:.3f} s, calls {inner.calls}, sent after the tear {len(inner.pushed) - 2} "
+          f"(black: {black}), last shown black {not inner.pushed[-1].any()}, closed {inner.closed}, "
+          f"raised {raised} {extra}")
+
+
+# A: in a hold, the close at once
+loop, inner = loop_in_hold({3}, "a")
+t0 = time.monotonic()
+loop._close()
+report("A close in the hold (tear just now)", loop, inner, t0)
+
+# A2: in a hold, the close 0.6 s after the tear
+loop, inner = loop_in_hold({3}, "a2")
+time.sleep(0.6)
+t0 = time.monotonic()
+loop._close()
+report("A2 close 0.6 s after the tear", loop, inner, t0)
+
+# A3: after the first counted send (hold from the tear, the loop stepping for 1.2 s)
+loop, inner = loop_in_hold({3}, "a3")
+end = time.monotonic() + 1.2
+while time.monotonic() < end:
+    loop.step(time.monotonic())
+    time.sleep(0.05)
+print("   A3 before: calls", inner.calls, "settled", loop.wall._settled, "holding", loop.wall.holding)
+t0 = time.monotonic()
+loop._close()
+report("A3 close after the first counted send", loop, inner, t0)
+
+# B: a second SIGTERM during the wait (the first one started the close: seen = 1)
+with sigterm_raises():
+    handler = signal.getsignal(signal.SIGTERM)
+    loop, inner = loop_in_hold({3}, "b")
+    handler.seen = 1
+    timer = threading.Timer(0.3, lambda: os.kill(os.getpid(), signal.SIGTERM))
+    timer.start()
+    t0 = time.monotonic()
+    raised = None
+    try:
+        loop._close()
+    except BaseException as e:  # noqa: B036
+        raised = type(e).__name__
+    timer.join()
+    report("B second SIGTERM at 0.3 s in the wait", loop, inner, t0, raised, f"seen {handler.seen}")
+
+# C: SIGINT (Ctrl-C) during the wait
+loop, inner = loop_in_hold({3}, "c")
+timer = threading.Timer(0.3, lambda: os.kill(os.getpid(), signal.SIGINT))
+timer.start()
+t0 = time.monotonic()
+raised = None
+try:
+    loop._close()
+except BaseException as e:  # noqa: B036
+    raised = type(e).__name__
+timer.join()
+report("C Ctrl-C at 0.3 s in the wait", loop, inner, t0, raised)
+
+# D: the counted send in the close fails (call 4), then black
+loop, inner = loop_in_hold({3, 4}, "d")
+t0 = time.monotonic()
+loop._close()
+report("D the close's counted send fails", loop, inner, t0)
+
+# E: the first black fails (call 5): _close logs, the display is closed
+loop, inner = loop_in_hold({3, 5}, "e")
+t0 = time.monotonic()
+loop._close()
+report("E the first black fails", loop, inner, t0)
+
+# F: not holding: no wait
+d = Path(TMP) / "f"
+d.mkdir()
+inner = tm.FailingPushes(set())
+loop = ShowLoop(tm.small_cfg(d), display=inner, player_factory=tm.StrobePlayer, notify=lambda s: None)
+loop.start(time.monotonic())
+loop.presses.put(1)
+loop.step(time.monotonic())
+loop.step(time.monotonic())
+slept = []
+real = loop.sleep
+loop.sleep = lambda s: slept.append(s) or real(s)
+t0 = time.monotonic()
+loop._close()
+report("F close not holding", loop, inner, t0, extra=f"slept {slept}")
+
+# G: the real run(): SIGTERM 0.35 s in (the tear at call 3), under sigterm_raises, as systemctl stop
+d = Path(TMP) / "g"
+d.mkdir()
+inner = tm.FailingPushes({3})
+with sigterm_raises():
+    handler = signal.getsignal(signal.SIGTERM)
+    loop = ShowLoop(tm.small_cfg(d), display=inner, player_factory=tm.StrobePlayer, notify=lambda s: None)
+    loop.presses.put(1)
+    sent_at = []
+    timer = threading.Timer(0.35, lambda: sent_at.append(time.monotonic()) or os.kill(os.getpid(), signal.SIGTERM))
+    t0 = time.monotonic()
+    timer.start()
+    code = loop.run()
+    timer.join()
+    print(f"   G the tear at call 3; holding at the stop: {loop.wall.holding}; seen {handler.seen}")
+    report("G run() stopped by SIGTERM 0.35 s in", loop, inner, sent_at[0], extra=f"exit {code}")
+
+import shutil  # noqa: E402
+shutil.rmtree(TMP)
+print("tmp removed", not os.path.exists(TMP))

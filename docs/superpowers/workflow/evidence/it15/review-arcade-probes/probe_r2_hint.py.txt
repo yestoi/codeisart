@@ -1,0 +1,32 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Round 2: the hint's pixels (rows 48 to 50, under any text at 41..47) on every tick, by phase, for an idle body."""
+import dataclasses
+import random
+from collections import Counter
+from arcade.bots import ROOT, _font
+from arcade.canvas import Canvas
+from arcade.games.quickdraw import HINT_TOP, Quickdraw, idle_body
+from arcade.headless import OPENING_NIGHT
+from arcade.juice import Juice
+from arcade.scores import Scores
+from arcade.sources.actors import TICK
+from tests.arcade.helpers import make_cfg
+font = _font(ROOT / make_cfg((128, 64)).font_path)
+g = Quickdraw()
+g.scores = Scores(None, lambda: OPENING_NIGHT).for_game("quickdraw", "128x64")
+g.reset((128, 64), random.Random(3), Juice(random.Random(1), (128, 64)))
+lit, ticks, hint_flag = Counter(), Counter(), Counter()
+for f in idle_body(seconds=40):
+    b = f.bodies
+    g.update(dataclasses.replace(f, player=b[0] if b else None), TICK)
+    c = Canvas(128, 64, font)
+    g.draw(c)
+    rows = c.frame[HINT_TOP + 4:HINT_TOP + 7]
+    ph = g.debug_state()["phase"]
+    ticks[ph] += 1
+    lit[ph] += int((rows.any(axis=2)).any())
+    hint_flag[ph] += int(g.debug_state()["hint"])
+    if g.done():
+        break
+for ph in ticks:
+    print(f"phase {ph:7s}: ticks {ticks[ph]:4d}, ticks with hint pixels {lit[ph]:4d}, ticks with debug hint True {hint_flag[ph]:4d}")

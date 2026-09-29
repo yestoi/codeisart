@@ -1,0 +1,54 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Round 2: player 1 (id 1) wins 2 rounds and leaves in `result`; 2 s later ANOTHER body (id 7, the next person in
+the queue) steps in at the same place and plays as the good bot. Whose rounds does seat a hold, and what is recorded?"""
+import dataclasses
+import zlib
+from arcade.bots import ROOT, _font, _sensed
+from arcade.calibration import Calibration
+from arcade.config import ArcadeConfig
+from arcade.games.quickdraw import GAME
+from arcade.games.quickdraw_bots import Good
+from arcade.headless import RecordingDisplay, run_headless
+from arcade.sources.actors import TICK
+
+cfg = ArcadeConfig(128, 64, backend="fake", camera="none", audio="none")
+font = _font(ROOT / cfg.font_path)
+
+
+def one(seed, gap=2.0):
+    bot, states, log = Good(), [], {}
+
+    def feed(runner):
+        cal, before = Calibration(), None
+        for i in range(round(80 / TICK)):
+            t = i * TICK
+            now = states[-1] if states else {}
+            if "gone" not in log and now.get("score", 0) >= 2 and now.get("phase") == "result":
+                log["gone"] = t
+            gone = "gone" in log and t < log["gone"] + gap
+            stranger = "gone" in log and not gone
+            k = i - 1 - bot.reaction_ticks
+            move = None if gone else bot(states[k] if k >= 0 else {}, t)
+            sensed, before = _sensed(i, move, before, cal)
+            if stranger:
+                sensed = dataclasses.replace(sensed, bodies=tuple(dataclasses.replace(b, id=7) for b in sensed.bodies))
+            yield sensed
+            st = dict(runner.game.debug_state())
+            states.append(st)
+            if stranger and "seated" not in log and runner.game.seats[0].ctrl == 7:
+                log["seated"] = (round(t, 2), st["left"])
+            if runner.current_name != "quickdraw":
+                log["ended"] = round(t, 2)
+                return
+
+    _, runner = run_headless(cfg, font, GAME, feed, seed=seed, display=RecordingDisplay(keep_all=False))
+    last = states[-1]
+    res = runner.lobby.results[-1] if runner.lobby.results else None
+    print(f"seed {seed}: p1 gone {round(log['gone'], 2)}, id 7 seated in a at (t, left) {log.get('seated')}, end "
+          f"{log.get('ended')}, final {last['phase']} {last['left']}-{last['right']}, best "
+          f"{runner.game.scores.best()}, result score {res and res.score} reason {res and res.reason} "
+          f"players {res and res.players}")
+
+
+for i in range(3):
+    one(zlib.crc32(f"quickdraw:128x64:{i}".encode()))

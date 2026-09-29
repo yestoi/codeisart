@@ -1,0 +1,3 @@
+seed 1057892440: p1 gone 11.37, id 7 seated in a at (t, left) (18.07, 2), end 25.77, final over 3-1, best 3.0, result score 3.0 reason done players 1
+seed 1208555726: p1 gone 9.47, id 7 seated in a at (t, left) (17.07, 2), end 25.43, final over 3-1, best 3.0, result score 3.0 reason done players 1
+seed 3506456948: p1 gone 13.5, id 7 seated in a at (t, left) (22.9, 2), end 31.57, final over 3-1, best 3.0, result score 3.0 reason done players 1

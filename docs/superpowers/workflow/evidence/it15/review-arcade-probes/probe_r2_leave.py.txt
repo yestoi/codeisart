@@ -1,0 +1,82 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Round 2 (c99d463): a solo player (the good bot) leaves at several moments, with or without coming back; a launch
+with nobody; the rounds seat a gains while player 1 is gone; the shortest time between two DRAW flashes."""
+import zlib
+from arcade.bots import ROOT, _font, _sensed
+from arcade.brightness import apl
+from arcade.calibration import Calibration
+from arcade.config import ArcadeConfig
+from arcade.games.quickdraw import GAME
+from arcade.games.quickdraw_bots import Good
+from arcade.headless import RecordingDisplay, run_headless
+from arcade.sources.actors import TICK
+
+cfg = ArcadeConfig(128, 64, backend="fake", camera="none", audio="none")
+font = _font(ROOT / cfg.font_path)
+
+
+def one(seed, when, back_after=None, rounds=2):
+    """when(state) -> True on the tick the player leaves (once player 1 has `rounds`); back_after s later a body
+    (id 1, the same bot) returns, None never."""
+    bot, states, log = Good(), [], {"gone_at": None, "back_at": None, "a_while_gone": [], "flash": []}
+
+    def feed(runner):
+        cal, before = Calibration(), None
+        for i in range(round(80 / TICK)):
+            t = i * TICK
+            now = states[-1] if states else {}
+            if log["gone_at"] is None and now.get("score", 0) >= rounds and when(now):
+                log["gone_at"] = t
+            gone = log["gone_at"] is not None and (back_after is None or t < log["gone_at"] + back_after)
+            if log["gone_at"] is not None and not gone and log["back_at"] is None:
+                log["back_at"] = t
+            k = i - 1 - bot.reaction_ticks
+            move = None if gone else bot(states[k] if k >= 0 else {}, t)
+            sensed, before = _sensed(i, move, before, cal)
+            yield sensed
+            st = dict(runner.game.debug_state())
+            states.append(st)
+            if gone:
+                log["a_while_gone"].append(st["left"])
+            if runner.current_name != "quickdraw":
+                log["ended"] = (t, runner.current_name)
+                return
+
+    disp = RecordingDisplay(keep_all=False)
+    frames, runner = run_headless(cfg, font, GAME, feed, seed=seed, display=disp, raw=True)
+    fl = [i for i, f in enumerate(runner.raw_frames) if apl(f, cfg.gamma) > 0.9]
+    starts = [i for i in fl if i - 1 not in fl]
+    gaps = [(b - a) * TICK for a, b in zip(starts, starts[1:])]
+    g, last = runner.game, states[-1]
+    a_gone = log["a_while_gone"]
+    rose = bool(a_gone) and max(a_gone) > a_gone[0]
+    r = lambda v: None if v is None else round(v, 2)
+    return (f"gone {r(log['gone_at'])} back {r(log['back_at'])} end {log.get('ended') and r(log['ended'][0])} "
+            f"final {last['phase']} {last['left']}-{last['right']} humans {last['humans']} cpu {last['cpu']} "
+            f"best {g.scores.best()} a-rose-while-gone {rose} flashes {len(starts)} "
+            f"min-gap {r(min(gaps)) if gaps else None}")
+
+MOMENTS = {
+    "result": lambda s: s.get("phase") == "result",
+    "ready": lambda s: s.get("phase") == "ready",
+    "wait": lambda s: s.get("phase") == "play" and s.get("signal") == "wait",
+    "signal": lambda s: s.get("phase") == "play" and s.get("signal") == "draw",
+}
+SEEDS = [zlib.crc32(f"quickdraw:128x64:{i}".encode()) for i in range(10)]
+print("== leave in result, never back, 10 seeds")
+for s in SEEDS:
+    print(f"  {s}: {one(s, MOMENTS['result'])}")
+for name in ("ready", "wait", "signal"):
+    print(f"== leave in {name} (after 2 rounds), never back, 5 seeds")
+    for s in SEEDS[:5]:
+        print(f"  {s}: {one(s, MOMENTS[name])}")
+print("== leave in over (player won 3): never back")
+for s in SEEDS[:3]:
+    print(f"  {s}: {one(s, lambda st: st.get('phase') == 'over', rounds=3)}")
+print("== leave in result after 1 round, back after 0.15 s (inside the grace) and after 3 s")
+for s in SEEDS[:5]:
+    print(f"  {s} back 0.15: {one(s, MOMENTS['result'], 0.15, rounds=1)}")
+    print(f"  {s} back 3.0 : {one(s, MOMENTS['result'], 3.0, rounds=1)}")
+print("== leave in wait after 1 round, back after 3 s")
+for s in SEEDS[:3]:
+    print(f"  {s}: {one(s, MOMENTS['wait'], 3.0, rounds=1)}")
