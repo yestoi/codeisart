@@ -1,0 +1,9 @@
+title = "hello"
+author = "Trey"
+year = 2026
+station = 6
+source = "hello.c"
+build = "cc -Wall -o hello hello.c"
+run = "./hello"
+build_seconds = 30
+run_seconds = 10
