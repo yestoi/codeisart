@@ -1,0 +1,3 @@
+cursor 1Hz: raw area 0.898 pushed area 0.00049 (48 px over budget: rows 0-7 cols 16-21 (cells y 0, x 0)) square_flashes 6 held 45
+cursor off: raw area 0.898 pushed area 0.00000 (0 px over budget: none) square_flashes 6 held 35
+cursor on : raw area 0.898 pushed area 0.00000 (0 px over budget: none) square_flashes 6 held 35

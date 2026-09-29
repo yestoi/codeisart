@@ -1,0 +1,2 @@
+plan's feeds   : raw area 0.898 pushed area 0.00049 concurrent 0.0469 (SMALL_AREA 0.1) square_flashes 6 (BUDGET 6) held 45
+ESC[?25l first : raw area 0.898 pushed area 0.00000 concurrent 0.0000 (SMALL_AREA 0.1) square_flashes 6 (BUDGET 6) held 35

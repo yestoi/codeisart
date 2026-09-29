@@ -1,0 +1,52 @@
+"""Read-only: the plan's AST test (test_every_display_is_wrapped_by_the_governor_at_birth) run on sample main.py
+and wall.py texts that push ungoverned frames; then the proposed stricter asserts on the same samples."""
+import ast
+
+def plan_test(main_src):
+    calls = [n for n in ast.walk(ast.parse(main_src)) if isinstance(n, ast.Call)]
+    made = [n for n in calls if isinstance(n.func, ast.Name) and n.func.id == "make_display"]
+    wraps = [n for n in calls if isinstance(n.func, ast.Name) and n.func.id == "GovernedDisplay"]
+    ok = len(made) == 1 and any(made[0] in list(ast.walk(w)) for w in wraps)
+    pushes = [n for n in calls if isinstance(n.func, ast.Attribute) and n.func.attr == "push"]
+    return ok and bool(pushes) and all(ast.unparse(n.func.value) == "self.wall" for n in pushes)
+
+def proposed(main_src, wall_src):
+    tree = ast.parse(main_src)
+    if not plan_test(main_src):
+        return False
+    attrs = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute) and n.attr == "push"]
+    aliased = [a for a in ast.walk(tree) if isinstance(a, ast.alias) and a.name == "make_display" and a.asname]
+    wall_pushes = [n for n in ast.walk(ast.parse(wall_src)) if isinstance(n, ast.Call)
+                   and isinstance(n.func, ast.Attribute) and n.func.attr == "push"]
+    return (all(ast.unparse(n.value) == "self.wall" for n in attrs) and not aliased and len(wall_pushes) == 1)
+
+GOOD_WALL = """
+class GovernedDisplay:
+    def push(self, frame):
+        out = self.governor.apply(frame)
+        self.display.push(out)
+        return out
+"""
+BAD_WALL = GOOD_WALL + """
+    def close(self):
+        self.display.push(self.black)   # ungoverned
+        self.display.close()
+"""
+GOOD = """
+from show.display import make_display
+class ShowLoop:
+    def open(self):
+        self.wall = GovernedDisplay(self.display or make_display(self.cfg), 1, 2, 3, 4)
+    def step(self):
+        self.wall.push(self.frame)
+"""
+samples = {
+    "good main, good wall": (GOOD, GOOD_WALL),
+    "alias: md = make_display pushed raw": (GOOD.replace("from show.display import make_display",
+        "from show.display import make_display\nfrom show.display import make_display as md") +
+        "    def raw(self):\n        d = md(self.cfg)\n        self.wall.push(self.frame)\n", GOOD_WALL),
+    "bound method: p = self.raw.push; p(f)": (GOOD + "    def raw(self):\n        p = self.raw.push\n        p(self.frame)\n", GOOD_WALL),
+    "wall.py close pushes black ungoverned": (GOOD, BAD_WALL),
+}
+for name, (m, w) in samples.items():
+    print(f"{name:42s} plan's test passes: {plan_test(m)!s:5s}  proposed passes: {proposed(m, w)}")

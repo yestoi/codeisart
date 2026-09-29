@@ -1,0 +1,36 @@
+"""Read-only: where the plan's exact loop strobe test fails on the real governor, and which variants pass."""
+from pathlib import Path
+import numpy as np
+from arcade.flash import FlashGovernor, flash_area, square_flashes, _counted, BUDGET
+from show.font import Font
+from show.renderer import Renderer
+from show.terminal import Terminal
+
+ROOT = Path("/Users/trey/dev/codeisart")
+H, W = 192, 512
+FILL = b"\x1b[H\x1b[7m" + b" " * (80 * 23 - 1) + b"\x1b[0m"
+font = Font.load(ROOT / "fonts" / "5x7.bin")
+
+def run(cursor_mode, strip_notice=True, n=100):
+    r = Renderer(font, W, H, 80, 24, (51, 255, 51), False, "text")
+    term = Terminal(80, 23); term.reset(23)
+    rendered = []
+    for k in range(1, n + 1):
+        now = k / 20
+        term.feed(FILL if (k - 1) % 2 == 0 else b"\x1b[H\x1b[2J")
+        strip = "NOW: a by Test Author, 2026, Not A.I." + (" | PLAYING" if strip_notice and now < 2.0 else "")
+        cur = {"1Hz": int(now * 2) % 2 == 0, "off": False, "on": True}[cursor_mode]
+        rendered.append(r.render(term.screen, cur, strip).copy())
+    g = FlashGovernor(H, W, 2.2, fps=20)
+    pushed = [g.apply(f).copy() for f in rendered]
+    return rendered, pushed, g
+
+for mode in ("1Hz", "off", "on"):
+    rendered, pushed, g = run(mode)
+    worst = np.zeros((H, W), bool)
+    for flip, up, window in _counted(pushed, 2.2, 20, 0.1):
+        worst |= (window.count - window.ring[window.i] + flip.any(axis=0)) > BUDGET
+    ys, xs = np.nonzero(worst)
+    where = f"rows {ys.min()}-{ys.max()} cols {xs.min()}-{xs.max()} (cells y {ys.min()//8 - 0}, x {(xs.min()-16)//6})" if len(ys) else "none"
+    print(f"cursor {mode:3s}: raw area {flash_area(rendered, fps=20):.3f} pushed area {flash_area(pushed, fps=20):.5f} "
+          f"({int(worst.sum())} px over budget: {where}) square_flashes {square_flashes(pushed, fps=20)} held {g.held_ticks}")

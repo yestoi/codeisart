@@ -1,0 +1,49 @@
+== 1. test_a_10_hz_full_screen_strobe_is_held_to_the_budget, real governor
+raw flash_area 1.000  pushed flash_area 0.0000  pushed square_flashes 6 (BUDGET 6)  held_ticks 35
+   do-nothing governor: pushed flash_area 1.000, square_flashes 20 -> the test fails, not vacuous
+== 2. StrobePlayer through the real Terminal and Renderer (text view), strip lit, cursor at 1 Hz
+raw flash_area 0.898  pushed flash_area 0.0005  square_flashes raw 20 pushed 6  held_ticks 45  strip row lit in every pushed frame True
+== 3. prose test: strobes through the Renderer, 60 frames, both views
+   text   10 Hz raw area 0.898 sq 20 | governed area 0.0000 sq 6 held 21
+   text    5 Hz raw area 0.898 sq 10 | governed area 0.0000 sq 6 held 18
+   text  3.3 Hz raw area 0.898 sq  7 | governed area 0.0000 sq 6 held 6
+   text  2.5 Hz raw area 0.000 sq  5 | governed area 0.0000 sq 5 held 0
+   ink    10 Hz raw area 0.765 sq 20 | governed area 0.0000 sq 6 held 21
+   ink     5 Hz raw area 0.765 sq 10 | governed area 0.0000 sq 6 held 18
+   ink   3.3 Hz raw area 0.765 sq  7 | governed area 0.0000 sq 6 held 6
+   ink   2.5 Hz raw area 0.000 sq  5 | governed area 0.0000 sq 5 held 0
+== 4. gamma as a config key: a full-screen 10 Hz strobe governed with gamma g, judged at 2.2 and 1.0
+   normal text (35,178,35) vs black: raw area at 2.2 1.000
+      gamma     0.1: held   0  shown area@2.2 1.000 @1.0 1.000  sq@2.2 20 sq@1.0 20
+      gamma    0.22: held   0  shown area@2.2 1.000 @1.0 1.000  sq@2.2 20 sq@1.0 20
+      gamma     0.5: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     1.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     2.2: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     5.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma    22.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma  1000.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+   bold (51,255,51) vs normal (35,178,35): raw area at 2.2 1.000
+      gamma     0.1: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma    0.22: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     0.5: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     1.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     2.2: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     5.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma    22.0: held   0  shown area@2.2 1.000 @1.0 1.000  sq@2.2 20 sq@1.0 20
+      gamma  1000.0: held   0  shown area@2.2 1.000 @1.0 1.000  sq@2.2 20 sq@1.0 20
+   bold vs black: raw area at 2.2 1.000
+      gamma     0.1: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma    0.22: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     0.5: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     1.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     2.2: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma     5.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma    22.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+      gamma  1000.0: held  35  shown area@2.2 0.000 @1.0 0.000  sq@2.2  6 sq@1.0  6
+== 5. failed pushes: the wall one governed frame behind, and a torn frame (half the rows new)
+   30 % failed pushes, 20 trials: worst shown flash_area 0.0000, square_flashes 6
+   30 % torn pushes, 20 trials: worst shown flash_area 0.1354, square_flashes 7
+== 6. fps passed to the governor above the loop's real rate is stricter; below it is laxer
+   governor fps 20, loop 20 fps: shown square_flashes per real second 6, flash_area 0.000
+   governor fps 40, loop 20 fps: shown square_flashes per real second 6, flash_area 0.000
+   governor fps 10, loop 20 fps: shown square_flashes per real second 12, flash_area 1.000

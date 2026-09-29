@@ -1,0 +1,111 @@
+"""Read-only probe for the it12 plan review: the plan's exact safety inputs against the real governor,
+a do-nothing governor (vacuity), gamma laxness, and failed pushes (one frame behind, a torn frame)."""
+import random
+from pathlib import Path
+
+import numpy as np
+
+from arcade.flash import BUDGET, FlashGovernor, flash_area, square_flashes
+from show.font import Font
+from show.renderer import Renderer
+from show.terminal import Terminal
+
+ROOT = Path("/Users/trey/dev/codeisart")
+H, W, FPS = 192, 512, 20
+
+
+def strobe(n, period=1, on_rgb=(51, 255, 51), off_rgb=(0, 0, 0)):
+    on, off = np.full((H, W, 3), on_rgb, np.uint8), np.full((H, W, 3), off_rgb, np.uint8)
+    return [on if (k // period) % 2 == 0 else off for k in range(n)]
+
+
+def govern(frames, gamma=2.2, fps=FPS, h=H, w=W):
+    g = FlashGovernor(h, w, gamma, fps=fps)
+    return g, [g.apply(f).copy() for f in frames]
+
+
+print("== 1. test_a_10_hz_full_screen_strobe_is_held_to_the_budget, real governor")
+frames = strobe(100)
+g, pushed = govern(frames)
+print(f"raw flash_area {flash_area(frames, fps=FPS):.3f}  pushed flash_area {flash_area(pushed, fps=FPS):.4f}  "
+      f"pushed square_flashes {square_flashes(pushed, fps=FPS)} (BUDGET {BUDGET})  held_ticks {g.held_ticks}")
+print(f"   do-nothing governor: pushed flash_area {flash_area(frames, fps=FPS):.3f}, "
+      f"square_flashes {square_flashes(frames, fps=FPS)} -> the test fails, not vacuous")
+
+print("== 2. StrobePlayer through the real Terminal and Renderer (text view), strip lit, cursor at 1 Hz")
+FILL = b"\x1b[H\x1b[7m" + b" " * (80 * 23 - 1) + b"\x1b[0m"
+font = Font.load(ROOT / "fonts" / "5x7.bin")
+r = Renderer(font, W, H, 80, 24, (51, 255, 51), False, "text")
+term = Terminal(80, 23)
+term.reset(23)
+rendered = []
+for k in range(1, 101):
+    now = k / 20
+    term.feed(FILL if (k - 1) % 2 == 0 else b"\x1b[H\x1b[2J")
+    strip = "NOW: a by Test Author, 2026, Not A.I." + (" | PLAYING" if now < 2.0 else "")
+    rendered.append(r.render(term.screen, int(now * 2) % 2 == 0, strip).copy())
+g, pushed = govern(rendered)
+lit_strip = all(f[184:192].any() for f in pushed)
+print(f"raw flash_area {flash_area(rendered, fps=20):.3f}  pushed flash_area {flash_area(pushed, fps=20):.4f}  "
+      f"square_flashes raw {square_flashes(rendered, fps=20)} pushed {square_flashes(pushed, fps=20)}  "
+      f"held_ticks {g.held_ticks}  strip row lit in every pushed frame {lit_strip}")
+
+print("== 3. prose test: strobes through the Renderer, 60 frames, both views")
+for view, w, h in (("text", 512, 192), ("ink", 128, 64)):
+    rr = Renderer(font, w, h, 80, 24, (51, 255, 51), False, view)
+    for period, hz in ((1, 10), (2, 5), (3, 3.3), (4, 2.5)):
+        t = Terminal(80, 23)
+        fr = []
+        for k in range(60):
+            t.feed(FILL if (k // period) % 2 == 0 else b"\x1b[H\x1b[2J")
+            fr.append(rr.render(t.screen, False, "PRESS A BUTTON ON ANY PORTRAIT").copy())
+        gg, out = govern(fr, h=h, w=w)
+        print(f"   {view:4s} {hz:>4} Hz raw area {flash_area(fr, fps=20):.3f} sq {square_flashes(fr, fps=20):2d} | "
+              f"governed area {flash_area(out, fps=20):.4f} sq {square_flashes(out, fps=20)} held {gg.held_ticks}")
+
+print("== 4. gamma as a config key: a full-screen 10 Hz strobe governed with gamma g, judged at 2.2 and 1.0")
+cases = {"normal text (35,178,35) vs black": strobe(100, on_rgb=(35, 178, 35)),
+         "bold (51,255,51) vs normal (35,178,35)": strobe(100, on_rgb=(51, 255, 51), off_rgb=(35, 178, 35)),
+         "bold vs black": strobe(100)}
+for name, fr in cases.items():
+    print(f"   {name}: raw area at 2.2 {flash_area(fr, fps=20):.3f}")
+    for gm in (0.1, 0.22, 0.5, 1.0, 2.2, 5.0, 22.0, 1000.0):
+        gg, out = govern(fr, gamma=gm)
+        print(f"      gamma {gm:>7}: held {gg.held_ticks:3d}  shown area@2.2 {flash_area(out, fps=20):.3f} "
+              f"@1.0 {flash_area(out, 1.0, fps=20):.3f}  sq@2.2 {square_flashes(out, fps=20):2d} "
+              f"sq@1.0 {square_flashes(out, 1.0, fps=20):2d}")
+
+print("== 5. failed pushes: the wall one governed frame behind, and a torn frame (half the rows new)")
+g, gov = govern(strobe(200))
+rng = random.Random(1)
+worst_area, worst_sq = 0.0, 0
+for trial in range(20):
+    shown, last = [], gov[0]
+    for f in gov:
+        if rng.random() < 0.3:
+            shown.append(last)            # the push failed: the wall keeps what it had
+        else:
+            shown.append(f); last = f
+    worst_area = max(worst_area, flash_area(shown, fps=20)); worst_sq = max(worst_sq, square_flashes(shown, fps=20))
+print(f"   30 % failed pushes, 20 trials: worst shown flash_area {worst_area:.4f}, square_flashes {worst_sq}")
+worst_area, worst_sq = 0.0, 0
+for trial in range(20):
+    shown, last = [], gov[0].copy()
+    for f in gov:
+        if rng.random() < 0.3:
+            cut = rng.randrange(1, H)
+            torn = last.copy(); torn[:cut] = f[:cut]
+            shown.append(torn); last = torn
+        else:
+            shown.append(f); last = f
+    worst_area = max(worst_area, flash_area(shown, fps=20)); worst_sq = max(worst_sq, square_flashes(shown, fps=20))
+print(f"   30 % torn pushes, 20 trials: worst shown flash_area {worst_area:.4f}, square_flashes {worst_sq}")
+
+print("== 6. fps passed to the governor above the loop's real rate is stricter; below it is laxer")
+for gfps, real in ((20, 20), (40, 20), (10, 20)):
+    # a 10 Hz strobe at the real rate; the governor believes gfps
+    fr = strobe(200)
+    gg = FlashGovernor(H, W, 2.2, fps=gfps)
+    out = [gg.apply(f).copy() for f in fr]
+    print(f"   governor fps {gfps}, loop {real} fps: shown square_flashes per real second {square_flashes(out, fps=real)}"
+          f", flash_area {flash_area(out, fps=real):.3f}")

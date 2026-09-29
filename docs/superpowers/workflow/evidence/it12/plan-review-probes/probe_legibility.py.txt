@@ -1,0 +1,44 @@
+"""Read-only: the plan's legibility bounds that say "0" in both views, exactly, and the typing bound's
+dependence on which text is typed (the plan names none)."""
+import subprocess, tempfile
+from pathlib import Path
+import numpy as np
+from arcade.flash import FlashGovernor
+from show.font import Font
+from show.renderer import Renderer
+from show.terminal import Terminal
+
+ROOT = Path("/Users/trey/dev/codeisart")
+FONT = Font.load(ROOT / "fonts/5x7.bin")
+FPS = 20
+
+def by_feeds(feeds, view, w, h, strip, blink=True):
+    r, term, out = Renderer(FONT, w, h, 80, 24, (51, 255, 51), False, view), Terminal(80, 23), []
+    for k, data in enumerate(feeds):
+        if data: term.feed(data)
+        s = strip(k) if callable(strip) else strip
+        out.append(r.render(term.screen, blink and (k // 10) % 2 == 0, s).copy())
+    return out
+
+def held(frames, w, h):
+    g = FlashGovernor(h, w, 2.2, fps=FPS)
+    d = [float((g.apply(f) != f).any(axis=2).mean()) for f in frames]
+    return g.held_ticks, max(d)
+
+with tempfile.TemporaryDirectory() as d:
+    subprocess.run(["cc", "-o", f"{d}/hello", str(ROOT / "entries/hello/hello.c")], check=True, capture_output=True)
+    raw = subprocess.run([f"{d}/hello"], env={"LINES": "23", "COLUMNS": "80"}, capture_output=True).stdout
+parts = raw.split(b"\x1b[H")
+hello = [parts[0]] + [b"\x1b[H" + p for p in parts[1:]] + [b""] * 40
+alt = lambda k: "Trey, 2026" if (k // 60) % 2 == 0 else "Not A.I."
+for view, w, h in (("text", 512, 192), ("ink", 128, 64)):
+    print(view, "hello band held_ticks, max share:", held(by_feeds(hello, view, w, h, "NOW: hello by Trey, 2026, Not A.I."), w, h))
+    print(view, "cursor + strip alternation 10 s:", held(by_feeds([b"$ "] + [b""] * 199, view, w, h, alt), w, h))
+for name in ("show/pipeline.py", "arcade/flash.py", "show/terminal.py", "entries/hello/hello.c"):
+    src = (ROOT / name).read_bytes()
+    for cps, secs in ((400, 5), (1600, 5)):
+        per = cps // FPS
+        feeds = [src[k * per:(k + 1) * per] for k in range(int(secs * FPS))]
+        for view, w, h in (("text", 512, 192), ("ink", 128, 64)):
+            ht, mx = held(by_feeds(feeds, view, w, h, "NOW: a by Test Author, 2026, Not A.I."), w, h)
+            print(f"typing {name:22s} {cps:5d} cps {secs} s {view:4s}: held_ticks {ht:3d} max share {mx:.4f}")

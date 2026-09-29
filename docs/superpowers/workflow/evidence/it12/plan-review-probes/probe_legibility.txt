@@ -1,0 +1,20 @@
+text hello band held_ticks, max share: (0, 0.0)
+text cursor + strip alternation 10 s: (0, 0.0)
+ink hello band held_ticks, max share: (0, 0.0)
+ink cursor + strip alternation 10 s: (0, 0.0)
+typing show/pipeline.py         400 cps 5 s text: held_ticks   3 max share 0.0208
+typing show/pipeline.py         400 cps 5 s ink : held_ticks  16 max share 0.1492
+typing show/pipeline.py        1600 cps 5 s text: held_ticks  46 max share 0.0471
+typing show/pipeline.py        1600 cps 5 s ink : held_ticks  84 max share 0.2175
+typing arcade/flash.py          400 cps 5 s text: held_ticks   0 max share 0.0000
+typing arcade/flash.py          400 cps 5 s ink : held_ticks  15 max share 0.1023
+typing arcade/flash.py         1600 cps 5 s text: held_ticks  58 max share 0.0650
+typing arcade/flash.py         1600 cps 5 s ink : held_ticks  84 max share 0.2928
+typing show/terminal.py         400 cps 5 s text: held_ticks   0 max share 0.0000
+typing show/terminal.py         400 cps 5 s ink : held_ticks   1 max share 0.0337
+typing show/terminal.py        1600 cps 5 s text: held_ticks  49 max share 0.0373
+typing show/terminal.py        1600 cps 5 s ink : held_ticks  82 max share 0.1625
+typing entries/hello/hello.c    400 cps 5 s text: held_ticks   0 max share 0.0000
+typing entries/hello/hello.c    400 cps 5 s ink : held_ticks   5 max share 0.0428
+typing entries/hello/hello.c   1600 cps 5 s text: held_ticks   0 max share 0.0000
+typing entries/hello/hello.c   1600 cps 5 s ink : held_ticks  10 max share 0.0414

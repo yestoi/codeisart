@@ -1,0 +1,4 @@
+good main, good wall                       plan's test passes: True   proposed passes: True
+alias: md = make_display pushed raw        plan's test passes: True   proposed passes: False
+bound method: p = self.raw.push; p(f)      plan's test passes: True   proposed passes: False
+wall.py close pushes black ungoverned      plan's test passes: True   proposed passes: False
