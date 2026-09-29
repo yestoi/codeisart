@@ -249,3 +249,9 @@ def test_sample_entry_band_leaves_no_trail(tmp_path):
     assert worst[0] <= 6 and broken == 0, (
         f"a row holds {worst[0]} '#' in frame {worst[1]}; {broken} rows "
         "are not one contiguous band of 6")
+
+
+def test_sample_entry_lines_fit_the_wall():
+    lines = (HELLO_DIR / "hello.c").read_text().splitlines()
+    long = [(n, len(ln)) for n, ln in enumerate(lines, 1) if len(ln) > 80]
+    assert long == [], f"lines longer than 80 characters (line, length): {long}"

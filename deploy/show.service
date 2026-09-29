@@ -1,0 +1,27 @@
+[Unit]
+Description=Code is Art LED wall show
+After=network-online.target
+Wants=network-online.target
+# Never give up: a crash loop keeps restarting for the whole burn.
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+NotifyAccess=main
+WatchdogSec=15
+Restart=always
+RestartSec=2
+User=pi
+WorkingDirectory=/home/pi/codeisart
+ExecStart=/home/pi/codeisart/.venv/bin/python -m show --config show.toml
+# Read-only system; only the entries directory (builds, casts) and a private /tmp are writable.
+ProtectSystem=strict
+ReadWritePaths=/home/pi/codeisart/entries
+PrivateTmp=yes
+Environment=LG_WD=/tmp PYTHONUNBUFFERED=1
+# CAP_NET_RAW is needed only for the colorlight backend (raw sockets); ddp does not use it.
+AmbientCapabilities=CAP_NET_RAW
+SupplementaryGroups=audio gpio
+
+[Install]
+WantedBy=multi-user.target
