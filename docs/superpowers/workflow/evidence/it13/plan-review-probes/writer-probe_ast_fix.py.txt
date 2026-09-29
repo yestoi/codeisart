@@ -1,0 +1,102 @@
+"""it13 fix pass (B2): the review's AST test against a governed run and the plan's main (--config, save_png,
+refusals before make_display). Source built in memory from today's tools/wall_pattern.py; nothing is written."""
+import ast
+from pathlib import Path
+
+src = Path("/Users/trey/dev/codeisart/tools/wall_pattern.py").read_text()
+run_old = src[src.index("def run("):src.index("def save_png(")]
+main_old = src[src.index("def main("):src.index('if __name__ == "__main__":')]
+
+run_new = '''def run(pattern: str, display, width: int, height: int, brightness: float = 0.1, seconds: float = 0.0,
+        fps: float = 20.0, clock=time.monotonic, sleep=time.sleep, out=print, gamma: float = 2.2,
+        cap: float = CAP) -> int:
+    refusal = _refusal(pattern, brightness, cap) or _pace_refusal(fps, gamma)
+    if refusal:
+        out(refusal)
+        return 2
+    wall = GovernedDisplay(display, height, width, governor_fps(fps), gamma)
+    level = brightness * STEPS[0] if pattern == "steps" else brightness
+    code = 0
+    try:
+        wall.set_brightness(level)
+        start = clock()
+        while True:
+            t = clock() - start
+            if seconds > 0 and t >= seconds:
+                break
+            if pattern == "steps" and brightness * STEPS[step_of(t)] != level:
+                level = brightness * STEPS[step_of(t)]
+                wall.set_brightness(level)
+            wall.push(PATTERNS[pattern](width, height, t))
+            sleep(1.0 / fps)
+    except KeyboardInterrupt:
+        pass
+    except OSError as e:
+        out(f"wall_pattern: the push failed: {e}")
+        code = 1
+    finally:
+        wall.close()
+    return code
+
+
+'''
+
+main_new = '''def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    cap, gamma = CAP, 2.2
+    if args.config:
+        cfg = load_config(Path(args.config))
+        width = args.width if args.width is not None else cfg.width
+        height = args.height if args.height is not None else cfg.height
+        backend = args.backend or cfg.backend
+        iface = args.iface or cfg.colorlight_iface
+        host, port = args.ddp_host or cfg.ddp_host, args.ddp_port or cfg.ddp_port
+        cap, gamma = min(CAP, cfg.brightness_cap), cfg.gamma
+    else:
+        width, height, backend = args.width or 128, args.height or 64, args.backend or "colorlight"
+        iface, host, port = args.iface or "eth0", args.ddp_host or "127.0.0.1", args.ddp_port or 4048
+    if args.png:
+        save_png(args.pattern, width, height, args.png)
+        print(f"wall_pattern: saved {args.pattern} to {args.png}")
+        return 0
+    refusal = _refusal(args.pattern, args.brightness, cap) or _pace_refusal(args.fps, gamma)
+    if refusal:
+        print(refusal)
+        return 2
+    made = SimpleNamespace(backend=backend, width=width, height=height, iface=iface, sdl_scale=args.sdl_scale,
+                           ddp_host=host, ddp_port=port, brightness=args.brightness)
+    try:
+        display = make_display(made)
+    except (OSError, ValueError) as e:
+        print(f"wall_pattern: cannot open the {backend} display: {e}")
+        return 1
+    return run(args.pattern, display, width, height, brightness=args.brightness, seconds=args.seconds,
+               fps=args.fps, sleep=time.sleep, gamma=gamma, cap=cap)
+
+
+'''
+text = src.replace(run_old, run_new).replace(main_old, main_new)
+compile(text, "x", "exec")
+
+
+def review_test(text):
+    tree = ast.parse(text)
+    attrs = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute)]
+    for name in ("push", "set_brightness", "close"):
+        used = [n for n in attrs if n.attr == name]
+        if not (used and all(ast.unparse(n.value) == "wall" for n in used)):
+            return f"fails on {name}: {[ast.unparse(n) for n in used if ast.unparse(n.value) != 'wall']}"
+    bad = [ast.unparse(n) for n in attrs if n.attr in ("_send", "display")]
+    if bad:
+        return f"fails on _send/display: {bad}"
+    wraps = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "GovernedDisplay"]
+    if not (len(wraps) == 1 and ast.unparse(wraps[0].args[0]) == "display"):
+        return "fails on the wrap"
+    return "passes"
+
+
+print("governed run + planned main (--config, save_png):", review_test(text))
+print("today's file:", review_test(src))
+print("a main that closes a refused display:", review_test(text.replace(
+    "        return 1\n    return run(", "        return 1\n    if False:\n        display.close()\n    return run(")))

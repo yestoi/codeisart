@@ -1,0 +1,12 @@
+"""Round 2: does the strobe session at seconds=1.5 (FAST, press at 0.1) reach the strobe? held ticks, frames, time."""
+import time
+from show.config import Config
+from tools import show_shot as ss
+from arcade.flash import square_flashes
+for seconds in (1.5, 3.4):
+    for _ in range(2):
+        t = time.monotonic()
+        frames, strips, held = ss.frames_from_session("strobe", Config(typewriter_cps=5000, min_build_seconds=0.2,
+                                                      dwell=0.5), seconds=seconds, every_ms=1, presses=[(0.1, 1)])
+        print(f"seconds={seconds}: {len(frames)} frames, held {held}, square_flashes "
+              f"{square_flashes([f for _, f in frames], fps=20)}, {time.monotonic() - t:.2f} s")

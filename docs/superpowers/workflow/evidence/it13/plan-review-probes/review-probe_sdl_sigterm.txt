@@ -1,0 +1,5 @@
+no pygame                       : exited -15 in 0.00 s ''
+mixer.init, no handler          : STILL RUNNING 4 s after SIGTERM
+handler first, then mixer.init  : exited 0 in 0.06 s 'KeyboardInterrupt'
+mixer.init, then handler        : exited 0 in 0.06 s 'KeyboardInterrupt'
+the real AudioCues, no handler  : STILL RUNNING 4 s after SIGTERM

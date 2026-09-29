@@ -1,0 +1,4 @@
+........................................................................ [ 97%]
+..                                                                       [100%]
+74 passed in 14.64s
+PROBE_PATTERN=1 PROBE_CLOSE=1 $R/.venv/bin/python -m pytest -p probe_plugin -  12.98s user 1.29s system 96% cpu 14.827 total

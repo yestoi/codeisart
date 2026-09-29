@@ -1,0 +1,41 @@
+```python
+# imports: numpy as np, pytest; FlashGovernor (arcade.flash); GovernedDisplay (show.wall); FailingPushes,
+# no_devices (the autouse fixture, imported for it), playing_loop (tests.test_main); FPS, H, W, Recorder, strobe
+# (tests.test_wall)
+LIT = np.full((H, W, 3), (51, 255, 51), np.uint8)
+def test_close_after_a_failed_push_sends_the_counted_frame_before_black():
+    inner, reference = FailingPushes({31}), FlashGovernor(H, W, 2.2, fps=FPS)
+    wall, frames = GovernedDisplay(inner, H, W, fps=FPS), strobe(31)
+    for f in frames[:30]: wall.push(f); reference.apply(f)
+    with pytest.raises(OSError): wall.push(frames[30])           # governed and counted, never shown
+    assert wall.unsent and wall.failed == 1 and wall.governed == 30
+    black = np.zeros((H, W, 3), np.uint8)
+    want = [reference.apply(frames[30]).copy(), reference.apply(black).copy(), reference.apply(black).copy()]
+    wall.close()
+    assert inner.count == 33 and inner.closed and not wall.unsent
+    assert all(np.array_equal(got, w) for got, w in zip(inner.pushed[-3:], want))
+def test_close_after_a_mended_failure_is_the_clean_close():
+    inner = FailingPushes({6}); wall = GovernedDisplay(inner, H, W, fps=FPS)
+    for _ in range(5): wall.push(LIT)
+    with pytest.raises(OSError): wall.push(LIT)                  # call 6
+    wall.repush(); wall.push(LIT)                                 # calls 7 and 8: the loop's next step mends it
+    assert not wall.unsent and wall.failed == 1
+    wall.close()                                                  # calls 9 and 10: black, nothing sent again
+    assert inner.count == 9 and inner.closed
+    assert not inner.pushed[-1].any() and not inner.pushed[-2].any() and inner.pushed[-3].any()
+def test_close_when_the_repush_fails_still_darkens_and_closes():
+    inner = FailingPushes({6, 7}); wall = GovernedDisplay(inner, H, W, fps=FPS)
+    for _ in range(5): wall.push(LIT)
+    with pytest.raises(OSError): wall.push(LIT)                  # call 6
+    wall.close()                                                  # call 7, the repush, fails; 8 and 9 black
+    assert inner.closed and inner.count == 7 and wall.failed == 2
+    assert not inner.pushed[-1].any() and not inner.pushed[-2].any()
+def test_the_loop_s_close_after_a_failed_push_sends_the_counted_frame_first(tmp_path):
+    inner = FailingPushes({3}); loop = playing_loop(tmp_path, inner)         # call 1
+    loop.step(0.10); loop.step(0.15)                              # call 2; call 3 fails: its frame was governed
+    counted = loop.wall.last.copy()
+    loop._close()                                                 # calls 4 (the counted frame), 5 and 6 (black)
+    assert inner.count == 5 and inner.closed and np.array_equal(inner.pushed[2], counted)
+```
+`test_last_is_the_governed_frame_and_read_only` (None before a push; after `strobe(20)` equal to the last push;
+writing into it raises `ValueError`; `repush` still sends the governed frame).

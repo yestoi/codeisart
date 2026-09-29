@@ -1,0 +1,107 @@
+"""pytest plugin for the it13 plan probes (read only: patches in memory, edits no file).
+
+PROBE_LOOK=1     Config's strip_look default becomes bright-on-field.
+PROBE_PATTERN=1  tools.wall_pattern.run pushes through GovernedDisplay (governor fps max(2, ceil(fps))).
+PROBE_CLOSE=1    GovernedDisplay tracks a failed send and close() repushes the last governed frame first.
+"""
+import math
+import os
+
+import numpy as np
+
+if os.environ.get("PROBE_LOOK"):
+    import dataclasses
+
+    import show.config as c
+    names = [f.name for f in dataclasses.fields(c.Config)]
+    d = list(c.Config.__init__.__defaults__)
+    # __defaults__ covers every field (all have defaults), in order
+    assert len(d) == len(names), (len(d), len(names))
+    d[names.index("strip_look")] = "bright-on-field"
+    c.Config.__init__.__defaults__ = tuple(d)
+    assert c.Config().strip_look == "bright-on-field"
+
+if os.environ.get("PROBE_CLOSE"):
+    import show.wall as w
+
+    real_init = w.GovernedDisplay.__init__
+
+    def __init__(self, *a, **k):
+        real_init(self, *a, **k)
+        self.unsent, self.failed = False, 0
+
+    def _send(self, frame):
+        try:
+            self.display.push(frame)
+        except Exception:
+            self.unsent, self.failed = True, self.failed + 1
+            raise
+        self.unsent = False
+
+    def close(self):
+        black = np.zeros(self.governor.shape, np.uint8)
+        push = self.push
+        try:
+            if self.unsent:
+                try:
+                    self.repush()
+                except Exception:
+                    pass
+            for _ in range(2):
+                push(black)
+        finally:
+            self.display.close()
+
+    w.GovernedDisplay.__init__, w.GovernedDisplay._send, w.GovernedDisplay.close = __init__, _send, close
+
+if os.environ.get("PROBE_PATTERN"):
+    import time
+
+    from show.wall import GovernedDisplay
+    from tools import wall_pattern as wp
+
+    def run(pattern, display, width, height, brightness=0.1, seconds=0.0, fps=20.0, clock=time.monotonic,
+            sleep=time.sleep, out=print):
+        refusal = wp._refusal(pattern, brightness)
+        if refusal:
+            out(refusal)
+            return 2
+        out(f"{pattern} at {width}x{height}, brightness {brightness:g}. Ctrl-C to stop.")
+        out(wp.LOOK_FOR[pattern])
+        out(f"Write what the panel shows into {wp.HARDWARE_MD}.")
+        wall = GovernedDisplay(display, height, width, fps=max(2, math.ceil(fps)))
+        level = brightness * wp.STEPS[0] if pattern == "steps" else brightness
+        try:
+            wall.set_brightness(level)
+            start = clock()
+            while True:
+                t = clock() - start
+                if seconds > 0 and t >= seconds:
+                    break
+                if pattern == "steps" and brightness * wp.STEPS[wp.step_of(t)] != level:
+                    level = brightness * wp.STEPS[wp.step_of(t)]
+                    wall.set_brightness(level)
+                wall.push(wp.PATTERNS[pattern](width, height, t))
+                sleep(1.0 / fps)
+        except KeyboardInterrupt:
+            pass
+        except OSError as e:
+            out(f"wall_pattern: the push failed: {e}; the wall is darkened")
+            code = 1
+        else:
+            code = 0
+        finally:
+            wall.close()
+        return locals().get("code", 0)
+
+    wp.run = run
+
+if os.environ.get("PROBE_CLOSE"):
+    def last(self):
+        if self._last is None:
+            return None
+        view = self._last.view()
+        view.flags.writeable = False
+        return view
+
+    w.GovernedDisplay.last = property(last)

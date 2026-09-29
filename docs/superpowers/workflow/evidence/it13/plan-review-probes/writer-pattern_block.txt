@@ -1,0 +1,32 @@
+```python
+# imports: ast, Path, numpy as np; BUDGET, flash_area, square_flashes (arcade.flash); FailingPushes
+# (tests.test_main); Recorder (tests.test_wall); wall_pattern as wp (tools); ROOT = Path(__file__).resolve().parents[1]
+def strobe(width, height, t):                        # the whole wall lit and black by turns: 10 Hz at 20 fps
+    lit = round(t * 20) % 2 == 0
+    return np.full((height, width, 3), (0, wp.LEVEL, 0) if lit else (0, 0, 0), np.uint8)
+def test_every_frame_the_pattern_tool_sends_is_governed(monkeypatch):
+    monkeypatch.setitem(wp.PATTERNS, "strobe", strobe)
+    monkeypatch.setitem(wp.LOOK_FOR, "strobe", "a strobe the governor holds")
+    inner, clock = Recorder(), iter(np.arange(0.0, 100.0, 0.05))
+    assert wp.run("strobe", inner, 128, 64, brightness=0.1, seconds=5.0, fps=20, clock=lambda: next(clock),
+                  sleep=lambda s: None, out=[].append) == 0
+    raw = [strobe(128, 64, k * 0.05) for k in range(1, len(inner.pushed) - 1)]
+    assert len(inner.pushed) == 99 + 2 and flash_area(raw, fps=20) > 0.5
+    assert flash_area(inner.pushed, fps=20) == 0.0 and square_flashes(inner.pushed, fps=20) <= BUDGET
+    assert inner.closed
+def test_a_failed_push_ends_with_the_counted_frame_then_governed_black():
+    inner, clock = FailingPushes({3}), iter(np.arange(0.0, 100.0, 0.05))
+    assert wp.run("rgb", inner, 128, 64, brightness=0.1, seconds=5.0, fps=20, clock=lambda: next(clock),
+                  sleep=lambda s: None, out=[].append) == 1
+    assert inner.closed and inner.count == 5 and np.array_equal(inner.pushed[2], wp.rgb(128, 64, 0.0))
+    assert not inner.pushed[-1].any() and not inner.pushed[-2].any()
+def test_the_pattern_tool_reaches_the_display_only_through_the_governor():
+    tree = ast.parse((ROOT / "tools" / "wall_pattern.py").read_text())
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)]
+    for name in ("push", "set_brightness", "close"):
+        used = [n for n in calls if n.func.attr == name]
+        assert used and all(ast.unparse(n.func.value) == "wall" for n in used), name
+    wraps = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "GovernedDisplay"]
+    assert len(wraps) == 1 and ast.unparse(wraps[0].args[0]) == "display"
+```

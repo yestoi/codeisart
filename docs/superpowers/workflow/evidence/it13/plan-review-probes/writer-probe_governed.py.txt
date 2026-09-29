@@ -1,0 +1,109 @@
+"""it13 plan probe: the pattern tool's frames through GovernedDisplay; the governor's and a streaming meter's cost."""
+import math
+import statistics
+import time
+
+import numpy as np
+
+from arcade.flash import (BUDGET, FPS, THRESHOLD, WINDOW, _Transitions, _Window, flash_area, signals,
+                          square_flashes, square_means)
+from show.display.fake import FakeDisplay
+from show.wall import GovernedDisplay
+from tools import wall_pattern as wp
+
+
+class Rec(FakeDisplay):
+    def __init__(self):
+        super().__init__()
+        self.pushed = []
+
+    def push(self, frame):
+        super().push(frame)
+        self.pushed.append(frame.copy())
+
+
+def grid(w, h, t):
+    f = np.zeros((h, w, 3), np.uint8)
+    f[::8, :] = wp.LEVEL
+    f[:, ::8] = wp.LEVEL
+    return f
+
+
+print("== patterns through the governor (20 fps, 10 s each, then close) ==")
+for (w, h) in ((512, 192), (128, 64)):
+    for name, fn in list(wp.PATTERNS.items()) + [("grid", grid)]:
+        inner = Rec()
+        wall = GovernedDisplay(inner, h, w, fps=20)
+        same = True
+        for k in range(200):
+            f = fn(w, h, k / 20)
+            out = wall.push(f)
+            same &= np.array_equal(out, f)
+        wall.close()
+        print(f"{w}x{h} {name:6s} mean {fn(w, h, 0).mean() / 255:.3f} unchanged {same} held {wall.governor.held_ticks} "
+              f"last-two-black {not inner.pushed[-1].any() and not inner.pushed[-2].any()} "
+              f"area {flash_area(inner.pushed, fps=20)} squares {square_flashes(inner.pushed, fps=20)}")
+
+
+def timeit(fn, n):
+    ts = []
+    for _ in range(n):
+        t = time.perf_counter()
+        fn()
+        ts.append((time.perf_counter() - t) * 1000)
+    ts.sort()
+    return statistics.median(ts), ts[int(0.95 * len(ts))], ts[-1]
+
+
+print("== governor cost per frame (ms: median, p95, worst), a 10 Hz strobe and a static frame ==")
+rng = np.random.default_rng(0)
+for (w, h) in ((512, 192), (128, 64)):
+    on = np.full((h, w, 3), (51, 255, 51), np.uint8)
+    off = np.zeros_like(on)
+    wall = GovernedDisplay(FakeDisplay(), h, w, fps=20)
+    k = [0]
+
+    def strobe():
+        wall.push(on if k[0] % 2 == 0 else off)
+        k[0] += 1
+    print(f"{w}x{h} strobe", ["%.2f" % v for v in timeit(strobe, 300)])
+    wall2 = GovernedDisplay(FakeDisplay(), h, w, fps=20)
+    print(f"{w}x{h} static", ["%.2f" % v for v in timeit(lambda: wall2.push(on), 300)])
+
+
+class Meter:
+    """A streaming flash meter counted as arcade.flash._counted counts (the plan's tools/flash_meter.py)."""
+
+    def __init__(self, fps, gamma=2.2, threshold=THRESHOLD, budget=BUDGET, window=WINDOW):
+        self.fps, self.gamma, self.threshold, self.budget, self.window = fps, gamma, threshold, budget, window
+        self.px = self.sq = None
+
+    def add(self, frame):
+        s = signals(frame, self.gamma)
+        m = square_means(s, self.window)
+        if self.px is None:
+            self.px = [_Transitions(s, self.threshold), _Window(self.fps, s.shape[1:])]
+            self.sq = [_Transitions(m, self.threshold), _Window(self.fps, m.shape[1:])]
+            return 0.0, 0
+        res = []
+        for (track, win), v in ((self.px, s), (self.sq, m)):
+            flip, up = track.flips(v)
+            last = win.count - win.ring[win.i] + flip.any(axis=0)
+            res.append(last)
+            track.advance(v, flip, up)
+            win.push(flip.any(axis=0))
+        return float((res[0] > self.budget).mean()), int(res[1].max())
+
+
+print("== streaming meter: equal to flash_area / square_flashes, and its cost ==")
+for (w, h) in ((512, 192), (128, 64)):
+    on = np.full((h, w, 3), (51, 255, 51), np.uint8)
+    frames = [on if (k // p) % 2 == 0 else np.zeros_like(on) for p in (1, 2, 3) for k in range(40)]
+    frames += [rng.integers(0, 256, (h, w, 3), dtype=np.uint8) for _ in range(20)]
+    meter = Meter(20)
+    got = [meter.add(f) for f in frames]
+    print(f"{w}x{h} area {max(a for a, _ in got)} == {flash_area(frames, fps=20)}; "
+          f"squares {max(s for _, s in got)} == {square_flashes(frames, fps=20)}")
+    meter2 = Meter(20)
+    it = iter(frames * 10)
+    print(f"{w}x{h} meter cost", ["%.2f" % v for v in timeit(lambda: meter2.add(next(it)), 300)])

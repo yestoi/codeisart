@@ -449,6 +449,7 @@ asked: it12 (the plan writer's probe)
 default: the governor costs 4 to 6 ms a 512x192 frame on the Mac (M1; the worst frame 13 ms), about 0.4 ms at 128x64. On the Pi 4 it may pass the 50 ms of a frame at 20 a second. The loop runs at the rate it reaches: the governor's window is counted in frames, so a slower loop is stricter in seconds, never laxer. D4 measures it on the Pi; a faster governor would be its own safety slice, with a plan review
 deadline: D4 (the measure on the Pi); GATE C
 answer:
+the loop's measure (it13, 2026-09-29, the plan writer's probe on the Mac): 5.06 ms median, 8.62 ms p95, 12.80 ms worst a 512x192 frame on a strobe (4.36 ms median static); 0.36 ms at 128x64. The measure on the Pi 4, and pyte's feed time there, move from D4 to GATE C (the Pi is not in the loop's hands); D4's soak tool reports the governor's cost wherever it runs
 status: defaulted (standing instruction)
 
 ### Q60: May the governor hold fast typing on the 128x64 ink view?
@@ -469,5 +470,19 @@ status: defaulted (standing instruction)
 asked: it12
 default: the press is acknowledged: the keypress cue plays and the button's ring flashes; nothing is written on the strip and nothing is queued (spec 4.5: every press is acknowledged)
 deadline: GATE C (all five stations have entries by then)
+answer:
+status: defaulted (standing instruction)
+
+### Q63: May the show's unit order itself after `network.target` instead of `network-online.target`?
+asked: it13 (the plan writer; the it12 review's note)
+default: the unit is unchanged. With no carrier the start waits for wait-online's timeout and then runs; `deploy/README.md` says so. Spec 4.6 wants the loop up, and the Colorlight path needs the link, not the network; but the change edits the asserts at `tests/test_deploy.py:17-18`, which the loop does not change without the owner's word
+deadline: GATE C
+answer:
+status: defaulted (standing instruction)
+
+### Q64: Should the pattern tool have a full `white` pattern (the core plan's dead-pixel hunt)?
+asked: it13 (the plan writer)
+default: not built. `tools/wall_pattern.py` keeps its rule that no pattern lights half the wall, and the repository has no figures for the panels' current at full white against the power supplies. With those figures from the owner the loop adds `white`, capped at brightness 0.1, with its own refusal and test. Until then `grid`, `rgb`, `index` and `panels` find dead pixels only where they light
+deadline: the full wall's bring-up
 answer:
 status: defaulted (standing instruction)

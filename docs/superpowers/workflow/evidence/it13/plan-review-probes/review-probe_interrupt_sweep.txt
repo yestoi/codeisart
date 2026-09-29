@@ -1,0 +1,8 @@
+interrupt in the pixel window's push, strobe period 1: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0
+interrupt in the pixel window's push, strobe period 2: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0
+interrupt in the pixel window's push, strobe period 3: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0
+interrupt in the pixel window's push, strobe period 4: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0
+interrupt in the square window's push, strobe period 1: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0
+interrupt in the square window's push, strobe period 2: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0
+interrupt in the square window's push, strobe period 3: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0
+interrupt in the square window's push, strobe period 4: worst square_flashes 6 (BUDGET 6), worst flash_area 0.0

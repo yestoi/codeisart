@@ -1,0 +1,6 @@
+variant                      plan's AST passes   review's AST passes
+safe (governed run)          True                True
+wall._send                   True                False
+alias send = display.push    True                False
+raw = wall.display           False               False
+the exact replacement: {'safe': True, 'wall._send': False, 'alias send = display.push': False, 'raw = wall.display': False} today's file: False

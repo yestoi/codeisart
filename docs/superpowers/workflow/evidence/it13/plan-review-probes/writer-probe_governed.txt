@@ -1,0 +1,21 @@
+== patterns through the governor (20 fps, 10 s each, then close) ==
+512x192 rgb    mean 0.251 unchanged True held 0 last-two-black True area 0.0 squares 1
+512x192 index  mean 0.026 unchanged True held 0 last-two-black True area 0.0 squares 0
+512x192 steps  mean 0.244 unchanged True held 0 last-two-black True area 0.0 squares 1
+512x192 gamma  mean 0.412 unchanged True held 0 last-two-black True area 0.0 squares 1
+512x192 grid   mean 0.118 unchanged True held 0 last-two-black True area 0.0 squares 1
+128x64 rgb    mean 0.249 unchanged True held 0 last-two-black True area 0.0 squares 1
+128x64 index  mean 0.016 unchanged True held 0 last-two-black True area 0.0 squares 0
+128x64 steps  mean 0.231 unchanged True held 0 last-two-black True area 0.0 squares 1
+128x64 gamma  mean 0.409 unchanged True held 0 last-two-black True area 0.0 squares 1
+128x64 grid   mean 0.118 unchanged True held 0 last-two-black True area 0.0 squares 1
+== governor cost per frame (ms: median, p95, worst), a 10 Hz strobe and a static frame ==
+512x192 strobe ['5.06', '8.62', '12.80']
+512x192 static ['4.36', '5.06', '7.10']
+128x64 strobe ['0.36', '0.37', '0.40']
+128x64 static ['0.33', '0.39', '0.64']
+== streaming meter: equal to flash_area / square_flashes, and its cost ==
+512x192 area 1.0 == 1.0; squares 20 == 20
+512x192 meter cost ['4.34', '6.46', '6.79']
+128x64 area 1.0 == 1.0; squares 20 == 20
+128x64 meter cost ['0.32', '0.48', '0.52']

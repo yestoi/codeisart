@@ -1,0 +1,72 @@
+"""Q3: the plan's AST test for tools/wall_pattern.py against a safe governed run and three unsafe ones, and the
+review's stronger form. Source texts are built in memory from today's file; nothing is written."""
+import ast
+from pathlib import Path
+
+src = Path("/Users/trey/dev/codeisart/tools/wall_pattern.py").read_text()
+safe = (src.replace("from show.display import make_display  # noqa: E402",
+                    "from show.display import make_display  # noqa: E402\nfrom show.wall import GovernedDisplay  # noqa: E402")
+        .replace("    level = brightness * STEPS[0] if pattern == \"steps\" else brightness\n",
+                 "    wall = GovernedDisplay(display, height, width, max(2, math.ceil(fps)), 2.2)\n"
+                 "    level = brightness * STEPS[0] if pattern == \"steps\" else brightness\n")
+        .replace("display.set_brightness(level)", "wall.set_brightness(level)")
+        .replace("display.push(PATTERNS[pattern](width, height, t))", "wall.push(PATTERNS[pattern](width, height, t))")
+        .replace("        black = _blank(width, height)\n        display.push(black)\n        display.push(black)\n"
+                 "        display.close()\n", "        wall.close()\n"))
+assert "display.push" not in safe and safe.count("wall.close()") == 1
+LINE = "            wall.push(PATTERNS[pattern](width, height, t))"
+BRANCH = "            if pattern == \"steps\":\n{}\n            else:\n    " + LINE.lstrip("\n")
+unsafe = {                     # each keeps wall.push for the other patterns and bypasses the governor for steps
+    "wall._send": safe.replace(LINE, BRANCH.format("                wall._send(PATTERNS[pattern](width, height, t))")),
+    "alias send = display.push": safe.replace(LINE, BRANCH.format(
+        "                send = display.push\n                send(PATTERNS[pattern](width, height, t))")),
+    "raw = wall.display": safe.replace(LINE, BRANCH.format(
+        "                raw = wall.display\n                raw.push(PATTERNS[pattern](width, height, t))")),
+}
+
+
+def plan_check(text):
+    tree = ast.parse(text)
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)]
+    for name in ("push", "set_brightness", "close"):
+        used = [n for n in calls if n.func.attr == name]
+        if not (used and all(ast.unparse(n.func.value) == "wall" for n in used)):
+            return False
+    wraps = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "GovernedDisplay"]
+    return len(wraps) == 1 and ast.unparse(wraps[0].args[0]) == "display"
+
+
+def review_check(text):        # the plan's, over every attribute (as tests/test_main.py:93-94), and no _send/.display
+    if not plan_check(text):
+        return False
+    tree = ast.parse(text)
+    attrs = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute)]
+    if [n for n in attrs if n.attr in ("_send", "display")]:
+        return False
+    return all(ast.unparse(n.value) == "wall" for n in attrs if n.attr in ("push", "set_brightness", "close"))
+
+
+print(f"{'variant':28s} plan's AST passes   review's AST passes")
+print(f"{'safe (governed run)':28s} {plan_check(safe)!s:19s} {review_check(safe)}")
+for k, v in unsafe.items():
+    compile(v, "x", "exec")
+    print(f"{k:28s} {plan_check(v)!s:19s} {review_check(v)}")
+
+
+def fixed_test(text):          # the review's exact replacement for the plan's test body (lines 193-200)
+    tree = ast.parse(text)
+    attrs = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute)]
+    for name in ("push", "set_brightness", "close"):
+        used = [n for n in attrs if n.attr == name]
+        if not (used and all(ast.unparse(n.value) == "wall" for n in used)):
+            return False
+    if [n for n in attrs if n.attr in ("_send", "display")]:
+        return False
+    wraps = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "GovernedDisplay"]
+    return len(wraps) == 1 and ast.unparse(wraps[0].args[0]) == "display"
+
+
+print("the exact replacement:", {"safe": fixed_test(safe), **{k: fixed_test(v) for k, v in unsafe.items()}},
+      "today's file:", fixed_test(src))

@@ -1,0 +1,2 @@
+light of LEVEL 0.502 levels [0.0627, 0.1255, 0.251, 0.502]
+transitions over 3 cycles (24 s): 5 [False, True, False, True, False, True, False, True, False, True, False]

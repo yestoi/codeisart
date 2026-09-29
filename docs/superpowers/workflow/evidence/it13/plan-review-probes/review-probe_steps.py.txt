@@ -1,0 +1,16 @@
+"""Q3: the steps pattern's device-brightness walk measured as the governor measures light (LEVEL at gamma 2.2 times
+the share of the brightness), through arcade.flash._Transitions: transitions per 8 s cycle."""
+import numpy as np
+from arcade.flash import THRESHOLD, _Transitions
+from arcade.look import light_lut
+from tools import wall_pattern as wp
+light = float(light_lut(2.2)[wp.LEVEL]) if light_lut(2.2).ndim == 1 else float(light_lut(2.2)[wp.LEVEL].mean())
+levels = [light * s for s in wp.STEPS]
+seq = levels * 3
+t = _Transitions(np.array([seq[0]]), THRESHOLD)
+flips = []
+for v in seq[1:]:
+    a = np.array([v]); f, up = t.flips(a); t.advance(a, f, up); flips.append(bool(f[0]))
+print("light of LEVEL", round(light, 4), "levels", [round(x, 4) for x in levels])
+print("transitions over 3 cycles (24 s):", sum(flips), flips)
+g = wp.grid if hasattr(wp, "grid") else None

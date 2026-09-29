@@ -1,0 +1,143 @@
+"""it13 plan review, Q1 and Q2: the close path's exact tests against unsafe closes, and an interrupt inside apply.
+
+Read only: patches GovernedDisplay in memory (the plan's interface), edits no file.
+"""
+import numpy as np
+
+import show.wall as w
+from arcade import flash
+from arcade.flash import BUDGET, FlashGovernor, flash_area, square_flashes
+from show.wall import GovernedDisplay
+from tests.test_main import FailingPushes
+from tests.test_wall import FPS, H, W, Recorder, strobe
+
+LIT = np.full((H, W, 3), (51, 255, 51), np.uint8)
+BLACK = np.zeros((H, W, 3), np.uint8)
+
+
+def patch(close_kind="plan"):
+    def __init__(self, *a, **k):
+        real_init(self, *a, **k)
+        self.unsent, self.failed = False, 0
+
+    def _send(self, frame):
+        self.unsent = True
+        try:
+            self.display.push(frame)
+        except Exception:
+            self.failed += 1
+            raise
+        self.unsent = False
+
+    def close(self):
+        black = np.zeros(self.governor.shape, np.uint8)
+        push = self.push
+        raw = self.display.push
+        try:
+            if self.unsent and close_kind != "no-repush":
+                try:
+                    self.repush()
+                except Exception:
+                    pass
+            for _ in range(2):
+                if close_kind == "raw-black":
+                    raw(black)                     # ungoverned black through an alias: the AST does not see it
+                else:
+                    push(black)
+        finally:
+            self.display.close()
+
+    w.GovernedDisplay.__init__, w.GovernedDisplay._send, w.GovernedDisplay.close = __init__, _send, close
+    w.GovernedDisplay.last = property(lambda self: None if self._last is None else self._last.view())
+
+
+real_init = GovernedDisplay.__init__
+
+
+def test1(kind):
+    patch(kind)
+    inner, reference = FailingPushes({31}), FlashGovernor(H, W, 2.2, fps=FPS)
+    wall, frames = GovernedDisplay(inner, H, W, fps=FPS), strobe(31)
+    for f in frames[:30]:
+        wall.push(f); reference.apply(f)
+    try:
+        wall.push(frames[30])
+    except OSError:
+        pass
+    want = [reference.apply(frames[30]).copy(), reference.apply(BLACK).copy(), reference.apply(BLACK).copy()]
+    wall.close()
+    ok = inner.count == 33 and inner.closed and not wall.unsent and all(
+        np.array_equal(g, x) for g, x in zip(inner.pushed[-3:], want))
+    means = [round(float(x.mean()), 1) for x in want]
+    return ok, means
+
+
+print("== Q2: test 1 of test_wall_close against closes ==")
+for kind in ("plan", "raw-black", "no-repush"):
+    ok, means = test1(kind)
+    print(f"close={kind:10s} test1 passes: {ok}   want means (N, black1, black2): {means}")
+
+# the clean close of it12 (tests/test_main.py:406-416) against raw black
+patch("raw-black")
+inner, reference = Recorder(), FlashGovernor(H, W, 2.2, fps=FPS)
+wall = GovernedDisplay(inner, H, W, fps=FPS)
+for f in strobe(40):
+    wall.push(f); reference.apply(f)
+want = [reference.apply(BLACK).copy(), reference.apply(BLACK).copy()]
+wall.close()
+print("it12 clean-close test with raw black passes:",
+      inner.count == 42 and all(np.array_equal(g, x) for g, x in zip(inner.pushed[-2:], want)),
+      "want means", [round(float(x.mean()), 1) for x in want])
+
+print("== Q1/Q4: KeyboardInterrupt inside apply, then close (plan's close) ==")
+patch("plan")
+
+
+def run_interrupt(where, n_before=60):
+    """A 10 Hz strobe, governed; at frame n_before a KeyboardInterrupt lands at `where` in apply; then close.
+    Returns the frames the display got, and the square flashes and flash area of that sequence."""
+    inner = Recorder()
+    wall = GovernedDisplay(inner, H, W, fps=FPS)
+    frames = strobe(n_before + 1)
+    for f in frames[:n_before]:
+        wall.push(f)
+    gov = wall.governor
+    orig_push = flash._Window.push
+    state = {"armed": True}
+
+    def push_interrupted(self, shown):
+        if state["armed"] and self is gov._pixel_window and where == "window-mid":
+            state["armed"] = False
+            self.count -= self.ring[self.i]
+            raise KeyboardInterrupt
+        return orig_push(self, shown)
+
+    flash._Window.push = push_interrupted
+    orig_adv = flash._Transitions.advance
+
+    def adv_interrupted(self, v, flip, up):
+        orig_adv(self, v, flip, up)
+        if state["armed"] and self is gov._pixels and where == "after-pixels-advance":
+            state["armed"] = False
+            raise KeyboardInterrupt
+
+    flash._Transitions.advance = adv_interrupted
+    try:
+        try:
+            wall.push(frames[n_before])
+        except KeyboardInterrupt:
+            pass
+        unsent = wall.unsent
+        wall.close()
+    finally:
+        flash._Window.push, flash._Transitions.advance = orig_push, orig_adv
+    shown = inner.pushed
+    return unsent, square_flashes(shown, fps=FPS), flash_area(shown, fps=FPS), [round(float(f.mean()), 1)
+                                                                                  for f in shown[-4:]]
+
+
+for where in ("window-mid", "after-pixels-advance"):
+    for n in (60, 61, 62, 63):
+        unsent, sq, area, tail = run_interrupt(where, n)
+        print(f"{where:22s} at frame {n}: unsent {unsent}; shown: square_flashes {sq} (BUDGET {BUDGET}), "
+              f"flash_area {area}; last 4 means {tail}")

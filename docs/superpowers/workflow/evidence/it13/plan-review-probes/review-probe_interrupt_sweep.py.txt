@@ -1,0 +1,40 @@
+"""Q1/Q4 sweep: a KeyboardInterrupt midway through the pixel window's push (count decremented, ring not yet
+written) at every frame of strobes of periods 1 to 4, then the plan's close. The shown sequence's square flashes
+and flash area, worst over the sweep. Read only (in-memory patches)."""
+import numpy as np
+from arcade import flash
+from arcade.flash import BUDGET, flash_area, square_flashes
+from show.wall import GovernedDisplay
+from tests.test_wall import FPS, H, W, Recorder, strobe
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("pc", sys.argv[1]); pc = importlib.util.module_from_spec(spec)
+import builtins
+_print = builtins.print; builtins.print = lambda *a, **k: None
+spec.loader.exec_module(pc)
+builtins.print = _print
+pc.patch("plan")
+
+def once(period, n, where):
+    inner = Recorder(); wall = GovernedDisplay(inner, H, W, fps=FPS); frames = strobe(n + 1, period)
+    for f in frames[:n]:
+        wall.push(f)
+    gov = wall.governor; orig = flash._Window.push; armed = [True]
+    target = gov._pixel_window if where == "pixel" else gov._square_window
+    def p(self, shown):
+        if armed[0] and self is target:
+            armed[0] = False; self.count -= self.ring[self.i]; raise KeyboardInterrupt
+        return orig(self, shown)
+    flash._Window.push = p
+    try:
+        try: wall.push(frames[n])
+        except KeyboardInterrupt: pass
+        wall.close()
+    finally:
+        flash._Window.push = orig
+    return square_flashes(inner.pushed, fps=FPS), flash_area(inner.pushed, fps=FPS)
+
+for where in ("pixel", "square"):
+    for period in (1, 2, 3, 4):
+        res = [once(period, n, where) for n in range(25, 45)]
+        print(f"interrupt in the {where} window's push, strobe period {period}: worst square_flashes "
+              f"{max(r[0] for r in res)} (BUDGET {BUDGET}), worst flash_area {max(r[1] for r in res)}")

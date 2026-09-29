@@ -1,0 +1,48 @@
+"""Q4/Q9: a real `python -m show` (fake backend) started, SIGTERM after 1.5 s: how long to exit, with today's code
+(no handler: killed by the signal) and with the plan's handler patched in by a wrapper (runpy, in the child)."""
+import os, signal, subprocess, sys, time
+D = sys.argv[1]
+env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYTHONPATH": "/Users/trey/dev/codeisart"}
+wrapper = r'''
+import logging, signal, sys
+import show.main as m
+class Sigterm:
+    seen = False
+    def __call__(self, signum, frame):
+        if self.seen:
+            logging.getLogger("show").warning("SIGTERM again: ignored"); return
+        self.seen = True
+        raise KeyboardInterrupt
+real_close = m.ShowLoop._close
+def _close(self):
+    logging.getLogger("show").info("closing: the wall goes black, the lights off")
+    real_close(self)
+m.ShowLoop._close = _close
+real_start = m.ShowLoop.start
+def start(self, now):
+    real_start(self, now); logging.getLogger("show").info("the show runs at %s fps", self.cfg.fps)
+m.ShowLoop.start = start
+old = signal.signal(signal.SIGTERM, Sigterm())
+sys.exit(m.main(sys.argv[1:]))
+'''
+for label, argv in (("plan's handler", [sys.executable, "-c", wrapper]),):
+    t0 = time.monotonic()
+    p = subprocess.Popen(argv + ["--config", f"{D}/runshow/show.toml"], cwd="/Users/trey/dev/codeisart", env=env,
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    ready = None
+    if label != "today (no handler)":
+        for line in p.stdout:
+            if "the show runs" in line:
+                ready = time.monotonic() - t0; break
+    else:
+        time.sleep(1.5)
+    t1 = time.monotonic()
+    p.send_signal(signal.SIGTERM)
+    try:
+        out, _ = p.communicate(timeout=20)
+    finally:
+        if p.poll() is None:
+            p.kill(); p.wait()
+    print(f"{label}: 'the show runs' at {ready if ready is None else round(ready, 2)} s; exit {p.returncode} "
+          f"{round(time.monotonic() - t1, 2)} s after SIGTERM; 'closing' logged: {'closing' in out}; total "
+          f"{round(time.monotonic() - t0, 2)} s")

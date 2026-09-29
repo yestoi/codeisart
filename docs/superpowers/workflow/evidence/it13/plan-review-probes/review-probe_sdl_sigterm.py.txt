@@ -1,0 +1,37 @@
+"""Q4: does pygame.mixer.init() (AudioCues, show/audio.py:55) take SIGTERM over, and does a Python handler
+installed first survive it? Each case is a child, SIGTERM after 1 s, killed after 5 s in any case."""
+import os, signal, subprocess, sys, time
+env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYTHONPATH": "/Users/trey/dev/codeisart"}
+CASES = {
+    "no pygame": "import time\nprint('up', flush=True)\ntime.sleep(10)",
+    "mixer.init, no handler": "import time, pygame\npygame.mixer.init()\nprint('up', flush=True)\ntime.sleep(10)",
+    "handler first, then mixer.init": (
+        "import signal, sys, time, pygame\n"
+        "def h(s, f): raise KeyboardInterrupt\n"
+        "signal.signal(signal.SIGTERM, h)\npygame.mixer.init()\nprint('up', flush=True)\n"
+        "try:\n    time.sleep(10)\nexcept KeyboardInterrupt:\n    print('KeyboardInterrupt', flush=True); sys.exit(0)"),
+    "mixer.init, then handler": (
+        "import signal, sys, time, pygame\npygame.mixer.init()\n"
+        "def h(s, f): raise KeyboardInterrupt\n"
+        "signal.signal(signal.SIGTERM, h)\nprint('up', flush=True)\n"
+        "try:\n    time.sleep(10)\nexcept KeyboardInterrupt:\n    print('KeyboardInterrupt', flush=True); sys.exit(0)"),
+    "the real AudioCues, no handler": (
+        "import time\nfrom show.audio import AudioCues\nfrom pathlib import Path\n"
+        "a = AudioCues(Path('/Users/trey/dev/codeisart/audio'), 0.6, '')\nprint('up', flush=True)\ntime.sleep(10)"),
+}
+for label, code in CASES.items():
+    p = subprocess.Popen([sys.executable, "-c", code], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         text=True)
+    try:
+        p.stdout.readline()
+        time.sleep(1.0)
+        t = time.monotonic()
+        p.send_signal(signal.SIGTERM)
+        try:
+            out, _ = p.communicate(timeout=4)
+            print(f"{label:32s}: exited {p.returncode} in {time.monotonic() - t:.2f} s {out.strip()[-40:]!r}")
+        except subprocess.TimeoutExpired:
+            print(f"{label:32s}: STILL RUNNING 4 s after SIGTERM")
+    finally:
+        if p.poll() is None:
+            p.kill(); p.wait()
