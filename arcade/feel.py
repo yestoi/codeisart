@@ -1,11 +1,13 @@
 """Feel metrics (spec 9.3, 11): what a game feels like on the wall, measured through the real runner and judged
 against per-kind budgets.
 
-measure() runs the game's canonical scenario (its first FEEL_SECONDS) through run_headless at a layout, with
-counterfactual reruns for latency, looks for the score in its frames (in the project's font, then through look's
-distance model at 5 m), compares idle_body with nobody for the wall's answer to a present body, and plays the game's bots (arcade/bots.py) over seeds. budgets() reads
-feel_budgets.toml (per GameInfo.kind, then its layout table) and the game's own <name>_feel.toml, whose every
-override needs a reason. judge() names each budget a metric misses; report() is all three, JSON-ready.
+measure() runs the game's canonical scenario (its first FEEL_SECONDS) through run_headless at a layout the game
+declares, launched as the arcade launches it (the lobby, on canonical's raised hand), with counterfactual reruns for
+latency and magnitude, looks for the score in its frames (in the project's font, then through look's distance model
+at 5 m), compares idle_body with nobody for the wall's answer to a present body, and plays the game's bots
+(arcade/bots.py) over seeds. budgets() reads feel_budgets.toml (per GameInfo.kind, then its layout table) and the
+game's own <name>_feel.toml, whose every override needs a reason. judge() names each budget a metric misses;
+report() is all three, JSON-ready.
 """
 from __future__ import annotations
 
@@ -23,6 +25,7 @@ from typing import Callable, Sequence
 import numpy as np
 
 from arcade import bots, flash, look
+from arcade.attract.lobby import Lobby
 from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
 from arcade.headless import RecordingDisplay, run_headless
@@ -30,8 +33,9 @@ from arcade.sensed import Body, Sensed
 from arcade.sources.actors import TICK
 from show.font import CELL_H, CELL_W
 
-RESPONSE_PX = 12                   # pixels that must change for a response to count (spec 11)
-LATENCY_TICKS = 2                  # spec 11's response budget; 5 x this is the value when nothing responds
+RESPONSE_PX = 12                   # spec 11's magnitude floor: the budget on response_px (feel_budgets.toml)
+LATENCY_TICKS = 2                  # spec 11's response budget; response_px is read this many ticks after a probe;
+                                   # 5 x this is response_ticks when nothing responds
 PROBES = 8                         # canonical ticks probed for latency
 FEEL_SECONDS = 20.0                # the part of canonical measured
 FEEL_SEEDS = 20                    # spec 9.3's bot plays per bot
@@ -266,29 +270,33 @@ def _held(records: list[Sensed], i: int, j: int) -> Sensed:
                                camera_seq=r.camera_seq)
 
 
-def _response(cfg, font, game_cls, records, seed, pushed, probes: list[int]) -> float | None:
-    """The median over probes of the ticks after the probe until the pushed frames of a run that holds every later
-    record at the probe's input differ from pushed in RESPONSE_PX pixels or more; 5 * LATENCY_TICKS when never."""
+def _response(cfg, font, game_cls, records, seed, pushed, probes: list[int]) -> tuple[float | None, float | None]:
+    """(response_ticks, response_px) over probes, each from a run that launches through a fresh Lobby as the
+    canonical run did and holds every record after the probe at the probe's input: the median of the first tick
+    after the probe whose pushed frame differs from pushed in any pixel (5 * LATENCY_TICKS when none does), and the
+    median of the pixels that differ LATENCY_TICKS ticks after the probe. (None, None) without probes."""
     if not probes:
-        return None
+        return None, None
     horizon = 5 * LATENCY_TICKS
-    ticks = []
+    ticks, px = [], []
     for i in probes:
         held = records[:i + 1] + [_held(records, i, j) for j in range(i + 1, i + 1 + horizon)]
-        frames, _ = run_headless(cfg, font, game_cls, held, seed=seed)
+        frames, _ = run_headless(cfg, font, game_cls, held, seed=seed, lobby=Lobby([game_cls], cfg))
         if not all(np.array_equal(a, b) for a, b in zip(frames[:i + 1], pushed[:i + 1])):
             raise RuntimeError(f"{game_cls.info.name} does not repeat under seed {seed}: its frames before tick "
                                f"{i} differ between two runs of the same records")
-        ticks.append(next((k for k in range(1, horizon + 1)
-                           if int((frames[i + k] != pushed[i + k]).any(axis=2).sum()) >= RESPONSE_PX), horizon))
-    return float(statistics.median(ticks))
+        changed = [int((frames[i + k] != pushed[i + k]).any(axis=2).sum()) for k in range(1, horizon + 1)]
+        ticks.append(next((k for k, n in enumerate(changed, 1) if n), horizon))
+        px.append(changed[LATENCY_TICKS - 1])
+    return float(statistics.median(ticks)), float(statistics.median(px))
 
 
-def _probes(inputs: list, current: list[bool], horizon: int) -> list[int]:
-    """Up to PROBES ticks, evenly spread, where the input exists and moves on the next record, the game running."""
+def _probes(inputs: list, current: list[bool], horizon: int, moved: list[bool] | None = None) -> list[int]:
+    """Up to PROBES ticks, evenly spread, where the input exists and moves on the next record, the game running, and,
+    when moved is given, moved[i]: the control answered on the next traced tick (a clamped control is no probe)."""
     last = len(inputs) - 1 - horizon
     moves = [i for i in range(last + 1) if current[i] and inputs[i] is not None and inputs[i + 1] is not None
-             and inputs[i + 1] != inputs[i]]
+             and inputs[i + 1] != inputs[i] and (moved is None or moved[i])]
     if len(moves) <= PROBES:
         return moves
     return sorted({moves[round(k * (len(moves) - 1) / (PROBES - 1))] for k in range(PROBES)})
@@ -307,15 +315,28 @@ def _canonical(cfg, font, game_cls, seed, own) -> dict[str, float | None]:
             yield sensed
             players.append(runner.player)
 
-    pushed, runner = run_headless(cfg, font, game_cls, feed, seed=seed, trace=True, raw=True)
+    pushed, runner = run_headless(cfg, font, game_cls, feed, seed=seed, trace=True, raw=True,
+                                  lobby=Lobby([game_cls], cfg))
     raw, trace = runner.raw_frames, runner.trace
-    current = [s.get("game") == name for s in trace]
+    # current: the session the raised hand launched, from its launch tick to its end (a hand raised after it ends
+    # launches the game again, which is not the first impression measured here).
+    games = [s.get("game") for s in trace]
+    if name not in games:
+        raise ValueError(f"{name} never launched from the lobby in canonical's first {FEEL_SECONDS:g} s: canonical "
+                         f"needs a walk-up and a raised hand, and the lobby launches only a MENU_ORDER game")
+    first = games.index(name)
+    stop = next((k for k in range(first, len(games)) if games[k] != name), len(games))
+    current = [first <= k < stop for k in range(len(games))]
     ctl = control(game_cls, own)
     read: Callable = _cursor if ctl is None else INPUTS[ctl[0]]
     inputs = [None if p is None else read(p) for p in players]
+    moved = None
+    if ctl is not None:
+        axis_at = [None if (xy := _xy(s, ctl[1])) is None else xy[ctl[2]] for s in trace]
+        moved = [a is not None and b is not None and a != b for a, b in zip(axis_at, axis_at[1:])] + [False]
     out: dict[str, float | None] = {}
-    out["response_ticks"] = _response(cfg, font, game_cls, records, seed, pushed,
-                                      _probes(inputs, current, 5 * LATENCY_TICKS))
+    out["response_ticks"], out["response_px"] = _response(cfg, font, game_cls, records, seed, pushed,
+                                                          _probes(inputs, current, 5 * LATENCY_TICKS, moved))
     out["fidelity"] = out["range"] = None
     if ctl is not None:
         _, key, axis = ctl
@@ -325,15 +346,18 @@ def _canonical(cfg, font, game_cls, seed, own) -> dict[str, float | None]:
             a, b = zip(*pairs)
             out["fidelity"] = _pearson(list(a), list(b))
             out["range"] = (max(b) - min(b)) / ((cfg.width if axis == 0 else cfg.height) - 1)
-    lit_raw = [_lit(f) for f in raw]
+    # The game's own frames: from the tick after its launch (the launch tick pushes the lobby's last frame) to its
+    # session's end or the window's.
+    own_raw, own_pushed = raw[first + 1:stop], pushed[first + 1:stop]
+    lit_raw = [_lit(f) for f in own_raw]
     lit_pixels = sum(int(m.sum()) for m in lit_raw)
-    dim_pixels = sum(int((m & (f < DIM_LEVEL).all(axis=2)).sum()) for m, f in zip(lit_raw, raw))
-    out["lit_fraction"] = float(np.mean([_lit(f).mean() for f in pushed])) if pushed else 0.0
+    dim_pixels = sum(int((m & (f < DIM_LEVEL).all(axis=2)).sum()) for m, f in zip(lit_raw, own_raw))
+    out["lit_fraction"] = float(np.mean([_lit(f).mean() for f in own_pushed])) if own_pushed else 0.0
     out["dim_fraction"] = dim_pixels / lit_pixels if lit_pixels else 0.0
-    out["liveliness"] = (float(np.mean([(a != b).any(axis=2).mean() for a, b in zip(raw, raw[1:])]))
-                         if len(raw) > 1 else 0.0)
-    out["flash_area_raw"] = float(flash.flash_area(raw, cfg.gamma, cfg.fps))
-    out["square_flashes"] = float(flash.square_flashes(pushed, cfg.gamma, cfg.fps))
+    out["liveliness"] = (float(np.mean([(a != b).any(axis=2).mean() for a, b in zip(own_raw, own_raw[1:])]))
+                         if len(own_raw) > 1 else 0.0)
+    out["flash_area_raw"] = float(flash.flash_area(own_raw, cfg.gamma, cfg.fps))
+    out["square_flashes"] = float(flash.square_flashes(own_pushed, cfg.gamma, cfg.fps))
     out |= _score(font, pushed, trace, current, cfg.gamma)
     out["presence_answer_seconds"] = _presence_answer(cfg, font, game_cls, seed)
     return out
@@ -355,22 +379,33 @@ def _bot_plays(game_cls, layout: str, runs: list[int], font) -> dict[str, float 
 
 def measure(game_cls, layout: str, seeds: int | Sequence[int] = FEEL_SEEDS, font=None, *,
             own: Path | None = None) -> dict[str, float | None]:
-    """Every feel metric of game_cls at layout ("WxH"), None where it cannot be measured.
+    """Every feel metric of game_cls at layout ("WxH"), one of its info.layouts (else ValueError naming both), None
+    where it cannot be measured.
 
-    Canonical is SCENARIOS["canonical"]'s first FEEL_SECONDS, run once through run_headless under the first seed;
-    raw frames are the game's own drawing, pushed what the wall shows. response_ticks: at PROBES canonical ticks
-    where control()'s input (else the player's cursor) moves on the next record, a second run holds every later
-    record at that tick's input (times advance); the ticks after the probe until the pushed frames differ in
-    RESPONSE_PX pixels or more, the median (1 is the next tick); 5 * LATENCY_TICKS when never. fidelity: Pearson
-    r of control()'s input against its *_xy axis over the canonical ticks where both exist; range: that axis's
-    span over the wall's extent - 1 (both None without [fidelity]). lit_fraction: pushed, the mean share of
-    non-black pixels; dim_fraction: raw, the share of lit pixels with every channel under DIM_LEVEL;
+    Canonical is SCENARIOS["canonical"]'s first FEEL_SECONDS, run once through run_headless under the first seed
+    from a Lobby([game_cls]), as the arcade launches a game: on canonical's raised hand, with the body in view (a
+    canonical that never launches the game raises ValueError). Metrics count from the launch tick; raw frames are
+    the game's own drawing, pushed what the wall shows, both from the game's first frame to its session's end.
+    A probe is a canonical tick, the game current, where control()'s input (else the player's cursor) moves on the
+    next record and, with a [fidelity] table, its *_xy axis changes on the next traced tick (a clamped control is
+    no probe); at up to PROBES of them a second run (a fresh Lobby, the same records) holds every later record at
+    the probe's input (times advance). response_ticks: the median of the first tick after the probe whose pushed
+    frame differs in any pixel (1 is the next tick), 5 * LATENCY_TICKS when never; response_px: the median of the
+    pixels that differ LATENCY_TICKS ticks after the probe (spec 11's magnitude, RESPONSE_PX, is its budget).
+    fidelity: Pearson r of control()'s input against its *_xy axis over the canonical ticks where both exist;
+    range: that axis's span over the wall's extent - 1 (both None without [fidelity]). lit_fraction: pushed, the
+    mean share of non-black pixels; dim_fraction: raw, the share of lit pixels with every channel under DIM_LEVEL;
     liveliness: raw, the mean share changing per tick; flash_area_raw (raw) and square_flashes (pushed) as
     arcade/flash.py counts them. score_visible and score_legible: pushed, as _score() says (the score read from
-    debug_state()["score"]); presence_answer_seconds as _presence_answer() says, under the first seed. From bots.play over seeds (n: bots.seeds(game_cls, layout, n)): win_good,
-    win_lazy, win_none (Nobody); round_seconds, the median length of the good plays that ended done();
+    debug_state()["score"]); presence_answer_seconds as _presence_answer() says (launched directly: idle_body
+    raises no hand), under the first seed. From bots.play over seeds (n: bots.seeds(game_cls, layout, n)):
+    win_good, win_lazy, win_none (Nobody); round_seconds, the median length of the good plays that ended done();
     phases_reached, the share of PHASES seen over the good plays. own is the game's feel file (control()).
     """
+    name, layouts = game_cls.info.name, game_cls.info.layouts
+    if layout not in layouts:
+        raise ValueError(f"{name} does not declare the layout {layout} (it declares {sorted(layouts)}): feel "
+                         f"measures a game only at a layout it declares, the ones the lobby features it at")
     runs = bots.seeds(game_cls, layout, seeds) if isinstance(seeds, int) else list(seeds)
     if not runs:
         raise ValueError("measure needs at least one seed")

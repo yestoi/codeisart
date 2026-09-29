@@ -125,9 +125,18 @@ def _sensed(i: int, move: Move | None, before: float | None, cal: Calibration) -
                   motion=np.zeros((h, w), bool), audio=Audio()), cx
 
 
-def play(game_cls, bot: Bot, seed: int, layout: str = "128x32", won: Callable[[dict], bool] | None = None,
+def _layout(game_cls, layout: str | None) -> str:
+    """layout, else the game's one declared layout when it declares exactly one, else the wall's default."""
+    if layout is not None:
+        return layout
+    declared = game_cls.info.layouts
+    return next(iter(declared)) if len(declared) == 1 else ArcadeConfig().layout
+
+
+def play(game_cls, bot: Bot, seed: int, layout: str | None = None, won: Callable[[dict], bool] | None = None,
          seconds: float = MAX_PLAY_SECONDS, keep_frames: bool = False, font: Font | None = None) -> Play:
-    """Play game_cls with bot through the real runner (run_headless, seeded with seed) at layout.
+    """Play game_cls with bot through the real runner (run_headless, seeded with seed) at layout; None is the
+    game's one declared layout when it declares exactly one, else ArcadeConfig().layout.
 
     Each tick the bot gets the game's debug_state() of bot.reaction_ticks ticks ago ({} before there is one)
     and the tick's t; noise from random.Random(seed), SD bot.noise, is added to the Move's x and wrist_y,
@@ -137,7 +146,7 @@ def play(game_cls, bot: Bot, seed: int, layout: str = "128x32", won: Callable[[d
     """
     if won is None:
         won = for_game(game_cls)[1]
-    w, h = (int(v) for v in layout.split("x"))
+    w, h = (int(v) for v in _layout(game_cls, layout).split("x"))
     cfg = ArcadeConfig(w, h, backend="fake", camera="none", audio="none")
     font = font if font is not None else _font(ROOT / cfg.font_path)
     name = game_cls.info.name
@@ -170,8 +179,8 @@ def play(game_cls, bot: Bot, seed: int, layout: str = "128x32", won: Callable[[d
                 state=state, phases=phases, frames=frames if keep_frames else None)
 
 
-def win_rate(game_cls, bot_factory: Callable[[], Bot], seeds: Sequence[int], layout: str = "128x32") -> float:
-    """The share of seeds a fresh bot_factory() bot wins on game_cls at layout."""
+def win_rate(game_cls, bot_factory: Callable[[], Bot], seeds: Sequence[int], layout: str | None = None) -> float:
+    """The share of seeds a fresh bot_factory() bot wins on game_cls at layout (None as play() says)."""
     if not seeds:
         raise ValueError("win_rate needs at least one seed")
     return statistics.fmean(play(game_cls, bot_factory(), s, layout).won for s in seeds)

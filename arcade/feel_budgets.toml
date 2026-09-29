@@ -2,12 +2,17 @@
 # max. [<kind>.layouts."<WxH>".<metric>] overrides one metric at one layout; a game's own overrides live in
 # arcade/games/<name>_feel.toml, each with a reason. The numbers are an owner question, defaulted: 2 ticks,
 # 12 px and rounds of 20 to 120 s are spec 11's; the win bands are good >= 0.7, lazy 0.1 to 0.7, none <= 0.05.
+# response_ticks is latency (the first tick any pixel answers the input); response_px is magnitude (the pixels
+# that differ two ticks after it), at least 12 for every kind.
 # A score shows on four ticks in five (the ball and a goal's shake may hide it briefly) and reads at 5 m: nine in
 # ten of its glyph's pixels survive the distance look, as 2x digits do at 10 m, the distance spec 7.4 says they
 # read to. presence_answer_seconds is measured with no budget: it is not spec 9.3's idle hint.
 
 [control.response_ticks]
 max = 2
+
+[control.response_px]
+min = 12
 
 [control.fidelity]
 min = 0.8
@@ -41,6 +46,9 @@ max = 120
 
 [score.response_ticks]
 max = 2
+
+[score.response_px]
+min = 12
 
 [score.fidelity]
 min = 0.8
@@ -90,6 +98,9 @@ min = 0.9
 
 [toy.response_ticks]
 max = 2
+
+[toy.response_px]
+min = 12
 
 [toy.lit_fraction]
 min = 0.01

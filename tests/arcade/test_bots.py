@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from arcade.bots import MAX_PLAY_SECONDS, Move, Nobody, Play, for_game, play, seeds, win_rate
+from arcade.config import ArcadeConfig
 from arcade.game import KINDS, Game, GameInfo
 from arcade.sensed import RIGHT_WRIST
 from arcade.sources.actors import TICK
@@ -185,6 +186,24 @@ def test_good_beats_lazy_beats_nobody_on_target(target_bots, font5x7):
     assert rates["good"] == 1.0 and 0.0 < rates["lazy"] < 1.0 and rates["nobody"] == 0.0, f"{rates}, seeds {runs}"
 
 
+class Sized(SpyGame):
+    """Reports the size it was reset to."""
+
+    finish_after = 2
+
+    def debug_state(self):
+        return {"updates": self.updates, "size": self.size}
+
+
+def test_play_defaults_to_the_declared_layout(font5x7):
+    one = type("One", (Sized,), {"info": spy_info("one", layouts=frozenset({"96x48"}))})
+    two = type("Two", (Sized,), {"info": spy_info("two", layouts=frozenset({"96x48", "64x64"}))})
+    assert play(one, Recorder(), seed=0, won=never, font=font5x7).state["size"] == (96, 48)
+    assert play(two, Recorder(), seed=0, won=never, font=font5x7).state["size"] == ArcadeConfig().size
+    assert "x".join(map(str, ArcadeConfig().size)) == ArcadeConfig().layout not in two.info.layouts
+    assert play(one, Recorder(), seed=0, layout="64x64", won=never, font=font5x7).state["size"] == (64, 64)
+
+
 def test_for_game_names_the_missing_bots_module(target_bots):
     assert for_game(Target) == (target_bots.BOTS, target_bots.won)
     with pytest.raises(ModuleNotFoundError, match=r"arcade/games/spy_bots\.py"):
@@ -193,7 +212,7 @@ def test_for_game_names_the_missing_bots_module(target_bots):
         play(SpyGame, Nobody(), seed=0, seconds=0.1)                  # won defaults to the game's
 
 
-METRICS = {"response_ticks": {"max": 2}, "fidelity": {"min": 0.8}, "range": {"min": 0.6},
+METRICS = {"response_ticks": {"max": 2}, "response_px": {"min": 12}, "fidelity": {"min": 0.8}, "range": {"min": 0.6},
            "lit_fraction": {"min": 0.01, "max": 0.5}, "dim_fraction": {"max": 0.1}, "liveliness": {"min": 0.001},
            "flash_area_raw": {"max": 0.1}, "square_flashes": {"max": 6}, "phases_reached": {"min": 1.0},
            "round_seconds": {"min": 20, "max": 120}}
