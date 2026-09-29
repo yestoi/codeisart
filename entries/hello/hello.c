@@ -18,7 +18,7 @@ int main(void)
     int frames = 60;   /* 60 frames at 20 a second: about 3 seconds */
     int width = 6;
     int span = cols - width;
-    int leftover = 0;  /* unused on purpose: the one -Wall warning of this entry */
+    int leftover = 0;  /* unused on purpose: the one -Wall warning */
 
     if (span < 1)
         span = 1;
@@ -26,13 +26,13 @@ int main(void)
     for (int f = 0; f < frames; f++) {
         printf("\033[H");
         for (int r = 0; r < rows; r++) {
-            /* triangle wave over the frames, shifted by the row: a moving ripple */
+            /* triangle wave over the frames, shifted by the row: a ripple */
             int p = (f * 2 + r) % (2 * span);
             int col = p < span ? p : 2 * span - p;
             printf("%*s", col, "");
             for (int i = 0; i < width; i++)
                 putchar('#');
-            printf("\033[K");  /* erase the trail of earlier frames to the right */
+            printf("\033[K");  /* erase the trail of earlier frames */
             if (r < rows - 1)  /* no newline on the last row: it would scroll */
                 putchar('\n');
         }
