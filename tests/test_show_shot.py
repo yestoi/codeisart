@@ -117,3 +117,88 @@ def test_program_black_in_the_ink_view_is_any_lit_dot(real_font):
     assert ss._program_black(frames, cfg)
     frames = ss.frames_from_steps([ss.Step("dot", b".")], cfg, real_font)
     assert not ss._program_black(frames, cfg)
+
+
+# -- the real pipeline and attract mode (it11 T-shot) ---------------------------------------------------------
+
+from dataclasses import replace                                         # noqa: E402
+
+from show.pipeline import Phase                                         # noqa: E402
+from tests.show_helpers import HELLO_C, write_entry                     # noqa: E402
+
+PLAY_DEADLINE = 20.0     # a named deadline for one played entry, not a hang guard's guess at its duration
+
+
+@pytest.fixture
+def play_cfg() -> Config:
+    return Config(typewriter_cps=5000, dwell=0.2, error_hold=0.2, min_build_seconds=0.2)
+
+
+def _git_status_entries() -> str:
+    import subprocess
+    return subprocess.run(["git", "status", "--porcelain", "entries"], cwd=ROOT, capture_output=True,
+                          text=True).stdout
+
+
+@pytest.mark.skipif(shutil.which("cc") is None, reason="needs a C compiler")
+def test_entry_mode_plays_the_sample_entry_through_the_pipeline(play_cfg, real_font):
+    frames, phases, failure = ss.frames_from_entry(ROOT / "entries" / "hello", play_cfg, real_font,
+                                                   seconds=PLAY_DEADLINE, every_ms=500)
+    print("phases:", [(p.value if hasattr(p, "value") else p, round(t, 2)) for p, t in phases])
+    names = [p.value if hasattr(p, "value") else p for p, _ in phases]
+    assert names == [Phase.SOURCE.value, Phase.BUILD.value, Phase.RUN.value, Phase.DWELL.value,
+                     Phase.DONE.value]
+    assert failure is None
+    assert not (frames[0][1] == frames[-1][1]).all()
+    assert _git_status_entries() == ""
+    assert not (ROOT / "entries" / "hello" / "hello").exists()
+
+
+@pytest.mark.skipif(shutil.which("cc") is None, reason="needs a C compiler")
+def test_entry_mode_with_a_broken_build_replays_the_captured_fallback(tmp_path, play_cfg, real_font):
+    d = write_entry(tmp_path, "broken", 1, HELLO_C)
+    frames, phases, failure = ss.frames_from_entry(d, play_cfg, real_font, seconds=PLAY_DEADLINE,
+                                                   every_ms=200, build="false", capture_first=True)
+    names = [p.value if hasattr(p, "value") else p for p, _ in phases]
+    print("phases:", [(n, round(t, 2)) for n, (_, t) in zip(names, phases)])
+    assert Phase.ERROR_HOLD.value in names and Phase.FALLBACK.value in names
+    assert failure is not None and failure.startswith("build failed")
+    assert not (d / "fallback.cast").exists()      # the copy held the capture, not the original
+
+
+def test_attract_mode_scrolls(tmp_path, play_cfg, real_font):
+    for i in (1, 2):
+        write_entry(tmp_path, f"e{i}", i, HELLO_C * 8)
+    frames = ss.frames_from_attract(tmp_path, play_cfg, real_font, seconds=0.6, every_ms=200)
+    assert len(frames) >= 3
+    assert not (frames[0][1] == frames[-1][1]).all()
+    for label, frame in frames:
+        assert lit(frame[-CELL_H:]) > 0.5, label
+    ink = Config(width=128, height=64, view="ink")
+    frames = ss.frames_from_attract(tmp_path, ink, real_font, seconds=0.3, every_ms=150)
+    for label, frame in frames:
+        assert frame.shape == (64, 128, 3), label
+        assert frame[: 64 - CELL_H].max() > 0, label
+
+
+def test_play_strip_names_the_entry(tmp_path):
+    from show.entries import load_entry
+    entry = load_entry(write_entry(tmp_path, "abc", 1, HELLO_C))
+    assert ss.play_strip(entry) == "NOW: abc by Test Author, 2026, Not A.I. | NEXT: -"
+
+
+@pytest.mark.skipif(shutil.which("cc") is None, reason="needs a C compiler")
+def test_entry_and_attract_modes_write_stamped_sheets(tmp_path):
+    src = tmp_path / "src"
+    write_entry(src, "one", 1, HELLO_C)
+    conf = tmp_path / "fast.toml"
+    conf.write_text("typewriter_cps = 5000\ndwell = 0.2\nerror_hold = 0.2\nmin_build_seconds = 0.2\n"
+                    "attract_lps = 1000.0\n")
+    fast = ["--every-ms", "300", "--seconds", "0.5", "--look", "both", "--config", str(conf)]
+    for mode, target in (("--attract", src), ("--entry", src / "one")):
+        stem = tmp_path / mode.strip("-") / "sheet"
+        assert ss.main([mode, str(target), "--out", str(stem)] + fast) == 0
+        names = sorted(p.name for p in stem.parent.iterdir())
+        assert names == ["sheet-distance.png", "sheet-led.png", "sheet-plain.png"], names
+        for name in names:
+            assert Image.open(stem.parent / name).text["git"] == git_sha()

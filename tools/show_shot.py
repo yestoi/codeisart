@@ -4,8 +4,13 @@
     python -m tools.show_shot --command "seq 1 60" --seconds 2 --every-ms 250 --look both --out sheets/seq
     python -m tools.show_shot --script strip --crop 0,0,128,64 --look led --out sheets/prototype
     python -m tools.show_shot --config show.poc.toml --command "./donut" --look led --out sheets/poc-donut
+    python -m tools.show_shot --entry entries/hello --look both --out sheets/hello
+    python -m tools.show_shot --entry entries/hello --capture-first --build "false" --out sheets/fallback
+    python -m tools.show_shot --attract entries --look both --out sheets/attract
 
-Scripts: strip, edges, fullscreen, cc. Writes OUT.png (or OUT-plain.png and OUT-led.png with --look both) and
+Scripts: strip, edges, fullscreen, cc. --entry DIR plays an entry through the show's pipeline (in a temporary
+copy, real time; --capture-first records the fallback with the entry's own build, then --build replaces it) and
+--attract DIR scrolls the entries' sources; both keep --seconds (default 60 and 10) and --every-ms. Writes OUT.png (or OUT-plain.png and OUT-led.png with --look both) and
 OUT-distance.png (10 m, the middle of spec 1's 15 to 40 feet), each stamped with the git sha. Exits 1 and writes
 nothing when every frame's program rows are black, unless --allow-black.
 """
@@ -17,7 +22,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
@@ -29,8 +34,11 @@ if str(ROOT) not in sys.path:          # run as a script, the repository is not 
     sys.path.insert(0, str(ROOT))
 
 from arcade.look import render                                                    # noqa: E402
+from show.attract import Attract                                                  # noqa: E402
 from show.config import Config, load_config                                       # noqa: E402
+from show.entries import Entry, load_entries, load_entry                          # noqa: E402
 from show.font import CELL_H, CELL_W, Font                                              # noqa: E402
+from show.pipeline import EntryPlayer, Phase                                      # noqa: E402
 from show.renderer import Renderer                                                # noqa: E402
 from show.terminal import Terminal                                                # noqa: E402
 from tools.arcade_shot import BACKGROUND, CAP_H, INK, PAD, TITLE_H, TITLE_INK, fit_width, git_sha, save_png  # noqa: E402
@@ -165,6 +173,99 @@ def frames_from_command(command: str, cfg: Config, font: Font, seconds: float, e
     return frames
 
 
+def play_strip(entry: Entry) -> str:
+    """The strip while an entry plays (Q52): nothing is queued in a sheet, so NEXT is a dash."""
+    return f"NOW: {entry.title} by {entry.author}, {entry.year}, Not A.I. | NEXT: -"
+
+
+def _play(entry: Entry, cfg: Config, font: Font, seconds: float, every_ms: int, keep_frames: bool):
+    """One real-time play of an entry through the pipeline; the frames, the phases seen, the failure."""
+    renderer = _renderer(cfg, font)
+    term = Terminal(cfg.columns, cfg.rows - 1)
+    player = EntryPlayer(entry, term, cfg)
+    strip = play_strip(entry)
+    frames: list[tuple[str, np.ndarray]] = []
+    phases: list[tuple[str, float]] = []
+
+    def keep(label_phase: str, t: float) -> None:
+        if keep_frames:
+            frame = renderer.render(term.screen, True, strip, full_screen=entry.full_screen)
+            frames.append((f"{label_phase} {t:.1f}s", frame.copy()))
+
+    try:
+        start = time.monotonic()
+        player.start(start)
+        seen = None
+        next_keep = 0.0
+        while True:
+            now = time.monotonic()
+            player.tick(now)
+            t = now - start
+            phase = player.phase.value
+            if phase != seen:
+                phases.append((phase, t))
+                seen = phase
+                keep(phase, t)
+                next_keep = t + every_ms / 1000.0
+            elif t >= next_keep and not player.done:
+                keep(phase, t)
+                next_keep += every_ms / 1000.0
+            if player.done or t >= seconds:
+                break
+            time.sleep(1.0 / cfg.fps)
+        if not player.done:
+            keep(player.phase.value, time.monotonic() - start)
+    finally:
+        player.stop()
+        term.kill()
+    return frames, phases, player.failure
+
+
+def frames_from_entry(entry_dir: Path, cfg: Config, font: Font, seconds: float, every_ms: int,
+                      build: str | None = None, capture_first: bool = False
+                      ) -> tuple[list[tuple[str, np.ndarray]], list[tuple[str, float]], str | None]:
+    """The entry played in a temporary copy (no build product in the checkout): the frames, the phases seen
+    with their start times, the failure. --capture-first plays it once with its own build and capture on,
+    keeping no frames; then `build` replaces the copy's build."""
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = Path(tmp) / Path(entry_dir).resolve().name
+        shutil.copytree(entry_dir, copy)
+        if capture_first:
+            _play(load_entry(copy), replace(cfg, capture=True), font, seconds, every_ms, keep_frames=False)
+        entry = load_entry(copy)
+        if build is not None:
+            entry = replace(entry, build=build)
+        return _play(entry, cfg, font, seconds, every_ms, keep_frames=True)
+
+
+def frames_from_attract(entries_dir: Path, cfg: Config, font: Font, seconds: float,
+                        every_ms: int) -> list[tuple[str, np.ndarray]]:
+    """Attract mode on the terminal at cfg.attract_lps, in real time; a frame every every_ms, and one at the end."""
+    renderer = _renderer(cfg, font)
+    term = Terminal(cfg.columns, cfg.rows - 1)
+    attract = Attract(load_entries(entries_dir).values(), term, cfg.attract_lps, cfg.rows - 1)
+    frames: list[tuple[str, np.ndarray]] = []
+
+    def keep(t: float) -> None:
+        frames.append((f"{t:.2f}s", renderer.render(term.screen, True, ATTRACT_STRIP).copy()))
+
+    start = time.monotonic()
+    attract.start(start)
+    next_keep = 0.0
+    while True:
+        now = time.monotonic()
+        attract.tick(now)
+        t = now - start
+        if t >= seconds:
+            break
+        if t >= next_keep:
+            keep(t)
+            next_keep += every_ms / 1000.0
+        time.sleep(1.0 / cfg.fps)
+    keep(time.monotonic() - start)
+    return frames
+
+
 def sheet(frames, look: str, scale: int, title: str, gamma: float, cols: int) -> Image.Image:
     """The frames as captioned cells, cols to a row, under a title band."""
     h, w = frames[0][1].shape[:2]
@@ -213,8 +314,10 @@ def main(argv: list[str] | None = None) -> int:
     what = ap.add_mutually_exclusive_group(required=True)
     what.add_argument("--script", choices=sorted(SCRIPTS))
     what.add_argument("--command")
+    what.add_argument("--entry", type=Path, metavar="DIR")
+    what.add_argument("--attract", type=Path, metavar="DIR")
     ap.add_argument("--out", required=True, metavar="STEM")
-    ap.add_argument("--seconds", type=float, default=3.0)
+    ap.add_argument("--seconds", type=float, help="default 3 (--command), 60 (--entry), 10 (--attract)")
     ap.add_argument("--every-ms", type=int, default=500)
     ap.add_argument("--look", default="plain", choices=["plain", "led", "both"])
     ap.add_argument("--gamma", type=float, default=2.2)
@@ -224,19 +327,38 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scale", type=int, default=4)
     ap.add_argument("--cols", type=int, default=2)
     ap.add_argument("--config", type=Path, default=ROOT / "show.toml")
+    ap.add_argument("--build", metavar="CMD", help="with --entry: replace the copy's build command")
+    ap.add_argument("--capture-first", action="store_true",
+                    help="with --entry: play the copy once with its own build and capture on, keeping no frames")
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config if args.config.is_absolute() else ROOT / args.config)
     font = Font.load(cfg.font_path if cfg.font_path.is_absolute() else ROOT / cfg.font_path)
+    if (args.build or args.capture_first) and not args.entry:
+        ap.error("--build and --capture-first go with --entry")
     if args.script:
         frames = frames_from_steps(SCRIPTS[args.script](), cfg, font)
         what_text = f"script {args.script}"
+    elif args.entry:
+        seconds = 60.0 if args.seconds is None else args.seconds
+        frames, phases, failure = frames_from_entry(args.entry, cfg, font, seconds, args.every_ms,
+                                                    args.build, args.capture_first)
+        for phase, t in phases:
+            print(f"{t:6.2f}s  {phase}")
+        if failure:
+            print(f"failure: {failure}")
+        what_text = f"entry {args.entry.name}"
+    elif args.attract:
+        seconds = 10.0 if args.seconds is None else args.seconds
+        frames = frames_from_attract(args.attract, cfg, font, seconds, args.every_ms)
+        what_text = f"attract {args.attract.name}"
     else:
+        seconds = 3.0 if args.seconds is None else args.seconds
         if args.cwd is not None:
-            frames = frames_from_command(args.command, cfg, font, args.seconds, args.every_ms, args.cwd)
+            frames = frames_from_command(args.command, cfg, font, seconds, args.every_ms, args.cwd)
         else:
             with tempfile.TemporaryDirectory() as tmp:
-                frames = frames_from_command(args.command, cfg, font, args.seconds, args.every_ms, Path(tmp))
+                frames = frames_from_command(args.command, cfg, font, seconds, args.every_ms, Path(tmp))
         what_text = f"command {args.command!r}"
     if _program_black(frames, cfg) and not args.allow_black:
         print("refused: every frame's program rows are black; pass --allow-black to write the sheets anyway",
