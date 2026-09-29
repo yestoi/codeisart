@@ -276,7 +276,14 @@ class Depth:
     RECENTRE_SECONDS of captures, scale0 moves so the body reads at that end, then keeps moving so the reading
     comes inward at RECENTRE_RATE a second until the body reads RECENTRE_TO inside the end; there it stops. A
     body that leaves the end sooner resets the clock. scale0 survives a dropout: a player who is missed for a
-    moment comes back to the same centre; the caller reset()s the Depth when another body takes the control."""
+    moment comes back to the same centre; the caller reset()s the Depth when another body takes the control.
+
+    The first measure (C47): a track born without hips has the shoulder-width fallback for its scale (Body.measured
+    False), short on a real person (0.62 of the measure in the owner's spike), and reads its measure once its hips
+    are seen: a step of about 0.8 in value that nobody took. So when the centre came from a capture that was not
+    measured, the first measured capture after it takes a new centre: scale0 moves so that capture reads what the
+    last one read (raw), and the pinned clock restarts. That jump is no travel and no input. Once per reset(); a
+    body measured from its first capture never takes it."""
 
     def __init__(self, span: float = DEPTH_SPAN, grace: float = capture_grace(10)):
         self.span = _positive("span", span)
@@ -291,6 +298,7 @@ class Depth:
         self._value: float | None = None      # that capture's clamped value, given to the Glide on every tick
         self._pinned: tuple[int, float] | None = None   # (end, capture time) the reading was first pinned there
         self._follow = 0                      # -1 or 1 while the centre follows a body pinned at 0 or 1
+        self._unmeasured = False              # the centre came from a capture whose body was not measured
 
     @staticmethod
     def ratio(value: float, span: float = DEPTH_SPAN) -> float:
@@ -308,16 +316,19 @@ class Depth:
         if cam > self._capture or self._value is None:
             dt = max(0.0, cam - self._capture) if math.isfinite(self._capture) else 0.0
             self._capture = cam
-            self._value = min(1.0, max(0.0, self._read(scale, cam, dt)))
+            self._value = min(1.0, max(0.0, self._read(scale, cam, dt, bool(body.measured))))
         return self.glide.update(self._value, t, cam)
 
     def _shift(self, by: float) -> None:
         """Move the centre so every reading rises by `by` value units."""
         self._scale0 *= math.exp(-by * self.span)
 
-    def _read(self, scale: float, cam: float, dt: float) -> float:
+    def _read(self, scale: float, cam: float, dt: float, measured: bool = True) -> float:
         if self._scale0 is None:
-            self._scale0 = scale
+            self._scale0, self._unmeasured = scale, not measured
+        elif self._unmeasured and measured:
+            self._scale0 = scale * math.exp(-(self.raw - 0.5) * self.span)   # this capture reads what the last did
+            self._unmeasured, self._pinned = False, None
         u = 0.5 + math.log(scale / self._scale0) / self.span
         if self._follow:
             goal = RECENTRE_TO if self._follow < 0 else 1.0 - RECENTRE_TO

@@ -7,9 +7,9 @@ import zlib
 import pytest
 
 from arcade.calibration import Calibration
-from arcade.input import Depth
-from arcade.sensed import (LEFT_ANKLE, LEFT_HIP, LEFT_KNEE, LEFT_SHOULDER, NOSE, RIGHT_ANKLE, RIGHT_HIP,
-                           RIGHT_KNEE, RIGHT_SHOULDER, Body, Keypoint)
+from arcade.input import Cursor, Depth, capture_grace
+from arcade.sensed import (LEFT_ANKLE, LEFT_HIP, LEFT_KNEE, LEFT_SHOULDER, LEFT_WRIST, NOSE, RIGHT_ANKLE, RIGHT_HIP,
+                           RIGHT_KNEE, RIGHT_SHOULDER, RIGHT_WRIST, Body, Keypoint)
 from arcade.sources.actors import body_box, make_keypoints
 from arcade.sources.camera import COAST_SECONDS, DROP_SECONDS, STALE_SECONDS, BodyTracker, ThreadedCamera, assign
 
@@ -303,6 +303,77 @@ def test_depth_reads_steady_through_a_hip_dropout():
     steady = values[29]
     moved = max(abs(v - steady) for v in values[30:])
     assert moved < 0.05, (steady, moved, min(values[30:]))
+
+
+# ----- C47, C46: a track born without hips; the learned torso -----
+
+def born_without_hips(hips_from=1.0, seconds=2.0):
+    """(capture time, detection) at 10 fps: the spike's still body, its hips under the frame's edge until hips_from
+    (the probe: a still body born without hips, hips from 1 s)."""
+    return [(i / 10, spike_det(hips=i / 10 >= hips_from - 1e-9)) for i in range(round(seconds * 10))]
+
+
+def test_a_track_born_without_hips_is_measured_once_its_hips_are_seen():
+    tr = BodyTracker()
+    got = [(cam, tr.update([d], cam)[0]) for cam, d in born_without_hips()]
+    got += [(2.0 + i / 10, tr.update([spike_det(hips=False)], 2.0 + i / 10)[0]) for i in range(10)]   # a dropout
+    assert {b.id for _, b in got} == {got[0][1].id}
+    assert [b.measured for cam, b in got] == [cam >= 1.0 - 1e-9 for cam, _ in got], \
+        [(round(cam, 1), b.measured) for cam, b in got]
+    assert Body(0, *spike_det(hips=False)).measured is True                  # a body built elsewhere is measured
+
+
+def test_the_first_measure_is_taken_at_once():
+    tr = BodyTracker()
+    scales = [tr.update([d], cam)[0].scale for cam, d in born_without_hips()]
+    assert scales[9] == pytest.approx(1.5 * 1.25 * SPIKE_WIDTH)             # the fallback before the hips
+    assert all(s == pytest.approx(SPIKE_SCALE, rel=0.01) for s in scales[10:]), [round(s, 4) for s in scales]
+
+
+def test_the_tracker_learns_the_torso_per_width():
+    raw = Body(0, *spike_det())
+    want = raw.torso / raw.shoulder_width
+    assert want == pytest.approx(2.03, abs=0.01)                            # the spike's 0.26 over 0.128
+    tr = BodyTracker()
+    got = [tr.update([spike_det(hips=i < 10)], i / 10)[0] for i in range(20)]
+    assert all(b.torso_per_width == pytest.approx(want, rel=0.02) for b in got), [b.torso_per_width for b in got]
+    assert all(b.torso == pytest.approx(raw.torso, rel=0.02) for b in got[10:]), [b.torso for b in got[10:]]
+    never = BodyTracker()
+    assert all(never.update([spike_det(hips=False)], i / 10)[0].torso_per_width == 0.0 for i in range(10))
+
+
+def test_a_raised_hand_stays_in_the_reach_box_through_a_hip_dropout():
+    """C46: 1 s with hips, then 1 s without, the right wrist 0.2 above the shoulders. The hanging left wrist, at hip
+    height, goes under the frame's edge with the hips."""
+    tr, cursor, got = BodyTracker(), Cursor(grace=capture_grace(10)), []
+    for i in range(20):
+        box, kps = spike_det(hips=i < 10)
+        kps = list(kps)
+        sy = kps[RIGHT_SHOULDER].y
+        kps[RIGHT_WRIST] = Keypoint(0.6, sy - 0.2)
+        if i >= 10:
+            kps[LEFT_WRIST] = Keypoint(kps[LEFT_WRIST].x, kps[LEFT_WRIST].y, 0.1)
+        (body,) = tr.update([(body_box(kps), tuple(kps))], i / 10)
+        got.append(cursor.update(body, i / 10))
+    vs = [uv[1] for uv in got]
+    assert cursor.hand == "right" and all(v > 0.0 for v in vs), vs
+    assert max(vs) - min(vs) < 0.05, [round(v, 3) for v in vs]
+
+
+def test_depth_reads_steady_when_a_track_born_without_hips_is_measured():
+    """C47, the probe: a still body born without hips, its hips seen from 1 s, through the tracker and input.Depth,
+    10 captures a second and 30 ticks. Before C47 the value jumped 0.777 and Pong's paddle travelled 24 px."""
+    tr, depth = BodyTracker(), Depth()
+    values, body, cam = [], None, 0.0
+    for i in range(90):
+        t = i / 30
+        if i % 3 == 0:
+            cam = t
+            (body,) = tr.update([spike_det(hips=i >= 30)], cam)
+        values.append(depth.update(body, t, cam))
+    before = values[29]
+    moved = max(abs(v - before) for v in values[30:])
+    assert moved < 0.05, (before, moved, max(values[30:]))
 
 
 def test_tracker_orders_largest_scale_first():

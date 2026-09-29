@@ -450,6 +450,39 @@ def test_depth_still_body_under_real_noise_stays_within_0_18():
     assert max(spreads.values()) >= 0.05, spreads        # the noise is on: a body with no jitter proves nothing
 
 
+def measured_run(depth, at_capture, seconds, start=0.0):
+    """[(t, value)] of depth fed BASE at the (ratio, measured) that at_capture(capture time) gives."""
+    out = []
+    for t, cam in captures(seconds, start=start):
+        ratio, measured = at_capture(cam)
+        out.append((t, depth.update(dataclasses.replace(at(ratio), measured=measured), t, cam)))
+    return out
+
+
+def test_depth_takes_a_new_centre_when_its_body_is_first_measured():
+    # C47: a track born without hips reads the shoulder-width fallback (0.24 on the spike) until its hips are
+    # seen, then its measure (0.39): 1.6 times the size, which read as a step to the near end.
+    d = Depth()
+    run = measured_run(d, lambda c: (1.0, False) if c < 1.0 else (1.6, True) if c < 2.0 else (1.6 * 1.16, True), 3.5)
+    assert all(v == pytest.approx(0.5, abs=0.01) for t, v in run if t < 2.0), run
+    assert run[-1][1] == pytest.approx(0.75, abs=0.01), run[-1]            # a step after it moves as settled() does
+    assert d.raw == pytest.approx(0.5 + math.log(1.16) / DEPTH_SPAN)
+
+
+def test_depth_takes_the_new_centre_once_per_reset():
+    d = Depth()
+    run = measured_run(d, lambda c: (1.0, True) if c < 0.5 else (1.0, False) if c < 1.0 else (1.16, True), 2.5)
+    assert run[-1][1] == pytest.approx(0.75, abs=0.01), run[-1]            # measured from the first: a real step
+    d = Depth()
+    run = measured_run(d, lambda c: [(1.0, False), (1.6, True), (1.6, False), (1.6 * 1.16, True)][min(3, int(c))],
+                       5.5)
+    assert all(v == pytest.approx(0.5, abs=0.01) for t, v in run if t < 3.0), run
+    assert run[-1][1] == pytest.approx(0.75, abs=0.01), run[-1]            # the second measure is a real step
+    d.reset()
+    run = measured_run(d, lambda c: (1.0, False) if c < 6.5 else (1.6, True), 2.0, start=5.5)
+    assert all(v == pytest.approx(0.5, abs=0.01) for t, v in run), run    # reset() arms the rule again
+
+
 def test_depth_rejects_a_bad_span():
     for bad in (0, 0.0, -0.6, math.nan, math.inf, -math.inf, None, True):
         with pytest.raises(ValueError):

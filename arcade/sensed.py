@@ -69,6 +69,12 @@ class Body:
     """One tracked person. Keypoints are normalized camera coordinates, already mirrored and smoothed.
 
     scale 0.0 means "measure it": the nose-to-mid-hip length, or 1.5 torso lengths without a nose.
+
+    measured (C47): the scale is this person's measure. The tracker passes False while a track has never been
+    seen with its nose and a hip (its scale is then the shoulder-width fallback, short on a real person), and
+    input.Depth takes the first measure without a jump. A body built anywhere else is measured.
+    torso_per_width (C46): this person's torso per shoulder width, learned by the tracker, which the torso
+    without hips uses in place of TORSO_PER_SHOULDER_WIDTH; 0.0 (and anything not finite and over 0) is the default.
     """
 
     id: int
@@ -81,11 +87,18 @@ class Body:
     zone_x: float = 0.5
     zone_y: float = 0.5
     seen_ago: float = 0.0
+    measured: bool = True
+    torso_per_width: float = 0.0
 
     def __post_init__(self):
         if len(self.keypoints) != 17:
             raise ValueError(f"a body has 17 keypoints, got {len(self.keypoints)}")
         object.__setattr__(self, "keypoints", tuple(_clean(k) for k in self.keypoints))
+        try:
+            ratio = float(self.torso_per_width)
+        except (TypeError, ValueError, OverflowError):
+            ratio = 0.0
+        object.__setattr__(self, "torso_per_width", ratio if math.isfinite(ratio) and ratio > 0.0 else 0.0)
         if self.scale == 0.0:
             object.__setattr__(self, "scale", self._measured_scale())
 
@@ -144,11 +157,16 @@ class Body:
 
     @property
     def torso(self) -> float:
-        """Shoulder midpoint to hip midpoint; from the shoulder width without hips; 0.0 when unknown."""
+        """Shoulder midpoint to hip midpoint; from the shoulder width without hips (by torso_per_width, else
+        TORSO_PER_SHOULDER_WIDTH); 0.0 when unknown."""
         s, h = self.shoulder_mid, self.hip_mid
         if s is not None and h is not None:
             return math.hypot(s.x - h.x, s.y - h.y)
-        return TORSO_PER_SHOULDER_WIDTH * self.shoulder_width
+        return self._torso_ratio * self.shoulder_width
+
+    @property
+    def _torso_ratio(self) -> float:
+        return self.torso_per_width or TORSO_PER_SHOULDER_WIDTH
 
     @property
     def anchor(self) -> Keypoint | None:
@@ -202,7 +220,7 @@ class Body:
         body box is the frame of reference.
         """
         s, torso = self.shoulder_mid, self.torso
-        width = self.shoulder_width or torso / TORSO_PER_SHOULDER_WIDTH
+        width = self.shoulder_width or torso / self._torso_ratio
         if s is None or torso <= 0.0 or width <= 0.0:
             x0, y0, x1, y1 = self.box
             u = (kp.x - x0) / (x1 - x0) if x1 > x0 else 0.5

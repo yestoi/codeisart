@@ -290,3 +290,51 @@ def test_raise_line_needs_a_torso_over_the_floor():
     near = figure(side, box=(0.3, 0.6, 0.7, 0.95))              # a 0.35 box: the floor is 0.035, the torso passes
     assert near.raise_line == pytest.approx(0.4 - 0.3 * 0.0375)
     assert figure().raise_line == pytest.approx(0.31)                                     # a full torso is unchanged
+
+
+# C46: the spike (the owner at 2 m) has shoulders 0.128 apart and a torso of 0.26, 2.03 shoulder widths, where
+# TORSO_PER_SHOULDER_WIDTH assumes 1.25; without hips the reach box then sat 0.1 torso too low and a raised wrist
+# read v 0.
+NO_HIPS = {LEFT_HIP: Keypoint(0.45, 0.7, 0.0), RIGHT_HIP: Keypoint(0.55, 0.7, 0.0),
+           LEFT_KNEE: Keypoint(0.45, 0.85, 0.0), RIGHT_KNEE: Keypoint(0.55, 0.85, 0.0),
+           LEFT_ANKLE: Keypoint(0.45, 0.95, 0.0), RIGHT_ANKLE: Keypoint(0.55, 0.95, 0.0)}
+SPIKE_SHOULDERS = {LEFT_SHOULDER: Keypoint(0.436, 0.4), RIGHT_SHOULDER: Keypoint(0.564, 0.4)}
+
+
+def test_body_defaults_are_measured_with_the_default_torso():
+    b = figure()
+    assert b.measured is True and b.torso_per_width == 0.0
+    assert b.torso == pytest.approx(0.3) and b.raise_line == pytest.approx(0.31)          # hips: the measure
+    assert b.reach(Keypoint(0.8, 0.7)) == pytest.approx((1.0, 1.0))
+    bare = figure(NO_HIPS)                                     # shoulders 0.2 apart: 1.25 x 0.2 as today
+    assert bare.measured is True and bare.torso_per_width == 0.0
+    assert bare.torso == pytest.approx(0.25) and bare.raise_line == pytest.approx(0.4 - 0.3 * 0.25)
+    assert bare.reach(Keypoint(0.2, 0.4 - 1.05 * 0.25)) == pytest.approx((0.0, 0.0))
+    assert bare.reach(Keypoint(0.8, 0.4 + 0.25)) == pytest.approx((1.0, 1.0))
+    assert figure(NO_HIPS, measured=False).torso == pytest.approx(0.25)                   # measured alone: no change
+
+
+def test_torso_without_hips_uses_the_learned_ratio():
+    over = {**NO_HIPS, **SPIKE_SHOULDERS, LEFT_WRIST: Keypoint(0.35, 0.7, 0.0), RIGHT_WRIST: Keypoint(0.6, 0.2)}
+    learned = figure(over, torso_per_width=2.03)
+    assert learned.shoulder_width == pytest.approx(0.128)
+    assert learned.torso == pytest.approx(0.26, abs=0.001)                                # the spike's measure
+    assert learned.raise_line == pytest.approx(0.4 - 0.3 * 2.03 * 0.128)                 # Q74: one torso for all
+    width = 2 * 1.5 * 0.128
+    assert learned.reach(Keypoint(0.5 - 1.5 * 0.128, 0.5))[0] == pytest.approx(0.0)       # the width is the shoulders'
+    assert learned.reach(Keypoint(0.5 + width / 2, 0.5))[0] == pytest.approx(1.0)
+    assert learned.cursor[1] > 0.05, learned.cursor                                       # 0.2 above the shoulders
+    assert figure(over).cursor[1] == 0.0                                                  # the default ratio: clamped
+    # one shoulder with the hips seen: the width comes from the torso by the same ratio (0.3 / 2.03, not / 1.25)
+    one = figure({RIGHT_SHOULDER: Keypoint(0.6, 0.4, 0.0)}, torso_per_width=2.03)
+    assert one.shoulder_width == 0.0 and one.torso == pytest.approx(0.3)
+    assert one.reach(Keypoint(0.5 + 1.5 * 0.3 / 2.03, 0.5))[0] == pytest.approx(1.0)
+    assert figure({RIGHT_SHOULDER: Keypoint(0.6, 0.4, 0.0)}).reach(Keypoint(0.5 + 1.5 * 0.24, 0.5))[0] == \
+        pytest.approx(1.0)                                                                # the default: 0.3 / 1.25
+
+
+def test_a_bad_torso_ratio_reads_the_default():
+    for bad in (math.nan, -1.0, math.inf):
+        b = figure(NO_HIPS, torso_per_width=bad)
+        assert b.torso_per_width == 0.0, bad
+        assert b.torso == pytest.approx(0.25), bad

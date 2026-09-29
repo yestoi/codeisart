@@ -409,6 +409,36 @@ def test_a_still_body_under_real_noise_banks_nothing():
     assert all(v[3] < TRAVEL_SHARE * TRAVEL for v in out.values()), out
 
 
+def test_a_still_body_born_without_hips_banks_nothing():
+    """C47: the tracker's bodies (the spike's proportions, its hips under the frame's edge until 1 s) as Pong's
+    player for 30 s. The first measure read 1.6 times the fallback: before C47 the paddle travelled 24 px, a rally's
+    travel, from a body that never moved."""
+    from arcade.sensed import Sensed
+    from arcade.sources.camera import BodyTracker
+    from tests.arcade.test_camera import spike_det
+
+    def frames():
+        tracker, bodies, cam, seq = BodyTracker(), (), 0.0, 0
+        for i in range(round(30 / TICK)):
+            t = i * TICK
+            fresh = i % 3 == 0                                   # the camera at 10 fps, the runner at 30 Hz
+            if fresh:
+                cam, seq = t, seq + 1
+                bodies = tracker.update([spike_det(hips=t >= 1.0 - 1e-9, cx=0.3)], cam)
+            yield Sensed(t=t, camera_t=cam, camera_fresh=fresh, camera_seq=seq, bodies=bodies)
+
+    game = make()
+    ys, phases = [], set()
+    for _ in drive(game, frames(), until=lambda g: g.done()):
+        state = game.debug_state()
+        ys.append(state["left_xy"][1])
+        phases.add(state["phase"])
+    state = game.debug_state()
+    assert state["humans"] == 1 and "play" in phases, state
+    assert max(ys) - min(ys) < game.travel_px, (min(ys), max(ys), game.travel_px)
+    assert state["score"] == 0 and game.scores.best() is None, (state, game.scores.best())
+
+
 def test_a_still_body_under_real_noise_is_not_input():
     """`active` judges the paddle's movement as C42 does, so a still body's jitter never keeps a session alive
     (the runner's STILL PLAYING? prompt): with the ball held at the centre, no tick is active; a step is."""

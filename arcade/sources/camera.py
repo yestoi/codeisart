@@ -121,6 +121,7 @@ class _Track:
     moved: bool = False           # vx, vy measured at least once
     measured: bool = False        # a capture with a confident nose and a hip seen (_measured) at least once
     per_width: float = 0.0        # this person's measured scale per shoulder width, 0.0 until learned
+    torso_per_width: float = 0.0  # this person's measured torso per shoulder width, 0.0 until learned (C46)
 
     def predict(self, t: float) -> tuple[float, float]:
         dt = t - self.seen
@@ -156,7 +157,10 @@ class BodyTracker:
     seen_ago), drops it after DROP_SECONDS, and never reuses an id. Keypoints are One Euro filtered; a keypoint under
     MIN_CONF passes through raw and restarts its filter. A coasting body holds its last keypoints and box. The
     scale is smoothed by SCALE_TAU; a track once measured with its hips reads its learned scale per shoulder width
-    when they drop out, and holds its scale without both shoulders (Q48, _reading).
+    when they drop out, and holds its scale without both shoulders (Q48, _reading). A track born without hips is
+    not measured (Body.measured False) until a capture with its nose and a hip, whose measure the scale takes at
+    once, not through SCALE_TAU (C47). Its torso per shoulder width is learned as its scale per width is, and its
+    bodies carry it, so the torso without hips is this person's (C46).
 
     update() takes the detections of one capture, keypoints already mirrored, and returns the bodies placed
     against the calibration, largest scale first."""
@@ -216,6 +220,7 @@ class BodyTracker:
         ax, ay = _anchor(raw)
         dt = t - tr.seen
         scale = _reading(tr, raw)
+        first = not tr.measured and _measured(raw)      # the first measure: one step, not four captures (C47)
         if dt > 0.0:
             mx, my = (ax - tr.x) / dt, (ay - tr.y) / dt
             if tr.moved:
@@ -224,7 +229,7 @@ class BodyTracker:
             else:
                 tr.vx, tr.vy, tr.moved = mx, my, True
             if scale is not None and scale > 0.0:
-                tr.scale = scale if tr.scale <= 0.0 else \
+                tr.scale = scale if tr.scale <= 0.0 or first else \
                     tr.scale + (1.0 - math.exp(-dt / SCALE_TAU)) * (scale - tr.scale)
         self._learn(tr, raw, dt)
         tr.x, tr.y, tr.seen, tr.box = ax, ay, t, raw.box
@@ -232,19 +237,26 @@ class BodyTracker:
 
     @staticmethod
     def _learn(tr: _Track, raw: Body, dt: float) -> None:
-        """A measured capture teaches tr its scale per shoulder width: the first at once, then smoothed by
-        RATIO_TAU so one bad capture does not move it far."""
+        """A measured capture teaches tr its scale and its torso per shoulder width: the first at once, then
+        smoothed by RATIO_TAU so one bad capture does not move them far."""
         if not _measured(raw):
             return
         tr.measured = True
         width = raw.shoulder_width
-        if width <= 0.0 or raw.scale <= 0.0:
+        if width <= 0.0:
             return
-        ratio = raw.scale / width
-        if tr.per_width <= 0.0:
-            tr.per_width = ratio
-        elif dt > 0.0:
-            tr.per_width += (1.0 - math.exp(-dt / RATIO_TAU)) * (ratio - tr.per_width)
+        if raw.scale > 0.0:
+            tr.per_width = BodyTracker._ratio(tr.per_width, raw.scale / width, dt)
+        if raw.torso > 0.0:
+            tr.torso_per_width = BodyTracker._ratio(tr.torso_per_width, raw.torso / width, dt)
+
+    @staticmethod
+    def _ratio(learned: float, ratio: float, dt: float) -> float:
+        if learned <= 0.0:
+            return ratio
+        if dt > 0.0:
+            return learned + (1.0 - math.exp(-dt / RATIO_TAU)) * (ratio - learned)
+        return learned
 
     @staticmethod
     def _smooth(tr: _Track, raw: Body, t: float) -> tuple[Keypoint, ...]:
@@ -259,7 +271,8 @@ class BodyTracker:
 
     def _body(self, tr: _Track, t: float) -> Body:
         seen_ago = 0.0 if tr.seen == t else t - tr.seen
-        body = Body(tr.id, tr.box, tr.keypoints, vx=tr.vx, vy=tr.vy, scale=tr.scale, seen_ago=seen_ago)
+        body = Body(tr.id, tr.box, tr.keypoints, vx=tr.vx, vy=tr.vy, scale=tr.scale, seen_ago=seen_ago,
+                    measured=tr.measured, torso_per_width=tr.torso_per_width)
         return place(body, self.calibration)
 
 
