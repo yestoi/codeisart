@@ -1,0 +1,22 @@
+E        +  where 2 = <tests.test_main.FailingPushes object at 0x1058ad9d0>.count
+
+tests/test_main.py:297: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    show:plan_plugin.py:53 the push failed (1 in a row); the show goes on
+Traceback (most recent call last):
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan-review/plan_plugin.py", line 49, in _push
+    sent = self.wall.push(frame)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/wall14.py", line 64, in push
+    return self._govern(frame)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/wall14.py", line 72, in _govern
+    self._send(self._last)
+  File "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/impl/wall14.py", line 99, in _send
+    self.display.push(frame)
+  File "/Users/trey/dev/codeisart/tests/test_main.py", line 285, in push
+    raise OSError("no carrier")
+OSError: no carrier
+=========================== short test summary info ============================
+FAILED tests/test_main.py::test_after_a_failed_push_the_last_governed_frame_goes_again
+1 failed, 121 passed in 40.17s

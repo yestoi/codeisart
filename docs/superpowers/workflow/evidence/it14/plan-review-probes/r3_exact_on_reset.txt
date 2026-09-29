@@ -1,0 +1,8 @@
+E         'wall_pattern.py'
+E         Use -v to get more diff
+
+/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan-review/test_exact_on_reset.py:159: AssertionError
+=========================== short test summary info ============================
+FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds - Ass...
+2 failed, 76 passed in 3.19s

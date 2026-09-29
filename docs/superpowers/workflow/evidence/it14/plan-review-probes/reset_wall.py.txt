@@ -1,0 +1,38 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Q1/Q2: the 7 after the hold (r2_trace) comes from the square's direction state: the torn overshoot and its return
+leave the wall's tracker rising where the governor's is falling (or the other way), so the next governed move the
+governor takes as 'still falling' is a new transition on the wall. Candidate fix 'reset': when the hold ends, the wall
+builds a fresh FlashGovernor and applies the counted frame (self.last) to it once (its first frame: every tracker's
+direction unknown, so any move counts), then governs as before. Sweep the r1 pictures that read 7, calls 1..22,
+splits 8/20/33/56, card and probe, fps 20 and 30: planned wall vs reset."""
+import numpy as np
+import rlib  # puts the scratch wall on the path
+import wall14
+from arcade.flash import FlashGovernor
+from rlib import LIT, Torn, measure
+
+
+class Reset(wall14.GovernedDisplay):
+    def push(self, frame):
+        was = self.holding
+        out = super().push(frame)
+        return out
+    def _govern(self, frame):
+        if getattr(self, "_reset_due", False):
+            self._reset_due = False
+            g = FlashGovernor(*self.governor.shape[:2], self.governor.gamma, fps=self.governor.fps)
+            g.held_ticks = self.governor.held_ticks
+            g.apply(self._last)
+            self.governor = g
+        return super()._govern(frame)
+    def _send(self, frame):
+        try:
+            super()._send(frame)
+        except Exception:
+            if self.clock is not None:
+                self._reset_due = True
+            raise
+
+HOLD_S = wall14.HOLD_S
+GovernedDisplay = Reset

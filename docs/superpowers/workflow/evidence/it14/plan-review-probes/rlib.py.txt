@@ -1,0 +1,85 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Review probes' library: the writer's scratch wall (impl/wall14.py, WALL_MODE picks the variant), a torn display
+with three models (probe: rows show as they arrive; card: colorlight's order; card+blank: the card goes black after
+`blank_s` without a frame packet), a per-tick real-time sequence, and the meters."""
+import os
+sys.path.insert(0, "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/"
+                   "scratchpad/it14-plan/impl")
+import numpy as np
+from arcade.flash import BUDGET, flash_area, square_flashes
+import wall14
+from wall14 import GovernedDisplay
+
+LIT = np.array((51, 255, 51), np.uint8)
+
+
+class Torn:
+    def __init__(self, h, w, tears, split, model="card", blank_s=None, fps=20):
+        self.h, self.w, self.tears, self.split, self.model = h, w, tears, split, model
+        self.blank_s, self.fps = blank_s, fps
+        self.calls, self.tick, self.closed = 0, 0, False
+        self.rows = np.zeros((h, w, 3), np.uint8)
+        self.screen = np.zeros((h, w, 3), np.uint8)
+        self.shown = {}            # tick -> screen after the tick's last call
+        self.packet_tick = None    # the tick of the last frame packet (card)
+
+    def push(self, frame):
+        self.calls += 1
+        if self.model == "card":
+            self.screen = self.rows.copy()
+            self.packet_tick = self.tick
+        split = self.tears(self.calls)
+        if split is True:
+            split = self.split
+        if split:
+            self.rows[:split] = frame[:split]
+        else:
+            self.rows = frame.copy()
+        if self.model == "probe":
+            self.screen = self.rows.copy()
+        self.shown[self.tick] = self.screen.copy()
+        if split:
+            raise OSError("torn")
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
+def seq(d, ticks):
+    """The wall at every tick from dark (one slot a tick), a card blanking after blank_s without a packet."""
+    out, last, last_packet = [np.zeros((d.h, d.w, 3), np.uint8)], np.zeros((d.h, d.w, 3), np.uint8), None
+    for t in range(ticks):
+        if t in d.shown:
+            last = d.shown[t]
+            last_packet = t
+            out.append(last)
+        elif d.blank_s is not None and last_packet is not None and (t - last_packet) >= d.blank_s * d.fps:
+            out.append(np.zeros_like(last))
+        else:
+            out.append(last)
+    return out
+
+
+def drive(frames, d, fps, clock=True, close_at=None):
+    wall = GovernedDisplay(d, d.h, d.w, fps=fps, from_dark=True, clock=(lambda: d.tick / fps) if clock else None)
+    for k, f in enumerate(frames):
+        d.tick = k
+        if close_at is not None and k == close_at:
+            try:
+                wall.close()
+            except OSError:
+                pass
+            break
+        try:
+            wall.push(f)
+        except OSError:
+            pass
+    return wall
+
+
+def measure(d, ticks, fps):
+    s = seq(d, ticks)
+    return flash_area(s, fps=fps), square_flashes(s, fps=fps)

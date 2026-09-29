@@ -1,0 +1,22 @@
+"""A wrong wall: when the hold ends the governor is re-initialised in place and NOT primed, so the first new frame
+passes whatever it is (the governor's first frame) and the window is empty."""
+import rlib  # noqa: F401
+import wall14
+HOLD_S = wall14.HOLD_S
+
+
+class GovernedDisplay(wall14.GovernedDisplay):
+    def _govern(self, frame):
+        if getattr(self, "_reset_due", False):
+            self._reset_due = False
+            g = self.governor
+            g.__init__(g.shape[0], g.shape[1], g.gamma, fps=g.fps)
+        return super()._govern(frame)
+
+    def _send(self, frame):
+        try:
+            super()._send(frame)
+        except Exception:
+            if self.clock is not None:
+                self._reset_due = True
+            raise

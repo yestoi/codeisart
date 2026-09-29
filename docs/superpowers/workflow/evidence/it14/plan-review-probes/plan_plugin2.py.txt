@@ -1,0 +1,70 @@
+"""A pytest plugin (in memory only): show.wall.GovernedDisplay is the writer's scratch wall (impl/wall14.py; WALL_MODE
+picks it, 'quiet' the plan's), and ShowLoop is changed as the plan's text says: _now set in start and first in step,
+both walls made with from_dark=True and clock=lambda: self._now, _push without its own repush, None a failing step."""
+import sys
+
+sys.path.insert(0, "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/"
+                   "scratchpad/it14-plan/impl")
+
+
+def pytest_configure(config):
+    import show.main as main
+    import show.wall as wall
+    import os, importlib; sys.path.insert(0, os.path.dirname(__file__)); wall14 = importlib.import_module(os.environ.get("WALL_MODULE", "wall14"))
+    wall.HOLD_S = 1.0
+    sys.modules["wall14"].FlashGovernor = lambda *a, **k: wall.FlashGovernor(*a, **k)   # the tests monkeypatch show.wall's
+    wall.GovernedDisplay = wall14.GovernedDisplay
+    main.GovernedDisplay = wall14.GovernedDisplay
+    L = main.ShowLoop
+    start0, step0, open0 = L.start, L.step, L._open_wall
+    init0 = L.__init__
+
+    def __init__(self, *a, **kw):
+        init0(self, *a, **kw)
+        self._now = 0.0
+
+    def start(self, now):
+        self._now = now
+        return start0(self, now)
+
+    def step(self, now):
+        self._now = now
+        return step0(self, now)
+
+    def _open_wall(self):
+        main.GovernedDisplay = lambda *a, **kw: wall14.GovernedDisplay(*a, from_dark=True,
+                                                                        clock=lambda: self._now, **kw)
+        try:
+            return open0(self)
+        finally:
+            main.GovernedDisplay = wall14.GovernedDisplay
+
+    def _push(self, frame, now):
+        if self.wall is None:
+            self._failing(now)
+            return
+        if frame is None:
+            return
+        try:
+            sent = self.wall.push(frame)
+        except Exception:
+            self._failures += 1
+            if self._failures == 1 or self._failures % main.FAILURE_LOG_EVERY == 0:
+                main.log.exception("the push failed (%d in a row); the show goes on", self._failures)
+            self._failing(now)
+            return
+        if sent is None:
+            self._failing(now)
+            return
+        if self._failures:
+            main.log.info("the push works again after %d failures", self._failures)
+        self._failures, self._fail_since = 0, None
+        if self._dark:
+            self._dark = False
+            if self.show is not None:
+                try:
+                    self.show.relight()
+                except Exception:
+                    main.log.exception("relighting failed")
+
+    L.__init__, L.start, L.step, L._open_wall, L._push = __init__, start, step, _open_wall, _push

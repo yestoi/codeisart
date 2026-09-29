@@ -1,0 +1,88 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Q6: a card that goes black after blank_s without a frame packet, during the quiet hold (planned wall and the
+re-primed fix). Q5/close: close() at 1..19 ticks after a tear (card model), the planned wall. Q7: from dark, a bright
+first frame (a 99.9 % lit frame, the error frame's border) then a strobe; with and without from_dark."""
+import numpy as np
+import rlib
+from rlib import LIT, Torn, seq, measure
+from arcade.flash import flash_area, square_flashes
+import wall14, reset_inplace
+import r1pics as P
+
+H, W = 64, 128
+print("Q6: blanking card, one tear at call n (1..12), split 8/33/56, fps 20; worst sq (area)")
+for name in ("rev rows b32 ph1 10Hz", "block strobe 10Hz", "rev cols ph0 10Hz"):
+    pic = P.PICS[name]
+    for blank in (None, 0.1, 0.5, 0.9):
+        row = []
+        for cls in (wall14.GovernedDisplay, reset_inplace.GovernedDisplay):
+            worst = (-1, 0, None)
+            for n in range(1, 13):
+                for s in (8, 33, 56):
+                    ticks = n + 100
+                    d = Torn(H, W, lambda c, n=n, s=s: s if c == n else 0, s, "card", blank_s=blank, fps=20)
+                    wall = cls(d, H, W, fps=20, from_dark=True, clock=lambda d=d: d.tick / 20)
+                    for k in range(ticks):
+                        d.tick = k
+                        try:
+                            wall.push(pic(k, 20))
+                        except OSError:
+                            pass
+                    a, sq = measure(d, ticks, 20)
+                    if (sq, a) > worst[:2]:
+                        worst = (sq, a, (n, s))
+            row.append(f"{worst[0]} ({worst[1]:.3f}) at {worst[2]}")
+        print(f"  {name} | blank {blank} | planned {row[0]} | re-primed {row[1]}", flush=True)
+
+print("Q5/close: tear at call n (3..8), split 33, close() j ticks later (1..19), card and probe, planned wall")
+for name in ("rev rows b32 ph1 10Hz", "block strobe 10Hz"):
+    pic = P.PICS[name]
+    for model in ("card", "probe"):
+        worst = (-1, 0, None)
+        for n in range(3, 9):
+            for j in range(1, 20):
+                d = Torn(H, W, lambda c, n=n: 33 if c == n else 0, 33, model, fps=20)
+                wall = wall14.GovernedDisplay(d, H, W, fps=20, from_dark=True, clock=lambda d=d: d.tick / 20)
+                for k in range(n - 1 + j):
+                    d.tick = k
+                    try:
+                        wall.push(pic(k, 20))
+                    except OSError:
+                        pass
+                d.tick = n - 1 + j
+                calls = d.calls
+                # close's sends back to back: one tick each here (closer in truth: no laxer)
+                orig = d.push
+                def push(frame, d=d, orig=orig):
+                    orig(frame)
+                    d.tick += 1
+                d.push = push
+                try:
+                    wall.close()
+                except OSError:
+                    pass
+                ticks = d.tick + 25
+                a, sq = measure(d, ticks, 20)
+                if (sq, a) > worst[:2]:
+                    worst = (sq, a, (n, j, d.calls - calls))
+        print(f"  {name} | {model} | worst {worst[0]} ({worst[1]:.3f}) at (n, j, close sends) {worst[2]}", flush=True)
+
+print("Q7: from dark, the first frame bright, then a 10 Hz strobe at fps 20 (what was sent, dark first)")
+class Rec:
+    def __init__(self): self.sent = []
+    def push(self, f): self.sent.append(f.copy())
+    def set_brightness(self, l): pass
+    def close(self): pass
+border = np.zeros((H, W, 3), np.uint8); border[0] = border[-1] = border[:, 0] = border[:, -1] = (0, 178, 0)
+lit = np.full((H, W, 3), 128, np.uint8); lit[0, 0] = 0
+dark = np.zeros((H, W, 3), np.uint8)
+for fname, first in (("99.9 % lit, 128", lit), ("error border", border)):
+    for fd in (False, True):
+        r = Rec()
+        wall = wall14.GovernedDisplay(r, H, W, fps=20, from_dark=fd)
+        frames = [first] + [np.broadcast_to(LIT if k % 2 else np.zeros(3, np.uint8), (H, W, 3)).copy() for k in range(60)]
+        for f in frames:
+            wall.push(f)
+        shown = [dark] + r.sent
+        print(f"  {fname} | from_dark {fd} | area {flash_area(shown, fps=20):.3f} sq {square_flashes(shown, fps=20)}")

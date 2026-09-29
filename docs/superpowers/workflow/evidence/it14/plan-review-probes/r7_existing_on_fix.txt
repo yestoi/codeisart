@@ -1,0 +1,6 @@
+_________ test_after_a_failed_push_the_last_governed_frame_goes_again __________
+tmp_path = PosixPath('/private/var/folders/34/mtny1yb11k7_t7prxljjt2jw0000gp/T/pytest-of-trey/pytest-3457/test_after_a_failed_push_the_l0')
+    def test_after_a_failed_push_the_last_governed_frame_goes_again(tmp_path):
+ERROR    show:plan_plugin2.py:53 the push failed (1 in a row); the show goes on
+FAILED tests/test_main.py::test_after_a_failed_push_the_last_governed_frame_goes_again
+1 failed, 121 passed in 41.82s

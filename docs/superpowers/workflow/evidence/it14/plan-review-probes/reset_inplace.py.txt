@@ -1,0 +1,25 @@
+"""The fix proposed to the plan: when the hold ends, the same governor object is re-initialised in place
+(governor.__init__ with its shape, gamma, fps; held_ticks carried) and applies the counted frame once, then governs."""
+import rlib  # noqa: F401 (the scratch wall on the path)
+import wall14
+HOLD_S = wall14.HOLD_S
+
+
+class GovernedDisplay(wall14.GovernedDisplay):
+    def _govern(self, frame):
+        if getattr(self, "_reset_due", False):
+            self._reset_due = False
+            g = self.governor
+            held = g.held_ticks
+            g.__init__(g.shape[0], g.shape[1], g.gamma, fps=g.fps)
+            g.held_ticks = held
+            g.apply(self._last)
+        return super()._govern(frame)
+
+    def _send(self, frame):
+        try:
+            super()._send(frame)
+        except Exception:
+            if self.clock is not None:
+                self._reset_due = True
+            raise

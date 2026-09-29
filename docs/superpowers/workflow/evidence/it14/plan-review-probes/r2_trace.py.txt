@@ -1,0 +1,35 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
+"""Q1: trace the card-model 7 of r1 (reversal top first, boundary row 32, 10 Hz at fps 20, one tear at call 6,
+split 33): what the wall shows each tick, the calls, and the worst square's transitions in real time. Then the same
+picture against the plan's exact test's split (24) and a split sweep 25..40 for calls 1..12."""
+import numpy as np
+from arcade.flash import _counted, square_flashes, flash_area
+from rlib import LIT, Torn, drive, measure, seq
+
+H, W, fps = 64, 128, 20
+def rev(k):
+    x = np.zeros((H, W, 3), np.uint8)
+    if k % 2 == 0: x[:32] = LIT
+    else: x[32:] = LIT
+    return x
+for model in ("card", "probe"):
+    d = Torn(H, W, lambda c: 33 if c == 6 else 0, 33, model, fps=fps)
+    wall = drive([rev(k) for k in range(100)], d, fps)
+    s = seq(d, 100)
+    print(model, "measure", flash_area(s, fps=fps), square_flashes(s, fps=fps))
+    # per slot: flips of the worst square
+    worst, where = 0, None
+    flips = []
+    for i, (flip, up, win) in enumerate(_counted(s, 2.2, fps, 0.1, squares=32)):
+        f = flip.any(axis=0)
+        flips.append(f)
+        c = win.count - win.ring[win.i] + f
+        if c.max() > worst:
+            worst, where = int(c.max()), (i + 1, np.unravel_index(c.argmax(), c.shape))
+    print(model, "worst", worst, "at slot", where[0], "square (y, x)", where[1])
+    y, x = where[1]
+    print(model, "slots with a flip of that square:", [i + 1 for i, f in enumerate(flips) if f[y, x]])
+    print(model, "calls at ticks:", sorted(d.shown)[:12], "...")
+    means = [round(float(fr[y:y+32, x:x+32, 1].mean() / 255), 3) for fr in s[:40]]
+    print(model, "square green mean per slot 0..39:", means)

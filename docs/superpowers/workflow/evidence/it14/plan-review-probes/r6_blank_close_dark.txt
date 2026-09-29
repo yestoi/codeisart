@@ -1,0 +1,23 @@
+Q6: blanking card, one tear at call n (1..12), split 8/33/56, fps 20; worst sq (area)
+  rev rows b32 ph1 10Hz | blank None | planned 7 (0.000) at (6, 33) | re-primed 6 (0.000) at (1, 8)
+  rev rows b32 ph1 10Hz | blank 0.1 | planned 7 (0.000) at (6, 8) | re-primed 7 (0.500) at (1, 8)
+  rev rows b32 ph1 10Hz | blank 0.5 | planned 7 (0.500) at (1, 8) | re-primed 8 (0.500) at (1, 8)
+  rev rows b32 ph1 10Hz | blank 0.9 | planned 7 (0.500) at (1, 8) | re-primed 8 (0.500) at (1, 8)
+  block strobe 10Hz | blank None | planned 6 (0.000) at (1, 8) | re-primed 6 (0.000) at (1, 8)
+  block strobe 10Hz | blank 0.1 | planned 6 (0.000) at (1, 8) | re-primed 7 (0.281) at (2, 8)
+  block strobe 10Hz | blank 0.5 | planned 7 (0.281) at (2, 8) | re-primed 8 (0.281) at (2, 8)
+  block strobe 10Hz | blank 0.9 | planned 7 (0.281) at (2, 8) | re-primed 8 (0.281) at (2, 8)
+  rev cols ph0 10Hz | blank None | planned 6 (0.000) at (1, 8) | re-primed 6 (0.000) at (1, 8)
+  rev cols ph0 10Hz | blank 0.1 | planned 7 (0.000) at (6, 8) | re-primed 7 (0.500) at (1, 8)
+  rev cols ph0 10Hz | blank 0.5 | planned 7 (0.500) at (1, 8) | re-primed 8 (0.500) at (1, 8)
+  rev cols ph0 10Hz | blank 0.9 | planned 7 (0.500) at (1, 8) | re-primed 8 (0.500) at (1, 8)
+Q5/close: tear at call n (3..8), split 33, close() j ticks later (1..19), card and probe, planned wall
+  rev rows b32 ph1 10Hz | card | worst 8 (0.000) at (n, j, close sends) (6, 1, 3)
+  rev rows b32 ph1 10Hz | probe | worst 8 (0.000) at (n, j, close sends) (6, 1, 3)
+  block strobe 10Hz | card | worst 6 (0.000) at (n, j, close sends) (6, 1, 3)
+  block strobe 10Hz | probe | worst 6 (0.000) at (n, j, close sends) (6, 1, 3)
+Q7: from dark, the first frame bright, then a 10 Hz strobe at fps 20 (what was sent, dark first)
+  99.9 % lit, 128 | from_dark False | area 1.000 sq 7
+  99.9 % lit, 128 | from_dark True | area 0.000 sq 6
+  error border | from_dark False | area 0.046 sq 6
+  error border | from_dark True | area 0.046 sq 6
