@@ -1,0 +1,40 @@
+== reset_inplace
+FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+1 failed, 65 passed in 9.13s
+real 9.34
+== wall14
+_ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+    def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
+        assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+        for sent, pushed, failed in ((16, 32, 16), (17, 48, 16), (19, 81, 65), (20, 97, 65)):
+            assert np.array_equal(inner.sent[sent][1], counted[failed]) and np.array_equal(got[pushed], counted[failed])
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+10 failed, 56 passed in 6.01s
+real 6.15
+== wrong_reinit
+_ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+    def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
+        assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+        for sent, pushed, failed in ((16, 32, 16), (17, 48, 16), (19, 81, 65), (20, 97, 65)):
+            assert np.array_equal(inner.sent[sent][1], counted[failed]) and np.array_equal(got[pushed], counted[failed])
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+10 failed, 56 passed in 4.44s
+real 4.60

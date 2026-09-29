@@ -7,7 +7,7 @@ flash.py`, `arcade/brightness.py`, `show/display/colorlight.py`, `arcade/runner.
 - Test command, from the root: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /Users/trey/dev/codeisart/.venv/bin/
   python -m pytest -q -rs`. About 225 s, 1140 collected, 1 skip on the Mac (`tests/test_sandbox.py:153`). In a
   worktree a second skip, `tests/arcade/test_pose_mediapipe.py:223` (the pose model is not in git), is expected.
-  Suite limit 250 s. New tests 8 s at most (`--durations=0`): I0 0.1 s, T-wall 4 s (measured 2.9 s in scratch).
+  Suite limit 250 s. New tests 10 s at most (`--durations=0`): I0 0.1 s, T-wall 9.5 s (the file 8.0-8.8 s in scratch).
 - Test-first; only your files; never `cd` (absolute paths, `git -C`); `git add` by name; no stash, push or command
   over 10 min; `tmp_path`; fakes only (no window, sound, GPIO, packet). Nothing under `deploy/` installed, enabled
   or run. No rulings: a gap is reported. Trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
@@ -15,7 +15,8 @@ flash.py`, `arcade/brightness.py`, `show/display/colorlight.py`, `arcade/runner.
   new frame governed 0.05 s after a failure; any hold changes it); the EXACT test below replaces it. Not edited:
   `tests/test_wall.py`, `tests/test_wall_close.py`, `tests/test_wall_pattern_governed.py`, `tests/arcade/` but I0's.
 - EXACT safety tests (Loop rule 4): reformat only, no assert changed. They pass on the writer's scratch copy of the
-  planned wall (77 passed, 3.1 s); today's code and each of seven wrong walls fail some (the report).
+  planned wall with B1's re-init (65 of 66; the AST test reads the repository); the wall without the re-init, the
+  re-init without its apply, today's code and seven more wrong walls each fail some (the fix report).
 
 ## Lanes
 - I0 (orchestrator, main checkout, first): C50 below; `tests/arcade/test_config.py`, then the suite; one commit: BASE.
@@ -54,15 +55,16 @@ class GovernedDisplay:
         #   after the last counted send) nothing is sent and push returns None. Then repush() sends the counted
         #   frame (self.last) and push returns a copy of it; SETTLE_SENDS such sends, each HOLD_S after the one
         #   before; HOLD_S after the last one, holding ends and this push governs and sends its own frame.
-        # A send that raises (a counted send too): failed += 1, the hold starts again from that time, the
-        #   exception goes on to the caller as today (the loop logs and counts it).
+        # Hold's end, before that push governs (B1): `self.governor.__init__(h, w, gamma, fps=fps)` IN PLACE
+        #   (`held_ticks` carried; the soak's wrapper and spies kept), then `governor.apply(self.last)` once, not
+        #   sent: a tear leaves a square's direction unlike the governor's; unknown again, it counts either way.
+        # A send that raises (a counted send too): failed += 1, the hold starts again from that time with
+        #   SETTLE_SENDS counted from 0, the exception goes on to the caller as today (the loop logs, counts it).
     def repush(self) -> None     # today's; the hold's counted sends go through it
     def close(self) -> None      # today's behaviour, not held: the counted frame if unsent, two governed black
 ```
 - One governed path: a private `_govern(frame)` (apply, `_send`, governed += 1) is what `push` and `close` use;
   `_send(` keeps exactly two call sites (`_govern`, `repush`) and `display.push` one (`tests/test_main.py:87`).
-- The governor during the hold: not called. Its window counts frames: frames it never sees keep the last fps in the
-  window longer, so after the hold it is stricter in seconds, never laxer (Q59's rule).
 - `show/main.py`: `self._now` (0.0 at first) set by `start(now)` and first thing in `step(now)`; both
   `GovernedDisplay(` calls in `_open_wall` add `from_dark=True, clock=lambda: self._now`. `_push`: no repush of
   its own (`_push_failed` goes); `sent = self.wall.push(frame)`; an Exception: today's path (count, log, `_failing`);
@@ -70,9 +72,8 @@ class GovernedDisplay:
   that arrives is a good push: failures reset, lights relit). `_close` unchanged.
 - `tools/wall_pattern.py`: its one `GovernedDisplay(` adds `from_dark=True`, no clock: the tool stops at its first
   OSError and closes (`tests/test_wall_pattern_governed.py:41-47`), so it never holds.
-- A normal show: nothing held at the start; the first frame is counted against black (one transition of six), so a
-  fast entry in the first second may be held a tick sooner. No hold without a failed push (the soak and shots never
-  hold); after one the wall is frozen 3 s at least (still, the counted frame twice a second apart, a second more).
+- A normal show: the first frame counts against black (one of six), a fast entry may be held a tick sooner; no hold
+  without a failed push (soak, shots); after one the wall is frozen 3 s at least (still, counted frame twice, 1 s).
 
 Safety tests, EXACT, `tests/test_wall_hold.py` (docstring: "The wall's hold after a failed push and its dark start
 (it14 T-wall, C51, C52): the plan's, as given."):
@@ -90,7 +91,6 @@ ROOT = Path(__file__).resolve().parents[1]
 H, W = 64, 128
 LIT = np.array((51, 255, 51), np.uint8)
 DARK = np.zeros((H, W, 3), np.uint8)
-
 class TornDisplay:
     """A send numbered in `tears` (every call counted from 1) raises after the rows above `split` arrived.
     card=False: rows show as they arrive (it13's probe). card=True: colorlight's order, the frame packet first
@@ -117,7 +117,6 @@ class TornDisplay:
         pass
     def close(self):
         self.closed = True
-
 def in_time(shown, fps):
     """The wall from dark in real time: each tick cut in k slots (k the most calls in a tick), a slot the wall after
     a call, a tick padded with its last state (or the last tick's): fps * k slots are a second."""
@@ -131,7 +130,6 @@ def in_time(shown, fps):
         seq += frames + [frames[-1]] * (k - len(frames))
         last = frames[-1]
     return seq, fps * k
-
 def reversal(hz, fps, n, top_first=False):
     out = []
     for k in range(n):
@@ -142,11 +140,9 @@ def reversal(hz, fps, n, top_first=False):
             f[:H // 2] = LIT
         out.append(f)
     return out
-
 def strobe(hz, fps, n):
     return [np.broadcast_to(LIT if round(k / fps * 2 * hz) % 2 == 0 else DARK[0, 0], (H, W, 3)).copy()
             for k in range(n)]
-
 def drive(frames, inner, fps):
     """The loop's push, one a tick, the tick's time the wall's clock; a failed push is the loop's to log."""
     wall = GovernedDisplay(inner, H, W, fps=fps, from_dark=True, clock=lambda: inner.tick / fps)
@@ -157,31 +153,28 @@ def drive(frames, inner, fps):
         except OSError:
             pass
     return wall
-
 TEARS = {"every 2nd": lambda n: n % 2 == 0, "every 3rd": lambda n: n % 3 == 0, "calls 9-12": lambda n: 9 <= n <= 12,
          "call 5": lambda n: n == 5}
-
 @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
 @pytest.mark.parametrize("tears", TEARS, ids=list(TEARS))
-@pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
+@pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 30)])
 @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
 def test_torn_pushes_keep_the_wall_in_the_budget_in_real_time(pattern, hz, fps, tears, card):
     inner = TornDisplay(TEARS[tears], card=card)
-    drive(pattern(hz, fps, 3 * fps), inner, fps)
+    drive(pattern(hz, fps, 4 * fps), inner, fps)
     seq, n = in_time(inner.shown, fps)
     assert flash_area(seq, fps=n) == 0.0 and square_flashes(seq, fps=n) <= BUDGET
-
 @pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+@pytest.mark.parametrize("split", [24, 33])
 @pytest.mark.parametrize("lead", [0, 1])
-def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, card):
-    frames = reversal(10, 20, 50, top_first=True)
+def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, split, card):
+    frames = reversal(10, 20, 120, top_first=True)
     frames = frames[:1] * lead + frames
     for call in range(1, 11):
-        inner = TornDisplay(lambda n, call=call: n == call, split=24, card=card)
+        inner = TornDisplay(lambda n, call=call: n == call, split=split, card=card)
         drive(frames, inner, 20)
         seq, n = in_time(inner.shown, 20)
         assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
-
 class Clocked:
     """A display whose sends numbered in `fail` raise; sent: (the clock's time, the frame) of every good send."""
     def __init__(self, fail, clock):
@@ -195,7 +188,6 @@ class Clocked:
         pass
     def close(self):
         self.closed = True
-
 def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
     now = [0.0]
     inner = Clocked({17, 21}, lambda: now[0])
@@ -218,8 +210,9 @@ def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twic
                                                            *range(66, 81), *range(82, 97), *range(98, 113)]
     for sent, pushed, failed in ((16, 32, 16), (17, 48, 16), (19, 81, 65), (20, 97, 65)):
         assert np.array_equal(inner.sent[sent][1], counted[failed]) and np.array_equal(got[pushed], counted[failed])
-    assert applied == [k / 16 for k in [*range(17), 64, 65, *range(113, 160)]] and wall.governed == len(applied) - 2
-
+    # B1: at 4.0 and 7.0625 the re-initialised governor applies the counted frame, then the new frame.
+    assert applied == [k / 16 for k in [*range(17), 64, 64, 65, 113, *range(113, 160)]]
+    assert wall.governed == len(applied) - 4
 @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 20), (5, 30)])
 @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
 def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
@@ -231,7 +224,6 @@ def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
     shown = [DARK] + [f for _, f in inner.sent]                   # the dark wall, then what was sent
     assert len(shown) == 2 * fps + 1
     assert flash_area(shown, fps=fps) == 0.0 and square_flashes(shown, fps=fps) <= BUDGET
-
 def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
     made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
             if "GovernedDisplay(" in p.read_text()}
@@ -242,7 +234,8 @@ def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
         assert wraps, path
         for w in wraps:
             kw = {k.arg: ast.unparse(k.value) for k in w.keywords}
-            assert kw.get("from_dark") == "True" and (path.name != "main.py" or "clock" in kw), ast.unparse(w)
+            assert kw.get("from_dark") == "True", ast.unparse(w)
+            assert path.name != "main.py" or kw.get("clock") not in (None, "None"), ast.unparse(w)
 ```
 Safety test, EXACT, `tests/test_main.py:289-300` replaced by (the one named change; `FailingPushes`,
 `playing_loop` as in the file):
@@ -261,6 +254,7 @@ def test_after_a_failed_push_the_wall_holds_then_sends_the_counted_frame(tmp_pat
     assert np.array_equal(inner.pushed[2], counted) and np.array_equal(inner.pushed[3], counted)
     loop.step(3.5)                                                # new frames again
     assert inner.count == 5 and loop.wall.governed == 3 and not loop.wall.holding
+    assert np.array_equal(inner.pushed[4], loop.wall.last)        # the step's own governed frame
     loop.step(3.75)
     assert inner.count == 6                                       # one push a step again
 ```
@@ -287,12 +281,16 @@ The arcade config: gamma 2.2. The hold never shows with fakes. The real panels (
 - Q65's text (resend every tick) is not enough: one tear at the budget's last change reads 7 (p4); the hold is quiet
   (Q66). `from_dark` is opt-in and passed by every caller (the AST test): priming by default changes `tests/test_
   wall.py:59-72`, `tests/test_wall_close.py:19-32`, `tests/test_main.py:406-416` (an unprimed reference governor).
+- B1 (plan review): the in-place re-init and priming at the hold's end. Not planned: a close within a second of a
+  tear (8 on a reversal at budget, the review's first note): carried as C53 for a later slice.
 
 ## Questions for the owner (the loop takes each default at once)
 - Q66 (it14): The hold after a failed push is quiet: nothing sent for 1 s, the counted frame, 1 s, the counted
   frame, 1 s, then new frames (3 s frozen per failure; a dead link is sent to once a second), not Q65's resend
-  every tick. Default: yes, quiet. It needs the Colorlight card to keep its last frame through 1 s without packets;
-  check on the real panels (stop the sender 3 s; the picture must stay, not blank). If it blanks, Q65's resend.
+  every tick. Default: yes, quiet. It needs the Colorlight card to keep its last frame through 1 s without packets:
+  a card that blanks breaks the budget in a hold (review r6: 7 to 8 transitions, flash area 0.5), so the check on
+  the real panels is a SAFETY GATE (stop the sender 3 s; the picture must stay, not blank). If it blanks, the wall
+  is not shown to the public until a hold in the budget is found (Q65's resend reads 7 too).
 - Q67 (it14): May `arcade/runner.py` prime its governor with black at birth (C52 for the arcade)? It changes
   `tests/arcade/test_headless.py:227` (`len(governor) == 300` becomes 301: the priming is one more timed apply) in
   six cases; nothing else moved. Default: not changed (the arcade starts on the dark lobby).

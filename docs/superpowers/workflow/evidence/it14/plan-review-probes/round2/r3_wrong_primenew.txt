@@ -1,0 +1,10 @@
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+9 failed, 57 passed in 4.54s

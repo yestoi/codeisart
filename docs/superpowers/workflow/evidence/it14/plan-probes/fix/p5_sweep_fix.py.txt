@@ -1,0 +1,13 @@
+import sys; sys.path.insert(0, "/Users/trey/dev/codeisart")
+"""Fix round: the reviewer's r1 sweep (19 pictures x 120 tear cases x 2 models) on the writer's scratch wall WITH
+B1's re-init (wall14b, MODE fix), fps from argv."""
+import runpy
+FIX = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan/fix"
+REV = "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan-review"
+sys.path.insert(0, FIX)
+import wall14b
+assert wall14b.MODE == "fix"
+sys.modules["wall14"] = wall14b
+sys.path.insert(0, REV)
+sys.argv = ["r1_sweep.py", sys.argv[1]]
+runpy.run_path(REV + "/r1_sweep.py", run_name="__main__")

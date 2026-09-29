@@ -1,0 +1,9 @@
+quiet:    1 test_after_a_failed    8 test_one_torn_push 
+noprime:    1 test_after_a_failed    8 test_one_torn_push 
+repush:    1 test_after_a_failed    8 test_one_torn_push 
+still:    1 test_after_a_failed    6 test_one_torn_push 
+apply:    1 test_after_a_failed 
+none:    1 test_after_a_failed    2 test_torn_pushes_keep 
+undark:    8 test_from_a_dark    8 test_one_torn_push    4 test_torn_pushes_keep 
+sendblack:    1 test_after_a_failed    8 test_from_a_dark    8 test_one_torn_push 
+primefirst:    1 test_after_a_failed    8 test_from_a_dark    8 test_one_torn_push    4 test_torn_pushes_keep 

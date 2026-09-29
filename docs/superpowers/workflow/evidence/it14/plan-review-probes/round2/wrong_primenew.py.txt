@@ -1,0 +1,18 @@
+"""Wrong wall: at the hold's end the governor is re-initialised in place and primed with the NEW frame, not
+self.last (so the new frame counts as no change against what the wall shows)."""
+import sys; sys.path.insert(0, "/private/tmp/claude-502/-Users-trey-dev-codeisart/d1e01db2-fed8-414f-9a38-325b95bc9c3a/scratchpad/it14-plan-review")
+import rlib  # noqa: F401
+import reset_inplace
+HOLD_S = reset_inplace.HOLD_S
+
+
+class GovernedDisplay(reset_inplace.GovernedDisplay):
+    def _govern(self, frame):
+        if getattr(self, "_reset_due", False):
+            self._reset_due = False
+            g = self.governor
+            held = g.held_ticks
+            g.__init__(g.shape[0], g.shape[1], g.gamma, fps=g.fps)
+            g.held_ticks = held
+            g.apply(frame)
+        return super()._govern(frame)

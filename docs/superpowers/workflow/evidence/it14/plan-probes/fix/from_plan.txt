@@ -1,0 +1,4 @@
+fix: 1 failed, 65 passed in 16.29s
+quiet: 10 failed, 56 passed in 6.49s
+noprime: 10 failed, 56 passed in 4.78s
+1 passed in 0.08s

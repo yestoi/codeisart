@@ -1,0 +1,113 @@
+== fix
+   1 FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   1 1 failed, 81 passed in 8.71s
+== quiet
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+   1 FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   1 FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 10 failed, 72 passed in 6.60s
+   1 _ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+== noprime
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+   1 FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   1 FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 10 failed, 72 passed in 5.04s
+   1 _ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+== repush
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+   1 FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   1 FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 E        +  where 2 = <wall14b.GovernedDisplay object at 0x101a0b590>.failed
+   1 10 failed, 72 passed in 8.51s
+== still
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+   1 FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   1 FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 E        +  where 2 = <wall14b.GovernedDisplay object at 0x10339ddc0>.failed
+   1 8 failed, 74 passed in 6.35s
+   1 >       assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+   1 _ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+== apply
+   1 FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   1 FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 2 failed, 80 passed in 13.52s
+   1 _ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+   1     def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
+   1         for sent, pushed, failed in ((16, 32, 16), (17, 48, 16), (19, 81, 65), (20, 97, 65)):
+   1         assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+   1             assert np.array_equal(inner.sent[sent][1], counted[failed]) and np.array_equal(got[pushed], counted[failed])
+== none
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-5-30-every 2nd-probe]
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-5-30-every 2nd-card]
+   1 FAILED ::test_every_governed_wall_starts_from_dark_and_the_show_s_holds
+   1 FAILED ::test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart
+   1 E        +  where 2 = <wall14b.GovernedDisplay object at 0x101938680>.failed
+   1 4 failed, 78 passed in 14.71s
+   1 >       assert HOLD_S == 1.0 and wall.failed == 2 and sorted(counted) == [16, 65] and not wall.holding
+   1 _ test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart _
+   1     def test_after_a_failed_push_the_wall_is_still_then_sends_the_counted_frame_twice_a_second_apart():
+== undark
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-probe]
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-card]
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-probe]
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+== sendblack
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+   1 FAILED ::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-30]
+   1 FAILED ::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-5-20]
+   1 FAILED ::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-30]
+   1 FAILED ::test_from_a_dark_wall_the_first_second_is_in_the_budget[strobe-10-20]
+== primefirst
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-probe]
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[strobe-10-20-calls 9-12-card]
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-probe]
+   1 FAILED ::test_torn_pushes_keep_the_wall_in_the_budget_in_real_time[reversal-10-20-calls 9-12-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-probe]
+   1 FAILED ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]

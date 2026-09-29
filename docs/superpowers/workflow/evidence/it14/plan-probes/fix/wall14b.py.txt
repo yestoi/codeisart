@@ -1,0 +1,114 @@
+"""it14 fix round: B1's re-init at the hold's end (MODE fix; quiet = the plan without it; noprime =
+the re-init without apply(last)). A scratch copy of show/wall.py with the it14 plan's interface (from_dark, clock, the quiet hold). MODE picks a
+wrong implementation for the plan's exact tests: 'quiet' (the plan), 'repush' (Q65's text), 'still' (one settle),
+'apply' (the plan but the governor applies the held frame), 'none' (today)."""
+from __future__ import annotations
+
+import logging
+import os
+
+import numpy as np
+
+from arcade.flash import FlashGovernor
+
+log = logging.getLogger(__name__)
+GAMMA_MIN, GAMMA_MAX = 1.0, 2.2
+HOLD_S = 1.0
+SETTLE_SENDS = 2
+MODE = os.environ.get("WALL_MODE", "fix")
+
+
+class GovernedDisplay:
+    def __init__(self, display, height, width, fps=30, gamma=2.2, *, from_dark=False, clock=None):
+        if isinstance(gamma, bool) or not isinstance(gamma, (int, float)) or not GAMMA_MIN <= gamma <= GAMMA_MAX:
+            raise ValueError("gamma")
+        self.governor = FlashGovernor(height, width, gamma, fps=fps)
+        self.display, self.clock = display, clock
+        self._first = MODE == "primefirst"
+        if from_dark and MODE not in ("undark", "primefirst"):
+            self.governor.apply(np.zeros(self.governor.shape, np.uint8))
+        if from_dark and MODE == "sendblack":
+            self.display.push(self.governor.apply(np.zeros(self.governor.shape, np.uint8)))
+        self.governed, self._last, self.unsent, self.failed = 0, None, False, 0
+        self.holding = False
+        self._quiet_until, self._settles = 0.0, 0
+
+    @property
+    def last(self):
+        if self._last is None:
+            return None
+        v = self._last.view()
+        v.flags.writeable = False
+        return v
+
+    def push(self, frame):
+        if self.holding and MODE != "none":
+            now = self.clock()
+            if MODE == "repush":
+                if now - self._failed_at < HOLD_S:
+                    self.repush()
+                    return self._last.copy()
+                self.holding = False
+                return self._govern(frame)
+            if now < self._quiet_until:
+                if MODE == "apply":
+                    self.governor.apply(self._last)
+                return None
+            if self._settles < (1 if MODE == "still" else SETTLE_SENDS):
+                self.repush()
+                self._settles += 1
+                self._quiet_until = now + (HOLD_S if MODE != "still" else 0.0)
+                if MODE == "still" and self._settles == 1:
+                    self.holding = False
+                return self._last.copy()
+            self.holding = False
+            if MODE != "quiet":
+                g = self.governor
+                held = g.held_ticks
+                g.__init__(g.shape[0], g.shape[1], g.gamma, fps=g.fps)
+                g.held_ticks = held
+                if MODE != "noprime":
+                    g.apply(self._last)
+        return self._govern(frame)
+
+    def _govern(self, frame):
+        if self._first:
+            self._first = False
+            self.governor.apply(frame)
+        out = self.governor.apply(frame)
+        self._last = out.copy()
+        self._send(self._last)
+        self.governed += 1
+        return out
+
+    def repush(self):
+        if self._last is not None:
+            self._send(self._last)
+
+    def set_brightness(self, level):
+        self.display.set_brightness(level)
+
+    def close(self):
+        black = np.zeros(self.governor.shape, np.uint8)
+        try:
+            if self.unsent:
+                try:
+                    self.repush()
+                except Exception:
+                    log.exception("closing: resend failed")
+            for _ in range(2):
+                self._govern(black)
+        finally:
+            self.display.close()
+
+    def _send(self, frame):
+        self.unsent = True
+        try:
+            self.display.push(frame)
+        except Exception:
+            self.failed += 1
+            if self.clock is not None:
+                self._failed_at = self.clock()
+                self.holding, self._settles, self._quiet_until = True, 0, self._failed_at + HOLD_S
+            raise
+        self.unsent = False

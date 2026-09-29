@@ -1,0 +1,14 @@
+0.72s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+0.70s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+0.69s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+0.69s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+0.68s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+0.68s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+1 failed, 65 passed in 8.04s
+0.80s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-probe]
+0.77s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-33-card]
+0.76s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-24-card]
+0.76s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-card]
+0.76s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[1-33-probe]
+0.75s call     ::test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget[0-24-card]
+1 failed, 65 passed in 8.84s
