@@ -14,6 +14,7 @@ def test_defaults_when_file_missing(tmp_path):
     assert (cfg.width, cfg.height) == (512, 192)
     assert cfg.phosphor_rgb == (51, 255, 51)
     assert cfg.button_pins == [5, 6, 13, 19, 26]
+    assert cfg.lightbox_pins == [17, 22, 23, 24, 27]
     assert cfg.fps == 20 and cfg.volume == 0.6 and cfg.pump_bytes == 4096
     assert not hasattr(cfg, "matrix_multiplexing")
 

@@ -29,6 +29,7 @@ class Config:
     font_path: Path = Path("fonts/5x7.bin")
     button_pins: list[int] = field(default_factory=lambda: [5, 6, 13, 19, 26])
     light_pins: list[int] = field(default_factory=lambda: [12, 16, 20, 21, 25])
+    lightbox_pins: list[int] = field(default_factory=lambda: [17, 22, 23, 24, 27])
     ddp_host: str = "127.0.0.1"
     ddp_port: int = 4048
     colorlight_iface: str = "eth0"
