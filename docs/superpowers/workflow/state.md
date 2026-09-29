@@ -1,10 +1,10 @@
 # Operator state
 iteration: 10
-phase: orient
-milestone: the show daemon's foundation tasks (docs/superpowers/plans/2026-09-22-show-daemon.md with its amendments: config, font, display backends), by Q33 and Q49; to be chosen in orient from what the arcade's M1 already built (daemon Tasks 1, 2, 5 and the raw Colorlight backend)
+phase: plan
+milestone: D1, the show daemon's terminal on the wall (roadmap.md, "Show daemon"): daemon Tasks 3 renderer, 4 terminal, 6 entries, 7 queue, 8 recording, 9 sandbox, and tools/show_shot.py for verify. D0 (config, font, display backends) was built in it01 and matches the amendments (checked in orient: FakeDisplay last and count, DDP 0x0B unscaled, Colorlight 0x0107)
 gate: none. The owner, 2026-09-28 23:10 CDT (Q49): "I will do the new pong smoke test in the morning. Lets continue onto the show daemon and other iterations until you need me next." No gate.md after iteration 9. The run is iterations 10 to 15 (config.md iterations-per-run: 6); gate earlier only for rule 8's reasons
-plan: none yet for iteration 10
-in_flight: none
+plan: being written: docs/superpowers/plans/2026-09-28-it10-show-terminal-on-the-wall.md (thin, under 300 lines); report to the scratchpad, it10-plan-report.md. The core plan is docs/superpowers/plans/2026-09-22-show-daemon.md; its Amendments section and the spec revision 2 override its task bodies
+in_flight: `it10-plan-writer` (opus), started 23:14 CDT at HEAD 40e8226; it writes the plan file and its report, it does not commit
 last: iteration 9, M4c Pong by the body, done 2026-09-28 23:11 CDT. Code head e42b02e; 762 collected, 762 passed, 0 skipped, 172.8 s. Review APPROVED in round 1. Evidence docs/superpowers/workflow/evidence/it09/. C42, C43, C44 closed; C45, C46 (the owner's hand-read spike), C47 (the review) carried for the arcade's return. Before it: iteration 8, M4b, 5102b34; the owner's first live smoke 20:40 (8b50330)
 for the plan: not a safety slice unless flash.py, brightness.py, colorlight.py or the runner's limiter, governor, push order change. The protocol is frozen (`game-protocol-v1`): input helpers and test actors are outside it; check the canary before touching `SessionResult`
 decisions: to be confirmed by the owner: Q22 to Q31, Q34 to Q41, Q43 to Q48 (all defaulted). Q23 reads wrong on the sheet (a duel's card shows "PONG 0"). Q32, Q33, Q42, Q49 answered
@@ -12,6 +12,6 @@ owner items: the second live smoke, in the morning of 2026-09-29 by the owner's 
 owner, 19:45: is flashing the Colorlight card in a Windows VM with another agent; the operator gave a brief (128x64, two chains of two preferred, report if only 256x32, record firmware and settings in evidence/hardware.md). The newest `wall_pattern.py` (128x64 default, every seam) is only on this Mac, unpushed; the owner was told
 owner, 23:12: the spike is finished; its report is docs/superpowers/reviews/2026-09-28-hand-read-spike.md on branch spike/hand-read (ed7c80c, worktree /Users/trey/dev/codeisart-spike, unmerged and unpushed). The operator read it in full at 22:37 and turned it into S3 (built in it09), C45, C46 and two notes in roadmap.md. The IMX500 question waits for GATE B (the Pi and the camera in hand)
 rules: config.md "Loop rules" (2026-09-28) override the workflow-loop skill and its sub-skills. Never `cd` in a Bash command
-times: it06 15:03 to 16:15 CDT (72 minutes); it07 16:15 to 18:14 CDT (119 minutes); it08 orient 18:19-18:22; plan 18:22-18:32; implement 18:33-19:41 (68 minutes: serial 27, parallel 15, integration 24); review 19:42-19:59; verify and report 20:00-20:14 (115 minutes from 18:19); it09 orient 20:51-20:53; plan 20:53-21:05; implement 21:05-22:59 (114 minutes: serial 21:05-22:01, parallel 22:02-22:36, integration and P1's time fix 22:36-22:59); review 23:00-23:08; verify 23:00-23:06; report 23:08-23:11 (about 140 minutes from 20:51); it10 orient from 23:12
+times: it06 15:03 to 16:15 CDT (72 minutes); it07 16:15 to 18:14 CDT (119 minutes); it08 orient 18:19-18:22; plan 18:22-18:32; implement 18:33-19:41 (68 minutes: serial 27, parallel 15, integration 24); review 19:42-19:59; verify and report 20:00-20:14 (115 minutes from 18:19); it09 orient 20:51-20:53; plan 20:53-21:05; implement 21:05-22:59 (114 minutes: serial 21:05-22:01, parallel 22:02-22:36, integration and P1's time fix 22:36-22:59); review 23:00-23:08; verify 23:00-23:06; report 23:08-23:11 (about 140 minutes from 20:51); it10 orient 23:12-23:14; plan from 23:14
 last_compaction: 2026-09-28T22:55:53Z at iteration 7 phase review (auto)
 
