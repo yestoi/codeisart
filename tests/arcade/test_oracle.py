@@ -1,25 +1,22 @@
-"""The oracle end to end on Pong (I1): feel's report against the budgets, the bots' ranking, the evidence package.
+"""The oracle end to end on every game (I1, it15's I0): feel's report against the budgets, the bots' ranking, and
+Pong's evidence package.
 
-One 20-seed report (spec 9.3's count) is measured per module and shared. A failing budget is fixed in Pong's own
-files or sent to the owner, never loosened here."""
+One 20-seed report (spec 9.3's count) is measured per game per module and shared. A failing budget is fixed in the
+game's own files or sent to the owner, never loosened here."""
 import json
 
 import pytest
 
 from arcade import bots, feel
+from arcade.games import all_games
 from arcade.games.pong import Pong
+from tests.arcade.helpers import PLAYS, play_key
 
 LAYOUT = "128x64"
 SEEDS = bots.seeds(Pong, LAYOUT, 20)
+OTHER_GAMES = [game for game in all_games() if game is not Pong]   # Pong keeps its own three tests below
 
-# Every plain bot play this module measures, by (game name, bot class name, seed, layout): a play is a pure function
-# of those (bots.play is seeded, a bot factory takes no arguments, both callers use the project font), so the
-# evidence package's report and test_pong's bot tests read the plays the 20-seed report already made.
-PLAYS: dict[tuple[str, str, int, str], bots.Play] = {}
-
-
-def play_key(game_cls, bot_name: str, seed: int, layout: str | None = None) -> tuple[str, str, int, str]:
-    return (game_cls.info.name, bot_name, seed, bots._layout(game_cls, layout))
+REPORTS: dict[str, dict] = {}   # one 20-seed report per game (by name), shared by its two tests
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -59,6 +56,37 @@ def test_bots_rank_on_pong(pong_report):
     ranking = f"good {m['win_good']}, lazy {m['win_lazy']}, none {m['win_none']} (seeds {SEEDS})"
     assert m["win_good"] > m["win_lazy"] > m["win_none"], ranking
     assert m["phases_reached"] == 1.0, f"phases_reached {m['phases_reached']} over the good plays, seeds {SEEDS}"
+
+
+@pytest.fixture(scope="module")
+def game_report(shared_plays):
+    """The game's 20-seed report at its layout, with its seeds, measured once per module in REPORTS."""
+    def report(game_cls) -> tuple[dict, str, list[int]]:
+        layout = bots._layout(game_cls, None)
+        seeds = bots.seeds(game_cls, layout, 20)
+        if game_cls.info.name not in REPORTS:
+            REPORTS[game_cls.info.name] = feel.report(game_cls, layout, seeds=seeds)
+        return REPORTS[game_cls.info.name], layout, seeds
+    return report
+
+
+# Defined only when there is a game to judge: an empty parameter set would collect one skipped test each.
+if OTHER_GAMES:
+    @pytest.mark.feel
+    @pytest.mark.parametrize("game_cls", OTHER_GAMES, ids=lambda game: game.info.name)
+    def test_feel_meets_its_budgets(game_cls, game_report):
+        report, layout, seeds = game_report(game_cls)
+        failures = report["failures"]
+        assert failures == [], f"{game_cls.info.name} at {layout}, seeds {seeds}: " + "; ".join(failures)
+
+    @pytest.mark.parametrize("game_cls", OTHER_GAMES, ids=lambda game: game.info.name)
+    def test_bots_rank(game_cls, game_report):
+        report, layout, seeds = game_report(game_cls)
+        m = report["metrics"]
+        ranking = (f"{game_cls.info.name} at {layout}: good {m['win_good']}, lazy {m['win_lazy']}, "
+                   f"none {m['win_none']} (seeds {seeds})")
+        assert m["win_good"] > m["win_lazy"] > m["win_none"], ranking
+        assert m["phases_reached"] == 1.0, f"phases_reached {m['phases_reached']} over the good plays, seeds {seeds}"
 
 
 def test_evidence_package_for_pong(tmp_path):

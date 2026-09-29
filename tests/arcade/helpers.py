@@ -6,6 +6,7 @@ import random
 from dataclasses import replace
 from typing import Iterable
 
+from arcade import bots
 from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
 from arcade.game import Game, GameInfo, icon_from_rows
@@ -30,6 +31,27 @@ def run(game_cls: type, sensed_iter: Iterable[Sensed], size: tuple[int, int], fo
     feed = sensed_iter if ticks is None else itertools.islice(sensed_iter, ticks)
     frames, runner = run_headless(cfg, font, game_cls, feed, seed=seed, strict=strict)
     return frames, runner.game, runner
+
+
+# Every plain bot play the tests measure, by (game name, bot class name, seed, layout): a play is a pure function
+# of those (bots.play is seeded, a bot factory takes no arguments, both callers use the project font), so the
+# evidence package's report and each game's bot tests read the plays the 20-seed report already made, whichever
+# test file sorts first.
+PLAYS: dict[tuple[str, str, int, str], bots.Play] = {}
+
+
+def play_key(game_cls, bot_name: str, seed: int, layout: str | None = None) -> tuple[str, str, int, str]:
+    return (game_cls.info.name, bot_name, seed, bots._layout(game_cls, layout))
+
+
+def played(game_cls, bot_name: str, seed: int) -> bots.Play:
+    """The plain play of game_cls's bot bot_name ("none" is Nobody) on seed: the one in PLAYS when a test has
+    already made it, else bots.play's, stored there."""
+    bot = (bots.Nobody if bot_name == "none" else bots.for_game(game_cls)[0][bot_name])()
+    key = play_key(game_cls, type(bot).__name__, seed)
+    if key not in PLAYS:
+        PLAYS[key] = bots.play(game_cls, bot, seed)
+    return PLAYS[key]
 
 
 SPY_LAYOUTS = frozenset({"128x64", "128x32", "64x64", "96x48"})   # the sizes the engine's tests use
