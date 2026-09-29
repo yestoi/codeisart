@@ -117,5 +117,8 @@ The camera:
 10. Close LEDVision, `vm stop`, and on the host run the four `tools/wall_pattern.py` checks (`rgb`, `index`,
     `steps --brightness 0.4`, `gamma`; they need CAP_NET_RAW, so the owner runs them with sudo). Photograph
     each with the webcam and write what the wall shows into `hardware.md`.
-11. A flicker while LEDVision streams (whole-wall dips of ~8% at ~5 Hz) is its stream from the VM: with "Use
-    Net Card" unticked the card holds the frame steadily. Judge flicker only with the Linux sender.
+11. The wall flickers while LEDVision streams (whole-wall dips of ~8%, about two a second) and is steady with
+    "Use Net Card" unticked, when the card holds the frame. This is a known fault of firmware 13.x when a
+    network port feeds the card, not a wrong setting: do not chase it with DCLK, refresh or brightness (all
+    tried, "Same"). Judge the picture's placement and colours with the stream, and flicker only with the Linux
+    sender. See `docs/superpowers/reviews/2026-09-29-flicker/00-path-forward.md`.

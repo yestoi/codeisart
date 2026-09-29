@@ -4,10 +4,45 @@
 cycle; use card 2.** The fix was the row decoder: **ICN2018/3018** (the panels have serial row drivers), not
 138 (see "14:00" to "14:53" below). Final settings: `hardware/colorlight-outdoor-p5-2x2.rcvbp`. Card 1 has a
 hardware fault of its own and still holds its factory settings (see "13:20"). **The Linux driver
-(`show/display/colorlight.py`) does not yet work with this card** (firmware 13.17): it needs FPP's packet
-order, a steady ~60 fps output, BGR pixel order, and a fix for noise on the bottom rows (see "15:40"); the
-`wall_pattern.py` checks `index`, `steps`, `gamma` wait for that. How to continue: `.claude/skills/ledvision-card-setup/SKILL.md`, from the worktree
+(`show/display/colorlight.py`) does not yet work with this card** (firmware 13.17): it needs the frame layout
+of the test sender that worked (which part of that layout matters is not yet isolated), BGR pixel order, and a
+fix for noise on the bottom rows (see "15:40"); the `wall_pattern.py` checks `index`, `steps`, `gamma` wait for
+that. **The flicker while the card is fed data is a known fault of firmware 13.x**, seen by others under
+LEDVision on bare-metal Windows and under Falcon Player; 60 fps is the only input rate judged steady here, on
+one run. The review, the next runs at the wall and the routes:
+`docs/superpowers/reviews/2026-09-29-flicker/00-path-forward.md`. How to continue the card setup:
+`.claude/skills/ledvision-card-setup/SKILL.md`, from the worktree
 `/Users/trey/dev/codeisart-ledvision` (branch `ledvision-card1`). Screenshots: `hardware/`.
+
+### Corrections (2026-09-29, evening, from the review of the session records)
+
+The sections below were written during the sessions. A review of the transcript and of the Omarchy box's journal
+(`docs/superpowers/reviews/2026-09-29-flicker/05-session-history.md`) found these claims firmer or tidier than
+the record. The text below is corrected in place; this list says what changed.
+
+1. **"The flicker is LEDVision's stream from the VM"** (14:25) was not shown. What was shown: the card holds a
+   frame steadily when no data arrives. That does not separate "the VM's stream is irregular" from "this card
+   dims when packets arrive". Other people see the same flicker with LEDVision on bare-metal Windows.
+2. **"every 6 frames (5 Hz)"** (14:25): the phone video's dips are at frames 0, 12, 18, 36, 42 and 66, six in
+   3.1 s, about two a second, all on a 6-frame grid but not regular. The laptop camera's 29 dips have gaps from
+   3 to 29 frames: the same size of step, not the same rhythm.
+3. The phone video with the 8 % dips was taken at **360 Hz / x1 / 10.4 MHz / Level 3**, not at 960 / x16.
+4. **The 20 / 30 / 60 fps runs were not on equal terms** (15:40): the 30 fps run had the 1 ms pause before the
+   sync, the 20 fps runs did not.
+5. **"60 fps: steady"** (15:40) is the owner's verdict on one 10 s run, timed by `time.sleep`, which really ran
+   at 59.7 fps. Every later 60 fps run had the pause and got "slight flicker" or "A steadier" (A being the run
+   without the pause).
+6. **"960 Hz x16 is 60 x 16: the card repeats each frame 16 times and waits for the next"** (15:40) is an
+   inference, not a measurement. Against it: LEDVision's stream flickered at 420 / x1 and 360 / x1 too.
+7. **"twice compared A/B"** (15:40): three A/B pairs. The first got "Do it again", the next two "A steadier".
+   The third changed the timing method (busy-wait) as well as the pause.
+8. **"The owner saw no flicker during these runs"** (14:00) was seen on the wizard's test bands, not on a
+   streamed picture. The link to the preset timing is an inference.
+9. **A measurement was left out** (15:40): the phone video of the 60 fps run with the pause was analysed and
+   not reported. It is now in that section.
+10. Not tried at all, and so still open: 30 fps without the pause, 20 fps with it, any rate other than 20, 30
+    and 60, any pause other than 1 ms, a moving picture (static bars hide lost rows), a packet capture of any
+    of our streams.
 
 ### Where the last session stopped (2026-09-29, 12:05)
 
@@ -129,7 +164,9 @@ order, a steady ~60 fps output, BGR pixel order, and a fix for noise on the bott
   rows 1 and 9, then 8 and 16 (the owner: two blinking rows at 8 and 16), the healthy k / k+8 pair of a 1/8
   panel; nothing blinks on the top-right panel, so Guide 8 still gives no clickable point.
 - The owner saw **no flicker** during these runs (preset timing: refresh 420, Refresh x1, DCLK 17.9 MHz); the
-  flicker earlier was with the old wizard result (960, x16, 15.6 MHz).
+  flicker earlier was with the old wizard result (960, x16, 15.6 MHz). These runs showed the wizard's test
+  bands, not a streamed picture, so this says nothing yet about the timing: at 420 / x1 a streamed picture
+  flickered (see "14:25").
 
 ### 14:25: the wall shows a correct picture (card 2, RAM only)
 
@@ -156,14 +193,17 @@ order, a steady ~60 fps output, BGR pixel order, and a fix for noise on the bott
   Every change of DCLK or Multiple silently resets Brightness Level to 8 (and the refresh rate): check the
   level before every Send. State at 14:35 (RAM only): ICN2018/3018, DCLK 10.4 MHz, refresh 360, Refresh x1,
   blanking 3, Level 3.
-- **The flicker is LEDVision's stream from the VM, not the card, panels or power.** The owner's phone video
-  (3 s, 30 fps): the whole wall dips ~8% darker for single frames, every 6 frames or a multiple of 6 (5 Hz
-  at 30 fps); evenly over the whole wall, no shift, no missing rows. The laptop camera (8 s) sees the same
-  rhythm smaller (~3%, std 1.51). With "Use Net Card" unticked (LEDVision stops sending; the card holds the
-  last frame, No Signal Action "Keep the Last Frame"): the camera sees a steady wall (std 0.34, no dips in 241
-  frames) and the owner: "the image is stable now". Likely irregular frame delivery from Windows in the VM.
-  The installation does not use LEDVision (the Linux sender drives the card), so this does not block; the
-  `wall_pattern.py` checks will show whether the Linux sender streams steadily.
+- **The flicker appears only while the card is fed data; the card holding a frame is steady.** (This heading
+  first read "The flicker is LEDVision's stream from the VM, not the card, panels or power": see
+  "Corrections", 1.) The owner's phone video (3 s, 30 fps), taken at 360 Hz / x1 / 10.4 MHz / Level 3: the
+  whole wall dips ~8% darker for single frames, at frames 0, 12, 18, 36, 42 and 66, about two a second, all on
+  a 6-frame grid but not regular; evenly over the whole wall, no shift, no missing rows. The laptop camera
+  (8 s) sees steps of the same kind, smaller (~3%, std 1.51), 29 of them with gaps from 3 to 29 frames: not the
+  same rhythm. With "Use Net Card" unticked (LEDVision stops sending; the card holds the last frame, No Signal
+  Action "Keep the Last Frame"): the camera sees a steady wall (std 0.34, no dips in 241 frames) and the owner:
+  "the image is stable now". This clears the panels' refresh and the supply at that load. It does not say
+  whether the VM's delivery or the card's handling of arriving packets is at fault; the later review found the
+  same flicker reported for firmware 13.x with LEDVision on bare-metal Windows, which points at the card.
 
 ### 14:50: colours fixed, a test image on the wall (card 2, RAM only)
 
@@ -210,21 +250,31 @@ order, a steady ~60 fps output, BGR pixel order, and a fix for noise on the bott
   (show-frame) packet; the driver sends sync, brightness (every 3rd push), rows, once each.
 - A throwaway sender with FPP's order (`hardware/cl_fpp_test.py`, packets checked identical to the driver's)
   put R/G/B/W bars on the wall. One variable at a time, 10 % brightness, the owner judging:
-  - 20 fps: bars, fast flicker. Brightness 23 % (the card's own level) instead of 10 %: same flicker.
-  - **60 fps: steady** (the saved timing, 960 Hz x16, is 60 x 16: the card repeats each frame 16 times and
-    waits for the next). 30 fps (the arcade's rate): some flicker. The show pushes 20 fps, the arcade 30.
+  - 20 fps, no pause before the sync: bars, fast flicker. Brightness 23 % (the card's own level) instead of
+    10 %: same flicker.
+  - **60 fps, no pause: steady**, one 10 s run, timed by `time.sleep`, really 59.7 fps (597 frames). Why 60
+    is not known: that the saved timing (960 Hz x16) is 60 x 16 is a guess (see "Corrections", 6).
+  - 30 fps (the arcade's rate) **with the 1 ms pause**: some flicker. Not comparable with the 20 fps run,
+    which had no pause; 30 fps without the pause and 20 fps with it were not tried. The show pushes 20 fps,
+    the arcade 30.
   - At 60 fps the **last row or two of the wall showed noise**; a 1 ms pause between the last row and the
-    sync cleared it but brought back a slight flicker (twice compared A/B; with busy-wait timing too, exactly
-    60.0 fps): no clean-and-steady combination yet.
+    sync cleared it but brought back a slight flicker. Three A/B pairs (A without the pause, B with): "Do it
+    again", "A steadier", "A steadier"; the third pair's B also used busy-wait timing, exactly 60.0 fps. No
+    clean-and-steady combination yet.
+  - The owner's phone video of a 60 fps run with the pause (IMG_5080.mov, frames 0 to 133): median 110, range
+    106 to 114, std 1.58; seven frames 3 to 4 below the median, no rhythm; no 8 % dips, no rolling band. The
+    phone's auto exposure was not locked. (Analysed during the session, left out of the log until the review.)
   - **Pixel order: sent R, G, B, W left to right, the wall showed Blue, Green, Red, White** (not a mirror):
     the card takes raw pixels as **BGR** (as in Kubota's notes). LEDVision's picture was right because its
     Guide 5 answers apply to its own stream only (`hardware/36-linux-bars-bgr-order.png`).
   - Sync twice vs once: with the old ending (3 black frames at 20 fps) the wall kept a stale picture (top
     bars / all bars); ending with 1 s of black at 60 fps clears it. The card seems to need a steady stream to
     change picture; sync x1 vs x2 not settled.
-- For the driver (shared show/arcade code, not changed here): FPP's packet order for firmware 13; a steady
-  60 Hz output independent of the content rate (resend the last frame), or a card timing matched to the content
-  rate (a LEDVision test); BGR order; the bottom-row race. `index`, `steps`, `gamma` wait for that.
+- For the driver (shared show/arcade code, not changed here): the test sender's frame layout (brightness x2,
+  rows, sync x2), of which the needed part is not isolated; BGR order (measured); the bottom-row noise; and,
+  if the next runs at the wall bear out the one steady run, a 60 Hz output independent of the content rate
+  (resend the last frame). `index`, `steps`, `gamma` wait for that. The runs that settle these, and the order
+  of the driver work: `docs/superpowers/reviews/2026-09-29-flicker/00-path-forward.md`.
 
 ### What the 2026-09-29 session found
 
