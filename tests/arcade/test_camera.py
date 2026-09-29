@@ -7,7 +7,9 @@ import zlib
 import pytest
 
 from arcade.calibration import Calibration
-from arcade.sensed import Body, Keypoint
+from arcade.input import Depth
+from arcade.sensed import (LEFT_ANKLE, LEFT_HIP, LEFT_KNEE, LEFT_SHOULDER, NOSE, RIGHT_ANKLE, RIGHT_HIP,
+                           RIGHT_KNEE, RIGHT_SHOULDER, Body, Keypoint)
 from arcade.sources.actors import body_box, make_keypoints
 from arcade.sources.camera import COAST_SECONDS, DROP_SECONDS, STALE_SECONDS, BodyTracker, ThreadedCamera, assign
 
@@ -204,6 +206,103 @@ def test_tracker_scale_follows_a_step_within_three_captures():
     got = [tr.update([det(0.5, h=0.65)], 1.0 + i / 10)[0].scale for i in range(3)]
     share = [(g - before) / (after - before) for g in got]
     assert share == sorted(share) and share[2] >= 0.9, share
+
+
+# the owner's spike (Q48): nose-to-hip 0.39 against a shoulder width of 0.128, so the fallback reads
+# 1.5 x 1.25 x 0.128 = 0.24 where the hips measure 0.39
+SPIKE_SCALE, SPIKE_WIDTH = 0.39, 0.128
+LOWER = (LEFT_HIP, RIGHT_HIP, LEFT_KNEE, RIGHT_KNEE, LEFT_ANKLE, RIGHT_ANKLE)
+
+
+def spike_det(hips=True, grow=1.0, only=None, cx=0.5, cy=0.6):
+    """A standing figure with the spike's proportions, hip centre at (cx, cy). Without hips the lower body is
+    under MIN_CONF (the frame's bottom edge); grow scales every point about the shoulder midpoint (a step in);
+    only, a set of keypoint indices, keeps just those confident."""
+    h = SPIKE_SCALE / 0.45                                  # the stand pose's nose sits 0.45 h above the hips
+    kps = list(make_keypoints(cx, cy, h))
+    sy = kps[LEFT_SHOULDER].y
+    kps[LEFT_SHOULDER] = Keypoint(cx - SPIKE_WIDTH / 2, sy)
+    kps[RIGHT_SHOULDER] = Keypoint(cx + SPIKE_WIDTH / 2, sy)
+    kps = [Keypoint(cx + (k.x - cx) * grow, sy + (k.y - sy) * grow, k.conf) for k in kps]
+    for i in range(len(kps)):
+        if (not hips and i in LOWER) or (only is not None and i not in only):
+            kps[i] = Keypoint(kps[i].x, kps[i].y, 0.1)
+    kps = tuple(kps)
+    return (body_box(kps), kps)
+
+
+def test_spike_det_reads_the_spike():
+    assert Body(0, *spike_det()).scale == pytest.approx(SPIKE_SCALE)
+    assert Body(0, *spike_det()).shoulder_width == pytest.approx(SPIKE_WIDTH)
+    assert Body(0, *spike_det(hips=False)).scale == pytest.approx(1.5 * 1.25 * SPIKE_WIDTH)
+    assert Body(0, *spike_det(hips=False, grow=1.3)).shoulder_width == pytest.approx(1.3 * SPIKE_WIDTH)
+
+
+def test_tracker_scale_holds_when_the_hips_drop_out():
+    tr = BodyTracker()
+    got = [tr.update([spike_det()], i / 10)[0] for i in range(10)]
+    got += [tr.update([spike_det(hips=False)], 1.0 + i / 10)[0] for i in range(10)]
+    scales = [round(b.scale, 4) for b in got]
+    assert all(abs(b.scale / SPIKE_SCALE - 1.0) <= 0.03 for b in got), scales
+    assert {b.id for b in got} == {got[0].id} and all(b.seen_ago == 0.0 for b in got)
+
+
+def test_tracker_scale_follows_a_step_in_without_hips():
+    tr = BodyTracker()
+    for i in range(10):
+        tr.update([spike_det()], i / 10)
+    for i in range(5):
+        (b,) = tr.update([spike_det(hips=False)], 1.0 + i / 10)
+    before = b.scale
+    assert abs(before / SPIKE_SCALE - 1.0) <= 0.03, before
+    got = [tr.update([spike_det(hips=False, grow=1.3)], 1.5 + i / 10)[0] for i in range(3)]
+    assert {x.id for x in got} == {b.id}
+    assert abs(got[2].scale / (1.3 * before) - 1.0) <= 0.05, [round(x.scale, 4) for x in got]
+
+
+def test_tracker_scale_returns_to_the_measure_when_the_hips_come_back():
+    tr = BodyTracker()
+    for i in range(10):
+        tr.update([spike_det()], i / 10)
+    for i in range(10):
+        tr.update([spike_det(hips=False)], 1.0 + i / 10)
+    got = [tr.update([spike_det()], 2.0 + i / 10)[0] for i in range(10)]
+    assert all(abs(b.scale / SPIKE_SCALE - 1.0) <= 0.03 for b in got), [round(b.scale, 4) for b in got]
+
+
+def test_tracker_scale_of_a_body_never_measured_uses_the_fallback():
+    """A body first seen without hips has nothing to learn from: the fallback, as before Q48, on every capture,
+    following a step (Depth reads the scale's ratio to its first, so the fallback's bias cancels)."""
+    tr = BodyTracker()
+    (b,) = tr.update([spike_det(hips=False)], 0.0)
+    assert b.scale == pytest.approx(1.5 * 1.25 * SPIKE_WIDTH)
+    for i in range(1, 5):
+        (b,) = tr.update([spike_det(hips=False, grow=1.3)], i / 10)
+    assert b.scale == pytest.approx(1.3 * 1.5 * 1.25 * SPIKE_WIDTH, rel=0.01)
+
+
+def test_tracker_scale_is_held_without_hips_and_shoulders():
+    tr = BodyTracker()
+    (first,) = tr.update([spike_det()], 0.0)
+    got = [tr.update([spike_det(hips=False, only={NOSE, LEFT_SHOULDER})], (i + 1) / 10)[0] for i in range(10)]
+    assert all(b.id == first.id and abs(b.scale / first.scale - 1.0) <= 0.01 for b in got), \
+        [round(b.scale, 4) for b in got]
+
+
+def test_depth_reads_steady_through_a_hip_dropout():
+    """The tracker's bodies through input.Depth, 10 captures a second and 30 ticks: 1 s with hips, a 1 s
+    dropout on a still body, then the hips back for 1 s."""
+    tr, depth = BodyTracker(), Depth()
+    values, body, cam = [], None, 0.0
+    for i in range(90):
+        t = i / 30
+        if i % 3 == 0:
+            cam = t
+            (body,) = tr.update([spike_det(hips=not 30 <= i < 60)], cam)
+        values.append(depth.update(body, t, cam))
+    steady = values[29]
+    moved = max(abs(v - steady) for v in values[30:])
+    assert moved < 0.05, (steady, moved, min(values[30:]))
 
 
 def test_tracker_orders_largest_scale_first():
