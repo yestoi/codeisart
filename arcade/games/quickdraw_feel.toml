@@ -1,0 +1,5 @@
+# Quick Draw's feel: the bar follows the hand's height (the raw cursor's v against the bar's y). No budget override.
+[fidelity]
+input = "cursor_y"
+xy = "hand_xy"
+axis = 1
