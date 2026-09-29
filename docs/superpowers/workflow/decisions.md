@@ -508,3 +508,44 @@ deadline: the arcade's first night in front of people
 answer:
 status: defaulted (standing instruction)
 
+### Q70: May Dodge ship as side steps under falling rocks, not as the spec's jump and duck?
+asked: it15 (the arcade's plan writer; docs/superpowers/plans/2026-09-29-it15-arcade-pose-games.md)
+default: yes, side steps only in iteration 15. This is NOT the spec's Dodge (spec 8, game 5: "the dinosaur game with your body: jump low obstacles, duck high ones", a run of at most 90 s). The game built: rocks fall, the player steps left and right (the body's x in the zone, the tracker's steadiest signal), the speed ramps, a run ends on the first hit or at 45 s, and every third rock is aimed at the player so that a still body is hit. Why: jump and duck need the shoulders' height against a baseline, which the bots' `Move` cannot drive and which wants a level camera (not measured by the spike). With the owner's no, the game is renamed or remade; with a yes, jump and duck can be added later as a second control
+deadline: the owner's first play of Dodge (a live smoke)
+answer:
+status: defaulted (standing instruction)
+
+### Q71: May Quick Draw's WAIT be 2 to 5 s (the spec says 2 to 6 s)?
+asked: it15 (the arcade's plan writer; docs/superpowers/plans/2026-09-29-it15-arcade-pose-games.md)
+default: yes, 2 to 5 s, for pace and for the suite's time (every bot play waits it out)
+deadline: the owner's first play of Quick Draw
+answer:
+status: defaulted (standing instruction)
+
+### Q72: What is Quick Draw's solo score and best?
+asked: it15 (the arcade's plan writer; docs/superpowers/plans/2026-09-29-it15-arcade-pose-games.md)
+default: rounds won (0 to 3). The spec's solo "chases the night's fastest" draw needs a best where lower is better, which `Scores` does not have; the fastest draw is shown in the round's result only. A duel records nothing (Q23)
+deadline: the owner's first play of Quick Draw
+answer:
+status: defaulted (standing instruction)
+
+### Q73: When does the arcade move to the full pose model and 30 captures a second (the spike's settings)?
+asked: it15 (the arcade's plan writer; docs/superpowers/plans/2026-09-29-it15-arcade-pose-games.md)
+default: not in iteration 15. The full model, `camera_fps` 30 and the graces counted in seconds (Q44) go together, in a later iteration: the graces need `arcade/runner.py`, which iteration 15 does not edit. Only the spike's hand point lands now (the wrist is the mean of the wrist, pinky and index landmarks)
+deadline: the arcade's next engine iteration
+answer:
+status: defaulted (standing instruction)
+
+### Q74: May the learned torso also move the raise line when the hips are not seen?
+asked: it15 (the arcade's plan writer; docs/superpowers/plans/2026-09-29-it15-arcade-pose-games.md)
+default: yes, one torso for all. `Body.torso` without hips uses the person's learned torso per shoulder width, and the reach box, the cursor and the raise line follow from it: the raise line sits about 0.03 of the frame higher on the owner than with the fixed 1.25
+deadline: the owner's next live smoke
+answer:
+status: defaulted (standing instruction)
+
+### Q75: When a body is first measured, does `Depth` keep the paddle where it is or recentre it?
+asked: it15 (the arcade's plan writer; docs/superpowers/plans/2026-09-29-it15-arcade-pose-games.md)
+default: it keeps the paddle where it is: the new centre is taken so that the reading does not jump (C47), and the jump is neither travel nor activity
+deadline: the owner's next live smoke
+answer:
+status: defaulted (standing instruction)
