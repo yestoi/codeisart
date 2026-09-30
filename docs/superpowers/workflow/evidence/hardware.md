@@ -362,3 +362,13 @@ from receivers; no-signal action Keep the Last Frame; input 8 bit; gradual off; 
   brightness packet on 5A 13.17, are the steps even), `gamma` (does the card apply gamma: sets `gamma` in
   `arcade.toml`).
 - Card 2: firmware, and that it reads back the same settings.
+
+### 2026-09-30, about 04:25 to 05:20: route A's driver at the wall (card 2, from the Omarchy box)
+
+The steady sender of `show/display/colorlight.py` (branch route-a; the report
+`docs/superpowers/reviews/2026-09-29-route-a/00-bench.md`, section 2): 59 frames a second from a child at SCHED_FIFO
+50, sync first, BGR. `wall_pattern.py rgb`: red, green, blue, white from the left, "nice and steady, full picture".
+`grid` 60 s at 20 and at 30 pushes: no flicker, no noise, no difference between the rates; one sync 849 us late in a
+run was noticed. `--stop-for 5` (Q66): the picture holds through a stopped stream, "just the slightest blink at stop
+and restart", twice. The cable pulled: `send` raises errno 105 at once; the card holds its picture steady; the
+"stutter" seen once was the plug being moved.

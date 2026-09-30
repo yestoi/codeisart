@@ -57,14 +57,38 @@ good runs had the same outliers (N15b 746 us, N13b 611 us) and the same "a coupl
 pins itself to the highest core it may use (`sender_cpu`), which is harmless and was decisive in two runs of four.
 OPEN: the same measurement on the Pi 5, whose stalls will be its own.
 
-## 2. At the wall (OPEN)
+## 2. At the wall (2026-09-30, about 04:25 to 05:20)
 
-Waits on the owner, the LEDVision VM off, sudo granted: the plan's Task 11 (the rgb check, steady by eye at 20 and 30
-pushes, Q66 at 59 by `wall_pattern.py grid --stop-for 5`, the cable pulled, the 240 fps clip). Before it, on the
-box under sudo: `grid --dry-run --seconds 30` must say `real-time yes` and a worst under 100 us.
+The owner at the wall, the LEDVision VM off (`vm.py status`: shut off), the port up at 1000 Mb/s, sudo for the hour.
+Every run `tools/wall_pattern.py` on the Omarchy box, `--iface enp5s0 --brightness 0.1`, the child at SCHED_FIFO 50
+(`real-time yes` in every stats line), the tool pushing at its default 20 unless said. The owner's words as typed.
 
-Also OPEN, on the Pi under the unit: the close's log line says `real-time yes` (the README's check); a kernel with
-CONFIG_RT_GROUP_SCHED refuses SCHED_FIFO in a service's cgroup.
+| Run | What | Frames | Worst, us | sd, us | The owner's words |
+|---|---|---|---|---|---|
+| 1 | `rgb`, 20 s | 1180 | 121 | 5 | "Nice and steady. Full picture. Rgbw" |
+| 2 | `grid`, 60 s, pushes at 20 | 3540 | 849 | 21 | with run 3: "I didn't notice a difference between the two. I think I did notice the outlier" |
+| 3 | `grid`, 60 s, pushes at 30 | 3540 | 333 | 8 | as run 2 |
+| 4 | `grid --stop-for 5`, 20 s (Q66) | 885 | 24 | 3 | "Do it again, I'll count this time" |
+| 5 | the same | 885 | 24 | 2 | "Yes [the picture holds], just the slightest blink at stop and restart" |
+| 6 | `grid`, 60 s, the cable pulled at ~39 s | 2321 | 116 | 5 | `send` raised errno 105 (No buffer space available) at once; the tool quit, by design. "Image kept stable. Maybe a little blink on disconnect, but I'd have to do it again to confirm" |
+| 7 | the same, the cable pulled at ~16 s | 919 | 22 | 2 | errno 105 again. "Held steady. The slight stuttering I saw was me moving the Ethernet plug as I was disconnecting. So I'm blaming the cheap Ethernet port" |
+
+What the session settled:
+
+- **The rgb check** (plan Task 11, step 1): red, green, blue, white from the left: the BGR swap is right, the governor
+  judges the colours the wall shows. SEEN.
+- **Steady by eye at 20 and 30 pushes** (step 2): no flicker, no noise, no difference between the show's and the
+  arcade's rate. SEEN. The one sync 849 us late in run 2 was noticed ("I think"): the lone late sync is worth its
+  chase (section 1) and the Pi's own measurement.
+- **Q66 at 59** (step 3): the card keeps its picture through a stopped stream, steady, with "just the slightest blink"
+  at the stop and at the restart. SEEN, twice. The blink is the card's reaction to its stream stopping and starting,
+  not the driver's (a dead link stops the stream the same way), so the paused hold stands as decided; a hold costs
+  two slight blinks a second apart, and holds come from a dead link.
+- **The cable pulled** (step 4): `send` raises at once with the link down (errno 105 through `PACKET_QDISC_BYPASS`),
+  so the hold logic sees a dead link and no carrier watch is needed (spec section 4's follow-up is closed). The card
+  held its picture steady with the cable out. What happens when the cable returns was not seen: the tool quits at
+  the first failure by design; the show's loop holds and carries on (a `--hold` for the tool would show it). OPEN.
+- **The 240 fps clip** (step 5): not made tonight. OPEN.
 
 ## 3. The Pi 5 (OPEN)
 
