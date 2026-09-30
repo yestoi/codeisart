@@ -7,6 +7,9 @@ for the ghosting review's sender-side trials. Everything else is show.display.co
     GHOST_ORDER        sync-rows (the driver's) or rows-sync (the sync held until the last row has gone)
     GHOST_COUNTER      on (the driver's) or off: byte 14 frozen at 0
     GHOST_SYNC_REPS    syncs a frame (the driver's 1); 2 in the S2 format is a black wall
+    GHOST_PRIME        on (the driver's: the first burst after a start or a pause is the rows alone, no sync) or
+                       off: never a prime, the sync first then the paced rows from the first frame (the wall,
+                       2026-09-30 late: the restart after a 5 s stop showed a bright blink with the copy)
 
 Started only by ghost_knobs.py, in place of `python -m show.display.colorlight_sender`, with the same arguments.
 """
@@ -18,6 +21,7 @@ from show.display import colorlight_sender as cs
 FPS = float(os.environ.get("GHOST_FPS", cs.OUTPUT_FPS))
 COUNTER_OFF = os.environ.get("GHOST_COUNTER", "on") == "off"
 SYNC_REPS = int(os.environ.get("GHOST_SYNC_REPS", "1"))
+PRIME_OFF = os.environ.get("GHOST_PRIME", "on") == "off"
 SPREAD_MS = os.environ.get("GHOST_SPREAD_MS")                 # None: the driver's own spread
 ORDER = os.environ.get("GHOST_ORDER", "sync-rows")            # or rows-sync: the rows first, the sync after the last
 if ORDER not in ("sync-rows", "rows-sync"):
@@ -67,6 +71,8 @@ class Sender(cs.Sender):
             self.send = send_reps
 
     def tick(self):                                        # GHOST_COUNTER=off: byte 14 stays 0 (bench, 2026-09-30 evening)
+        if PRIME_OFF:
+            self._primed = True                            # GHOST_PRIME=off: every burst is a frame, sync first
         ok = super().tick()
         if COUNTER_OFF:
             self._counter = 0
