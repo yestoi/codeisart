@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from show.display.colorlight_packets import brightness_bytes, row_packets, sync_bytes
-from show.display.colorlight_sender import (BEATS, BRIGHTNESS_REPS, CLOSE_FRAMES, ERRNO, ERRORS, FRAMES, LEVEL,
+from show.display.colorlight_sender import (BEATS, BRIGHTNESS_REPS, CLOSE_FRAMES, DEV_N, ERRNO, ERRORS, FRAMES, LEVEL,
                                             LATE, PAUSE, SLIPS, STOP, SYNC_REPS, Sender, Slot)
 from tests.colorlight_fakes import BRIGHTNESS, ROW, SYNC, FakeClock, FakeSocket, bursts, kinds, row_pixels
 
@@ -201,3 +201,38 @@ def test_stats_read_the_header(slot):
     assert s["sd_us"] < 3 * clock.step / 1e3
     assert stats_of(np.zeros(16, np.int64)) == {"frames": 0, "late": 0, "slips": 0, "worst_us": 0.0, "mean_us": 0.0,
                                                 "sd_us": 0.0, "errors": 0, "rt": False}
+
+
+# --- the plan review's findings (2026-09-30)
+
+def test_a_gap_of_seconds_between_syncs_does_not_overflow_the_stats(slot):
+    sender, sock, clock = make(slot)
+    sync_times(sock, clock, sender, 3)
+    clock.t += 4_000_000_000                                         # a 4 s stall (a suspend, a swap storm)
+    n = int(slot.h[DEV_N])
+    sender.tick()                                                    # the slipped frame: no interval counted
+    sender.tick()
+    assert slot.h[SLIPS] == 1 and int(slot.h[DEV_N]) == n + 1        # the frame after it counts again
+    assert stats_of(slot.h)["sd_us"] < 3 * clock.step / 1e3
+
+
+def test_the_parent_death_drain_stays_black_whatever_is_pushed(slot):
+    alive = [True, True, False]
+    sender, sock, _ = make(slot, parent_alive=lambda: alive.pop(0) if alive else False)
+    slot.write(red())
+    pushed = []
+    sock.hook = lambda n, p: (slot.write(red()), pushed.append(n)) if p[12] == ROW and p[14] == 3 and not pushed and slot.h[FRAMES] >= 3 else None
+    sender.run()
+    out = bursts(sock.sent)
+    assert pushed                                                    # a frame did land during the drain
+    assert not any(row_pixels(p, W).any() for burst in out[3:] for p in burst if p[12] == ROW)
+
+
+@pytest.mark.parametrize("width", [128, 512, 384])
+def test_the_bgr_swap_writes_into_the_packets_without_a_copy(width):
+    s = Slot.create(width, 4)
+    try:
+        sender, sock, _ = make(s)
+        assert np.shares_memory(sender.bgr, sender.packets) and sender.bgr.size == 4 * width * 3
+    finally:
+        s.close()

@@ -173,7 +173,11 @@ class Sender:
         self.period, self.spin, self.parent_alive = period_ns, spin_ns, parent_alive
         self.packets, self.pixels = row_buffers(slot.width, slot.height)
         self.rows = self.packets.reshape(-1, self.packets.shape[-1])
+        chunks, chunk = self.pixels.shape[1], self.pixels.shape[2] // 3
+        self.bgr = self.pixels.reshape(slot.height, chunks, chunk, 3)      # the same bytes, a pixel at a time
+        self._shape = (slot.height, chunks, chunk, 3)                       # a frame, as the packets cut it
         self.frame = np.zeros((slot.height, slot.width, 3), np.uint8)      # black: the dark start
+        self._dark = False                                                  # the parent-death drain: black only
         self._level = -1
         self._syncs: list[bytes] = []
         self._brights: list[bytes] = []
@@ -199,8 +203,8 @@ class Sender:
             self._primed = False
             self.sleep(PAUSE_POLL_S)
             return True
-        if self.slot.take(self.frame):
-            self.pixels[...] = self.frame[:, :, ::-1].reshape(self.pixels.shape)   # BGR, before the wait
+        if not self._dark and self.slot.take(self.frame):
+            self.bgr[...] = self.frame.reshape(self._shape)[..., ::-1]       # BGR, in place, before the wait
         self._level_packets()
         now = self.clock()
         if self.deadline is None:
@@ -208,7 +212,8 @@ class Sender:
         due = self.deadline                                                  # lateness counts from this one
         if now - due > self.period:                                          # a period or more behind: the grid
             self.deadline = now                                              # moves, no catch-up burst
-            h[SLIPS] += 1
+            self._last_sync = None                                           # the interval across a stall is not
+            h[SLIPS] += 1                                                    # counted (its square overflows at 3 s)
         wait_until(self.deadline, self.clock, self.sleep, self.spin)
         at = self.clock()
         try:
@@ -246,7 +251,7 @@ class Sender:
         while self.parent_alive():
             if not self.tick():
                 return
-        self.frame[...] = 0
+        self._dark = True                                                    # black, whatever is pushed now
         self.pixels[...] = 0
         self.slot.h[PAUSE] = 0
         for _ in range(CLOSE_FRAMES + 1):                                    # the prime, then CLOSE_FRAMES syncs
