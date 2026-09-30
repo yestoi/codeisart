@@ -25,7 +25,11 @@ The driver's tests pass on the box (119 of the driver's, the tool's and the soak
 ## 2. At the wall (OPEN)
 
 Waits on the owner, the LEDVision VM off, sudo granted: the plan's Task 11 (the rgb check, steady by eye at 20 and 30
-pushes, Q66 at 59 with a stopped child, the cable pulled, the 240 fps clip).
+pushes, Q66 at 59 by `wall_pattern.py grid --stop-for 5`, the cable pulled, the 240 fps clip). Before it, on the
+box under sudo: `grid --dry-run --seconds 30` must say `real-time yes` and a worst under 100 us.
+
+Also OPEN, on the Pi under the unit: the close's log line says `real-time yes` (the README's check); a kernel with
+CONFIG_RT_GROUP_SCHED refuses SCHED_FIFO in a service's cgroup.
 
 ## 3. The Pi 5 (OPEN)
 

@@ -52,6 +52,7 @@ LEVEL = 128                   # the byte the solid colours use
 STEP_SECONDS = 2.0            # how long `steps` holds each level
 STEPS = (0.125, 0.25, 0.5, 1.0)   # shares of --brightness, low to high
 MAX_FPS = 60.0                # the push rate the tool refuses over
+STOP_AT_S = 5.0               # --stop-for: the stream is stopped this far into the run
 BACKENDS = ("colorlight", "sdl", "ddp")   # the displays the tool can choose; a config's `fake` is refused
 
 
@@ -200,14 +201,16 @@ def _rate_refusal(fps: float, gamma: float) -> str | None:
 def run(pattern: str, display, width: int, height: int, brightness: float = 0.1, seconds: float = 0.0,
         fps: float = 20.0, clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep, out: Callable[[str], None] = print,
-        gamma: float = 2.2, cap: float = CAP) -> int:
+        gamma: float = 2.2, cap: float = CAP, stop_for: float = 0.0) -> int:
     """Show pattern on display, every frame through the flash governor, a push due every 1/fps after the last was
     due (a late one runs at once and the grid restarts from it), until seconds have passed (0: until Ctrl-C);
     then the sender's stats, said, and the governed wall closed: two governed black frames, then the display's
     own close. Returns 0; 1 after an OSError from the display or from the close, said, the wall closed; or 2
     without touching the display when the pattern is unknown, the brightness is not in (0, min(cap, CAP)], the
     fps not in (0, MAX_FPS] or the gamma not in [GAMMA_MIN, GAMMA_MAX]. The display is reached only through the
-    wall."""
+    wall. stop_for > 0: STOP_AT_S into the run the display is paused (the driver's own stop, as after a failed
+    send) and nothing is pushed for stop_for seconds; the push after that restarts the stream: the owner's Q66
+    check at the wall (the picture stays, steady, no blink at the stop or the restart)."""
     refusal = _refusal(pattern, brightness, cap) or _rate_refusal(fps, gamma)
     if refusal:
         out(refusal)
@@ -220,6 +223,7 @@ def run(pattern: str, display, width: int, height: int, brightness: float = 0.1,
     # and never over brightness, itself at most min(cap, CAP).
     level = brightness * STEPS[0] if pattern == "steps" else brightness
     code = 0
+    stopped = None                       # when the stream was stopped (--stop-for), or None
     try:
         wall.set_brightness(level)
         start = clock()
@@ -233,7 +237,15 @@ def run(pattern: str, display, width: int, height: int, brightness: float = 0.1,
             if pattern == "steps" and brightness * STEPS[step_of(t)] != level:
                 level = brightness * STEPS[step_of(t)]
                 wall.set_brightness(level)
-            wall.push(PATTERNS[pattern](width, height, t))
+            if stop_for > 0 and stopped is None and t >= STOP_AT_S:
+                stopped = t
+                pause = getattr(display, "pause", None)
+                if pause is not None:
+                    pause()
+                out(f"wall_pattern: stopped the stream for {stop_for:g} s at {t:.1f} s: the picture should stay, "
+                    "steady, with no blink at the stop or at the restart")
+            if stopped is None or t >= stopped + stop_for:
+                wall.push(PATTERNS[pattern](width, height, t))
             now = clock()
             if now < due:                    # on time: sleep to the deadline, the next one a period after it
                 sleep(due - now)
@@ -287,6 +299,8 @@ def build_parser(defaults: bool = True) -> argparse.ArgumentParser:
     p.add_argument("--png", default=d(""), help="save the pattern to this file and exit; no display is opened")
     p.add_argument("--dry-run", action="store_true",
                    help="the colorlight driver on a socket that discards: its timing alone, no card, no root")
+    p.add_argument("--stop-for", type=float, default=d(0.0),
+                   help=f"stop the stream {STOP_AT_S:g} s into the run for this many seconds (the Q66 check)")
     return p
 
 
@@ -317,7 +331,8 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         display = dry_display(args.width, args.height, args.brightness)
         return run(args.pattern, display, args.width, args.height, brightness=args.brightness,
-                   seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap)
+                   seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap,
+                   stop_for=args.stop_for)
     if args.backend not in BACKENDS:
         print(f"wall_pattern: the tool has no {args.backend!r} display; choose --backend from {', '.join(BACKENDS)}")
         return 2
@@ -334,7 +349,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wall_pattern: cannot open the {args.backend} display: {e}")
         return 1
     return run(args.pattern, display, args.width, args.height, brightness=args.brightness,
-               seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap)
+               seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap,
+               stop_for=args.stop_for)
 
 
 if __name__ == "__main__":

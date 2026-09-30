@@ -75,8 +75,13 @@ backend, and `CAP_SYS_NICE`: the driver sends from a child process at real-time 
 (SCHED_FIFO 50), 59 frames a second whatever the show's `fps`, because the card flickers at
 any other rate (docs/superpowers/reviews/2026-09-29-sender-card-spike.md). Without the
 capability the sender runs at ordinary priority and logs a warning; the sync may then be
-late now and then. The card sits on the Pi's own Ethernet port; a USB adapter batches
-packets and has not been measured.
+late now and then. Do not `setcap` the venv's python on the Pi: a binary with file
+capabilities drops the unit's ambient ones, and the sender loses its priority silently. On
+a bench without the unit, `sudo`, or `setcap cap_net_raw,cap_sys_nice+ep` (both). After the
+first start under the unit, check the close's log line says `real-time yes`, or `chrt -p`
+on the child (`pgrep -f colorlight_sender`) says SCHED_FIFO 50; a kernel built with
+CONFIG_RT_GROUP_SCHED refuses SCHED_FIFO inside a service's cgroup. The card sits on the
+Pi's own Ethernet port; a USB adapter batches packets and has not been measured.
 
 ## LEDVision settings record
 

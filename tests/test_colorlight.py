@@ -353,3 +353,27 @@ def test_make_display_starts_at_the_configured_brightness(monkeypatch):
     bare = SimpleNamespace(width=128, height=32, backend="colorlight", sdl_scale=8, ddp_host="127.0.0.1",
                            ddp_port=4048, iface="eth9")
     assert make_display(bare).kwargs == {"brightness": SAFE_BRIGHTNESS}
+
+
+def test_pause_stops_the_stream_until_the_next_push():
+    d, sock, clock, c = display()
+    d.push(red())
+    c.crank(2)
+    d.pause()                                                                   # the production stop: the flag
+    n = len(sock.sent)
+    c.crank(5)
+    assert len(sock.sent) == n and d.slot.h[PAUSE] == 1                         # nothing on the wire, no error
+    d.push(red())                                                               # a push resumes it: a prime first
+    c.crank(2)
+    assert kinds(bursts(sock.sent[n:])[0]) == [BRIGHTNESS] * 2 + [ROW] * H
+    d.close()
+
+
+def test_the_cap_net_raw_hint_keeps_cap_sys_nice(monkeypatch):
+    def denied(*args, **kwargs):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(socket, "AF_PACKET", 17, raising=False)
+    monkeypatch.setattr(socket, "socket", denied)
+    with pytest.raises(PermissionError, match="cap_net_raw,cap_sys_nice"):     # setcap clears the ambient set:
+        ColorlightDisplay(W, H, "eth0")                                         # both, or the sender loses its priority

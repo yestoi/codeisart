@@ -213,6 +213,11 @@ class ColorlightDisplay:
         self.brightness = level
         self.slot.h[LEVEL] = level_byte(level)
 
+    def pause(self) -> None:
+        """Stop the stream after its current burst, as a failed send does; the next push resumes it (a prime
+        first). For the bench: the owner's Q66 check, a stopped stream and its restart, by the production path."""
+        self.slot.h[PAUSE] = 1
+
     def stats(self) -> dict:
         s = stats_of(self.slot.h)
         s["restarts"] = self.restarts
@@ -265,9 +270,11 @@ def _open_raw_socket(iface: str) -> socket.socket:
     try:
         sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
     except PermissionError as e:
-        raise PermissionError(f"a raw socket on {iface} needs CAP_NET_RAW: run under the arcade's systemd unit "
-                              "(AmbientCapabilities=CAP_NET_RAW) or grant it once with "
-                              "sudo setcap cap_net_raw+ep on the venv's real python binary") from e
+        raise PermissionError(f"a raw socket on {iface} needs CAP_NET_RAW: run under the show's systemd unit "
+                              "(AmbientCapabilities=CAP_NET_RAW CAP_SYS_NICE), under sudo, or grant both once "
+                              "with sudo setcap cap_net_raw,cap_sys_nice+ep on the venv's real python binary "
+                              "(a binary with file capabilities drops the unit's ambient ones: both or "
+                              "neither)") from e
     try:
         sock.setsockopt(SOL_PACKET, PACKET_QDISC_BYPASS, 1)
     except OSError as e:

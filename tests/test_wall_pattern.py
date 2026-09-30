@@ -298,3 +298,28 @@ def test_dry_display_is_the_driver_with_a_discarding_socket():
     assert d.width == 128 and d.brightness == 0.1
     assert d.sock.send(b"x" * 405) == 405 and d.sock is not sock       # the discarding sink, not a raw socket
     d.close()
+
+
+def test_stop_for_pauses_the_display_and_pushes_nothing_meanwhile():
+    class Pausable(Recording):
+        def __init__(self):
+            super().__init__()
+            self.paused_at = []
+
+        def pause(self):
+            self.paused_at.append(len(self.frames))
+
+    display, said, now = Pausable(), [], [0.0]
+
+    def clock():
+        return now[0]
+
+    def sleep(s):
+        now[0] += s
+
+    run("grid", display, brightness=0.1, seconds=12.0, fps=10, clock=clock, sleep=sleep, out=said.append,
+        stop_for=3.0)
+    assert len(display.paused_at) == 1 and 45 <= display.paused_at[0] <= 55    # at 5 s in
+    assert 85 <= len(display.frames) - 2 <= 95                                  # 3 s of no pushes out of 12
+    assert any("stopped the stream for 3" in s for s in said)
+    assert wp.build_parser().parse_args(["grid", "--stop-for", "3"]).stop_for == 3.0

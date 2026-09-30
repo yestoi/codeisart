@@ -2163,7 +2163,7 @@ Nothing goes to the card without the owner's word for each run. Before any run: 
 
 - [ ] **Step 1: The rgb check** — `sudo .venv/bin/python tools/wall_pattern.py rgb --iface enp5s0 --brightness 0.1 --seconds 20`: red, green, blue, white from the left. Ctrl-C lands black, three times of three (`grid`, 3 runs).
 - [ ] **Step 2: Steady by eye** — `grid` for 60 s at the tool's default 20 pushes a second, then `--fps 30`: no flicker, the bottom rows clean. The stats line at the end: late 0, worst under 100 us.
-- [ ] **Step 3: Q66 at 59** — `grid --seconds 0`, then `kill -STOP` the child (`pgrep -f colorlight-sender`) for 5 s and `kill -CONT`: the picture stays, steady, no blink at the stop or the restart. The owner's word on it.
+- [ ] **Step 3: Q66 at 59** — `grid --seconds 20 --stop-for 5`: 5 s in, the stream stops by the driver's own pause (a SIGSTOP would read as a dead child and be restarted after 1 s) and restarts 5 s later: the picture stays, steady, no blink at the stop or the restart. The owner's word on it.
 - [ ] **Step 4: The cable** — during `grid`, pull the cable for 5 s: does the tool print "the display failed" (send raised), what the wall shows, what it does when the cable returns.
 - [ ] **Step 5: The 240 fps clip** — the phone at 240 fps on `grid` at 59, then on the wall holding a frame (the child stopped): gone, or too fast to see.
 - [ ] **Step 6: Write it down** — the verdicts in `00-bench.md` and a dated entry in `hardware.md`; commit.
