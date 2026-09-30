@@ -230,8 +230,8 @@ class ColorlightDisplay:
             return
         try:
             self.slot.write(np.zeros((self.height, self.width, 3), np.uint8))
-            if self._child is None or not self._child.is_alive():       # died before the close: a fresh child
-                self._reap()                                            # drains the black, best effort
+            if not self._alive():                                       # dead, or hung: a fresh child drains
+                self._reap()                                            # the black, best effort
                 try:
                     self._start()
                 except OSError:

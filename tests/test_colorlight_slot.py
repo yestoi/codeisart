@@ -4,6 +4,7 @@ import subprocess
 import sys
 
 import numpy as np
+import pytest
 
 from show.display.colorlight_sender import FRAME, HEADER_LEN, LEVEL, PAUSE, STOP, Slot
 
@@ -42,7 +43,15 @@ def test_take_does_not_wait_for_a_lock_the_other_side_holds():
 
 
 def test_slot_files_carry_the_parents_pid_and_a_dead_parents_are_swept(tmp_path):
-    dead = 2 ** 22 - 7                                              # a pid nothing has (above pid_max on Linux)
+    dead = 2 ** 22 - 7                                              # a pid nothing has: probed, not assumed
+    while True:
+        try:
+            os.kill(dead, 0)
+        except ProcessLookupError:
+            break
+        except OSError:
+            pass
+        dead -= 1
     (tmp_path / f"colorlight-{dead}-abc.slot").write_bytes(b"x")
     (tmp_path / f"colorlight-{os.getpid()}-abc.slot").write_bytes(b"x")     # a live parent's: another display
     (tmp_path / "other.slot").write_bytes(b"x")
@@ -89,3 +98,22 @@ def test_the_header_starts_at_zero_and_is_shared_through_the_file():
         slot.close()
     assert not os.path.exists(slot.path)                        # the creator unlinks; a second close is harmless
     slot.close()
+
+
+def test_open_by_descriptor_closes_the_inherited_one():
+    if not os.path.isdir("/proc/self/fd"):
+        pytest.skip("the descriptor is reopened through /proc, which this system has not")
+    slot = Slot.create(8, 4)
+    before = len(os.listdir("/proc/self/fd"))
+    inherited = os.dup(slot.fd)
+    other = Slot.open(slot.path, 8, 4, fd=inherited)
+    try:
+        # the reopened descriptor and mmap's own dup of it: two more, not three (the inherited one is closed;
+        # its number is reused, so the count is the check, not the number)
+        assert len(os.listdir("/proc/self/fd")) == before + 2
+        assert other.lock.acquire(block=False)                       # and the lock is a separate one from the parent's
+        assert not slot.lock.acquire(block=False)
+        other.lock.release()
+    finally:
+        other.close()
+        slot.close()

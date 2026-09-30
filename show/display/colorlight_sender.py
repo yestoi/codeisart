@@ -139,9 +139,12 @@ class Slot:
         """The sender's side. Given the parent's descriptor (inherited), it is reopened through /proc for an open
         file description of its own (flock needs one), and the path is never needed: systemd-logind's RemoveIPC
         deletes a user's /dev/shm files when their last login ends. Without /proc (the Mac): the path."""
-        if fd is not None and os.path.isdir("/proc/self/fd"):
-            path = "/proc/self/fd/%d" % fd
+        inherited = fd if fd is not None and os.path.isdir("/proc/self/fd") else None
+        if inherited is not None:
+            path = "/proc/self/fd/%d" % inherited
         fd = os.open(path, os.O_RDWR)
+        if inherited is not None:
+            os.close(inherited)              # the parent's description, and its lock, are not this side's
         try:
             mm = mmap.mmap(fd, cls.size(width, height))
         except BaseException:

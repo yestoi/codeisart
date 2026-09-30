@@ -378,3 +378,19 @@ def test_the_cap_net_raw_hint_keeps_cap_sys_nice(monkeypatch):
     monkeypatch.setattr(socket, "socket", denied)
     with pytest.raises(PermissionError, match="cap_net_raw,cap_sys_nice"):     # setcap clears the ambient set:
         ColorlightDisplay(W, H, "eth0")                                         # both, or the sender loses its priority
+
+
+def test_close_with_a_hung_child_replaces_it_to_drain_black():
+    d, sock, clock, c = display()
+    d.push(red())
+    c.crank(2)
+    c.beats = 0                                                                 # alive, hung: no beat from now on
+    d.push(red())                                                               # the last look that saw it beat
+    clock.sleep(DEAD_S)
+    sock.sent.clear()
+    launch = c.launch
+    d._launch = lambda slot, sock: (setattr(c, "beats", None), launch(slot, sock))[1]   # a fresh child beats
+    d.close()
+    out = bursts(sock.sent)
+    assert c.launches == 2 and len(out) >= CLOSE_FRAMES
+    assert not any(row_pixels(p, W).any() for b in out for p in b if p[12] == ROW)
