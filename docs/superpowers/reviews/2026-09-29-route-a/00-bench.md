@@ -262,11 +262,37 @@ pushes at 30: first from the Omarchy box by the owner (its numbers not kept), th
 shown, 206 ticks held by the governor, the sender 3541 frames, 0 late, worst 15 us, sd 4 us, real-time yes. The
 owner: "looks the same on both". SEEN: the Pi shows what the Omarchy box shows.
 
+### The second picture without the arcade (10:16)
+
+The owner's question: earlier animations were smooth with no second picture, so is it the arcade's? Four pictures
+from the Pi with no arcade behind them, by `wall_pattern.py`'s own run (a bench script, `~/bench/ghost_test.py`),
+20 s each, brightness 0.1, each numbered on the wall; the sender clean in all four (worst 4 to 11 us).
+
+| Picture | What | The owner, and his photographs |
+|---|---|---|
+| 1 | the lobby's frame as the arcade pushed it, standing still | the second picture is there (photographed) |
+| 2 | the same frame sliding sideways, 10 pixels a second | there |
+| 3 | a white bar sweeping inside the border, pixel value 128 | "smooth, no ghosting" |
+| 4 | two-row lines at pixel values 64, 128 and 255, orange above and white below | photographed: none under the 64s, a trace under the 128s, a plain copy under the 255s, 4 rows down |
+
+SEEN: it is the picture, not the arcade. The copy grows with the pixel's value, and steeply: nothing at 64, little
+at 128, plain at 255. The lobby draws its figure at (255, 120, 0), so its red channel is at the top and the copy is
+red; `wall_pattern.py`'s patterns are drawn at 128 and a video sits mostly in the middle values, which is why they
+looked clean. INFERENCE, not tested: a copy that comes only with the high values fits the card's grey-scale
+timing (the longest light pulses of a row still on when the next row is lit) better than a fixed leak, and points
+at the refresh rate, its multiple and the grey mode, not at the blanking. The same photograph shows (255, 120, 0)
+as red, not orange: the card's gamma of 2.8 is applied to bytes the arcade sends as if none were (`arcade.toml`
+`gamma = 2.2`), which is the `gamma` wall check, still the owner's.
+
 OPEN on the Pi:
 
 - Q66 seen once more from the Pi, for the blink.
 - A game played through a real camera: the Pi has none attached.
 
-OPEN on the wall, not the Pi's: the fainter second picture. It is there from both machines and from LEDVision, and
-the row driver's four settings do not move it. Not tried: the refresh rate and its multiple, the Blanking Phase
-page (line switch time, the 4051 times), a higher brightness (the copy may show less against a brighter picture).
+CLOSED the same afternoon, and not the wall's: the fainter second picture is the card's response to our sync
+format. The wide review and the wall session of 2026-09-30 are in `docs/superpowers/reviews/2026-09-30-ghosting/`
+(`00-path-forward.md`, `07-wall-session.md`). In short: the copy exists only while frames arrive (the card holding
+a frame is clean), its row is set by the sender's rate (57 fps: 5 rows below; 58: 1; 59: 4; 59.5: 3; 60 and
+above: our format shows nothing), and the S2 sender card's sync format at 60.32 fps with byte 36 at 05 shows a
+clean, smooth, dimmable picture. The driver change that follows is a safety slice; the "grows with the pixel's
+value" reading above was the card's gamma 2.8, not a property of the copy. Nothing on the card needs changing.
