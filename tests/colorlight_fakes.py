@@ -67,3 +67,46 @@ def bursts(packets):
 def row_pixels(packet, width):
     """(chunk, 3) pixels of one row packet, as on the wire."""
     return np.frombuffer(packet[ROW_HEADER_LEN:], np.uint8).reshape(-1, 3)
+
+
+class Cranked:
+    """The sender run by hand in the test's own process, in place of the child: the facade's sleeps crank its
+    ticks (a sleep of s seconds is round(s * 59) ticks, at least one), its join runs it to the stop flag.
+    beats=0: a child that is alive but never ticks."""
+
+    def __init__(self, sock, clock, fps=59.0, beats=None):
+        from show.display.colorlight_sender import Sender
+        self._Sender, self.sock, self.clock, self.fps = Sender, sock, clock, fps
+        self.sender, self.alive, self.exitcode, self.launches = None, False, None, 0
+        self.beats = beats
+
+    def launch(self, slot, sock):
+        self.launches += 1
+        self.sender = self._Sender(slot, self.sock.send, clock=self.clock.now, sleep=self.clock.sleep)
+        self.alive = True
+        return self
+
+    def is_alive(self):
+        return self.alive
+
+    def crank(self, n=1):
+        for _ in range(n):
+            if self.alive and self.beats != 0 and not self.sender.tick():
+                self.alive = False
+
+    def sleep(self, seconds):
+        self.clock.sleep(seconds)
+        self.crank(max(1, round(seconds * self.fps)))
+
+    def join(self, timeout=None):
+        for _ in range(10_000):
+            if not self.alive:
+                return
+            self.crank()
+
+    def terminate(self):
+        self.alive = False
+        self.exitcode = -15
+
+    def kill(self):
+        self.terminate()

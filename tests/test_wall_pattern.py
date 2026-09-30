@@ -1,24 +1,13 @@
 import numpy as np
 import pytest
 
-from show.display.colorlight import ColorlightDisplay, brightness_packet, frame_packet
+from show.display.colorlight import ColorlightDisplay
 from show.display.fake import FakeDisplay
+from tests.colorlight_fakes import SYNC, Cranked, FakeClock, FakeSocket
 from tools import wall_pattern as wp
 
 LAYOUTS = [(128, 64), (128, 32), (64, 64)]
 RED, GREEN, BLUE, WHITE = (wp.LEVEL, 0, 0), (0, wp.LEVEL, 0), (0, 0, wp.LEVEL), (wp.LEVEL,) * 3
-
-
-class FakeSocket:
-    def __init__(self):
-        self.sent = []
-
-    def send(self, data):
-        self.sent.append(bytes(data))
-        return len(self.sent[-1])
-
-    def close(self):
-        pass
 
 
 class Recording(FakeDisplay):
@@ -181,16 +170,15 @@ def test_run_says_what_to_look_for_and_where_to_write_it():
 
 
 def test_the_colorlight_backend_gets_the_level_in_its_first_packets():
-    sock = FakeSocket()
-    display = ColorlightDisplay(128, 32, "eth0", sock=sock, brightness=0.1)
+    sock, fake = FakeSocket(), FakeClock()
+    c = Cranked(sock, fake)
+    display = ColorlightDisplay(128, 32, "eth0", sock=sock, brightness=0.1, launch=c.launch, clock=fake.seconds,
+                                sleep=c.sleep)
     clock = iter(np.arange(0.0, 100.0, 1.0))
-    run("rgb", display, brightness=0.1, seconds=1.0, fps=1, clock=lambda: next(clock))
-    assert sock.sent[0] == brightness_packet(0.1)
-    assert sock.sent[1] == frame_packet(0.1)
-    levels = {p[14 + 21] for p in sock.sent if p[12:14] == b"\x01\x07"}
+    run("rgb", display, brightness=0.1, seconds=1.0, fps=1, clock=lambda: next(clock), sleep=lambda s: c.crank(2))
+    levels = {p[35] for p in sock.sent if p[12] == SYNC}
     assert levels == {int(0.1 * 255)}
-
-
+    assert sock.closed == 1
 def test_main_builds_the_display_from_its_arguments(monkeypatch):
     made = {}
 
