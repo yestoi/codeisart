@@ -434,19 +434,24 @@ def test_a_stall_past_the_margin_sends_every_row_and_makes_the_next_sync_late(sl
     assert slot.h[LATE] == 1 and slot.h[SLIPS] == 0 and slot.h[FRAMES] == 3  # late (over 1 ms), no slip: the grid holds
 
 
-def test_a_fresh_frame_reaches_the_paced_rows_a_packet_at_a_time(slot):
-    sender, sock, _ = make(slot)
-    sender.tick()
-    sender.tick()                                                             # the prime, then a black frame
-    other = np.random.default_rng(7).integers(0, 256, (H, W, 3), dtype=np.uint8)
-    slot.write(other)
-    sock.sent.clear()
-    sender.tick()                                                             # the paced frame that takes it
-    rows = [p for p in sock.sent if p[12] == ROW]
-    assert rows == [p for y in range(H) for p in row_packets(y, other[y, :, ::-1])]      # every packet, BGR
-    sock.sent.clear()
-    sender.tick()                                                             # no push: the same rows again
-    assert [p for p in sock.sent if p[12] == ROW] == rows
+@pytest.mark.parametrize("width,height", [(128, 64), (512, 4), (384, 4)])   # one, two and two packets a row
+def test_a_fresh_frame_reaches_the_paced_rows_a_packet_at_a_time(width, height):
+    s = Slot.create(width, height)
+    try:
+        sender, sock, _ = make(s)
+        sender.tick()
+        sender.tick()                                                         # the prime, then a black frame
+        other = np.random.default_rng(7).integers(0, 256, (height, width, 3), dtype=np.uint8)
+        s.write(other)
+        sock.sent.clear()
+        sender.tick()                                                         # the paced frame that takes it
+        rows = [p for p in sock.sent if p[12] == ROW]
+        assert rows == [p for y in range(height) for p in row_packets(y, other[y, :, ::-1])]   # every packet, BGR
+        sock.sent.clear()
+        sender.tick()                                                         # no push: the same rows again
+        assert [p for p in sock.sent if p[12] == ROW] == rows
+    finally:
+        s.close()
 
 
 def test_a_torn_burst_leaves_no_mixed_frame_at_the_restarts_prime(slot):
