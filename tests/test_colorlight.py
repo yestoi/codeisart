@@ -249,6 +249,7 @@ def test_stats_and_the_line_for_the_log():
     assert "5 frames" in line and "real-time no" in line
     assert stats_line(FakeDisplay()) is None
     d.close()
+    assert stats_line(d) is None                                                # closed: no line, no exception
 
 
 def test_the_raw_socket_bypasses_the_queue_before_it_binds(monkeypatch):

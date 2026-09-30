@@ -130,8 +130,17 @@ class Slot:
             except OSError:
                 pass                                                # alive but not ours to signal: leave it
 
+    @property
+    def fd(self) -> int:
+        return self._fd
+
     @classmethod
-    def open(cls, path: str, width: int, height: int) -> "Slot":
+    def open(cls, path: str, width: int, height: int, fd: int | None = None) -> "Slot":
+        """The sender's side. Given the parent's descriptor (inherited), it is reopened through /proc for an open
+        file description of its own (flock needs one), and the path is never needed: systemd-logind's RemoveIPC
+        deletes a user's /dev/shm files when their last login ends. Without /proc (the Mac): the path."""
+        if fd is not None and os.path.isdir("/proc/self/fd"):
+            path = "/proc/self/fd/%d" % fd
         fd = os.open(path, os.O_RDWR)
         try:
             mm = mmap.mmap(fd, cls.size(width, height))
@@ -308,14 +317,15 @@ def set_realtime(priority: int = RT_PRIORITY) -> bool:
     return True
 
 
-def sender_main(path: str, width: int, height: int, sock, parent_pid: int) -> None:
+def sender_main(path: str, width: int, height: int, sock, parent_pid: int, slot_fd: int | None = None) -> None:
     """The child: the slot attached, the priority asked for, garbage collection off, the sender run to the stop
     flag or the parent's death. `sock` is the parent's socket, inherited by this process; None is a dry run,
     the packets go nowhere. Ctrl-C and a systemd stop reach the whole process group: the child ignores both,
     so the parent's close can drain black before it stops the child by the flag (or, past JOIN_S, by SIGKILL)."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
-    slot = Slot.open(path, width, height)
+    signal.signal(signal.SIGABRT, signal.SIG_IGN)       # the watchdog's signal to the cgroup, likewise
+    slot = Slot.open(path, width, height, slot_fd)
     try:
         slot.h[RT] = 1 if set_realtime() else 0
         gc.disable()
@@ -328,12 +338,13 @@ def sender_main(path: str, width: int, height: int, sock, parent_pid: int) -> No
 
 
 def main(argv: list[str]) -> int:
-    """`python -m show.display.colorlight_sender PATH WIDTH HEIGHT FD FAMILY TYPE PROTO PARENT_PID`: the child,
-    as show/display/colorlight.py starts it (FD -1: a dry run, the packets go nowhere). Not a tool: it sends whatever is in the slot on the socket it is
-    handed, and only the driver hands it one."""
-    path, width, height, fd, family, kind, proto, parent = argv[0], *(int(a) for a in argv[1:8])
+    """`python -m show.display.colorlight_sender PATH WIDTH HEIGHT FD FAMILY TYPE PROTO PARENT_PID SLOT_FD`: the
+    child, as show/display/colorlight.py starts it (FD -1: a dry run, the packets go nowhere; SLOT_FD: the
+    slot's inherited descriptor). Not a tool: it sends whatever is in the slot on the socket it is handed, and
+    only the driver hands it one."""
+    path, width, height, fd, family, kind, proto, parent, slot_fd = argv[0], *(int(a) for a in argv[1:9])
     sock = socket.socket(family, kind, proto, fileno=fd) if fd >= 0 else None     # no descriptor: a dry run
-    sender_main(path, width, height, sock, parent)
+    sender_main(path, width, height, sock, parent, slot_fd)
     return 0
 
 

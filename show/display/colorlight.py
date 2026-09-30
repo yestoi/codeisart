@@ -101,8 +101,9 @@ def spawn_sender(slot: Slot, sock) -> SenderProcess:
     env = dict(os.environ)
     env["PYTHONPATH"] = str(ROOT) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     argv = [sys.executable, "-m", "show.display.colorlight_sender", slot.path, str(slot.width), str(slot.height),
-            str(fd), str(int(sock.family)), str(int(sock.type)), str(sock.proto), str(os.getpid())]
-    return SenderProcess(subprocess.Popen(argv, pass_fds=(fd,) if fd >= 0 else (), env=env, cwd=str(ROOT)))
+            str(fd), str(int(sock.family)), str(int(sock.type)), str(sock.proto), str(os.getpid()), str(slot.fd)]
+    fds = (fd, slot.fd) if fd >= 0 else (slot.fd,)          # the slot's too: its path may be gone by a restart
+    return SenderProcess(subprocess.Popen(argv, pass_fds=fds, env=env, cwd=str(ROOT)))
 
 
 class ColorlightDisplay:
@@ -256,7 +257,10 @@ def stats_line(display) -> str | None:
     stats = getattr(display, "stats", None)
     if stats is None:
         return None
-    s = stats()
+    try:
+        s = stats()
+    except Exception:                       # a closed display, a slot gone: a line for the log is never a failure
+        return None
     return ("colorlight sender: %d frames, %d late (over 1 ms), worst %.0f us, sync to sync sd %.0f us, %d slips, "
             "%d send errors, %d restarts, real-time %s" % (s["frames"], s["late"], s["worst_us"], s["sd_us"],
                                                            s["slips"], s["errors"], s["restarts"],

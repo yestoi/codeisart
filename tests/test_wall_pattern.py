@@ -179,6 +179,8 @@ def test_the_colorlight_backend_gets_the_level_in_its_first_packets():
     levels = {p[35] for p in sock.sent if p[12] == SYNC}
     assert levels == {int(0.1 * 255)}
     assert sock.closed == 1
+
+
 def test_main_builds_the_display_from_its_arguments(monkeypatch):
     made = {}
 

@@ -1,5 +1,4 @@
-"""`python -m arcade`: the wall arcade. The guard matters: the colorlight driver's sender is a spawned child,
-which imports the main module again."""
+"""`python -m arcade`: the wall arcade."""
 import sys
 
 from arcade.main import main

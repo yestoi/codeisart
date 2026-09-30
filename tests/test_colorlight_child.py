@@ -41,8 +41,9 @@ def test_the_child_sends_on_the_socket_it_was_handed_beats_and_stops_after_a_who
         assert sum(1 for p in got if p[12] == 0x01) >= 6, "no third frame in 20 s"
         assert slot.h[BEATS] > 0 and slot.h[FRAMES] >= 3
         frames = int(slot.h[FRAMES])
-        os.kill(child.pid, signal.SIGINT)                # Ctrl-C and systemctl stop reach the whole group:
-        os.kill(child.pid, signal.SIGTERM)               # the child ignores both and keeps sending
+        os.kill(child.pid, signal.SIGINT)                # Ctrl-C, systemctl stop and the watchdog's SIGABRT
+        os.kill(child.pid, signal.SIGTERM)               # reach the whole group: the child ignores all three
+        os.kill(child.pid, signal.SIGABRT)               # and keeps sending (black follows the parent's death)
         while int(slot.h[FRAMES]) < frames + 3 and time.monotonic() < deadline:
             stream += ours.recv(65536)
             whole, stream = packets(stream)
@@ -125,4 +126,36 @@ def test_the_child_runs_on_a_discard_socket_for_a_dry_run():
         if child is not None and child.is_alive():
             child.terminate()
             child.join(5.0)
+        slot.close()
+
+
+def test_the_child_opens_the_slot_by_its_descriptor_so_the_path_may_be_gone():
+    # systemd-logind's RemoveIPC (a default) deletes a user's files in /dev/shm when their last login ends: an SSH
+    # logout on the Pi. The mapping lives on; a restart must not need the path.
+    if not os.path.isdir("/proc/self/fd"):
+        import pytest
+        pytest.skip("the descriptor is reopened through /proc, which this system has not; the path is used")
+    ours, theirs = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+    slot = Slot.create(8, 4)
+    child = None
+    try:
+        os.unlink(slot.path)                                  # logind's doing
+        child = spawn_sender(slot, theirs)
+        theirs.close()
+        deadline = time.monotonic() + 20.0
+        while int(slot.h[FRAMES]) < 3 and child.is_alive() and time.monotonic() < deadline:
+            ours.settimeout(1.0)
+            try:
+                ours.recv(65536)
+            except socket.timeout:
+                pass
+        assert child.is_alive() and int(slot.h[FRAMES]) >= 3
+        slot.h[STOP] = 1
+        child.join(10.0)
+        assert child.exitcode == 0
+    finally:
+        if child is not None and child.is_alive():
+            child.terminate()
+            child.join(5.0)
+        ours.close()
         slot.close()

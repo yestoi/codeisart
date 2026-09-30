@@ -134,8 +134,13 @@ governor never counted). The show daemon's push failures, its lights-off after 1
 all see this, as they see a failed send. A `close` that finds the child dead starts one to drain the black.
 
 **A dead parent**: the child watches its parent (`os.getppid()`, once a tick); when the parent is gone it runs
-black for `CLOSE_HOLD_S` and exits, so a crashed show leaves a dark wall, not a frozen picture, until systemd
-starts it again 2 s later. Black on a parent's death is under the same word as the dark start.
+black for `CLOSE_HOLD_S` (taking no frame meanwhile) and exits, so a crashed show leaves a dark wall, not a
+frozen picture, until systemd starts it again 2 s later. Black on a parent's death is under the same word as
+the dark start. The child ignores SIGINT, SIGTERM and SIGABRT (Ctrl-C, `systemctl stop` and the watchdog's
+signal all go to the whole process group or cgroup), so in each case it outlives the parent long enough to do
+this; SIGKILL to the cgroup (systemd's final resort, after the stop timeout) leaves the wall on its last
+picture, as before route A. The child holds the slot by descriptor, not by path: logind's `RemoveIPC` deletes
+a user's `/dev/shm` files when their last login ends, and a restart must still find the slot.
 
 **A pulled cable**: whether `send` raises on this port with the link down is not known (the audit's G11). It
 is measured at the wall (section 9); if it raises nothing, a carrier watch (`/sys/class/net/<iface>/carrier`
