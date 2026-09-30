@@ -23,10 +23,12 @@ from __future__ import annotations
 
 import errno
 import logging
-import multiprocessing
 import os
 import socket
+import subprocess
+import sys
 import time
+from pathlib import Path
 from typing import Callable
 
 import numpy as np
@@ -35,8 +37,7 @@ from show.display.colorlight_packets import (BRIGHTNESS_PAYLOAD_LEN, CHUNK_PIXEL
                                              ETH_FRAME, ETH_ROW, FRAME_PAYLOAD_LEN, ROW_HEADER_LEN, SRC_MAC,
                                              brightness_packet, chunk_pixels, frame_packet, level_byte,
                                              row_buffers, row_packets)
-from show.display.colorlight_sender import (BEATS, CLOSE_HOLD_S, ERRNO, ERRORS, LEVEL, PAUSE, RT, STOP, Slot,
-                                            sender_main, stats_of)
+from show.display.colorlight_sender import BEATS, CLOSE_HOLD_S, ERRNO, ERRORS, LEVEL, PAUSE, RT, STOP, Slot, stats_of
 
 log = logging.getLogger(__name__)
 
@@ -47,16 +48,45 @@ RESTART_S = 1.0             # a dead child is started again at the first push th
 JOIN_S = 3.0                # the close waits this long for the child, then terminates it
 POLL_S = 0.01               # the start's wait between looks at the beat
 SOL_PACKET, PACKET_QDISC_BYPASS = 263, 20   # past the port's queue: it reorders one frame in a thousand
+ROOT = Path(__file__).resolve().parents[2]  # the repository: on the child's path whatever the parent's cwd
 
 
-def spawn_sender(slot: Slot, sock) -> multiprocessing.Process:
-    """The sender in a child of the spawn kind (a fork behind MediaPipe's threads is not safe). The socket goes
-    across as a duplicated descriptor; the parent keeps its own for a restart."""
-    ctx = multiprocessing.get_context("spawn")
-    child = ctx.Process(target=sender_main, name="colorlight-sender", daemon=True,
-                        args=(slot.path, slot.width, slot.height, slot.lock, sock, os.getpid()))
-    child.start()
-    return child
+class SenderProcess:
+    """The child as the driver sees it: alive, joined, terminated (SIGKILL: the child ignores SIGTERM), its exit code."""
+
+    def __init__(self, proc: subprocess.Popen):
+        self._proc = proc
+        self.pid = proc.pid
+
+    def is_alive(self) -> bool:
+        return self._proc.poll() is None
+
+    def join(self, timeout: float | None = None) -> None:
+        try:
+            self._proc.wait(timeout)
+        except subprocess.TimeoutExpired:
+            pass
+
+    def terminate(self) -> None:
+        if self.is_alive():
+            self._proc.kill()
+
+    @property
+    def exitcode(self) -> int | None:
+        return self._proc.poll()
+
+
+def spawn_sender(slot: Slot, sock) -> SenderProcess:
+    """The sender in a child: this interpreter running show.display.colorlight_sender, the socket inherited as a
+    descriptor (the parent keeps its own for a restart). A plain subprocess, not multiprocessing: a fork behind
+    MediaPipe's threads is not safe, and multiprocessing's spawn starts a resource tracker that outlives the
+    child and that the show's soak counts as a child left behind."""
+    fd = sock.fileno()
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(ROOT) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    argv = [sys.executable, "-m", "show.display.colorlight_sender", slot.path, str(slot.width), str(slot.height),
+            str(fd), str(int(sock.family)), str(int(sock.type)), str(sock.proto), str(os.getpid())]
+    return SenderProcess(subprocess.Popen(argv, pass_fds=(fd,), env=env, cwd=str(ROOT)))
 
 
 class ColorlightDisplay:

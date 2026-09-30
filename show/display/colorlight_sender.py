@@ -6,8 +6,10 @@ brightness packets, then the rows, then idle; 59 frames a second, not 60; the sy
 deadline; pixels BGR.
 
 The Slot is one frame in shared memory (a file-backed mmap, /dev/shm where there is one) with a header of int64
-fields and one lock. The parent writes a frame under the lock; the sender tries the lock without waiting at each
-tick and keeps the frame it has when it cannot get it, so the parent can never make it late.
+fields and one lock, a flock on the file itself (a multiprocessing lock would start Python's resource tracker, a
+child that lives as long as the show and that the soak counts). The parent writes a frame under the lock; the
+sender tries the lock without waiting at each tick and keeps the frame it has when it cannot get it, so the parent
+can never make it late.
 
 The Sender runs in a child process (sender_main): real-time priority SCHED_FIFO 50 when it can have it, garbage
 collection off, absolute deadlines on perf_counter_ns, a sleep to SPIN_NS before each deadline and then a
@@ -18,11 +20,14 @@ a pause is a prime (brightness and rows, no sync), so the sync that follows show
 """
 from __future__ import annotations
 
+import fcntl
 import gc
 import math
 import mmap
-import multiprocessing
 import os
+import signal
+import socket
+import sys
 import tempfile
 import time
 from typing import Callable
@@ -50,11 +55,35 @@ SENDER_CPU = None                       # a core to pin the child to; None until
 HEADER_LEN = 16                         # int64s; 128 bytes before the frame
 
 
+class FileLock:
+    """A flock on an open file: one lock per opening, so each side of the slot opens the file itself."""
+
+    def __init__(self, fd: int):
+        self._fd = fd
+
+    def acquire(self, block: bool = True) -> bool:
+        try:
+            fcntl.flock(self._fd, fcntl.LOCK_EX | (0 if block else fcntl.LOCK_NB))
+        except BlockingIOError:
+            return False
+        return True
+
+    def release(self) -> None:
+        fcntl.flock(self._fd, fcntl.LOCK_UN)
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, *exc):
+        self.release()
+
+
 class Slot:
     """One frame and the header, shared by the parent (create) and the sender (open)."""
 
-    def __init__(self, path: str, width: int, height: int, lock, mm: mmap.mmap, own: bool):
-        self.path, self.width, self.height, self.lock, self._mm, self._own = path, width, height, lock, mm, own
+    def __init__(self, path: str, width: int, height: int, fd: int, mm: mmap.mmap, own: bool):
+        self.path, self.width, self.height, self._fd, self._mm, self._own = path, width, height, fd, mm, own
+        self.lock = FileLock(fd)
         self.h = np.frombuffer(mm, np.int64, HEADER_LEN)
         self.pixels = np.frombuffer(mm, np.uint8, height * width * 3, HEADER_LEN * 8).reshape(height, width, 3)
         self._seen = 0
@@ -64,27 +93,28 @@ class Slot:
         return HEADER_LEN * 8 + height * width * 3
 
     @classmethod
-    def create(cls, width: int, height: int, lock=None, directory: str | None = None) -> "Slot":
+    def create(cls, width: int, height: int, directory: str | None = None) -> "Slot":
         if directory is None and os.path.isdir("/dev/shm"):
             directory = "/dev/shm"
         fd, path = tempfile.mkstemp(prefix="colorlight-", suffix=".slot", dir=directory)
         try:
             os.ftruncate(fd, cls.size(width, height))
             mm = mmap.mmap(fd, cls.size(width, height))
-        finally:
+        except BaseException:
             os.close(fd)
-        if lock is None:
-            lock = multiprocessing.get_context("spawn").Lock()   # the child is spawned: a spawn-context lock
-        return cls(path, width, height, lock, mm, own=True)
+            os.unlink(path)
+            raise
+        return cls(path, width, height, fd, mm, own=True)
 
     @classmethod
-    def open(cls, path: str, width: int, height: int, lock) -> "Slot":
+    def open(cls, path: str, width: int, height: int) -> "Slot":
         fd = os.open(path, os.O_RDWR)
         try:
             mm = mmap.mmap(fd, cls.size(width, height))
-        finally:
+        except BaseException:
             os.close(fd)
-        return cls(path, width, height, lock, mm, own=False)
+            raise
+        return cls(path, width, height, fd, mm, own=False)
 
     def write(self, frame: np.ndarray) -> None:
         """The parent's push: a copy of the frame under the lock, and the counter moved."""
@@ -115,6 +145,7 @@ class Slot:
         except BufferError:                  # a view still held elsewhere (a traceback's frame): the map closes
             pass                             # with it; the file below is unlinked either way
         self._mm = None
+        os.close(self._fd)
         if self._own:
             try:
                 os.unlink(self.path)
@@ -248,10 +279,14 @@ def set_realtime(priority: int = RT_PRIORITY) -> bool:
     return True
 
 
-def sender_main(path: str, width: int, height: int, lock, sock, parent_pid: int) -> None:
+def sender_main(path: str, width: int, height: int, sock, parent_pid: int) -> None:
     """The child: the slot attached, the priority asked for, garbage collection off, the sender run to the stop
-    flag or the parent's death. `sock` is the parent's socket, duplicated into this process by multiprocessing."""
-    slot = Slot.open(path, width, height, lock)
+    flag or the parent's death. `sock` is the parent's socket, inherited by this process. Ctrl-C and a systemd
+    stop reach the whole process group: the child ignores both, so the parent's close can drain black before it
+    stops the child by the flag (or, past JOIN_S, by SIGKILL)."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    slot = Slot.open(path, width, height)
     try:
         slot.h[RT] = 1 if set_realtime() else 0
         gc.disable()
@@ -259,3 +294,17 @@ def sender_main(path: str, width: int, height: int, lock, sock, parent_pid: int)
     finally:
         sock.close()
         slot.close()
+
+
+def main(argv: list[str]) -> int:
+    """`python -m show.display.colorlight_sender PATH WIDTH HEIGHT FD FAMILY TYPE PROTO PARENT_PID`: the child,
+    as show/display/colorlight.py starts it. Not a tool: it sends whatever is in the slot on the socket it is
+    handed, and only the driver hands it one."""
+    path, width, height, fd, family, kind, proto, parent = argv[0], *(int(a) for a in argv[1:8])
+    sock = socket.socket(family, kind, proto, fileno=fd)
+    sender_main(path, width, height, sock, parent)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
