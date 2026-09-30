@@ -17,8 +17,20 @@ clock).
 | 30 | 1770 | 1 | 2092 | 50 | 0 |
 
 1770 frames in 30 s is 59.00 a second in both runs, whatever the push rate. The second run's one frame 2.1 ms late is the
-"ordinary priority is a gamble" of the spike's step 6 (0.2 to 0.8 ms late once in a while there); at real-time
-priority the spike's sender held 3 to 5 us sd and 15 to 52 us worst. The real-time run of the driver is OPEN (needs sudo).
+"ordinary priority is a gamble" of the spike's step 6 (0.2 to 0.8 ms late once in a while there).
+
+Under sudo (2026-09-30, about 04:20; the child took SCHED_FIFO 50 itself, `real-time yes`), MEASURED the same way:
+
+| Pushes a second | Seconds | Frames | Late (over 1 ms) | Worst, us | Sync to sync sd, us | Slips |
+|---|---|---|---|---|---|---|
+| 20 | 30 | 1770 | 0 | 222 | 7 | 0 |
+| 30 | 60 | 3540 | 0 | 297 | 10 | 0 |
+
+The sd matches the spike's sender at real-time priority (3 to 5 us there, by the port's clock). The worst, a single
+sync 200 to 300 us late in a run, is above the spec's 100 us; the spike's own runs had the same outliers (N15b, judged
+"our most stable presentation yet", had a worst of 746 us; N11 702, N13b 611) and were judged steady, and 0.25 ms of
+jitter on *every* frame (N21) is what showed. INFERENCE: the sleep waking past its 2 ms margin now and then; a wider
+spin margin would absorb it at more CPU. To watch on the Pi, not tuned here.
 
 The driver's tests pass on the box (119 of the driver's, the tool's and the soak's), the child a real subprocess there.
 
