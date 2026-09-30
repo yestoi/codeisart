@@ -51,6 +51,21 @@ SOL_PACKET, PACKET_QDISC_BYPASS = 263, 20   # past the port's queue: it reorders
 ROOT = Path(__file__).resolve().parents[2]  # the repository: on the child's path whatever the parent's cwd
 
 
+class DiscardSocket:
+    """A socket that keeps nothing, for a dry run of the driver: no card, no root. It has no descriptor to hand
+    the child, which then sends to nowhere itself."""
+    family = type = proto = 0
+
+    def fileno(self) -> int:
+        return -1
+
+    def send(self, data) -> int:
+        return len(data)
+
+    def close(self) -> None:
+        pass
+
+
 class SenderProcess:
     """The child as the driver sees it: alive, joined, terminated (SIGKILL: the child ignores SIGTERM), its exit code."""
 
@@ -86,7 +101,7 @@ def spawn_sender(slot: Slot, sock) -> SenderProcess:
     env["PYTHONPATH"] = str(ROOT) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     argv = [sys.executable, "-m", "show.display.colorlight_sender", slot.path, str(slot.width), str(slot.height),
             str(fd), str(int(sock.family)), str(int(sock.type)), str(sock.proto), str(os.getpid())]
-    return SenderProcess(subprocess.Popen(argv, pass_fds=(fd,), env=env, cwd=str(ROOT)))
+    return SenderProcess(subprocess.Popen(argv, pass_fds=(fd,) if fd >= 0 else (), env=env, cwd=str(ROOT)))
 
 
 class ColorlightDisplay:

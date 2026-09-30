@@ -40,7 +40,7 @@ if str(ROOT) not in sys.path:          # run as a script, the repository is not 
     sys.path.insert(0, str(ROOT))
 
 from show.config import load_config  # noqa: E402
-from show.display.colorlight import ColorlightDisplay, stats_line  # noqa: E402
+from show.display.colorlight import ColorlightDisplay, DiscardSocket, stats_line  # noqa: E402
 from show.display import make_display  # noqa: E402
 from show.font import CELL_H, CELL_W, Font  # noqa: E402
 from show.renderer import draw_text  # noqa: E402
@@ -55,17 +55,9 @@ MAX_FPS = 60.0                # the push rate the tool refuses over
 BACKENDS = ("colorlight", "sdl", "ddp")   # the displays the tool can choose; a config's `fake` is refused
 
 
-class _Discard:
-    """A socket that keeps nothing: the driver's timing with no card and no root (--dry-run)."""
-    def send(self, data):
-        return len(data)
-
-    def close(self):
-        pass
-
-
 def dry_display(width: int, height: int, brightness: float, **kw):
-    return ColorlightDisplay(width, height, "", sock=_Discard(), brightness=brightness, **kw)
+    """The driver on a socket that keeps nothing: its timing with no card and no root (--dry-run)."""
+    return ColorlightDisplay(width, height, "", sock=DiscardSocket(), brightness=brightness, **kw)
 HARDWARE_MD = "docs/superpowers/workflow/evidence/hardware.md"
 FONT_PATH = ROOT / "fonts" / "5x7.bin"
 

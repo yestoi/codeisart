@@ -281,27 +281,29 @@ def set_realtime(priority: int = RT_PRIORITY) -> bool:
 
 def sender_main(path: str, width: int, height: int, sock, parent_pid: int) -> None:
     """The child: the slot attached, the priority asked for, garbage collection off, the sender run to the stop
-    flag or the parent's death. `sock` is the parent's socket, inherited by this process. Ctrl-C and a systemd
-    stop reach the whole process group: the child ignores both, so the parent's close can drain black before it
-    stops the child by the flag (or, past JOIN_S, by SIGKILL)."""
+    flag or the parent's death. `sock` is the parent's socket, inherited by this process; None is a dry run,
+    the packets go nowhere. Ctrl-C and a systemd stop reach the whole process group: the child ignores both,
+    so the parent's close can drain black before it stops the child by the flag (or, past JOIN_S, by SIGKILL)."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
     slot = Slot.open(path, width, height)
     try:
         slot.h[RT] = 1 if set_realtime() else 0
         gc.disable()
-        Sender(slot, sock.send, parent_alive=lambda: os.getppid() == parent_pid).run()
+        send = sock.send if sock is not None else len
+        Sender(slot, send, parent_alive=lambda: os.getppid() == parent_pid).run()
     finally:
-        sock.close()
+        if sock is not None:
+            sock.close()
         slot.close()
 
 
 def main(argv: list[str]) -> int:
     """`python -m show.display.colorlight_sender PATH WIDTH HEIGHT FD FAMILY TYPE PROTO PARENT_PID`: the child,
-    as show/display/colorlight.py starts it. Not a tool: it sends whatever is in the slot on the socket it is
+    as show/display/colorlight.py starts it (FD -1: a dry run, the packets go nowhere). Not a tool: it sends whatever is in the slot on the socket it is
     handed, and only the driver hands it one."""
     path, width, height, fd, family, kind, proto, parent = argv[0], *(int(a) for a in argv[1:8])
-    sock = socket.socket(family, kind, proto, fileno=fd)
+    sock = socket.socket(family, kind, proto, fileno=fd) if fd >= 0 else None     # no descriptor: a dry run
     sender_main(path, width, height, sock, parent)
     return 0
 

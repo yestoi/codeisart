@@ -105,3 +105,24 @@ print("tracker", rt._resource_tracker._pid, "alive", child.is_alive(), "exit", c
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr
     assert out.stdout.strip() == "tracker None alive False exit 0 left 0"
+
+
+def test_the_child_runs_on_a_discard_socket_for_a_dry_run():
+    from show.display.colorlight import DiscardSocket
+
+    slot = Slot.create(8, 4)
+    child = None
+    try:
+        child = spawn_sender(slot, DiscardSocket())
+        deadline = time.monotonic() + 20.0
+        while int(slot.h[FRAMES]) < 3 and child.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert child.is_alive() and int(slot.h[FRAMES]) >= 3
+        slot.h[STOP] = 1
+        child.join(10.0)
+        assert not child.is_alive() and child.exitcode == 0
+    finally:
+        if child is not None and child.is_alive():
+            child.terminate()
+            child.join(5.0)
+        slot.close()
