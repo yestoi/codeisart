@@ -26,7 +26,9 @@ send: the port's queue held packets during the run: 7 requeues, 14 new flows; pa
 def test_the_matrix_is_every_wait_with_every_scheduling_and_queue():
     runs = tm.commands("enp5s0", "/v/bin/python", "/out", 10)
     names = [name for name, argv in runs]
-    assert len(names) == len(set(names)) == 16
+    assert len(names) == len(set(names)) == 18
+    # the old test sender's way, in its own order: where the queue was seen to let the sync overtake
+    assert "sleep-other-qdisc-rows-sync" in names and "sleep-other-bypass-rows-sync" in names
     assert names[0] == "hybrid-fifo50-bypass-stamp-sw"     # the wall's own form of the command, first
     assert "hybrid-fifo50-bypass-rows-sync" in names       # the base's order past the queue: no overtaking
     for wait in ("sleep", "hybrid", "spin"):
@@ -50,6 +52,7 @@ def test_a_run_of_the_matrix_is_a_send_command_that_the_safety_rules_allow():
         assert plan.qdisc_bypass == ("bypass" in name)
         assert plan.wait == name.split("-")[0]
         assert plan.order == ("sync-rows" if name.count("-") == 2 else "rows-sync")
+        assert ("other" in name) == (argv[:at] == [])
 
 
 def test_a_runs_output_is_read_into_numbers():
@@ -87,7 +90,7 @@ def test_the_table_has_a_row_a_run_in_microseconds():
 
 def test_a_dry_matrix_opens_no_socket():
     runs = tm.commands("enp5s0", "/v/bin/python", "/out", 5, dry_run=True)
-    assert len(runs) == 8                                   # the queue does not matter without a socket
+    assert len(runs) == 9                                   # the queue does not matter without a socket
     for name, argv in runs:
         at = argv.index("/v/bin/python")
         plan = send.plan_from(argv[at + 2:])
@@ -110,7 +113,7 @@ def test_the_dry_matrix_needs_no_word(tmp_path):
         returncode, stdout, stderr = 0, OUTPUT, ""
 
     assert tm.main(["--dry-run", "--out", str(tmp_path)], runner=lambda cmd, **k: ran.append(cmd) or Done()) == 0
-    assert len(ran) == 8
+    assert len(ran) == 9
 
 
 def test_with_the_owners_word_the_matrix_runs(tmp_path):
@@ -121,5 +124,5 @@ def test_with_the_owners_word_the_matrix_runs(tmp_path):
 
     assert tm.main(["--card-unplugged", "--out", str(tmp_path)],
                    runner=lambda cmd, **k: ran.append(cmd) or Done()) == 0
-    assert len(ran) == 16
+    assert len(ran) == 18
     assert "order broken" in (tmp_path / "table.md").read_text()

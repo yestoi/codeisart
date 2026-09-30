@@ -625,8 +625,11 @@ class Stamper:
         self.asked = []                   # ("sync" | "row", frame) for each packet that asked, in order
         self.count = {"sync": 0, "row": 0}
         self.last = None
-        ask = SOF_TX_SCHED | SOF_TX_SOFTWARE | (SOF_TX_HARDWARE if hardware else 0)
-        self.ask = [(SOL_SOCKET, SO_TIMESTAMPING, struct.pack("I", ask))]
+        kernel = SOF_TX_SCHED | SOF_TX_SOFTWARE
+        # The port stamps one packet at a time: its clock is kept for the sync. The row asks the kernel alone.
+        self.ask = {"sync": [(SOL_SOCKET, SO_TIMESTAMPING,
+                              struct.pack("I", kernel | (SOF_TX_HARDWARE if hardware else 0)))],
+                    "row": [(SOL_SOCKET, SO_TIMESTAMPING, struct.pack("I", kernel))]}
         sock.setsockopt(SOL_SOCKET, SO_TIMESTAMPING,
                         SOF_SOFTWARE | SOF_RAW_HARDWARE | SOF_OPT_ID | SOF_OPT_TSONLY | SOF_OPT_TX_SWHW)
 
@@ -637,7 +640,7 @@ class Stamper:
         if what:
             self.asked.append((what, self.count[what]))
             self.count[what] += 1
-            self.sock.sendmsg([packet], self.ask)
+            self.sock.sendmsg([packet], self.ask[what])
         else:
             self.sock.send(packet)
         self.last = kind

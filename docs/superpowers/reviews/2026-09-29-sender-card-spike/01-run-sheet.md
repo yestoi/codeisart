@@ -12,7 +12,7 @@ spike then has its main answer, and the S2 batch unreached is an honest "unknown
 
 | What could make the result false | The guard |
 |---|---|
-| The port's queue lets the sync overtake the last rows (`00-phase0.md`, section 11) | Every run goes past the queue. One pair (A2, A2q) tests the queue itself. Every run counts what the queue held and which left first |
+| The port's queue lets the sync overtake the last rows: measured, 2 of 2400 frames the old sender's way (`00-phase0.md`, section 7) | Every run goes past the queue. One pair (A2, A2q) tests the queue itself. Every run counts what the queue held and which left first |
 | A flicker that is not there cannot be seen to go | Two runs that are known to flicker (A4, A5). Comparisons are made at a rate where the base flickers (`RATE`) |
 | Brighter looks steadier | Runs that are compared have the same light: the same pixel value and the same levels. The S2's own level is a rung of its own |
 | The eye sees what it expects; memory fades in 20 runs | A control is repeated beside every batch that is compared with it; close calls are played blind (`ab`) |
@@ -37,19 +37,17 @@ spike then has its main answer, and the S2 batch unreached is an honest "unknown
 
 ## Before the session
 
-1. **Gate: step 6 of the brief has been run** (`00-phase0.md`, section 7), with the wall's cable in another
-   port, and its table says:
+1. **Gate: step 6 of the brief.** Passed on 2026-09-29, 19:47 to 20:00, the cable in a Raspberry Pi
+   (`00-phase0.md`, section 7):
 
-   | Row of the table | What it must show | Written here by hand |
+   | Row of the table | What it had to show | What it showed |
    |---|---|---|
-   | `hybrid-fifo50-bypass-stamp-sw` (the `run` command below) | driver stamps 600/600; "order broken" 0/600 | |
-   | `hybrid-fifo50-qdisc-rows-sync` | "order broken" and "queue held": does this port's queue reorder? | |
-   | `hybrid-fifo50-bypass` | port worst, in microseconds: **W** = | |
+   | `hybrid-fifo50-bypass-stamp-sw` (the `run` command below) | driver stamps 600/600; "order broken" 0/600 | 600/600 and 0/600, twice |
+   | the rows through the queue in the base's order | does this port's queue reorder? | yes: 2 of 2400 frames the old sender's way; 0 of 2400 with the exact wait |
+   | `hybrid-fifo50-bypass`, and `-rows-sync` | the port's worst, in microseconds: **W** | **W = 52** (sd 5); 29 to 43 with the sync first |
 
-   Jitter runs (B6 to B9) below 3 x W are struck from the sheet: the sender cannot tell them from none.
-   With no stamps of the port, W is the driver's worst, and the budget is called "at the driver".
-   If the first row fails, the stamps or the bypass do not work on this box: take the failing flag out of
-   the helpers and write down that the runs went through the queue, or without stamps.
+   Jitter below 3 x W = 0.16 ms cannot be told from none: the runs at 0.1 and 0.05 ms are struck.
+   If the box was restarted or its kernel changed since, run the matrix again before the session.
 2. Route A's runs (`docs/superpowers/reviews/2026-09-29-flicker/00-path-forward.md`, section 5) come first if
    both happen on one evening. Where a run here repeats one of them it says so. On an evening without them,
    run the old sender once first, as it was: `sudo .venv/bin/python cl_fpp_test.py --seconds 10 --fps 60`.
@@ -132,7 +130,7 @@ A clip at 240 fps for every run that gets "none" for flicker, to tell gone from 
 | Run | Core | Command | What it settles |
 |---|---|---|---|
 | A0 | core | `run A0 --seconds 5 --tail-seconds 0`, then film the wall for 10 s while nothing is sent | The bright control: what a held picture looks like to this camera. Also: does the card hold the picture when the sender stops? (Route A's run 6) |
-| A1 | core | `old A1 --wait sleep` | The old test sender's way: ordinary priority, `time.sleep`, through the queue; but at a true 60.000 (the old one ran 59.7) |
+| A1 | core | `old A1 --wait sleep` | The old test sender's way: ordinary priority, `time.sleep`, through the queue; but at a true 60.000 (the old one ran 59.7). On the wire its sync wanders by 0.6 ms (sd 61 us), against A2's 52 us (sd 5): A1 against A2 is a jitter run in itself |
 | A2 | core | `run A2` | The base of the evening: real-time priority, the exact wait, past the queue |
 | A2q | core | `queued A2q` | The queue alone against A2. Bottom rows noisy here and clean in A2, with "the sync left before the last row" above 0: the noise of 2026-09-29 was this PC's queue, not the card's |
 | A2r | core | `run A2r`, unannounced, somewhere in batch B | A2 again: how far two verdicts on one and the same run lie apart. A difference smaller than that is no difference |
@@ -151,7 +149,7 @@ After the batch, two things are written at the top of the sheet:
 - **`RATE`.** A3 flickers (slight or more): `RATE` is nothing, and the S2 batch is compared at 60. A3 got
   "none": `RATE` is `--fps 20`, and the S2 batch is compared with A5, where there is a flicker to lose.
 
-## Batch B: what kind of machine the card is (6 core runs, up to 9 more)
+## Batch B: what kind of machine the card is (6 core runs, up to 7 more)
 
 H4, H9 and H1 of the brief. This is the spike's main question.
 
@@ -173,7 +171,7 @@ it blind: `ab B1x "--order sync-rows" ""`. Where they tie, B1. Write its flags w
 | B6 | core | `run B6 LAYOUT --jitter-ms 2` | H1, the largest jitter first. The same as B0: the card does not care when the frame comes; skip B7 to B9 |
 | B7 | core | `run B7 LAYOUT --jitter-ms 1` | H1 |
 | B8 | | `run B8 LAYOUT --jitter-ms 0.25` | H1 |
-| B9 | | `run B9a LAYOUT --jitter-ms 0.5`, `run B9b LAYOUT --jitter-ms 0.1`, `run B9c LAYOUT --jitter-ms 0.05` | Only those between the last value that showed and the first that did not, and none below 3 x W: the budget |
+| B9 | | `run B9a LAYOUT --jitter-ms 0.5` | Only where B7 showed and B8 did not: the budget lies between 0.25 and 1 ms. Below 0.16 ms (3 x W) the sender's own jitter is as large as the one under test: no run |
 | B10 | | `run B10 LAYOUT --fps 50`, `run B11 LAYOUT --fps 120` | H9's far points. (Route A's run 5.) With `--gap-ms 12` as the layout 120 does not fit: the sender refuses it |
 | B12 | | `run B12 LAYOUT --picture scroll` | Still bars hide lost rows. Does a moving picture tear or stutter? |
 

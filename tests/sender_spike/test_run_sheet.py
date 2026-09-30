@@ -38,6 +38,13 @@ def test_the_sheet_has_its_runs():
     assert len(names) == len(set(names)) >= 40             # a name is a file: none is used twice
 
 
+def test_no_jitter_run_is_below_what_the_sender_can_hold():
+    # step 6, 2026-09-29: the port's worst is 52 us; jitter below three times that cannot be told from none
+    for name, flags in commands():
+        plan = send.plan_from(shlex.split(forms(flags)[0]))
+        assert plan.jitter_ms == 0 or plan.jitter_ms >= 0.16, name
+
+
 def test_the_helpers_of_the_sheet_are_the_ones_the_test_knows():
     text = SHEET.read_text()
     assert "run()    { local n=$1; shift; sudo chrt -f 50 .venv/bin/python tools/sender_spike/send.py --iface enp5s0 \\\n" \

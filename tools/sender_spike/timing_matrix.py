@@ -35,9 +35,11 @@ def commands(iface, python, out, seconds, dry_run=False):
     runs = [(wait, sched, queue, "sync-rows") for wait in ("sleep", "hybrid", "spin")
             for sched in ("other", "fifo50") for queue in (("qdisc",) if dry_run else ("qdisc", "bypass"))]
     runs += [("hybrid", sched, "qdisc", "rows-sync") for sched in ("other", "fifo50")]
+    runs.append(("sleep", "other", "qdisc", "rows-sync"))      # the old test sender's way
     if not dry_run:                               # the run sheet's own command, with the stamps it uses
         runs.insert(0, ("hybrid", "fifo50", "bypass", "stamp-sw"))
         runs.append(("hybrid", "fifo50", "bypass", "rows-sync"))
+        runs.append(("sleep", "other", "bypass", "rows-sync"))
     out_runs = []
     for wait, sched, queue, order in runs:
         name = "-".join([wait, sched, queue] + ([order] if order != "sync-rows" else []))

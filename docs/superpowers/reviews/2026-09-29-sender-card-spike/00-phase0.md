@@ -1,7 +1,7 @@
 # Sender-card spike, phase 0: what the desk work found
 
-2026-09-29, 17:14 to 19:11 CDT. Brief: `docs/superpowers/specs/2026-09-29-sender-card-spike.md`.
-No packet was sent to the card. The run sheet for the wall is beside this file (`01-run-sheet.md`).
+2026-09-29, 17:14 to 20:00 CDT. Brief: `docs/superpowers/specs/2026-09-29-sender-card-spike.md`.
+No packet was sent to the card. Step 6 sent its packets to a Raspberry Pi 5 that stood in for the card on the cable. The run sheet for the wall is beside this file (`01-run-sheet.md`).
 
 Labels: MEASURED (on a capture or on our machine, by a tool in `tools/sender_spike/`), SOURCE (someone else
 says so), INFERENCE (my reading), UNKNOWN.
@@ -25,16 +25,18 @@ says so), INFERENCE (my reading), UNKNOWN.
    what a computer adds and a sender card does not.
 6. The spike sender is built and tested (320 tests). With no flags its packets are the test sender's byte for
    byte; `--s2` sends the capture's sync byte for byte except the counter.
-7. On the Omarchy box the loop's own clock holds the sync to 2 us or better (sd) with a sleep followed by a
-   2 ms busy-wait, against about 60 us with `time.sleep` alone. What the queue and the driver add is not
-   measured yet: that needs root and a link (section 7).
+7. Step 6 is done (section 7), with the owner's leave and a Raspberry Pi in the card's place. At real-time
+   priority, with a sleep followed by a busy-wait of 2 ms, past the port's queue, the sync leaves the port
+   within 52 us of its time (sd 5 us), by the port's own clock. The old sender's way (`time.sleep`, ordinary
+   priority, through the queue) holds it to 0.6 ms (sd 61 us), with single syncs as late as 2.4 ms.
 8. A fresh review of the branch found no critical fault and six important ones; all are dealt with
    (section 10). Three questions are the owner's (section 9).
 9. An adversarial review by three readers, asked for by the owner, found three things that would have made
    the end result false without anyone noticing, and corrected two statements of this document. All are
-   dealt with (section 11). The weightiest: **this PC's queue can let the sync overtake the last rows of a
-   frame**, which may be the "noise on the bottom rows" of 2026-09-29. Phase 1 now sends past the queue and
-   tests the queue by itself.
+   dealt with (section 11). One of them is now measured: **this PC's queue lets the sync overtake the last
+   row of a frame**, in 2 of 2400 frames sent the old sender's way, in none of 4800 sent past the queue.
+   That is too seldom to be the steady "noise on the bottom rows" of 2026-09-29, and enough to spoil a
+   close verdict. Phase 1 sends past the queue and tests the queue by itself.
 
 ## 2. The field table, completed
 
@@ -162,7 +164,7 @@ The brief's nine stand. Changes:
 | File | What it is |
 |---|---|
 | `tools/sender_spike/send.py` | The sender. `--help` lists the flags; one flag, one variable |
-| `tools/sender_spike/timing_matrix.py` | Step 6 as one command: 16 runs, one table |
+| `tools/sender_spike/timing_matrix.py` | Step 6 as one command: 18 runs, one table |
 | `tools/sender_spike/pcap_detail.py` | Section 3 of this file |
 | `tests/sender_spike/` | 320 tests; no socket, no wall clock. They also hold every command of the run sheet |
 
@@ -198,11 +200,11 @@ What the tests hold:
 - Twenty-one faults put into the code on purpose each made tests fail; four more (a guard taken away in one of
   several places) did not, which is why the guard is now one pass in one place.
 
-What the tests do not hold: everything that needs a kernel. The raw socket, `PACKET_QDISC_BYPASS`, the
-transmit stamps (`--stamp`, `--stamp-hw`) and the port's time stamp setting have run against a stand-in
-only, and their constants and layouts were checked by reading, from memory of the Linux headers, by the
-author and by the reviewer. The first run with a real socket is step 6, with the card out of the way; its
-first row is the run sheet's own command.
+What the tests do not hold: everything that needs a kernel. That was held by step 6 instead (section 7):
+the raw socket, `PACKET_QDISC_BYPASS`, the stamps of the kernel and of the port, and the port's time stamp
+setting all worked at the first try on the Omarchy box, 600 stamps of 600 in the run sheet's own command.
+One fault showed there and nowhere else: the port stamps one packet at a time, so a last row that asked
+for the port's clock took it from the sync behind it. The row now asks the kernel alone.
 
 Decisions taken while building, each open to the owner's veto:
 
@@ -215,11 +217,13 @@ Decisions taken while building, each open to the owner's veto:
   `--pixel 25`, not the base.
 - `--brightness` does not reach an S2-style sync, which carries its own level; `--sync-level` does.
 
-## 7. Timing: what is measured and what is not
+## 7. Timing: step 6, measured
 
-MEASURED on the Omarchy box, the loop's own clock, no socket, plain scheduling, 60 frames a second, 600
-frames each (`timing_matrix.py --dry-run`). sd of sync to sync, and the interval furthest from 16.667 ms,
-in microseconds:
+### The loop's own clock, no socket
+
+MEASURED on the Omarchy box, plain scheduling, 60 frames a second, 600 frames each
+(`timing_matrix.py --dry-run`). sd of sync to sync, and the interval furthest from 16.667 ms, in
+microseconds:
 
 | Wait | 17:30 | 17:43 | 18:19 (raw output kept in `timing-dry/`) |
 |---|---|---|---|
@@ -227,39 +231,75 @@ in microseconds:
 | sleep, then busy-wait 2 ms | 1, 17 | 2, 22 | 0, 1 |
 | busy-wait | 10, 186 | 1, 17 | 15, 253 |
 
-The busy-wait lost a slice of about 0.2 ms to another task in two runs of three; the sleep followed by a
-busy-wait did not. The first two runs' raw output was not kept.
+### On the wire
 
-This is the clock the sender reads before it hands the packet over. It is not the wire. NOT MEASURED: the
-same under `chrt -f 50`, what the port's queue (fq_codel) and the driver add, and what bypassing the queue
-changes. The port (e1000e) can stamp packets with its own clock as they leave, which is as close to the
-wire as this machine gets.
+MEASURED on 2026-09-29 from 19:47 to 20:00, with the owner's leave (sudo for an hour) and the wall's cable
+in a Raspberry Pi 5 instead of the card. The link held (its counter of changes stood at 32 before and
+after); no run had a packet on the port that was not its own. Two runs of the matrix, the second with the
+final code; raw output in `timing-wire/first/` and `timing-wire/second/`. The port is an Intel e1000e; its
+own clock stamps a packet as it leaves.
 
-The rest of step 6 needs two things from the owner:
+Sync to sync by the port's clock, 600 frames each, the second run (the first in brackets). sd, and the
+interval furthest from the period, in microseconds:
 
-1. **Root** for the raw socket and for `chrt`: sudo for the session, or the owner runs the one command.
-2. **A link without the card.** The brief says "the cable unplugged from the card or the card off". With no
-   link the kernel drops the packets before the driver: there is then nothing to measure but the loop, and
-   the runs that bypass the queue fail. So the wall's cable goes into another gigabit port for the
-   measurement: a switch, or a laptop.
+| Wait | Scheduling | Order | Through the queue | Past the queue |
+|---|---|---|---|---|
+| sleep, then busy-wait 2 ms | real-time 50 | sync first | 3, 15 (8, 44) | **3, 29** (4, 43) |
+| sleep, then busy-wait 2 ms | real-time 50 | base | 5, 53 | **5, 52** |
+| sleep, then busy-wait 2 ms | ordinary | sync first | 4, 30 (7, 47) | 9, 88 (49, 845) |
+| sleep, then busy-wait 2 ms | ordinary | base | 5, 41 | |
+| `time.sleep` | ordinary | sync first | 63, 370 (73, 181) | 54, 155 (62, 208) |
+| `time.sleep` | ordinary | base: **the old sender's way** | **61, 635** | 57, 264 |
+| `time.sleep` | real-time 50 | sync first | 45, 149 (66, 701) | 57, 144 (66, 153) |
+| busy-wait | ordinary | sync first | 5, 35 (4, 25) | 13, 216 (22, 424) |
+| busy-wait | real-time 50 | sync first | 9, 63 (8, 54) | 2790, 36792 (5, 34) |
 
-Then, on the Omarchy box, about 3 minutes:
+What the table says:
 
-```
-cd ~/Work/codeisart-wall
-sudo .venv/bin/python tools/sender_spike/timing_matrix.py --iface enp5s0 --card-unplugged \
-    --out timing-$(date +%F-%H%M)
-```
+- **The sender the run sheet uses** (bold, right): the sync leaves the port within 52 us of its time, sd
+  5 us or less, in either order. This is W of the run sheet's gate. Jitter below three times that, 0.16
+  ms, cannot be told from none: the runs at 0.1 and 0.05 ms are struck.
+- **The old sender's way**: sd 61 us, single syncs 0.6 ms late in 10 s, and 2.4 ms late once in a run of
+  30 s (at the driver). Whatever the card made of the runs of 2026-09-29, it was fed with this.
+- **Real-time priority does not mend `time.sleep`**: its worst stays at 0.15 to 0.7 ms. The wake-up is late,
+  not the scheduling.
+- **The busy-wait alone is the worst choice at real-time priority**: one run lost 37 ms in one piece and four
+  frames with it, and up to half of the port's stamps went missing in all four of its runs (the driver reads
+  them in a task of ordinary priority). The sleep followed by a short busy-wait had none of this.
+- **In the base's order the wire is steadier than the hand-over.** The sync's time at the driver wanders with
+  the time the rows before it took (sd 14 to 23 us); on the wire the port sends the burst at its own
+  pace, and the sync follows 0.23 ms behind the first packet, sd 5 us.
+- **Ordinary priority is a gamble**: mostly as good as real-time, and then 0.2 to 0.8 ms late once.
 
-`--card-unplugged` is the owner's word that the cable is not in the card: twelve of the sixteen runs send
-the sync before the rows, which the card has not seen yet. Without the flag the matrix does not start.
+### Does the queue let the sync overtake the rows?
 
-What the table has to say before phase 1 (the run sheet's gate): that the stamps and the bypass work
-(first row); whether this port's queue lets the sync overtake the rows (the columns "order broken" and
-"queue held" of the rows through the queue); and the port's worst interval, which decides which jitter
-runs count. Where the busy-wait runs at real-time priority, stamps of the port may be missing: the driver
-reads them in a task of ordinary priority, which the busy-wait holds off (the reviewer's reading of
-e1000e; not measured).
+MEASURED, by the kernel's stamps of the last row and of the first sync of each frame, in the base's order:
+
+| The sender | Through the queue | Past the queue |
+|---|---|---|
+| The old sender's way (`time.sleep`, ordinary priority) | **2 of 2400 frames** (2 of 1800 in one run of 30 s, 0 of 600 in another) | 0 of 2400 |
+| Sleep, then busy-wait; ordinary or real-time priority | 0 of 2400 | 0 of 2400 |
+
+In one of the two frames the sync left 65 us before the last row, which had waited 117 us in the queue; in
+the other they left 0.4 us apart. The queue held packets in 9 of the 17 runs that went through it (up to 13
+requeues in 600 frames) and in none that went past it. The old sender itself (`cl_fpp_test.py`), run for
+10 s at 60 and at 20 frames a second, did not make the queue hold a packet once.
+
+INFERENCE: the queue is not what made the bottom rows noisy on 2026-09-29. It overtakes too seldom, about
+once in a thousand frames, and with a still picture a row that comes late holds what the row before it
+held. The noise is more likely the card's own, as two other authors describe it (`01-protocol-refs.md`,
+section 3.2). The queue stays a reason to send past it: a verdict on 10 s of flicker should not hang on
+whether one frame in a thousand went out in another order.
+
+### What else the wire showed
+
+- **The S2's frames leave this PC.** The sync of 1036 bytes with the packet type 0x0100, which a network
+  stack could take for a length, was stamped by the port 302 times of 302, and the port's counter of sent
+  packets matched the run's to the packet. A "no picture" in the S2 batch will be the card's answer.
+- **The S2's rate is met**: `--fps 60.32` gives a period of 16.578 ms at the port (the capture: 16.579).
+- **The jitter is what the log says**: `--jitter-ms 1` gave sd 0.410 ms of sync to sync at the port in either
+  order; a delay spread evenly over 1 ms gives 0.408.
+- **The byte limit of the port's queue is 26298**, one frame of the base. The S2's frame is 26956 bytes.
 
 ## 8. The Omarchy box as found (read, not changed)
 
@@ -285,11 +325,10 @@ e1000e; not measured).
    pixels. Is that the rule?
 2. **The sync before the rows** (section 4): the owner's word before B1. The one warning against it turned
    out to be about a stream of syncs without rows, which the sender cannot produce.
-3. **Step 6:** root, and the wall's cable in another gigabit port (section 7).
+3. ~~Step 6~~: done on 2026-09-29 (section 7).
 
 Open after phase 0:
 
-- Step 6 of the brief, beyond the loop's clock (section 7).
 - Whether the S2 sends anything that a PC's port does not deliver to a capture (frames with a bad checksum,
   idle patterns). Thacher's "saturates the link" hints at it. Only a sender card on the bench can say
   (phase 2).
@@ -336,7 +375,7 @@ below was checked by the author before anything was changed.
 
 | Finding | Checked how | Done |
 |---|---|---|
-| **The port's queue can let the sync overtake the last rows.** fq_codel sorts packets into flows by a hash that takes in bytes 12 and 13, so brightness, rows and sync are three flows. When the port's byte limit stops the queue in the middle of a frame, the rows wait; the syncs come as a new flow and are served after 4 more rows and before the rest. It touches every run in the base's order. It fits the "noise on the bottom rows at 60, gone with a pause of 1 ms" of 2026-09-29; that it is the cause is a suspicion | The mechanism: the reviewer read the kernel's source; the author went through the same path from memory of it, without the source at hand, and found no fault (the packet socket takes the protocol from the header; the hash starts at the protocol; new flows are served first; one quantum is 1514 bytes). On the box: the byte limit is one frame, the queue has counted 123 requeues and 120 new flows (section 8). How often it happens in our runs: not measured | Phase 1 sends past the queue (`--qdisc-bypass` in the helpers). One pair, A2 against A2q, tests the queue itself. Every run reports what the queue held and counts the frames whose sync left before their last row. Step 6 measures both without the card |
+| **The port's queue can let the sync overtake the last rows.** fq_codel sorts packets into flows by a hash that takes in bytes 12 and 13, so brightness, rows and sync are three flows. When the port's byte limit stops the queue in the middle of a frame, the rows wait; the syncs come as a new flow and are served after 4 more rows and before the rest. It touches every run in the base's order | The mechanism: the reviewer read the kernel's source; the author went through the same path from memory of it, without the source at hand, and found no fault. **Then measured** (section 7): 2 of 2400 frames sent the old sender's way, none of 4800 sent past the queue | Phase 1 sends past the queue (`--qdisc-bypass` in the helpers). One pair, A2 against A2q, tests the queue itself. Every run reports what the queue held and counts the frames whose sync left before their last row. The reviewer's thought that this was the noise on the bottom rows of 2026-09-29 does not hold: too seldom |
 | **The jitter runs measured a pause.** In the base's order `--jitter-ms` held back the sync alone, which opened a random pause between rows and sync: 8 to 2000 us, mean 1094, at 2 ms. A pause of 1 ms there is on record as changing the flicker | Run by the author | The jitter holds the whole frame back in either order. A test holds the spacing of rows and sync equal with and without jitter |
 | **The S2 batch could end in a false "no byte helps".** At 60 the base may already look steady, so nothing can look steadier. No run showed that flicker can be seen at the dim level at all. The S2-style runs carried level 255 against the dim base's 25, so "steadier" could have been "brighter" | By reading, and with `plan_from` | Two runs that are known to flicker (A4, A5). The comparison is made at a rate where the base flickers (`RATE`). Every rung has the dim base's light; the S2's own level is the last rung, read for brightness only |
 
@@ -367,8 +406,9 @@ stream of syncs without rows (section 4); the S2's jitter is a bound, not a meas
 - The unknown fields: no source reports a lock or a lasting change from any field of a sync packet;
   settings travel in other packet types, which the sender cannot build.
 - EtherType 0x0100 at 1036 bytes: nothing in Linux's transmit path or in e1000e treats a frame by its
-  length field; the port's own counter proves that the frames left.
-- The socket path, by reading: every constant and layout; a full error queue drops stamps and never stops
-  the sending.
+  length field. Measured since: the port stamped every one (section 7).
+- The socket path: every constant and layout, by reading; and at the first try on the box.
+- The reviewer's warning that the busy-wait at real-time priority would cost stamps of the port: it did,
+  half of them, and once 37 ms.
 - The rate runs: a card that free-runs gives 10 beats in 10 s at 59 and 61; the four cells of the table
   hold. The ladder: one variable a rung.

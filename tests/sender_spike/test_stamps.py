@@ -99,6 +99,18 @@ def test_the_port_clock_is_asked_for_only_with_hardware():
     assert flags == send.SOF_TX_SCHED | send.SOF_TX_SOFTWARE | send.SOF_TX_HARDWARE
 
 
+def test_the_port_clock_is_kept_for_the_sync():
+    # The port stamps one packet at a time (measured on e1000e, 2026-09-29): a last row that asked for the
+    # port's clock took it from the sync 3 us behind it, 600 times of 600. The row asks the kernel alone.
+    sock = FakeSocket()
+    sink = send.Stamper(sock, hardware=True)
+    two_frames(sink)
+    asks = [struct.unpack("I", anc[0][2])[0] for i, anc in sock.asked]
+    assert [what for what, n in sink.asked] == ["row", "sync", "row", "sync"]
+    assert asks == [send.SOF_TX_SCHED | send.SOF_TX_SOFTWARE,
+                    send.SOF_TX_SCHED | send.SOF_TX_SOFTWARE | send.SOF_TX_HARDWARE] * 2
+
+
 def test_the_socket_is_told_to_report_stamps_without_the_packet():
     sock = FakeSocket()
     send.Stamper(sock, hardware=False)
