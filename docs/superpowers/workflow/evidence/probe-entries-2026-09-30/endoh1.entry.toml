@@ -1,0 +1,9 @@
+title = "ASCII fluid"
+author = "Yusuke Endoh"
+year = 2012
+station = 4
+source = "endoh1.alt.c"
+build = "cc -std=gnu11 -Wall -Wno-absolute-value -Wno-strict-prototypes -Wno-misleading-indentation -DG=1 -DP=4 -DV=8 -O2 -o prog endoh1.alt.c -lm"
+run = "./prog < endoh1.alt.c"
+build_seconds = 60
+run_seconds = 40

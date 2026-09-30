@@ -8,8 +8,11 @@
 - Freshness check: every PNG in evidence/itNN/ carries the git sha in its header and it must equal HEAD. Before M4a, the evidence README records HEAD by hand (`git rev-parse --short HEAD`). A mismatch is a tooling defect, fixed before anything is judged.
 - Gates: gate-deploys: false, gate-iteration-plans: false
 - Plan review: only for a safety slice (Loop rule 4), one round. Verdict in evidence/itNN/plan-review.md. (Owner decision 2026-09-28; it replaces Q6's review of every plan.)
-- iterations-per-run: 6
-  (Owner decision Q49, 2026-09-28 23:10, given as iteration 9 ended: "Lets continue onto the show daemon and other iterations until you need me next." The run starts at iteration 10, the show daemon's foundation tasks, and gates after iteration 15 or when rule 8 asks for the owner.
+  For the run of Q80 (iterations 16 to 19): every plan gets one adversarial review round by a fresh-context reviewer (`model: opus`), the owner's ask of 2026-09-30; a safety slice keeps rule 4's form. Verdict in evidence/itNN/plan-review.md.
+- iterations-per-run: 4
+  (Owner decision Q80, 2026-09-30 evening: the run is the show's entries, D5, iterations 16 to 19; it gates after
+  iteration 19 or when D5 is done and rule 8 asks for the owner. Before it, Q49 set 6 for iterations 10 to 15.
+  Before that, owner decision Q49, 2026-09-28 23:10, given as iteration 9 ended: "Lets continue onto the show daemon and other iterations until you need me next." The run starts at iteration 10, the show daemon's foundation tasks, and gates after iteration 15 or when rule 8 asks for the owner.
   Before it, owner decision Q42, 2026-09-28, answering the gate after iteration 8: iteration 9 is M4c, Pong by the body, then the loop gates and the operator moves to the show daemon.
   Before it, owner decision Q33, answering the gate after iteration 7: iteration 8 is M4b, then the loop gates and the operator moves to the show daemon. Before it, Q21: iterations 6 and 7. The loop counts iterations itself and gates at step 8.)
 - stop-blocks: 6
@@ -84,6 +87,14 @@ not read this file by themselves.
    irreversible action, a change to the roadmap's scope or end goal, or the iteration cap. A step that only
    the owner can do (hardware, a live smoke, a recording) goes into "Owner items" in the roadmap and the loop
    carries on with the next milestone that does not need it.
+9a. **The network and the Pi 5 (the run of Q80).** The sources of the five entries may be fetched from
+    github.com/ioccc-src/winner (curl to raw.githubusercontent.com or the contents API); nothing else is fetched.
+    The Pi 5 (`ssh trey@codeisart.local`, the repo at ~/codeisart on main with its venv) is used by the operator
+    inline only, never by an agent, for Linux-only checks: an entry's build with gcc, its run under `unshare -rn`,
+    the show's tests that skip on the Mac. Never on the Pi: `python -m show` with a wall backend, `systemctl`,
+    the sender or any tool that opens the card's interface, a write outside ~/codeisart and /tmp, a `git` command
+    that moves the Pi's checkout off main (a `git -C ~/codeisart pull --ff-only` after a push is allowed once the
+    owner has pushed; the loop itself does not push). A Pi command is one ssh call, at most 10 minutes.
 9. **Never change directory.** No `cd` in a Bash command: use absolute paths and `git -C`. Agents in a
    worktree use the worktree's absolute path.
 10. **Time and size.** A slice is what fits the time, not a count of tasks: about six tasks when most run

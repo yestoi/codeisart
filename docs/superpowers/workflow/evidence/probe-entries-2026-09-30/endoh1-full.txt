@@ -1,0 +1,6 @@
+no unshare: entries run without network isolation
+  0.00s  source
+  5.83s  build
+  7.38s  run
+ 17.58s  dwell
+ 21.62s  done

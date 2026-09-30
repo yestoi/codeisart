@@ -1,0 +1,4 @@
+no unshare: entries run without network isolation
+  0.00s  source
+  4.32s  build
+  5.84s  run

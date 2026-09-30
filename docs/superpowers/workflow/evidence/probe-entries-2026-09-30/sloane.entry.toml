@@ -1,0 +1,9 @@
+title = "Homer's favorite"
+author = "Andy Sloane"
+year = 2006
+station = 1
+source = "sloane.alt.c"
+build = "cc -std=gnu99 -Wall -Wno-implicit-function-declaration -Wno-implicit-int -include math.h -include stdio.h -DS=75000 -O2 -o prog sloane.alt.c -lm"
+run = "./prog"
+build_seconds = 60
+run_seconds = 40
