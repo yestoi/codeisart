@@ -27,86 +27,25 @@ on every push as well. A level that is NaN or not above 0 is sent as 0: it fails
 """
 from __future__ import annotations
 
-import math
 import socket
 
 import numpy as np
 
-DST_MAC = bytes.fromhex("112233445566")
-SRC_MAC = bytes.fromhex("222233445566")
-ETH_ROW = 0x5500
-ETH_FRAME = 0x0107
-ETH_BRIGHTNESS = 0x0A00
-CHUNK_PIXELS = 256          # most pixels per row packet; Falcon Player allows up to 497
-ROW_HEADER_LEN = 14 + 7     # Ethernet header plus the 7-byte row header
-FRAME_PAYLOAD_LEN = 98
-BRIGHTNESS_PAYLOAD_LEN = 63
+from show.display.colorlight_packets import (BRIGHTNESS_PAYLOAD_LEN, CHUNK_PIXELS, DST_MAC, ETH_BRIGHTNESS,  # noqa: F401
+                                             ETH_FRAME, ETH_ROW, FRAME_PAYLOAD_LEN, ROW_HEADER_LEN, SRC_MAC,
+                                             brightness_packet, chunk_pixels, frame_packet, level_byte,
+                                             row_buffers, row_packets)
+
 SAFE_BRIGHTNESS = 0.4       # the level before set_brightness: arcade.toml's brightness, show.toml's cap
 BRIGHTNESS_EVERY = 3        # pushes between brightness packets: 0.1 s at 30 Hz
 
 
-def _eth(ethertype: int) -> bytes:
-    return DST_MAC + SRC_MAC + ethertype.to_bytes(2, "big")
-
-
-def _level(level: float) -> int:
-    if not level > 0.0:   # NaN, zero or negative: dark
-        return 0
-    return int(min(1.0, level) * 255)
-
-
-def _row_header(row: int, offset: int, count: int) -> bytes:
-    return _eth(ETH_ROW | (row >> 8)) + bytes([row & 0xFF, offset >> 8, offset & 0xFF,
-                                               count >> 8, count & 0xFF, 0x08, 0x88])
-
-
-def _chunk_pixels(width: int) -> int:
-    """Pixels per row packet: the row split into the fewest equal packets of at most CHUNK_PIXELS."""
-    chunks = math.ceil(width / CHUNK_PIXELS) if width > 0 else 0
-    if chunks == 0 or width % chunks:
-        raise ValueError(f"width {width} does not split into {chunks} equal row packets")
-    return width // chunks
-
-
-def row_packets(row: int, pixels: np.ndarray) -> list[bytes]:
-    """Reference encoder for one row of (width, 3) RGB pixels; push() must match it byte for byte."""
-    chunk = _chunk_pixels(pixels.shape[0])
-    out = []
-    for off in range(0, pixels.shape[0], chunk):
-        data = np.ascontiguousarray(pixels[off : off + chunk], dtype=np.uint8)
-        out.append(_row_header(row, off, chunk) + data.tobytes())
-    return out
-
-
-def frame_packet(brightness: float) -> bytes:
-    b = _level(brightness)
-    payload = bytearray(FRAME_PAYLOAD_LEN)
-    payload[21] = b
-    payload[22] = 0x05
-    payload[24] = payload[25] = payload[26] = b
-    return _eth(ETH_FRAME) + bytes(payload)
-
-
-def brightness_packet(level: float) -> bytes:
-    b = _level(level)
-    payload = bytearray(BRIGHTNESS_PAYLOAD_LEN)
-    payload[0] = payload[1] = b
-    payload[2] = 0xFF
-    return _eth(ETH_BRIGHTNESS | b) + bytes(payload)
-
-
 class ColorlightDisplay:
     def __init__(self, width: int, height: int, iface: str, sock=None, brightness: float = SAFE_BRIGHTNESS):
-        self._chunk = _chunk_pixels(width)
-        chunks = width // self._chunk
+        self._chunk = chunk_pixels(width)
         self.width, self.height = width, height
         # One prebuilt packet per (row, chunk); headers are fixed, push() fills the pixels.
-        self._packets = np.zeros((height, chunks, ROW_HEADER_LEN + self._chunk * 3), np.uint8)
-        for y in range(height):
-            for c in range(chunks):
-                header = _row_header(y, c * self._chunk, self._chunk)
-                self._packets[y, c, :ROW_HEADER_LEN] = np.frombuffer(header, np.uint8)
-        self._pixels = self._packets[:, :, ROW_HEADER_LEN:]
+        self._packets, self._pixels = row_buffers(width, height)
         if sock is None:
             sock = _open_raw_socket(iface)
         self.sock = sock

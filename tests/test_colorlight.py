@@ -27,52 +27,6 @@ class FakeSocket:
         self.closed = True
 
 
-def test_row_packets_chunk_512_pixels_into_two():
-    pixels = np.zeros((512, 3), np.uint8)
-    pixels[0] = (255, 0, 0)          # red pixel at column 0
-    pixels[256] = (0, 0, 255)        # blue pixel at column 256
-    pk = row_packets(5, pixels)
-    assert len(pk) == 2
-    header = pk[0][:14]
-    assert header[:6] == DST_MAC and header[6:12] == SRC_MAC and header[12:14] == b"\x55\x00"
-    payload = pk[0][14:]
-    assert payload[:7] == bytes([5, 0, 0, 1, 0, 0x08, 0x88])          # row 5, offset 0, count 256
-    assert payload[7:10] == bytes([255, 0, 0])                        # RGB order, as Falcon Player
-    payload2 = pk[1][14:]
-    assert payload2[:7] == bytes([5, 1, 0, 1, 0, 0x08, 0x88])         # offset 256
-    assert payload2[7:10] == bytes([0, 0, 255])
-    assert all(len(p) == 14 + 7 + 256 * 3 for p in pk)
-
-
-def test_row_packets_split_384_pixels_equally():
-    pixels = np.zeros((384, 3), np.uint8)
-    pixels[192] = (0, 255, 0)
-    pk = row_packets(2, pixels)
-    assert [len(p) for p in pk] == [14 + 7 + 192 * 3] * 2              # 192 + 192, as push() sends
-    assert pk[1][14:21] == bytes([2, 0, 192, 0, 192, 0x08, 0x88])      # offset 192, count 192
-    assert pk[1][21:24] == bytes([0, 255, 0])
-
-
-def test_row_above_255_sets_ethertype_low_byte():
-    pk = row_packets(300, np.zeros((8, 3), np.uint8))
-    assert pk[0][12:14] == b"\x55\x01" and pk[0][14] == 300 & 0xFF
-
-
-def test_frame_packet_matches_falcon_player():
-    fp = frame_packet(0.5)
-    assert fp[:12] == DST_MAC + SRC_MAC and fp[12:14] == b"\x01\x07" and len(fp) == 112
-    assert fp[35] == 127 and fp[36] == 0x05 and fp[38:41] == bytes([127, 127, 127])
-    assert sum(fp[14:]) == 127 * 4 + 5
-
-
-def test_brightness_packet_matches_falcon_player():
-    bp = brightness_packet(0.4)
-    assert bp[:12] == DST_MAC + SRC_MAC and len(bp) == 77
-    assert bp[12] == 0x0A and bp[13:17] == bytes([102, 102, 102, 0xFF])
-    assert not any(bp[17:])
-    assert brightness_packet(1.7)[13] == 255 and brightness_packet(-1.0)[13] == 0
-
-
 def test_push_sends_frame_packet_then_rows():
     sock = FakeSocket()
     d = ColorlightDisplay(512, 4, "eth0", sock=sock)
@@ -180,9 +134,6 @@ def test_set_brightness_restarts_the_resend_count():
 
 
 def test_nan_or_negative_brightness_fails_dark():
-    assert brightness_packet(math.nan)[13] == 0 and brightness_packet(math.nan)[14:16] == b"\x00\x00"
-    assert frame_packet(math.nan)[35] == 0 and frame_packet(math.nan)[38:41] == b"\x00\x00\x00"
-    assert frame_packet(0.0)[35] == 0 and frame_packet(-0.5)[35] == 0
     sock = FakeSocket()
     d = ColorlightDisplay(128, 32, "eth0", sock=sock, brightness=math.nan)
     d.push(np.zeros((32, 128, 3), np.uint8))
