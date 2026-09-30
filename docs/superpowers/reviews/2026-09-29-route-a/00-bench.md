@@ -176,12 +176,97 @@ three runs. The owner's words as typed.
 8, the top and the left edge lit, the lines unbroken across the seams. `border` (new that morning) lights all four
 edges, the last row and column with them. SEEN.
 
+### In the unit, under the arcade, and long (09:05 to 09:34)
+
+Dry runs, no card. Each ran in a transient systemd unit with `deploy/show.service`'s settings (`systemd-run` with
+`User=trey`, `ProtectSystem=strict`, `ReadWritePaths=` the entries, `PrivateTmp=yes`, `AmbientCapabilities=CAP_NET_RAW
+CAP_SYS_NICE`, the groups audio and gpio): the ordinary user, no sudo inside. `real-time yes` in every stats line:
+the unit's ambient capability is enough, as the kernel's `CONFIG_RT_GROUP_SCHED` not set promised. MEASURED.
+
+"The arcade" is a bench script (`~/bench/arcade_load.py` on the Pi, not kept in the repo) that builds what
+`arcade.main.run` builds: the lobby, every game, the runner's loop at 30 ticks a second, the governor, and the real
+`MediaPipeCamera` with the lite pose model in its thread. The Pi has no camera yet, so the camera's frames are one
+still photograph of a person (640x480, 30 a second); `mediapipe` 1.0.1 was installed into the Pi's venv by hand and
+the model copied to `models/`, neither is in `.[pi]` or the README. The display is the driver on a socket that
+discards.
+
+| Run | Seconds | Ticks a second | Late ticks | A tick, ms (median, p95, max) | Pose a second | An inference, ms (median, p95, max) | Frames | Late (over 1 ms) | Worst, us | sd, us |
+|---|---|---|---|---|---|---|---|---|---|---|
+| the arcade, pose asked at 10 a second | 600 | 30.00 | 0 | 2.3, 3.3, 10.8 | 10.0 | 56.0, 66.9, 80.8 | 35400 | 0 | 36 | 4 |
+| the arcade, pose asked at 30 a second | 120 | 30.00 | 0 | 2.5, 3.5, 5.1 | 17.3 | 56.2, 63.9, 85.8 | 7080 | 0 | 30 | 4 |
+| `wall_pattern.py grid --dry-run`, idle | 600 | (30 pushes) | | | | | 35400 | 0 | 10 | 0 |
+
+What they say:
+
+- **The lone late sync did not come.** Ten minutes idle: a worst of 10 us. The Omarchy box's came about once a
+  minute at 200 to 800 us; the Pi showed none in 35400 frames, twice.
+- **Under the arcade the sync holds.** A worst of 36 us in ten minutes, against the 100 us the spike asked for, with
+  the pose model taking two thirds of a core beside the loop (the process 65 % of one core; 106 % when asked for 30).
+- **The loop holds 30 ticks a second** beside the pose thread; no tick was late.
+- **The lite pose model takes 56 ms an inference on the Pi 5**, so 10 a second holds and 30 does not: asked for 30
+  it made 17.3. Whatever wants the camera faster than about 17 a second on this Pi needs another model or another
+  path.
+- **Limits of the run:** the photograph stands still, so the arcade stayed in its lobby (`invite` at the end) and no
+  game was played; the games' own cost is the tick budget's (about 1.5 ms, `evidence/pi-perf.md`). No camera was
+  read: a USB camera's capture and decode are not in these numbers. 51 C at the end, not throttled.
+
+**What the Pi sends the card besides the driver's packets** (09:31, three minutes, `tcpdump -Q out` on `eth0`, no
+sender running): 24 frames, all the Pi's own housekeeping. 7 DHCP requests, 6 IPv6 router solicitations, 6
+multicast listener reports, 4 mDNS announcements over IPv6, 1 neighbour solicitation; the card answered nothing. At
+1000 Mb/s the longest (329 bytes) holds the wire under 3 us, so a sync that leaves behind one is late by that at
+most, and every wall run above was steady with them going on. Left as it is: DHCP on `eth0` is the way in if Wi-Fi
+fails. MEASURED; whether the card minds these frames is SEEN only as the steady wall.
+
+### At the wall again, from the Pi (09:36 to 09:42)
+
+The owner at the wall, brightness 0.1, real-time priority in every run, no send errors, no slips.
+
+| Run | What | Frames | Late | Worst, us | sd, us | The owner's words |
+|---|---|---|---|---|---|---|
+| 1 | `send.py --iface eth0 --qdisc-bypass --stamp --fps 59 --order sync-rows`, 20 s, under `chrt -f 50` | 1180 | 0 | (below) | | steady: "yes" |
+| 2 | `grid`, 60 s, pushes at 20 | 3540 | 0 | 8 | 1 | steady: "yes" |
+| 3 | `grid --stop-for 5`, 20 s (Q66) | 885 | 0 | 11 | 1 | the picture stayed: "yes, did not see a blink (but would need to see again to confirm)" |
+| 4 | the arcade (`arcade_load.py --wall`), 60 s | 3540 | 0 | 39 | 5 | a video, from the replay |
+| 5 | the same, 90 s, filmed | 5310 | 0 | 42 | 5 | the video, 3.5 s |
+
+- **The kernel's stamps** (run 1, MEASURED): sync to sync at the driver 16.949 ms, sd 1 us, every interval 16.933 to
+  16.957 ms; the sync 0.3 us after its tick (worst 0.5); the port sent 84252 packets during the run, all the
+  sender's, and its queue held none. The spike asked for the sync within 100 us: the Pi holds it within 20.
+- **20 pushes and Q66 from the Pi:** as from the Omarchy box. SEEN. On the box the owner saw "the slightest blink"
+  at the stop and the restart; from the Pi none, to be seen once more.
+- **The arcade on the card:** 30 ticks a second, none late, the pose model at 10 a second beside it, the sync worst
+  at 39 and 42 us.
+- **A faint second picture on the wall** (the video, SEEN in its frames): beside the lobby's orange figure a dimmer,
+  redder copy of its arms and legs, a few rows lower, the same in every frame of the video. It is not in what the
+  Pi sends: of the last 150 frames the arcade pushed in a dry run, every lit pixel was lit in all of them and the
+  figure is drawn once. So it is made at the panel. INFERENCE: the row ghosting that
+  `docs/superpowers/reviews/2026-09-29-flicker/03-panel-electrical.md` section 2.4 expects from the card's saved
+  Blanking Value of 3 (300 ns, under the ICND2018's 500 ns), and its first change in section 2.6: blanking 3 to 6,
+  then 11. A card setting, through LEDVision; not the driver's and not the Pi's. The owner: "I see it by eye."
+
+### The second picture chased in LEDVision, and a video from both machines (09:50 to 10:11)
+
+The card's cable on the Omarchy box, LEDVision's grid of single white rows 16 apart, paused, at the card's saved
+Level 3 (23%). The owner sees the fainter copy under each line there too, at the saved settings: so it is not the
+Pi's and not the Linux sender's. Four settings of the row driver, each sent to the card's RAM only, changed
+nothing to the owner's eye: Blanking Value 3 to 6 ("looks the same, may be weaker") and to 11 ("still the same"),
+the ICN2018/3018 page's Blanking Enhancement on ("still the same"), its Blanking Voltage 3.25 V to 2.0 V ("still
+the same"); 3.75 V was sent and not judged. The inference above is therefore wrong as to the cure: blanking is not
+it. The owner stopped the trial ("I don't think we're getting anywhere"; LEDVision's own stream is hard to tune
+by). The settings were put back and sent, nothing was saved to the card's flash, the VM shut off. The record, and
+an untested reading of the copy's place (the row lit next, if the panel scans 0, 4, 1, 5, 2, 6, 3, 7), is in
+`hardware.md` on the branch `ledvision-card1`.
+
+Then the same video (`rick.mp4`, 640x360 at 25 frames a second) by `tools/wall_video.py`, 60 s, brightness 0.1,
+pushes at 30: first from the Omarchy box by the owner (its numbers not kept), then from the Pi (10:10): 1798 frames
+shown, 206 ticks held by the governor, the sender 3541 frames, 0 late, worst 15 us, sd 4 us, real-time yes. The
+owner: "looks the same on both". SEEN: the Pi shows what the Omarchy box shows.
+
 OPEN on the Pi:
 
-- `send.py --stamp` on the link (the kernel's stamps): not run, the wall runs came first.
-- Runs longer than 60 s, for the lone late sync.
-- The driver under the arcade itself, not a stand-in load.
-- Real time under the systemd unit: the kernel allows it; `real-time yes` in the unit's log is not yet seen.
-- The 20 pushes run and Q66 (`--stop-for`) from the Pi.
-- NetworkManager asks `eth0` for DHCP every 45 s and its packets reach the card. Left alone: DHCP on `eth0` is the
-  way in if Wi-Fi fails.
+- Q66 seen once more from the Pi, for the blink.
+- A game played through a real camera: the Pi has none attached.
+
+OPEN on the wall, not the Pi's: the fainter second picture. It is there from both machines and from LEDVision, and
+the row driver's four settings do not move it. Not tried: the refresh rate and its multiple, the Blanking Phase
+page (line switch time, the 4051 times), a higher brightness (the copy may show less against a brighter picture).
