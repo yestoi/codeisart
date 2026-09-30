@@ -18,7 +18,6 @@ whose first data byte shares the EtherType at byte 13. Offsets count from the st
 
 tests/test_colorlight_packets.py pins every byte to the spike sender's builders (tools/sender_spike/send.py,
 `--s2 --byte36 05`), which are what went on the wire. A level that is NaN or not above 0 is 0: dark, never bright.
-The 0x0A brightness packet builders below are kept only until the sender stops importing them.
 """
 from __future__ import annotations
 
@@ -30,13 +29,11 @@ DST_MAC = bytes.fromhex("112233445566")
 SRC_MAC = bytes.fromhex("222233445566")
 ETH_ROW = 0x5500
 ETH_FRAME = 0x0100          # packet type 0x01, source type 0x00 (the S2's; our old sync said 0x07)
-ETH_BRIGHTNESS = 0x0A00
 CHUNK_PIXELS = 256          # most pixels per row packet; Falcon Player allows up to 497
 ROW_HEADER_LEN = 14 + 7     # Ethernet header plus the 7-byte row header
 ROW_TAIL = b"\x00\x00"      # bytes 19 and 20 of a row packet (the S2's; the test sender's was 08 88)
 SYNC_LEN = 1036             # the S2's sync, as captured
 FRAME_PAYLOAD_LEN = SYNC_LEN - 14
-BRIGHTNESS_PAYLOAD_LEN = 63
 COUNTER_OFFSET = 14         # the frame counter, one byte, wrapping
 LEVEL_OFFSET = 35           # the level byte; it is repeated at 38 to 40
 
@@ -99,17 +96,5 @@ def sync_bytes(b: int, counter: int = 0) -> bytes:
     return _eth(ETH_FRAME) + bytes(payload)
 
 
-def brightness_bytes(b: int) -> bytes:
-    """The brightness packet with the level byte b."""
-    payload = bytearray(BRIGHTNESS_PAYLOAD_LEN)
-    payload[0] = payload[1] = b
-    payload[2] = 0xFF
-    return _eth(ETH_BRIGHTNESS | b) + bytes(payload)
-
-
 def frame_packet(brightness: float, counter: int = 0) -> bytes:
     return sync_bytes(level_byte(brightness), counter)
-
-
-def brightness_packet(level: float) -> bytes:
-    return brightness_bytes(level_byte(level))

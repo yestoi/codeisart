@@ -51,10 +51,11 @@ def kinds(packets):
 
 
 def bursts(packets):
-    """The packets cut at each burst's start: a first sync, or a brightness packet right after a row (a prime)."""
+    """The packets cut at each burst's start: a sync, or a row 0 right after a row (a prime, which has no sync)."""
     out, cur = [], []
     for p in packets:
-        starts = (p[12] == SYNC and (not cur or cur[-1][12] != SYNC)) or (p[12] == BRIGHTNESS and cur and cur[-1][12] == ROW)
+        row0 = p[12] == ROW and p[13] == 0 and p[14] == 0 and p[15:17] == b"\x00\x00"    # row 0, its first chunk
+        starts = p[12] == SYNC or (row0 and cur and cur[-1][12] == ROW)
         if starts and cur:
             out.append(cur)
             cur = []
@@ -71,12 +72,13 @@ def row_pixels(packet, width):
 
 class Cranked:
     """The sender run by hand in the test's own process, in place of the child: the facade's sleeps crank its
-    ticks (a sleep of s seconds is round(s * 59) ticks, at least one), its join runs it to the stop flag.
+    ticks (a sleep of s seconds is round(s * OUTPUT_FPS) ticks, at least one), its join runs it to the stop flag.
     beats=0: a child that is alive but never ticks."""
 
-    def __init__(self, sock, clock, fps=59.0, beats=None):
-        from show.display.colorlight_sender import Sender
-        self._Sender, self.sock, self.clock, self.fps = Sender, sock, clock, fps
+    def __init__(self, sock, clock, fps=None, beats=None):
+        from show.display.colorlight_sender import OUTPUT_FPS, Sender
+        self._Sender, self.sock, self.clock = Sender, sock, clock
+        self.fps = OUTPUT_FPS if fps is None else fps
         self.sender, self.alive, self.exitcode, self.launches = None, False, None, 0
         self.slot = None
         self.beats = beats

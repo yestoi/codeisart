@@ -34,9 +34,8 @@ from typing import Callable
 
 import numpy as np
 
-from show.display.colorlight_packets import (BRIGHTNESS_PAYLOAD_LEN, CHUNK_PIXELS, DST_MAC, ETH_BRIGHTNESS,  # noqa: F401
-                                             ETH_FRAME, ETH_ROW, FRAME_PAYLOAD_LEN, ROW_HEADER_LEN, SRC_MAC,
-                                             brightness_packet, chunk_pixels, frame_packet, level_byte,
+from show.display.colorlight_packets import (CHUNK_PIXELS, DST_MAC, ETH_FRAME, ETH_ROW, FRAME_PAYLOAD_LEN,  # noqa: F401
+                                             ROW_HEADER_LEN, SRC_MAC, chunk_pixels, frame_packet, level_byte,
                                              row_buffers, row_packets)
 from show.display.colorlight_sender import BEATS, CLOSE_HOLD_S, ERRNO, ERRORS, LEVEL, PAUSE, RT, STOP, Slot, stats_of
 

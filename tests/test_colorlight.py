@@ -12,14 +12,14 @@ import show.display.colorlight as colorlight
 from show.config import Config
 from show.display import make_display
 from show.display.colorlight import DEAD_S, RESTART_S, SAFE_BRIGHTNESS, START_S, ColorlightDisplay, stats_line
-from show.display.colorlight_packets import brightness_bytes, sync_bytes
-from show.display.colorlight_sender import CLOSE_FRAMES, ERRORS, PAUSE, SYNC_REPS
+from show.display.colorlight_packets import sync_bytes
+from show.display.colorlight_sender import CLOSE_FRAMES, ERRORS, PAUSE
 from show.display.fake import FakeDisplay
 from tests.colorlight_fakes import BRIGHTNESS, ROW, SYNC, Cranked, FakeClock, FakeSocket, bursts, kinds, row_pixels
 
 W, H = 128, 32
-PRIME = 2 + H                  # packets of the first burst (brightness x2, the rows): no sync before a whole frame
-FIRST_ROW = PRIME + 5          # burst 2's first row: after its two syncs and two brightness packets
+PRIME = H                      # packets of the first burst (the rows): no sync before a whole frame
+FIRST_ROW = PRIME + 2          # burst 2's first row: after its one sync
 
 
 def display(sock=None, clock=None, cranked=None, **kw):

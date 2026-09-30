@@ -5,14 +5,14 @@ import errno
 import numpy as np
 import pytest
 
-from show.display.colorlight_packets import brightness_bytes, row_packets, sync_bytes
-from show.display.colorlight_sender import (BEATS, BRIGHTNESS_REPS, CLOSE_FRAMES, DEV_N, ERRNO, ERRORS, FRAMES, LEVEL,
-                                            LATE, PAUSE, SLIPS, STOP, SYNC_REPS, Sender, Slot)
-from tests.colorlight_fakes import BRIGHTNESS, ROW, SYNC, FakeClock, FakeSocket, bursts, kinds, row_pixels
+from show.display.colorlight_packets import COUNTER_OFFSET, row_packets, sync_bytes
+from show.display.colorlight_sender import (BEATS, CLOSE_FRAMES, CLOSE_HOLD_S, DEV_N, ERRNO, ERRORS, FRAMES, LEVEL,
+                                            LATE, OUTPUT_FPS, PAUSE, PERIOD_NS, SLIPS, STOP, Sender, Slot)
+from tests.colorlight_fakes import BRIGHTNESS, ROW, SYNC, Cranked, FakeClock, FakeSocket, bursts, kinds, row_pixels
 
 W, H = 128, 64
-PRIME = BRIGHTNESS_REPS + H                      # packets of the first burst: no sync before a whole frame
-FULL = SYNC_REPS + BRIGHTNESS_REPS + H
+PRIME = H                                        # packets of the first burst: the rows, no sync before a whole frame
+FULL = 1 + H                                     # a frame: its sync, then the rows
 
 
 @pytest.fixture
@@ -37,10 +37,11 @@ def test_the_first_burst_is_a_prime_and_the_second_a_whole_frame_sync_first(slot
     sender, sock, _ = make(slot)
     assert sender.tick() and sender.tick()
     first, second = bursts(sock.sent)
-    assert kinds(first) == [BRIGHTNESS] * BRIGHTNESS_REPS + [ROW] * H        # the prime: no sync before rows
-    assert kinds(second) == [SYNC] * SYNC_REPS + [BRIGHTNESS] * BRIGHTNESS_REPS + [ROW] * H
+    assert kinds(first) == [ROW] * H                                          # the prime: no sync before rows
+    assert kinds(second) == [SYNC] + [ROW] * H                                # one sync, the rows right behind it
     assert [p[14] for p in second if p[12] == ROW] == list(range(H))
     assert slot.h[FRAMES] == 1 and slot.h[BEATS] == 2                        # frames count syncs sent
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)                    # no 0x0A packet, ever
 
 
 def test_it_starts_dark_and_repeats_the_last_frame(slot):
@@ -72,17 +73,40 @@ def test_the_rows_are_the_reference_rows_of_the_bgr_frame(width, height):
         s.close()
 
 
-def test_the_level_rides_in_every_sync_and_brightness_packet_and_is_dark_until_set(slot):
+def test_the_level_rides_in_the_sync_and_is_dark_until_set(slot):
     sender, sock, _ = make(slot)
     sender.tick()
     sender.tick()
-    assert [p for p in sock.sent if p[12] == SYNC] == [sync_bytes(0)] * SYNC_REPS
-    assert [p for p in sock.sent if p[12] == BRIGHTNESS] == [brightness_bytes(0)] * 2 * BRIGHTNESS_REPS
+    assert [p for p in sock.sent if p[12] == SYNC] == [sync_bytes(0, 0)]
     slot.h[LEVEL] = 102
     sock.sent.clear()
     sender.tick()
-    assert [p for p in sock.sent if p[12] == SYNC] == [sync_bytes(102)] * SYNC_REPS
-    assert [p for p in sock.sent if p[12] == BRIGHTNESS] == [brightness_bytes(102)] * BRIGHTNESS_REPS
+    assert [p for p in sock.sent if p[12] == SYNC] == [sync_bytes(102, 1)]
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)
+
+
+def test_the_counter_counts_syncs_from_zero_wraps_at_a_byte_and_carries_on_through_a_pause(slot):
+    sender, sock, _ = make(slot)
+    for _ in range(1 + 260):                                                  # the prime, then 260 syncs
+        sender.tick()
+    counters = [p[COUNTER_OFFSET] for p in sock.sent if p[12] == SYNC]
+    assert counters == [n % 256 for n in range(260)]                          # 0..255, 0..3: never 256
+    slot.h[PAUSE] = 1
+    sender.tick()                                                             # a paused tick: nothing sent
+    slot.h[PAUSE] = 0
+    sock.sent.clear()
+    sender.tick()                                                             # the restart primes: rows alone
+    sender.tick()
+    first, second = bursts(sock.sent)
+    assert kinds(first) == [ROW] * H and kinds(second) == [SYNC] + [ROW] * H
+    assert second[0][COUNTER_OFFSET] == 260 % 256                             # it carries on, as the S2's does
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)
+
+
+def test_the_rate_and_the_close_follow_the_winning_run():
+    assert OUTPUT_FPS == 60.32 and PERIOD_NS == round(1e9 / 60.32) == 16578249
+    assert CLOSE_FRAMES == round(CLOSE_HOLD_S * OUTPUT_FPS) == 60
+    assert round(CLOSE_HOLD_S * Cranked(FakeSocket(), FakeClock()).fps) >= CLOSE_FRAMES   # a close's sleep cranks a second
 
 
 def test_a_burst_is_one_frame_even_when_a_push_lands_inside_it(slot):
@@ -98,12 +122,12 @@ def test_a_burst_is_one_frame_even_when_a_push_lands_inside_it(slot):
 
 
 def test_a_failed_send_ends_the_burst_records_the_error_and_pauses(slot):
-    sock = FakeSocket(fail={PRIME + 5: OSError(errno.ENETDOWN, "Network is down")})   # burst 2's first row
+    sock = FakeSocket(fail={PRIME + 2: OSError(errno.ENETDOWN, "Network is down")})   # burst 2's first row
     sender, sock, clock = make(slot, sock)
     sender.tick()
     sender.tick()
     second = bursts(sock.sent)[1]
-    assert kinds(second) == [SYNC] * 2 + [BRIGHTNESS] * 2                    # the rows after the failure: none
+    assert kinds(second) == [SYNC]                                           # the rows after the failure: none
     assert slot.h[PAUSE] == 1 and slot.h[ERRORS] == 1 and slot.h[ERRNO] == errno.ENETDOWN
     sent = len(sock.sent)
     assert sender.tick() and sender.tick()
@@ -111,18 +135,19 @@ def test_a_failed_send_ends_the_burst_records_the_error_and_pauses(slot):
     assert clock.slept[-1] > 0                                               # a paused tick sleeps, not spins
     slot.h[PAUSE] = 0                                                        # the parent's push
     sender.tick()
-    assert kinds(sock.sent[sent:]) == [BRIGHTNESS] * 2 + [ROW] * H           # the restart primes: no sync
+    assert kinds(sock.sent[sent:]) == [ROW] * H                              # the restart primes: no sync
     sender.tick()
     assert sock.sent[-FULL][12] == SYNC
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)                   # no 0x0A: not in a restart either
 
 
-def test_a_row_failing_after_the_syncs_means_no_sync_until_a_push(slot):
-    sock = FakeSocket(fail={PRIME + 4 + 30: OSError(errno.EIO, "io")})      # burst 2, row 26
+def test_a_row_failing_after_the_sync_means_no_sync_until_a_push(slot):
+    sock = FakeSocket(fail={PRIME + 1 + 27: OSError(errno.EIO, "io")})      # burst 2, row 26
     sender, sock, _ = make(slot, sock)
     for _ in range(6):
         sender.tick()
     syncs = [i for i, p in enumerate(sock.sent) if p[12] == SYNC]
-    assert syncs == [PRIME, PRIME + 1]                                       # burst 2's, and none after
+    assert syncs == [PRIME]                                                  # burst 2's, and none after
 
 
 def test_stop_ends_the_ticks_without_a_send(slot):
@@ -139,6 +164,7 @@ def test_run_sends_black_for_a_second_when_the_parent_is_gone(slot):
     slot.write(red())
     sender.run()
     out = bursts(sock.sent)
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)                   # no 0x0A: not in the drain either
     assert len(out) == 3 + CLOSE_FRAMES + 1                                  # 3 ticks alive, a prime, then black
     assert all((row_pixels(p, W) == (0, 0, 200)).all() for p in out[2] if p[12] == ROW)
     assert not any(row_pixels(p, W).any() for burst in out[3:] for p in burst if p[12] == ROW)
@@ -146,7 +172,7 @@ def test_run_sends_black_for_a_second_when_the_parent_is_gone(slot):
 
 # --- the pacing, on the fake clock
 
-from show.display.colorlight_sender import LATE_NS, PERIOD_NS, SPIN_NS, stats_of, wait_until  # noqa: E402
+from show.display.colorlight_sender import LATE_NS, SPIN_NS, stats_of, wait_until  # noqa: E402
 
 
 def sync_times(sock, clock, sender, n):
@@ -277,3 +303,33 @@ def test_the_sender_pins_itself_to_the_highest_core_it_may_use(monkeypatch):
     monkeypatch.setattr(cs, "SENDER_CPU", None)
     monkeypatch.setattr(cs.os, "sched_getaffinity", lambda pid: {0}, raising=False)
     assert cs.sender_cpu() is None                                 # one core: nothing to choose, no pin
+
+
+# --- the whole burst against the spike sender's, which is what the wall was clean with (2026-09-30)
+
+def test_a_frame_on_the_wire_is_the_winning_spike_runs_frame():
+    from dataclasses import replace
+
+    from tools.sender_spike import send
+    from tests.test_colorlight_packets import WINNING
+
+    plan = send.plan_from(WINNING + ["--seconds", "0.05", "--tail-seconds", "0"])     # 3 frames of bars, no black
+    plan = replace(plan, sync=replace(plan.sync, counter_start=0))
+    theirs, clock = [], FakeClock()
+    send.run(plan, theirs.append, clock.now, lambda target: setattr(clock, "t", max(clock.t, target)))
+    frames = [theirs[i : i + 1 + send.H] for i in range(0, len(theirs), 1 + send.H)]
+    assert len(frames) == 3 and all(len(f) == 1 + send.H for f in frames)
+
+    s = Slot.create(send.W, send.H)
+    try:
+        sender, sock, _ = make(s)
+        s.h[LEVEL] = plan.sync.level                                          # the sync's level, as --sync-level 0.1
+        wire = b"".join(send.bars(plan.pixel))                                # the spike's rows, as on the wire
+        s.write(np.frombuffer(wire, np.uint8).reshape(send.H, send.W, 3)[..., ::-1].copy())   # RGB in: the sender swaps
+        for _ in range(3):
+            sender.tick()
+        ours = bursts(sock.sent)
+        assert ours[1] == frames[0] and ours[2] == frames[1]                  # byte for byte, counter and all
+        assert ours[0] == frames[0][1:]                                       # the prime: the same rows, no sync
+    finally:
+        s.close()

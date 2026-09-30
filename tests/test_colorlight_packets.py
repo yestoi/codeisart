@@ -5,10 +5,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from show.display.colorlight_packets import (BRIGHTNESS_PAYLOAD_LEN, COUNTER_OFFSET, DST_MAC, ETH_FRAME,
-                                             FRAME_PAYLOAD_LEN, LEVEL_OFFSET, ROW_HEADER_LEN, ROW_TAIL, SRC_MAC,
-                                             SYNC_LEN, brightness_bytes, brightness_packet, chunk_pixels,
-                                             frame_packet, level_byte, row_buffers, row_packets, sync_bytes)
+from show.display.colorlight_packets import (COUNTER_OFFSET, DST_MAC, ETH_FRAME, FRAME_PAYLOAD_LEN, LEVEL_OFFSET,
+                                             ROW_HEADER_LEN, ROW_TAIL, SRC_MAC, SYNC_LEN, chunk_pixels, frame_packet,
+                                             level_byte, row_buffers, row_packets, sync_bytes)
 from tools.sender_spike import send
 
 # What the wall was clean with on 2026-09-30 (docs/superpowers/reviews/2026-09-30-ghosting/07-wall-session.md,
@@ -50,12 +49,6 @@ def test_sync_layout_the_s2_sender_cards():
     assert sync_bytes(127, 256)[COUNTER_OFFSET] == 0 and sync_bytes(127, 511)[COUNTER_OFFSET] == 255
 
 
-def test_brightness_is_the_spikes_byte_for_byte():
-    for b in (0, 25, 102, 255):
-        assert brightness_bytes(b) == send.brightness_packet(b)
-    assert len(brightness_bytes(25)) == 14 + BRIGHTNESS_PAYLOAD_LEN == 77
-
-
 def test_rows_are_the_winning_runs_byte_for_byte():
     bars = send.bars(128)                                   # 64 rows of 128 * 3 bytes
     ours = [row_packets(y, np.frombuffer(bars[y], np.uint8).reshape(128, 3))[0] for y in range(64)]
@@ -74,14 +67,6 @@ def test_frame_packet_is_the_sync_with_the_level_byte():
     assert fp == sync_bytes(127, 0) and len(fp) == 1036
     assert frame_packet(0.5, 7) == sync_bytes(127, 7)
     assert fp[35] == 127 and fp[36] == 0x05 and fp[38:41] == bytes([127, 127, 127])
-
-
-def test_brightness_packet_matches_falcon_player():
-    bp = brightness_packet(0.4)
-    assert bp[:12] == DST_MAC + SRC_MAC and len(bp) == 77
-    assert bp[12] == 0x0A and bp[13:17] == bytes([102, 102, 102, 0xFF])
-    assert not any(bp[17:])
-    assert brightness_packet(1.7)[13] == 255 and brightness_packet(-1.0)[13] == 0
 
 
 def test_nan_or_negative_brightness_fails_dark_in_the_s2_format():

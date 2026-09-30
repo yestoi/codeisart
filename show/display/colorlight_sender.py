@@ -1,9 +1,11 @@
-"""The steady sender of the Colorlight driver: 59 frames a second to the card, whatever the caller's rate.
+"""The steady sender of the Colorlight driver: 60.32 frames a second to the card, whatever the caller's rate.
 
-The spec: docs/superpowers/specs/2026-09-29-route-a-steady-sender-design.md. What the card wants was measured
-on 2026-09-29 (docs/superpowers/reviews/2026-09-29-sender-card-spike.md, section 5): the sync first, then the
-brightness packets, then the rows, then idle; 59 frames a second, not 60; the sync within 100 us of its
-deadline; pixels BGR.
+The spec: docs/superpowers/specs/2026-09-29-route-a-steady-sender-design.md, its rate and packets superseded by
+docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md section 2. What the card wants was measured on
+2026-09-29 (the sync first, within 100 us of its deadline; pixels BGR) and 2026-09-30 (the S2 sender card's
+format at its own 60.32 frames a second: one 1036-byte sync a frame with a frame counter, the rows right behind
+it, no 0x0A brightness packet; in that format 59 shows nothing, and in our old format anything under 60 drew a
+second picture).
 
 The Slot is one frame in shared memory (a file-backed mmap, /dev/shm where there is one) with a header of int64
 fields and one lock, a flock on the file itself (a multiprocessing lock would start Python's resource tracker, a
@@ -16,7 +18,7 @@ collection off, absolute deadlines on perf_counter_ns, a sleep to SPIN_NS before
 busy-wait. It sends the last frame it took until a new one comes. It starts dark, and sends black for
 CLOSE_HOLD_S when its parent dies. A send that raises ends the burst (no sync follows a torn frame), records
 the error and pauses the sender until the parent's next push clears the pause; the first burst after a start or
-a pause is a prime (brightness and rows, no sync), so the sync that follows shows a whole frame.
+a pause is a prime (the rows, no sync), so the sync that follows shows a whole frame.
 """
 from __future__ import annotations
 
@@ -35,17 +37,16 @@ from typing import Callable
 
 import numpy as np
 
-from show.display.colorlight_packets import brightness_bytes, row_buffers, sync_bytes
+from show.display.colorlight_packets import COUNTER_OFFSET, row_buffers, sync_bytes
 
-OUTPUT_FPS = 59.0                       # measured steadiest (N15b, N19); 60.00 drops a frame every ~15 s
+OUTPUT_FPS = 60.32                      # the S2's own rate: clean 2026-09-30 (25-45 s runs); on 2026-09-29 (S8b, 30 s)
+                                        # a slight all-panel dip every 3-6 s was seen at it; 59 in this format is black
 PERIOD_NS = round(1e9 / OUTPUT_FPS)
 SPIN_NS = 2_000_000                     # sleep to this before the deadline, then busy-wait
 LATE_NS = 1_000_000                     # a sync this long after its deadline is counted late
 PAUSE_POLL_S = 0.005                    # while paused: nothing sent, the flags read this often
 CLOSE_HOLD_S = 1.0                      # black runs this long at the close, and when the parent dies
 CLOSE_FRAMES = round(CLOSE_HOLD_S * OUTPUT_FPS)
-SYNC_REPS = 2
-BRIGHTNESS_REPS = 2
 RT_PRIORITY = 50
 SENDER_CPU = None                       # a core to pin the child to; None: the highest it may use (sender_cpu)
 
@@ -227,18 +228,17 @@ class Sender:
         self.frame = np.zeros((slot.height, slot.width, 3), np.uint8)      # black: the dark start
         self._dark = False                                                  # the parent-death drain: black only
         self._level = -1
-        self._syncs: list[bytes] = []
-        self._brights: list[bytes] = []
+        self._sync = bytearray(sync_bytes(0, 0))                            # the level's sync; the counter goes in
+        self._counter = 0                                                   # the next sync's byte 14, wrapping
         self.deadline: int | None = None
         self._last_sync: int | None = None
         self._primed = False                                                 # a sync goes only after a whole frame
 
-    def _level_packets(self) -> None:
+    def _level_sync(self) -> None:
         level = int(self.slot.h[LEVEL])
         if level != self._level:
             self._level = level
-            self._syncs = [sync_bytes(level)] * SYNC_REPS
-            self._brights = [brightness_bytes(level)] * BRIGHTNESS_REPS
+            self._sync = bytearray(sync_bytes(level, self._counter))
 
     def tick(self) -> bool:
         """One burst on its deadline, or a paused poll. False once the stop flag is set (nothing sent)."""
@@ -253,7 +253,7 @@ class Sender:
             return True
         if not self._dark and self.slot.take(self.frame):
             self.bgr[...] = self.frame.reshape(self._shape)[..., ::-1]       # BGR, in place, before the wait
-        self._level_packets()
+        self._level_sync()
         now = self.clock()
         if self.deadline is None:
             self.deadline = now
@@ -268,10 +268,9 @@ class Sender:
         at = self.clock()
         try:
             if self._primed:
-                for p in self._syncs:
-                    self.send(p)
-            for p in self._brights:
-                self.send(p)
+                self._sync[COUNTER_OFFSET] = self._counter
+                self.send(bytes(self._sync))
+                self._counter = (self._counter + 1) & 0xFF
             for row in self.rows:
                 self.send(row.data)
         except OSError as e:
