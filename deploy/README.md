@@ -35,6 +35,15 @@ read `journalctl -u show` for the reason.
 With no carrier the start waits for `network-online.target` (the wait-online timeout),
 then runs anyway. The unit stays ordered after `network-online.target` (Q63).
 
+## Tests on the Pi
+
+The timing budgets are the Mac's unless set. On the Pi 5 (Q79; the numbers are in
+`docs/superpowers/workflow/evidence/pi-perf.md`):
+
+    ARCADE_TICK_BUDGET_MS=20 ARCADE_GOVERNOR_BUDGET_MS=2 .venv/bin/python -m pytest
+
+`pip install -e '.[pi,dev]'` brings pytest. The full suite takes about 13 minutes there.
+
 ## Soak and test pattern
 
 Stop the unit first (`sudo systemctl stop show`); the soak and the pattern tool need the

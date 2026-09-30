@@ -584,3 +584,10 @@ default: no. A match in which more than one body id sat in seat a banks no best,
 deadline: the owner's first play of Quick Draw on the panels
 answer:
 status: defaulted (standing instruction)
+
+### Q79: On the Pi 5, is the flash governor made faster, or is its 0.5 ms budget set for the Pi?
+asked: the owner's session on the Pi 5, 2026-09-30 (the Pi's first full suite: six failures, all the governor's 0.5 ms; docs/superpowers/reviews/2026-09-29-route-a/00-bench.md, section 3)
+default: none taken; the owner answered in the session
+deadline: none
+answer: "yes", to: the budget is set for the Pi. The two tests read the governor's budget from `ARCADE_GOVERNOR_BUDGET_MS`, 0.5 when it is not set (the Mac's, unchanged), 2 on the Pi 5, where the governor's median is 0.95 to 1.05 ms at 128x64; the Pi's numbers are in evidence/pi-perf.md. The owner asked first whether this brings the flicker back, and it was tested at the wall: a bar sweeping through the governor and the driver with 0, 20 and 40 ms added to every push. The sender's sync held in all three (it is another process, at real-time priority); the owner saw no flicker in any, and the pushes lost at 40 ms as motion. The governor is not made faster: it would have to be some twenty times slower before the arcade's loop loses a push at 30 a second.
+status: answered (owner, 2026-09-30)

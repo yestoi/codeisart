@@ -13,6 +13,7 @@ from arcade.sources.actors import Person, scene
 from tests.arcade.helpers import SpyGame, StubLobby, make_cfg, run, spy
 
 BUDGET_MS = float(os.environ.get("ARCADE_TICK_BUDGET_MS", "2.0"))
+GOVERNOR_MS = float(os.environ.get("ARCADE_GOVERNOR_BUDGET_MS", "0.5"))   # 0.5 on the Mac; 2 on the Pi 5 (Q79)
 SIZES = [(128, 32), (64, 64)]
 WALL = (128, 64)                                   # the design layout: four 64x32 panels, 2 x 2 (Q32, Q33)
 WHITE = (255, 255, 255)
@@ -233,4 +234,4 @@ def test_tick_budget_with_the_governors_share(game_cls, size, font5x7, monkeypat
     with capsys.disabled():
         print(f"\n{report}")
     assert mean < BUDGET_MS and p95 < 2 * BUDGET_MS, report
-    assert statistics.median(governor) < 0.5, report
+    assert statistics.median(governor) < GOVERNOR_MS, f"{report} (the governor's budget {GOVERNOR_MS} ms)"

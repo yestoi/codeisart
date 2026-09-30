@@ -130,8 +130,35 @@ five of the six still fail. MEASURED there, the governor's median a tick:
 | 128x64 | 0.948 | 1.043 | 1.5 to 1.6 |
 
 The whole tick is inside its 2 ms budget at every size. The governor alone is about twice its 0.5 ms at the arcade's
-128x64. OPEN, the owner's: the budget was met on the Mac; on the Pi 5 either the governor gets faster or the budget
-is set for the Pi.
+128x64. The owner's to settle: the budget was met on the Mac; on the Pi 5 either the governor gets faster or the
+budget is set for the Pi. Settled the same morning, after the test below (Q79): the budget is set for the Pi,
+`ARCADE_GOVERNOR_BUDGET_MS=2` there, 0.5 where it is not set; the Pi's numbers are in
+`docs/superpowers/workflow/evidence/pi-perf.md`.
+
+### A slower governor, tested (08:46 to 08:50)
+
+The owner's question: would a budget set for the Pi bring the flicker back? A bench script (not kept in the repo)
+ran `wall_pattern.py`'s own loop, governor, driver and close with a moving picture, a 3 pixel bar sweeping 30 pixels
+a second inside the border, and after every push busy-waited some milliseconds more: a governor that much slower.
+15 s a run, 30 pushes a second asked, real-time priority. MEASURED, dry and then on the wall at brightness 0.1:
+
+| Added a push, ms | Where | Pushes a second | Frames | Late (over 1 ms) | Worst, us | sd, us | Governor median, ms |
+|---|---|---|---|---|---|---|---|
+| 0 | dry | 30.0 | 887 | 0 | 7 | 1 | 1.42 |
+| 1 | dry | 30.0 | 887 | 0 | 4 | 0 | 1.42 |
+| 5 | dry | 30.0 | 887 | 0 | 5 | 1 | 1.34 |
+| 20 | dry | 30.0 | 887 | 0 | 6 | 0 | 0.97 |
+| 40 | dry | 24.4 | 885 | 0 | 12 | 1 | 0.97 |
+| 0 | the wall | 30.0 | 887 | 0 | 18 | 1 | 1.45 |
+| 20 | the wall | 30.0 | 887 | 0 | 7 | 1 | 1.00 |
+| 40 | the wall | 24.4 | 886 | 0 | 7 | 0 | 0.98 |
+
+The sender does not see the governor: it is another process, at real-time priority, and its sync held in every run,
+the 40 ms ones with them. What a slow governor costs is pushes, and only once the whole tick passes the 33 ms of a
+frame: at 40 ms added the loop made 24.4 pushes a second. Asked whether the picture was steady in each run and
+whether the bar moved differently in the third, the owner: "yes to both". SEEN: no flicker at any of the three, and
+the lost pushes show as motion, not as flicker. In a paced loop the governor costs about 1.4 ms a frame on the Pi
+(1.0 when the core is kept busy), so it would have to be some twenty times slower before a push is lost.
 
 ### At the wall, from the Pi (08:28 to 08:36)
 

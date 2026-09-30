@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 import statistics
 import time
 import zlib
@@ -12,6 +13,8 @@ from arcade.flash import (BACKSTOP_PASSES, BUDGET, FIELD_AREA, FPS, RED_SHARE, S
                           FlashGovernor, concurrent_area, flash_area, largest_share, signals, square_flashes,
                           square_means)
 from arcade.look import gamma_lut, light_lut
+
+GOVERNOR_MS = float(os.environ.get("ARCADE_GOVERNOR_BUDGET_MS", "0.5"))   # 0.5 on the Mac; 2 on the Pi 5 (Q79)
 
 
 def strobe(hz, w, h, n=90, color=(255, 255, 255), cols=None, off=(0, 0, 0), fps=FPS):
@@ -501,4 +504,5 @@ def test_governor_under_half_ms_at_128x32():
         g.apply(f)
         times.append(time.thread_time() - start)
     assert g.held_ticks > 0                                          # the held path is the one timed
-    assert statistics.median(times) < 0.0005, f"median {statistics.median(times) * 1000:.3f} ms, seed={seed}"
+    median = statistics.median(times) * 1000
+    assert median < GOVERNOR_MS, f"median {median:.3f} ms, budget {GOVERNOR_MS} ms, seed={seed}"
