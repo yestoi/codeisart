@@ -19,8 +19,9 @@ ProtectSystem=strict
 ReadWritePaths=/home/pi/codeisart/entries
 PrivateTmp=yes
 Environment=LG_WD=/tmp PYTHONUNBUFFERED=1
-# CAP_NET_RAW is needed only for the colorlight backend (raw sockets); ddp does not use it.
-AmbientCapabilities=CAP_NET_RAW
+# CAP_NET_RAW for the colorlight backend's raw socket; CAP_SYS_NICE for its sender's real-time priority
+# (SCHED_FIFO). ddp uses neither.
+AmbientCapabilities=CAP_NET_RAW CAP_SYS_NICE
 SupplementaryGroups=audio gpio
 
 [Install]
