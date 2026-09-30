@@ -18,12 +18,17 @@ a pause is a prime (brightness and rows, no sync), so the sync that follows show
 """
 from __future__ import annotations
 
+import math
 import mmap
 import multiprocessing
 import os
 import tempfile
+import time
+from typing import Callable
 
 import numpy as np
+
+from show.display.colorlight_packets import brightness_bytes, row_buffers, sync_bytes
 
 OUTPUT_FPS = 59.0                       # measured steadiest (N15b, N19); 60.00 drops a frame every ~15 s
 PERIOD_NS = round(1e9 / OUTPUT_FPS)
@@ -104,10 +109,124 @@ class Slot:
         if self._mm is None:
             return
         self.h = self.pixels = None          # the views must go before the map closes
-        self._mm.close()
+        try:
+            self._mm.close()
+        except BufferError:                  # a view still held elsewhere (a traceback's frame): the map closes
+            pass                             # with it; the file below is unlinked either way
         self._mm = None
         if self._own:
             try:
                 os.unlink(self.path)
             except FileNotFoundError:
                 pass
+
+
+def wait_until(target_ns: int, clock: Callable[[], int], sleep: Callable[[float], None], spin_ns: int = SPIN_NS) -> None:
+    """Sleep to spin_ns before the target, then busy-wait to it. time.sleep alone wakes 0.6 to 2.4 ms late; a
+    pure busy-wait at real-time priority once stalled 37 ms (the spike's step 6)."""
+    ahead = target_ns - clock() - spin_ns
+    if ahead > 0:
+        sleep(ahead / 1e9)
+    while clock() < target_ns:
+        pass
+
+
+class Sender:
+    """One output frame a tick. Testable with a fake socket and a fake clock; the child runs it for real."""
+
+    def __init__(self, slot: Slot, send: Callable[[bytes], int], *, clock: Callable[[], int] = time.perf_counter_ns,
+                 sleep: Callable[[float], None] = time.sleep, period_ns: int = PERIOD_NS, spin_ns: int = SPIN_NS,
+                 parent_alive: Callable[[], bool] = lambda: True):
+        self.slot, self.send, self.clock, self.sleep = slot, send, clock, sleep
+        self.period, self.spin, self.parent_alive = period_ns, spin_ns, parent_alive
+        self.packets, self.pixels = row_buffers(slot.width, slot.height)
+        self.rows = self.packets.reshape(-1, self.packets.shape[-1])
+        self.frame = np.zeros((slot.height, slot.width, 3), np.uint8)      # black: the dark start
+        self._level = -1
+        self._syncs: list[bytes] = []
+        self._brights: list[bytes] = []
+        self.deadline: int | None = None
+        self._last_sync: int | None = None
+        self._primed = False                                                 # a sync goes only after a whole frame
+
+    def _level_packets(self) -> None:
+        level = int(self.slot.h[LEVEL])
+        if level != self._level:
+            self._level = level
+            self._syncs = [sync_bytes(level)] * SYNC_REPS
+            self._brights = [brightness_bytes(level)] * BRIGHTNESS_REPS
+
+    def tick(self) -> bool:
+        """One burst on its deadline, or a paused poll. False once the stop flag is set (nothing sent)."""
+        h = self.slot.h
+        h[BEATS] += 1
+        if h[STOP]:
+            return False
+        if h[PAUSE]:
+            self.deadline = self._last_sync = None
+            self._primed = False
+            self.sleep(PAUSE_POLL_S)
+            return True
+        if self.slot.take(self.frame):
+            self.pixels[...] = self.frame[:, :, ::-1].reshape(self.pixels.shape)   # BGR, before the wait
+        self._level_packets()
+        now = self.clock()
+        if self.deadline is None:
+            self.deadline = now
+        elif now - self.deadline > self.period:                              # a period or more behind: the grid
+            self.deadline = now                                              # moves, no catch-up burst
+            h[SLIPS] += 1
+        wait_until(self.deadline, self.clock, self.sleep, self.spin)
+        at = self.clock()
+        try:
+            if self._primed:
+                for p in self._syncs:
+                    self.send(p)
+            for p in self._brights:
+                self.send(p)
+            for row in self.rows:
+                self.send(row.data)
+        except OSError as e:
+            h[ERRNO] = e.errno or 0
+            h[ERRORS] += 1
+            h[PAUSE] = 1                                                     # nothing more until a push
+            return True
+        if self._primed:
+            h[FRAMES] += 1
+            late = at - self.deadline
+            if late > LATE_NS:
+                h[LATE] += 1
+            if late > h[WORST]:
+                h[WORST] = late
+            if self._last_sync is not None:
+                dev = (at - self._last_sync) - self.period
+                h[DEV_N] += 1
+                h[DEV_SUM] += dev
+                h[DEV_SUMSQ] += dev * dev
+            self._last_sync = at
+        self._primed = True
+        self.deadline += self.period
+        return True
+
+    def run(self) -> None:
+        """Ticks until the stop flag; when the parent is gone, black for CLOSE_HOLD_S, then out."""
+        while self.parent_alive():
+            if not self.tick():
+                return
+        self.frame[...] = 0
+        self.pixels[...] = 0
+        self.slot.h[PAUSE] = 0
+        for _ in range(CLOSE_FRAMES + 1):                                    # the prime, then CLOSE_FRAMES syncs
+            if not self.tick():
+                return
+
+
+def stats_of(h: np.ndarray) -> dict:
+    """The sender's numbers so far, from the header: frames sent (with a sync), late ones, slips, the worst
+    lateness and the spread of the sync-to-sync interval, in microseconds."""
+    n = int(h[DEV_N])
+    mean = h[DEV_SUM] / n if n else 0.0
+    var = h[DEV_SUMSQ] / n - mean * mean if n else 0.0
+    return {"frames": int(h[FRAMES]), "late": int(h[LATE]), "slips": int(h[SLIPS]), "worst_us": h[WORST] / 1e3,
+            "mean_us": mean / 1e3, "sd_us": math.sqrt(max(var, 0.0)) / 1e3, "errors": int(h[ERRORS]),
+            "rt": bool(h[RT])}
