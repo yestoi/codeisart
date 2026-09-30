@@ -1,0 +1,67 @@
+$ chrt -f 50 /home/trey/Work/codeisart-wall/.venv/bin/python tools/sender_spike/send.py --iface enp5s0 --order sync-rows --wait sleep --stamp-hw --pixel 25 --seconds 10 --tail-seconds 0.2 --log timing-2026-09-29-1954-b/sleep-fifo50-qdisc.csv
+send: 60 fps for 10 s, then 0.2 s black; order sync-rows; sync x2, 112 bytes, source type 0x07, counter off, bytes 16-18 000000, byte 26 00, bytes 31-32 0000, level 25, byte 36 05; brightness packet x2 at 25; row tail 08 88; bars at pixel 25; wait sleep, stamps with the port's clock
+send: on enp5s0; scheduling: SCHED_FIFO priority 50, cpus 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+send: sent 600 frames and 12 black; 0 late; 0 slips
+send: measured 59.999 fps over the picture
+send: sync to sync, ms: mean 16.667 sd 0.045 min 16.519 max 16.806 p50 16.667 p99 16.795
+send: sync to sync less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500         0
+    -500 to -200          0
+    -200 to -100         28
+    -100 to -50          31
+    -50 to -20           12
+    -20 to 20           456
+    20 to 50             13
+    50 to 100            29
+    100 to 200           30
+    200 to 500            0
+    500 to 1000           0
+    1000 to 2000          0
+    2000 and above        0
+send: added to each sync, us: mean 0.0 sd 0.0 min 0.0 max 0.0
+send: sync after its tick, less the added time, us: mean 113.0 sd 43.1 min 4.9 max 168.4 p50 135.3 p99 155.0
+send: burst, first packet to last, us: mean 69.2 sd 16.0 min 61.2 max 220.2
+send: the port sent 41616 packets during the run: 41616 ours, 0 not ours
+send: the port's queue held packets during the run: 4 requeues, 4 new flows; packets may have left in another order than they were sent
+send: driver: 600 of 600 stamps
+send: sync to sync at the driver, ms: mean 16.667 sd 0.045 min 16.519 max 16.805 p50 16.667 p99 16.790
+send: sync to sync at the driver less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500         0
+    -500 to -200          0
+    -200 to -100         25
+    -100 to -50          34
+    -50 to -20           16
+    -20 to 20           447
+    20 to 50             18
+    50 to 100            30
+    100 to 200           29
+    200 to 500            0
+    500 to 1000           0
+    1000 to 2000          0
+    2000 and above        0
+send: port: 600 of 600 stamps
+send: sync to sync at the port, ms: mean 16.667 sd 0.045 min 16.518 max 16.804 p50 16.666 p99 16.794
+send: sync to sync at the port less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500         0
+    -500 to -200          0
+    -200 to -100         27
+    -100 to -50          32
+    -50 to -20           16
+    -20 to 20           447
+    20 to 50             18
+    50 to 100            31
+    100 to 200           28
+    200 to 500            0
+    500 to 1000           0
+    1000 to 2000          0
+    2000 and above        0
+send: from the queue to the driver, us: mean 2.5 sd 1.4 min 1.2 max 19.9 p50 2.2 p99 6.0
+send: the sync behind the last row at the driver, us: mean -58.8 sd 11.7 min -161.6 max -52.7 p50 -55.1 p99 -53.1
+send: the last row left before the sync of its frame in 0 of 600 frames
+send: a line a frame in timing-2026-09-29-1954-b/sleep-fifo50-qdisc.csv, this report in timing-2026-09-29-1954-b/sleep-fifo50-qdisc.report.txt

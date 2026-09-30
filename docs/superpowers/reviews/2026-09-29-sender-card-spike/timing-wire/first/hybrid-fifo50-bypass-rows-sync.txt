@@ -1,0 +1,49 @@
+$ chrt -f 50 /home/trey/Work/codeisart-wall/.venv/bin/python tools/sender_spike/send.py --iface enp5s0 --order rows-sync --wait hybrid --stamp-hw --pixel 25 --seconds 10 --tail-seconds 0.2 --log timing-2026-09-29-1948/hybrid-fifo50-bypass-rows-sync.csv --qdisc-bypass
+send: 60 fps for 10 s, then 0.2 s black; order rows-sync; sync x2, 112 bytes, source type 0x07, counter off, bytes 16-18 000000, byte 26 00, bytes 31-32 0000, level 25, byte 36 05; brightness packet x2 at 25; row tail 08 88; bars at pixel 25; wait hybrid (spin 2 ms), qdisc bypass, stamps with the port's clock
+send: on enp5s0; scheduling: SCHED_FIFO priority 50, cpus 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+send: sent 600 frames and 12 black; 0 late; 0 slips
+send: measured 60.000 fps over the picture
+send: sync to sync, ms: mean 16.667 sd 0.022 min 16.563 max 16.758 p50 16.666 p99 16.747
+send: sync to sync less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500         0
+    -500 to -200          0
+    -200 to -100          1
+    -100 to -50          14
+    -50 to -20           35
+    -20 to 20           493
+    20 to 50             32
+    50 to 100            24
+    100 to 200            0
+    200 to 500            0
+    500 to 1000           0
+    1000 to 2000          0
+    2000 and above        0
+send: added to each sync, us: mean 0.0 sd 0.0 min 0.0 max 0.0
+send: sync after its tick, less the added time, us: mean 68.0 sd 21.3 min 53.9 max 169.7 p50 57.7 p99 147.3
+send: burst, first packet to last, us: mean 71.6 sd 21.9 min 56.7 max 181.5
+send: the port sent 41616 packets during the run: 41616 ours, 0 not ours
+send: the port's queue held no packet during the run
+send: driver: 600 of 600 stamps
+send: sync to sync at the driver, ms: mean 16.667 sd 0.022 min 16.564 max 16.758 p50 16.666 p99 16.747
+send: sync to sync at the driver less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500         0
+    -500 to -200          0
+    -200 to -100          1
+    -100 to -50          13
+    -50 to -20           38
+    -20 to 20           489
+    20 to 50             33
+    50 to 100            25
+    100 to 200            0
+    200 to 500            0
+    500 to 1000           0
+    1000 to 2000          0
+    2000 and above        0
+send: port: 0 of 600 stamps
+send: the sync behind the last row at the driver, us: mean 3.5 sd 2.4 min 2.4 max 30.6 p50 3.0 p99 19.1
+send: the sync left before the last row of its frame in 0 of 600 frames
+send: a line a frame in timing-2026-09-29-1948/hybrid-fifo50-bypass-rows-sync.csv, this report in timing-2026-09-29-1948/hybrid-fifo50-bypass-rows-sync.report.txt

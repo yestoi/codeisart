@@ -1,0 +1,65 @@
+send: 60 fps for 5 s, then 0.2 s black; order sync-rows, jitter 0 to 1 ms (seed 1); sync x2, 112 bytes, source type 0x07, counter off, bytes 16-18 000000, byte 26 00, bytes 31-32 0000, level 25, byte 36 05; brightness packet x2 at 25; row tail 08 88; bars at pixel 128; wait hybrid (spin 2 ms), qdisc bypass, stamps with the port's clock
+send: on enp5s0; scheduling: SCHED_FIFO priority 50, cpus 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+send: sent 300 frames and 12 black; 0 late; 0 slips
+send: measured 59.993 fps over the picture
+send: sync to sync, ms: mean 16.669 sd 0.409 min 15.718 max 17.642 p50 16.691 p99 17.515
+send: sync to sync less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500        35
+    -500 to -200         62
+    -200 to -100         22
+    -100 to -50           7
+    -50 to -20           10
+    -20 to 20            12
+    20 to 50              4
+    50 to 100            23
+    100 to 200           25
+    200 to 500           69
+    500 to 1000          30
+    1000 to 2000          0
+    2000 and above        0
+send: added to each sync, us: mean 518.7 sd 291.1 min 1.7 max 998.7
+send: sync after its tick, less the added time, us: mean 0.5 sd 0.9 min 0.2 max 12.6 p50 0.3 p99 1.1
+send: burst, first packet to last, us: mean 72.8 sd 26.4 min 55.1 max 175.6
+send: the port sent 21216 packets during the run: 21216 ours, 0 not ours
+send: the port's queue held no packet during the run
+send: driver: 300 of 300 stamps
+send: sync to sync at the driver, ms: mean 16.669 sd 0.410 min 15.718 max 17.643 p50 16.689 p99 17.514
+send: sync to sync at the driver less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500        36
+    -500 to -200         61
+    -200 to -100         21
+    -100 to -50           8
+    -50 to -20           10
+    -20 to 20            12
+    20 to 50              4
+    50 to 100            25
+    100 to 200           23
+    200 to 500           69
+    500 to 1000          30
+    1000 to 2000          0
+    2000 and above        0
+send: port: 300 of 300 stamps
+send: sync to sync at the port, ms: mean 16.668 sd 0.410 min 15.717 max 17.643 p50 16.689 p99 17.514
+send: sync to sync at the port less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500        37
+    -500 to -200         60
+    -200 to -100         21
+    -100 to -50           8
+    -50 to -20           10
+    -20 to 20            12
+    20 to 50              4
+    50 to 100            25
+    100 to 200           22
+    200 to 500           70
+    500 to 1000          30
+    1000 to 2000          0
+    2000 and above        0
+send: the sync behind the last row at the driver, us: mean -60.6 sd 19.7 min -142.6 max -48.0 p50 -50.7 p99 -48.2
+send: the last row left before the sync of its frame in 0 of 300 frames
+send: a line a frame in timing-2026-09-29-1954-b/y-jitter-1ms-sync-first.csv, this report in timing-2026-09-29-1954-b/y-jitter-1ms-sync-first.report.txt

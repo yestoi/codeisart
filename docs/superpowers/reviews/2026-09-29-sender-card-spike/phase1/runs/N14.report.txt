@@ -1,0 +1,46 @@
+send: 60 fps for 20 s, then 1 s black; order sync-rows, jitter 0 to 2 ms (seed 1); sync x2, 112 bytes, source type 0x07, counter off, bytes 16-18 000000, byte 26 00, bytes 31-32 0000, level 25, byte 36 05; brightness packet x2 at 25; row tail 08 88; bars at pixel 128; wait hybrid (spin 2 ms), qdisc bypass, stamps
+send: on enp5s0; scheduling: SCHED_FIFO priority 50, cpus 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+send: sent 1200 frames and 60 black; 0 late; 0 slips
+send: measured 60.000 fps over the picture
+send: sync to sync, ms: mean 16.667 sd 0.799 min 14.769 max 18.614 p50 16.677 p99 18.319
+send: sync to sync less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000      152
+    -1000 to -500       181
+    -500 to -200        145
+    -200 to -100         56
+    -100 to -50          33
+    -50 to -20           16
+    -20 to 20            21
+    20 to 50             11
+    50 to 100            26
+    100 to 200           62
+    200 to 500          162
+    500 to 1000         197
+    1000 to 2000        137
+    2000 and above        0
+send: added to each sync, us: mean 1015.3 sd 575.2 min 1.8 max 1997.5
+send: sync after its tick, less the added time, us: mean 0.5 sd 1.6 min 0.2 max 21.0 p50 0.3 p99 9.6
+send: burst, first packet to last, us: mean 69.4 sd 18.4 min 48.3 max 190.0
+send: the port sent 85680 packets during the run: 85680 ours, 0 not ours
+send: the port's queue held no packet during the run
+send: driver: 1200 of 1200 stamps
+send: sync to sync at the driver, ms: mean 16.667 sd 0.800 min 14.769 max 18.614 p50 16.677 p99 18.319
+send: sync to sync at the driver less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000      153
+    -1000 to -500       179
+    -500 to -200        146
+    -200 to -100         56
+    -100 to -50          33
+    -50 to -20           16
+    -20 to 20            21
+    20 to 50             11
+    50 to 100            24
+    100 to 200           64
+    200 to 500          162
+    500 to 1000         197
+    1000 to 2000        137
+    2000 and above        0
+send: the sync behind the last row at the driver, us: mean -60.9 sd 16.3 min -167.6 max -44.6 p50 -55.6 p99 -46.0
+send: the last row left before the sync of its frame in 0 of 1200 frames

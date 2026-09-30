@@ -16,7 +16,7 @@ and a webcam photo of the wall to see what the panels do.
 | File | What |
 |---|---|
 | `vm.py` | the VM from the command line: `status`, `start`, `stop`, `shot`, `click`, `drag`, `type`, `keys`, `guest`, `put`, `get`, `desktop-run`, `ledvision`, `authorize-key` |
-| `wall_cam.py` | a webcam photo of the wall (`shots/wall.png`) |
+| `wall_cam.py` | a webcam photo of the wall (`shots/wall.png`); `--flash` finds what blinks, `--size` picks the camera |
 | `provision/provision.sh` | builds the VM unattended on the host |
 | `provision/autounattend.xml`, `provision/setup.ps1.in` | the Windows answer file and first-logon script |
 | `../../.claude/skills/ledvision-card-setup/SKILL.md` | the agent's procedure for setting up a card |
@@ -122,8 +122,16 @@ need the horizontal scrollbar (y=688) dragged right; then column c is at x = 60 
   holds it black; leave that window open (drag it aside).
 - The brightness box ignores typing: click the slider, Home, then Right 40 times for 40%.
 - The Intelligent Setting wizard ignores that brightness, and each page starts with "Automatic changes"
-  ticked, which flashes the wall. Untick it first on every page.
+  ticked, which flashes the wall. Untick it first on every page. It does honour the card's own Brightness
+  Level (Receiver Parameters > Performance Setting): set it to 1 and **Send** before the wizard. Loading a
+  preset puts it back to 8, and so does a card power cycle.
+- The Gray Test window opens at Red 255, not at the last value: set 0 the moment it opens.
 - A stale DHCP lease outlives the guest; `vm start`/`status` wait for sshd, not the lease.
+- The Mac's ssh key was not trusted by the guest at first ("Permission denied (publickey…)" on `guest`,
+  `ledvision`): `vm authorize-key ~/.ssh/id_rsa.pub` once (the Mac's key is RSA, not ed25519).
+- The Mac's camera indexes move (an iPhone's Continuity Camera comes and goes): `wall_cam --size 1280x720`
+  picks the laptop's by its frame size. In daylight the unlit LED packages look white to it; dim the room.
+  The wizard's Guide 8 point blinks: `wall_cam --flash 4` finds it (see `--panel`).
 
 ## 6. Tear down
 

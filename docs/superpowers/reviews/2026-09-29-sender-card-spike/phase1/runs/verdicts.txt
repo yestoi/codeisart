@@ -1,0 +1,32 @@
+20:56:04 S1 (ran 20:55:15): picture; flicker slight/some; bottom rows noisy
+20:57:12 S2 (ran 20:56:04): picture; flicker slight/some; bottom rows noisy
+20:59:24 S2o (ran 20:57:12; the old way at 20 fps): looks the same as S2; hard to tell unless back to back
+21:04:52 P1 (ABBA, ran 20:59:24): owner saw two pictures only, thinks the first and the last: stable, noise at the bottom; the S2 segments showed nothing
+21:05:49 P2 (ran 21:04:52): owner: 1 good, 2 dark, 3 good, 4 dark
+21:08:12 S8 (ran 21:06:15, the capture byte for byte at 60.32, level 0xff, pixel 25): owner: "The first one was perfect." L1 L2 L3 (21:06:26..): not yet reported
+21:10:36 S8b (ran 21:08:12, 30 s, the capture byte for byte at 60.32): owner: "that might be a winner. There is still some flickering but it is on the very slight level where it happens across all panels simultaneously randomly every 3-6 seconds. Big improvement on before. No noise at the bottom. Full clear picture."
+21:13:30 L1 L2 L3 (21:06): owner believes they showed a picture, asks for a redo. R1 R2 R3 (21:10, dips at 60/60.32/59): not yet reported
+21:14:46 L1b L2b L3b (21:13:30, at 60, dim): owner: L1b stable, noise at the bottom; L2b jittery, noise at the bottom; L3b even more jittery, noise at the bottom. All three: a picture
+21:17:44 S1b B1 S7 (21:14:46): owner asked for a redo, named one at a time
+21:18:23 N1 (21:17:44, plain bright base): owner: "bad"
+21:19:04 N2 (21:18:23, bright base, sync first): owner said only "next"
+21:19:54 N3 (21:19:04, whole S2 at 60.00 level 0.1): owner said only "Do the next one"
+21:20:37 N4 (21:19:54, whole S2 at 60.32, level 0xff): owner: "That is the perfect one. No flickering, no noise."
+21:21:32 N5 (21:20:38, whole S2 at 60.00 level 0.1, dim): owner: a picture
+21:23:20 N6 (21:21:32, bright base, sync first): owner: "It appears good. bottom row is clean." (against the plain base: bad)
+21:24:27 N7 N8 (21:23:20; base sync-first bright, then S2 packets at pixel 128 level 0.1): owner: "Looks great. about the same."
+21:25:30 N9 N10 (21:24:27; sync-first bright at 30, then at 20): owner: "They were both bad fast flickering."
+21:27:36 N11 (21:25:30, sync first at 60.00, 30 s): owner: "a few, maybe a couple, but way better than before where it was every few seconds. Now it is very stable after the change. I guess the test will be animation." (sender: one sync 0.7 ms late in the run)
+21:29:09 N12 (21:27:36, sync first 60.00, scroll 8 px/s, 20 s): owner: "Lets have more movement. I did see slightly more jitterying there."
+21:30:21 N13 (21:29:09, sync first 60.00, scroll 32 px/s, 20 s): owner: "Do it again."
+21:31:56 N13b (21:30:22, scroll 32 px/s again): owner: "Is it supposed to be smooth? I saw two transitions." (sender: one sync 0.6 ms late)
+21:33:10 N14 (21:31:56, sync first 60.00, jitter up to 2 ms): owner: "Bad jitter/flicker."
+21:33:56 N15 (21:33:10, sync first 59.00, 15 s): owner: "Do it again and for longer."
+21:35:02 N15b (21:33:57, sync first 59.00, 30 s): owner: "I think this is our most stable presentation yet."
+21:36:02 N16 N17 (21:35:02; sync first at 55 then 50, 15 s each): owner: "I saw flicker at 50. Do 55 again."
+21:37:14 N16b (21:36:02, sync first 55, 20 s): owner: "I actually saw just a black screen that time." STOP: rule 5
+21:38:00 owner chose the diagnostic: plain base 5 s
+21:38:46 N18 (21:38:00, plain base 5 s, diagnostic): owner: "wall showed bars" -> the card answers; 55 was refused once
+21:39:53 N19 (21:38:46, scroll 32 px/s at 59): owner: "Super smooth". N20 (21:39:07, jitter 0.5 ms at 59): owner: "I see jitter."
+21:40:26 N21 (21:39:53, jitter 0.25 ms at 59): owner: "Just the slightest flicker. I can tell."
+21:41:29 F1 (21:40:26, plain base): owner: "yes" (as at the start). Session ends; owner asked to power-cycle the card.

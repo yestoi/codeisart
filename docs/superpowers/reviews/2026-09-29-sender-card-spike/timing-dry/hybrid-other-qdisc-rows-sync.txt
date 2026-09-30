@@ -1,0 +1,26 @@
+$ /home/trey/Work/codeisart-wall/.venv/bin/python tools/sender_spike/send.py --iface enp5s0 --order rows-sync --wait hybrid --dry-run --pixel 25 --seconds 10 --tail-seconds 0.2 --log /tmp/spike-timing-dry-2/hybrid-other-qdisc-rows-sync.csv
+send: 60 fps for 10 s, then 0.2 s black; order rows-sync; sync x2, 112 bytes, source type 0x07, counter off, bytes 16-18 000000, byte 26 00, bytes 31-32 0000, level 25, byte 36 05; brightness packet x2 at 25; row tail 08 88; bars at pixel 25; wait hybrid (spin 2 ms)
+send: dry run, no socket; scheduling: SCHED_OTHER priority 0, cpus 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+send: sent 600 frames and 12 black; 0 late; 0 slips
+send: measured 60.000 fps over the picture
+send: sync to sync, ms: mean 16.667 sd 0.004 min 16.638 max 16.696 p50 16.667 p99 16.684
+send: sync to sync less the period of 16.667 ms, us: count
+    below -2000           0
+    -2000 to -1000        0
+    -1000 to -500         0
+    -500 to -200          0
+    -200 to -100          0
+    -100 to -50           0
+    -50 to -20            4
+    -20 to 20           592
+    20 to 50              3
+    50 to 100             0
+    100 to 200            0
+    200 to 500            0
+    500 to 1000           0
+    1000 to 2000          0
+    2000 and above        0
+send: added to each sync, us: mean 0.0 sd 0.0 min 0.0 max 0.0
+send: sync after its tick, less the added time, us: mean 4.3 sd 3.4 min 2.7 max 33.5 p50 2.9 p99 21.4
+send: burst, first packet to last, us: mean 4.5 sd 3.0 min 2.8 max 34.2
+send: a line a frame in /tmp/spike-timing-dry-2/hybrid-other-qdisc-rows-sync.csv, this report in /tmp/spike-timing-dry-2/hybrid-other-qdisc-rows-sync.report.txt
