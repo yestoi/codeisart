@@ -27,6 +27,8 @@ on every push as well. A level that is NaN or not above 0 is sent as 0: it fails
 """
 from __future__ import annotations
 
+import multiprocessing
+import os
 import socket
 
 import numpy as np
@@ -35,9 +37,20 @@ from show.display.colorlight_packets import (BRIGHTNESS_PAYLOAD_LEN, CHUNK_PIXEL
                                              ETH_FRAME, ETH_ROW, FRAME_PAYLOAD_LEN, ROW_HEADER_LEN, SRC_MAC,
                                              brightness_packet, chunk_pixels, frame_packet, level_byte,
                                              row_buffers, row_packets)
+from show.display.colorlight_sender import Slot, sender_main
 
 SAFE_BRIGHTNESS = 0.4       # the level before set_brightness: arcade.toml's brightness, show.toml's cap
 BRIGHTNESS_EVERY = 3        # pushes between brightness packets: 0.1 s at 30 Hz
+
+
+def spawn_sender(slot: Slot, sock) -> multiprocessing.Process:
+    """The sender in a child of the spawn kind (a fork behind MediaPipe's threads is not safe). The socket goes
+    across as a duplicated descriptor; the parent keeps its own for a restart."""
+    ctx = multiprocessing.get_context("spawn")
+    child = ctx.Process(target=sender_main, name="colorlight-sender", daemon=True,
+                        args=(slot.path, slot.width, slot.height, slot.lock, sock, os.getpid()))
+    child.start()
+    return child
 
 
 class ColorlightDisplay:

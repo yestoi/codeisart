@@ -18,6 +18,7 @@ a pause is a prime (brightness and rows, no sync), so the sync that follows show
 """
 from __future__ import annotations
 
+import gc
 import math
 import mmap
 import multiprocessing
@@ -231,3 +232,30 @@ def stats_of(h: np.ndarray) -> dict:
     return {"frames": int(h[FRAMES]), "late": int(h[LATE]), "slips": int(h[SLIPS]), "worst_us": h[WORST] / 1e3,
             "mean_us": mean / 1e3, "sd_us": math.sqrt(max(var, 0.0)) / 1e3, "errors": int(h[ERRORS]),
             "rt": bool(h[RT])}
+
+
+def set_realtime(priority: int = RT_PRIORITY) -> bool:
+    """SCHED_FIFO at `priority` for this process; False where it cannot be had (no CAP_SYS_NICE, or not Linux)."""
+    try:
+        os.sched_setscheduler(0, os.SCHED_FIFO, os.sched_param(priority))
+    except (AttributeError, OSError):
+        return False
+    if SENDER_CPU is not None:
+        try:
+            os.sched_setaffinity(0, {SENDER_CPU})
+        except (AttributeError, OSError):
+            pass
+    return True
+
+
+def sender_main(path: str, width: int, height: int, lock, sock, parent_pid: int) -> None:
+    """The child: the slot attached, the priority asked for, garbage collection off, the sender run to the stop
+    flag or the parent's death. `sock` is the parent's socket, duplicated into this process by multiprocessing."""
+    slot = Slot.open(path, width, height, lock)
+    try:
+        slot.h[RT] = 1 if set_realtime() else 0
+        gc.disable()
+        Sender(slot, sock.send, parent_alive=lambda: os.getppid() == parent_pid).run()
+    finally:
+        sock.close()
+        slot.close()
