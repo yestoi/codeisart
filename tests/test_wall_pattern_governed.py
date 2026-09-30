@@ -164,6 +164,16 @@ def test_grid_lines_every_8_pixels(width, height):
     assert wp.LOOK_FOR["grid"] and "grid" in wp.PATTERNS
 
 
+@pytest.mark.parametrize("width,height", [(128, 64), (128, 32), (512, 192)])
+def test_border_is_one_pixel_along_all_four_edges(width, height):
+    b = wp.border(width, height, 0.0)
+    assert b.shape == (height, width, 3) and b.dtype == np.uint8
+    lit = (b == WHITE).all(axis=2)
+    assert lit[0].all() and lit[-1].all() and lit[:, 0].all() and lit[:, -1].all()   # the last row and column too
+    assert not b[1:-1, 1:-1].any()                              # nothing inside the frame
+    assert wp.LOOK_FOR["border"] and "border" in wp.PATTERNS
+
+
 @pytest.mark.parametrize("width,height,n", [(512, 192, 48), (128, 64, 4)])
 def test_panels_labels_every_panel(width, height, n):
     f, font, labelled = wp.panels(width, height, 0.0), Font.load(wp.FONT_PATH), 0

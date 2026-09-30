@@ -4,6 +4,7 @@
     python tools/wall_pattern.py index --iface eth0                  # every panel where it should be
     python tools/wall_pattern.py panels --iface eth0                 # each panel's row and column, "r,c"
     python tools/wall_pattern.py grid  --iface eth0                  # alignment and tearing: lines every 8 px
+    python tools/wall_pattern.py border --iface eth0                 # the last row and column: a line on every edge
     python tools/wall_pattern.py steps --iface eth0 --brightness 0.4 # the brightness packet
     python tools/wall_pattern.py gamma --iface eth0                  # who applies gamma
     python tools/wall_pattern.py rgb   --backend sdl                 # the same picture in a window
@@ -85,6 +86,9 @@ LOOK_FOR = {
     "grid": "Thin white lines every 8 pixels, across and down, the first along the top and the left edge. A line "
             "that breaks, doubles or steps sideways at a panel edge: the panels are misaligned or the LEDVision "
             "layout is wrong. Lines that shimmer or tear while it runs: write where.",
+    "border": "One thin white line along all four edges of the wall, and nothing inside it. An edge with no line, "
+              "or a line one pixel in from the edge: the card's width or height is not the wall's, or the last "
+              "row or column of a panel is dead; write which edge.",
     "panels": "Each panel shows its row and column, \"r,c\", in white at its top left: 0,0 top left, 0,1 to its "
               "right, 1,0 below it. A label in the wrong place, mirrored or upside down: the panels are swapped, "
               "rotated or chained the other way; write what each panel shows.",
@@ -158,6 +162,13 @@ def grid(width: int, height: int, t: float) -> np.ndarray:
     return frame
 
 
+def border(width: int, height: int, t: float) -> np.ndarray:
+    frame = _blank(width, height)
+    frame[0] = frame[-1] = WHITE
+    frame[:, 0] = frame[:, -1] = WHITE
+    return frame
+
+
 def panels(width: int, height: int, t: float) -> np.ndarray:
     frame, font = _blank(width, height), Font.load(FONT_PATH)
     for r in range(height // PANEL_H):
@@ -167,7 +178,8 @@ def panels(width: int, height: int, t: float) -> np.ndarray:
 
 
 PATTERNS: dict[str, Callable[[int, int, float], np.ndarray]] = {"rgb": rgb, "index": index, "steps": steps,
-                                                                "gamma": gamma, "grid": grid, "panels": panels}
+                                                                "gamma": gamma, "grid": grid, "border": border,
+                                                                "panels": panels}
 
 
 def _number(x) -> bool:
