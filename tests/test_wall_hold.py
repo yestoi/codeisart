@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from arcade.flash import BUDGET, flash_area, square_flashes
+from show.display.colorlight_sender import OUTPUT_FPS
 from show.wall import HOLD_S, GovernedDisplay
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,12 +49,12 @@ class TornDisplay:
 
 class SteadyDisplay:
     """The steady sender's model (route A): push raises the error its last torn burst carried back and stores
-    nothing, or stores the frame and clears the pause; then the tick's bursts run, ceil(59 / fps) of them. A burst
+    nothing, or stores the frame and clears the pause; then the tick's bursts run, ceil(OUTPUT_FPS / fps) of them. A burst
     numbered in `tears` (bursts counted from 1) writes the rows above `split`, sends no sync and pauses the sender;
     the burst after a push that ends a pause is a prime (rows, no sync). The sync of a burst shows the rows the
     burst before it sent. shown: (tick, the wall after each burst)."""
     def __init__(self, tears, split=H // 2, fps=20):
-        self.tears, self.split, self.per_tick = tears, split, math.ceil(59 / fps)
+        self.tears, self.split, self.per_tick = tears, split, math.ceil(OUTPUT_FPS / fps)
         self.bursts, self.tick, self.closed = 0, 0, False
         self.rows, self.screen, self.shown = DARK.copy(), DARK.copy(), []
         self.pending, self.paused, self.primed, self.error = DARK.copy(), False, False, None

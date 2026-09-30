@@ -138,6 +138,7 @@ def test_a_failed_send_ends_the_burst_records_the_error_and_pauses(slot):
     assert kinds(sock.sent[sent:]) == [ROW] * H                              # the restart primes: no sync
     sender.tick()
     assert sock.sent[-FULL][12] == SYNC
+    assert sock.sent[-FULL][COUNTER_OFFSET] == 1                             # the counter carried on past the torn frame
     assert not any(p[12] == BRIGHTNESS for p in sock.sent)                   # no 0x0A: not in a restart either
 
 

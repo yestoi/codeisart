@@ -108,7 +108,7 @@ def test_gamma_has_a_checker_between_a_128_patch_and_a_186_patch(width, height):
     assert len(np.unique(ramp)) == 16 and (ramp == ramp[0]).all()
 
 
-def test_steps_walks_the_brightness_packet_and_shows_which_step():
+def test_steps_walks_the_syncs_level_and_shows_which_step():
     display = Recording()
     clock = iter(np.arange(0.0, 100.0, 1.0))
     run("steps", display, brightness=0.4, seconds=8.0, fps=1, clock=lambda: next(clock))

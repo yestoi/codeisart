@@ -7,9 +7,9 @@ docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md, section 2.
 
 push(frame) checks the frame, then the sender's news (below), copies the frame into the shared slot and returns:
 nothing is sent by the caller's thread. set_brightness stores the level; every sync from the next tick carries it
-(there is no separate brightness packet: the sync's byte 36 = 05 makes the card obey the sync's level). The wall is black from the moment the display opens (the card keeps its last picture
-through a restart otherwise), and close() runs black for CLOSE_HOLD_S, stops the sender after a whole burst,
-closes the socket and unlinks the slot.
+(there is no separate brightness packet: the sync's byte 36 = 05 makes the card obey the sync's level). The wall
+is black from the moment the display opens (the card keeps its last picture through a restart otherwise), and
+close() runs black for CLOSE_HOLD_S, stops the sender after a whole burst, closes the socket and unlinks the slot.
 
 The sender's news comes back through push: a send that raised in the child (recorded, the sender paused) is
 raised by the next push, which stores nothing, so show.wall.GovernedDisplay starts its hold as before; the
