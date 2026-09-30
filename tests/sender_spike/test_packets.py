@@ -209,3 +209,23 @@ def test_the_scroll_moves_slowly():
 
 def test_bars_do_not_move():
     assert send.picture("bars", 128, 0, 60.0) == send.picture("bars", 128, 500, 60.0) == send.bars(128)
+
+
+def test_the_scroll_speed_is_a_flag():
+    # 2026-09-29 at the wall: "Lets have more movement." A bar is 32 pixels: at 32 a second the picture
+    # shifts a bar's width each second, and no pixel changes colour faster than once a second
+    slow = send.picture("scroll", 25, 60, 60.0, speed=8)
+    fast = send.picture("scroll", 25, 60, 60.0, speed=32)
+    first = send.picture("scroll", 25, 0, 60.0, speed=32)
+    assert slow == send.picture("scroll", 25, 60, 60.0)
+    assert fast[0][32 * 3:] == first[0][:-32 * 3]
+    assert send.plan_from(["--picture", "scroll", "--scroll", "32"]).scroll == 32
+    assert send.plan_from([]).scroll == 8
+
+
+def test_the_scroll_is_never_a_strobe():
+    import pytest
+    with pytest.raises(ValueError, match="64"):
+        send.plan_from(["--picture", "scroll", "--scroll", "65"])
+    with pytest.raises(ValueError, match="64"):
+        send.plan_from(["--picture", "scroll", "--scroll", "0"])

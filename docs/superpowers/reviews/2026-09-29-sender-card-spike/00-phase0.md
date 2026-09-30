@@ -1,5 +1,7 @@
 # Sender-card spike, phase 0: what the desk work found
 
+> Phase 1 followed the same evening; the spike's report is `../2026-09-29-sender-card-spike.md`.
+
 2026-09-29, 17:14 to 20:00 CDT. Brief: `docs/superpowers/specs/2026-09-29-sender-card-spike.md`.
 No packet was sent to the card. Step 6 sent its packets to a Raspberry Pi 5 that stood in for the card on the cable. The run sheet for the wall is beside this file (`01-run-sheet.md`).
 

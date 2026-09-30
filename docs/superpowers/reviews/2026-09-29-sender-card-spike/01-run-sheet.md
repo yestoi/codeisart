@@ -1,5 +1,9 @@
 # Sender-card spike, phase 1: the run sheet
 
+> Phase 1 was run on 2026-09-29, 20:55 to 21:41. The report is `../2026-09-29-sender-card-spike.md`. The
+> short form was followed as far as S2, then the session went where the results led (the runs are all in
+> the report); batches B to E of this sheet were not run and are not needed.
+
 Written 2026-09-29 in phase 0, rewritten the same evening after an adversarial review (`00-phase0.md`,
 section 11). For one session at the wall, about an hour, the owner present.
 Brief: `docs/superpowers/specs/2026-09-29-sender-card-spike.md`. Findings so far: `00-phase0.md`.

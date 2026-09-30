@@ -100,12 +100,12 @@ def black():
     return [bytes(W * 3)] * H
 
 
-def picture(kind, level, frame, fps):
-    """The rows of one frame. "scroll" is the bars moving right, 8 pixels a second."""
+def picture(kind, level, frame, fps, speed=SCROLL_PIXELS_A_SECOND):
+    """The rows of one frame. "scroll" is the bars moving right, `speed` pixels a second."""
     rows = bars(level)
     if kind == "bars":
         return rows
-    shift = int(frame / fps * SCROLL_PIXELS_A_SECOND) % W
+    shift = int(frame / fps * speed) % W
     row = rows[0]
     row = row[len(row) - shift * 3:] + row[:len(row) - shift * 3]
     return [row] * H
@@ -126,6 +126,7 @@ class Plan:
     tail_seconds: float = 1.0         # black frames after the picture
     pixel: int = BASE_PIXEL
     picture: str = "bars"
+    scroll: int = SCROLL_PIXELS_A_SECOND  # pixels a second of the moving picture
     jitter_ms: float = 0.0            # each frame, its sync with it, is held back by a random time up to this
     seed: int = 1
     wait: str = "hybrid"              # sleep, then busy-wait the last spin_ms; or "spin"; or "sleep"
@@ -216,6 +217,8 @@ def check(plan):
         raise ValueError("--bright-reps is 0 to 2")
     if not 0 <= plan.jitter_ms <= 5:
         raise ValueError("--jitter-ms is 0 to 5")
+    if not 1 <= plan.scroll <= 64:
+        raise ValueError("--scroll is 1 to 64 pixels a second: no pixel changes colour faster than twice a second")
     if not 0 <= plan.gap_ms < 1000:
         raise ValueError("--gap-ms is 0 or more, and less than the period")
     if plan.gap_ms and plan.order != "rows-sync":
@@ -279,6 +282,8 @@ def parser():
     g = a.add_argument_group("the rows and the picture")
     g.add_argument("--row-tail", metavar="HEX", help="bytes 19, 20 of a row packet (base 0888, S2 0000)")
     g.add_argument("--picture", choices=PICTURES, default="bars")
+    g.add_argument("--scroll", type=int, default=SCROLL_PIXELS_A_SECOND,
+                   help="pixels a second of the moving picture (a bar is 32 wide; at most 64)")
     g.add_argument("--pixel", type=int, help="the bars' value (base %d; %d while the card's brightness is "
                                              "in doubt)" % (BASE_PIXEL, DIM_PIXEL))
     g = a.add_argument_group("brightness (0 to 1, capped at %g)" % LEVEL_CAP)
@@ -347,7 +352,7 @@ def plan_from(argv):
         row_tail=hex_bytes("--row-tail", pick(args.row_tail, "0000", "0888")),
         order=pick(args.order, "sync-rows", "rows-sync"),
         gap_ms=args.gap_ms, fps=args.fps, seconds=args.seconds, tail_seconds=args.tail_seconds,
-        picture=args.picture, jitter_ms=args.jitter_ms, seed=args.seed,
+        picture=args.picture, scroll=args.scroll, jitter_ms=args.jitter_ms, seed=args.seed,
         wait=args.wait, spin_ms=args.spin_ms, qdisc_bypass=args.qdisc_bypass,
         level_field_proven=args.level_field_proven, iface=args.iface, dry_run=args.dry_run, log=args.log,
         stamp="hw" if args.stamp_hw else "sw" if args.stamp else "")
@@ -370,9 +375,10 @@ def describe(plan):
         + (", qdisc bypass" if plan.qdisc_bypass else "") \
         + {"": "", "sw": ", stamps", "hw": ", stamps with the port's clock"}[plan.stamp]
     proven = ", level field proven (the owner's word)" if plan.level_field_proven else ""
+    shown = plan.picture + (" at %d px/s" % plan.scroll if plan.picture == "scroll" else "")
     return "%g fps for %g s, then %g s black; %s; %s; %s; row tail %s; %s at pixel %d%s; %s" % (
         plan.fps, plan.seconds, plan.tail_seconds, cycle, sync, bright,
-        " ".join("%02x" % b for b in plan.row_tail), plan.picture, plan.pixel, proven, timing)
+        " ".join("%02x" % b for b in plan.row_tail), shown, plan.pixel, proven, timing)
 
 
 def guard(packets):
@@ -410,7 +416,7 @@ def run(plan, send, now, wait):
     bright = [brightness_packet(plan.bright_level)] * plan.bright_reps
     pictures, body = {}, []
     for n in range(n_picture):
-        rows = picture(plan.picture, plan.pixel, n, plan.fps)
+        rows = picture(plan.picture, plan.pixel, n, plan.fps, plan.scroll)
         if rows[0] not in pictures:
             pictures[rows[0]] = bright + row_packets(rows, plan.row_tail)
         body.append(pictures[rows[0]])

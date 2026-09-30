@@ -1,0 +1,1 @@
+A = --pixel 25 --fps 20 | B = --s2 --sync-level 0.1 --fps 20 | order ABAB | started 2026-09-29 21:04:52
