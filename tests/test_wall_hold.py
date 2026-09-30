@@ -234,8 +234,8 @@ def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
 def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
     made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
             if "GovernedDisplay(" in p.read_text()}
-    assert made == {"main.py", "wall_pattern.py"}
-    for path in (ROOT / "show" / "main.py", ROOT / "tools" / "wall_pattern.py"):
+    assert made == {"main.py", "wall_pattern.py", "wall_video.py"}
+    for path in (ROOT / "show" / "main.py", ROOT / "tools" / "wall_pattern.py", ROOT / "tools" / "wall_video.py"):
         wraps = [n for n in ast.walk(ast.parse(path.read_text())) if isinstance(n, ast.Call)
                  and isinstance(n.func, ast.Name) and n.func.id == "GovernedDisplay"]
         assert wraps, path
