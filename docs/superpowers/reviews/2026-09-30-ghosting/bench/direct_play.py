@@ -57,10 +57,10 @@ def main():
     ap.add_argument("--speed", type=float, default=None, help="px/s: scroll 8, slide 10")
     ap.add_argument("--iface", default="eth0")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--out-fps", help="the sender's rate (bench child): 60.32 unless set")
+    ap.add_argument("--out-fps", help="the sender's rate (bench child): 60.00 unless set")
     ap.add_argument("--sync-reps", help="syncs a frame (bench child): 1 unless set")
     ap.add_argument("--counter", help="on or off (bench child)")
-    ap.add_argument("--spread-ms", help="rows spread over this many ms after the sync (bench child); 0 is a burst")
+    ap.add_argument("--spread-ms", help="rows spread over this many ms after the sync (bench child); 15.5 unless set; 0 is a burst")
     ap.add_argument("--order", help="sync-rows or rows-sync (bench child)")
     a = ap.parse_args()
     if a.out_fps or a.sync_reps or a.counter or a.spread_ms or a.order:
@@ -88,9 +88,9 @@ def main():
             fds = (fd, slot.fd) if fd >= 0 else (slot.fd,)
             return cl.SenderProcess(sp.Popen(child, pass_fds=fds, env=env, cwd=str(root)))
         cl.ColorlightDisplay.__init__.__kwdefaults__["launch"] = spawn_bench_sender
-        print(f"direct_play: bench child, rate {os.environ.get('GHOST_FPS', '60.32')}, syncs a frame "
+        print(f"direct_play: bench child, rate {os.environ.get('GHOST_FPS', '60.00')}, syncs a frame "
               f"{os.environ.get('GHOST_SYNC_REPS', '1')}, counter {os.environ.get('GHOST_COUNTER', 'on')}, "
-              f"spread {os.environ.get('GHOST_SPREAD_MS', '0')} ms, order {os.environ.get('GHOST_ORDER', 'sync-rows')}", flush=True)
+              f"spread {os.environ.get('GHOST_SPREAD_MS', '15.5')} ms, order {os.environ.get('GHOST_ORDER', 'sync-rows')}", flush=True)
     if not 0 <= a.brightness <= 0.4:
         raise SystemExit("brightness is 0 to 0.4")
     if not 0 <= a.pixel <= 255:

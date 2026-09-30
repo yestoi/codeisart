@@ -40,6 +40,6 @@ if init.__kwdefaults__ and "launch" in init.__kwdefaults__:
 else:
     raise SystemExit("arcade_knobs: ColorlightDisplay launch default not found")
 print("arcade_knobs: the S2 format, %s frames a second, counter %s" % (
-    os.environ.get("GHOST_FPS", "60.32"), os.environ.get("GHOST_COUNTER", "on")), flush=True)
+    os.environ.get("GHOST_FPS", "60.00"), os.environ.get("GHOST_COUNTER", "on")), flush=True)
 sys.argv = [str(HERE / "arcade_load.py"), *argv]
 runpy.run_path(str(HERE / "arcade_load.py"), run_name="__main__")

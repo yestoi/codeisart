@@ -47,6 +47,6 @@ else:
     raise SystemExit("ghost_knobs: ColorlightDisplay's launch default not found; the driver has changed")
 
 print("ghost_knobs: the S2 format, %s frames a second, spread %s ms" % (
-    os.environ.get("GHOST_FPS", "60.32"), os.environ.get("GHOST_SPREAD_MS", "0")), flush=True)
+    os.environ.get("GHOST_FPS", "60.00"), os.environ.get("GHOST_SPREAD_MS", "15.5")), flush=True)
 sys.argv = [str(HERE / "ghost_map.py"), *argv]
 runpy.run_path(str(HERE / "ghost_map.py"), run_name="__main__")
