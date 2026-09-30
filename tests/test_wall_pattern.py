@@ -233,7 +233,7 @@ def test_run_is_paced_by_deadlines_not_by_sleep_after_push():
 
 
 def test_run_restarts_the_grid_after_a_late_tick_with_no_catch_up():
-    display, slept, now = Recording(), [], [0.0]
+    display, slept, now, pushed_at = Recording(), [], [0.0], []
     reads = [0]
 
     def clock():
@@ -245,8 +245,12 @@ def test_run_restarts_the_grid_after_a_late_tick_with_no_catch_up():
         slept.append(s)
         now[0] += s
 
+    push = display.push
+    display.push = lambda frame: (pushed_at.append(now[0]), push(frame))
     run("rgb", display, brightness=0.1, seconds=1.5, fps=10, clock=clock, sleep=sleep)
     assert min(slept) > 0.05 and len(display.frames) - 2 <= 12  # no burst of pushes after the stall
+    gaps = [b - a for a, b in zip(pushed_at, pushed_at[1:])][:-2]
+    assert min(gaps) > 0.05 and max(gaps) > 0.4                 # the late push at once, the next a period after it
 
 
 def test_run_prints_the_senders_stats_at_the_end():

@@ -223,21 +223,23 @@ def run(pattern: str, display, width: int, height: int, brightness: float = 0.1,
     try:
         wall.set_brightness(level)
         start = clock()
-        due = start
+        period = 1.0 / fps
+        due = start + period                 # when the second push is due; the clock is read once a push
+        now = clock()
         while True:
-            t = clock() - start
+            t = now - start
             if seconds > 0 and t >= seconds:
                 break
             if pattern == "steps" and brightness * STEPS[step_of(t)] != level:
                 level = brightness * STEPS[step_of(t)]
                 wall.set_brightness(level)
             wall.push(PATTERNS[pattern](width, height, t))
-            due += 1.0 / fps                 # the next push is due a period after this one was, not after it returned
             now = clock()
-            if now < due:
+            if now < due:                    # on time: sleep to the deadline, the next one a period after it
                 sleep(due - now)
-            else:                            # late: run at once, the grid restarts from now (no catch-up burst)
-                due = now
+                now, due = due, due + period
+            else:                            # late: the next push runs at once, the grid restarts from now
+                due = now + period           # (as arcade/runner.py: no catch-up burst)
     except KeyboardInterrupt:
         pass
     except OSError as e:
