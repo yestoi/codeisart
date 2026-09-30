@@ -263,3 +263,17 @@ def test_the_spin_margin_can_be_set_from_the_environment(monkeypatch):
     assert spin_ns_from_env() == 4_000_000
     monkeypatch.setenv("COLORLIGHT_SPIN_MS", "nonsense")
     assert spin_ns_from_env() == SPIN_NS
+
+
+def test_the_sender_pins_itself_to_the_highest_core_it_may_use(monkeypatch):
+    # At the wall, 2026-09-30: unpinned at SCHED_FIFO 50 a sync was 300 to 850 us late once a minute and the owner
+    # saw it; pinned to one core the worst was 36 us. The last core, so the show's own threads keep the first ones.
+    from show.display import colorlight_sender as cs
+    monkeypatch.setattr(cs, "SENDER_CPU", None)
+    monkeypatch.setattr(cs.os, "sched_getaffinity", lambda pid: {0, 1, 2, 3}, raising=False)
+    assert cs.sender_cpu() == 3
+    monkeypatch.setattr(cs, "SENDER_CPU", 1)
+    assert cs.sender_cpu() == 1
+    monkeypatch.setattr(cs, "SENDER_CPU", None)
+    monkeypatch.setattr(cs.os, "sched_getaffinity", lambda pid: {0}, raising=False)
+    assert cs.sender_cpu() is None                                 # one core: nothing to choose, no pin

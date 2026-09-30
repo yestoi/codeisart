@@ -47,7 +47,7 @@ CLOSE_FRAMES = round(CLOSE_HOLD_S * OUTPUT_FPS)
 SYNC_REPS = 2
 BRIGHTNESS_REPS = 2
 RT_PRIORITY = 50
-SENDER_CPU = None                       # a core to pin the child to; None until the Pi says it helps
+SENDER_CPU = None                       # a core to pin the child to; None: the highest it may use (sender_cpu)
 
 # The header's int64 fields. Both sides read and write single fields without the lock: a field is one aligned
 # 64-bit store, and no reading depends on two fields changing together.
@@ -320,17 +320,36 @@ def stats_of(h: np.ndarray) -> dict:
             "rt": bool(h[RT]), "wake_worst_us": h[WAKE_WORST] / 1e3}
 
 
+def sender_cpu() -> int | None:
+    """The core the child pins itself to: SENDER_CPU, or the highest core it may use (the show's own threads keep
+    the low ones); None with one core. Unpinned at SCHED_FIFO 50 the scheduler moved the child between cores and
+    a sync was 300 to 850 us late about once a minute, which the owner saw (2026-09-30); pinned, 36 us at worst."""
+    if SENDER_CPU is not None:
+        return SENDER_CPU
+    try:
+        cores = os.sched_getaffinity(0)
+    except (AttributeError, OSError):
+        return None
+    return max(cores) if len(cores) > 1 else None
+
+
+def pin_to_core() -> bool:
+    cpu = sender_cpu()
+    if cpu is None:
+        return False
+    try:
+        os.sched_setaffinity(0, {cpu})
+    except (AttributeError, OSError):
+        return False
+    return True
+
+
 def set_realtime(priority: int = RT_PRIORITY) -> bool:
     """SCHED_FIFO at `priority` for this process; False where it cannot be had (no CAP_SYS_NICE, or not Linux)."""
     try:
         os.sched_setscheduler(0, os.SCHED_FIFO, os.sched_param(priority))
     except (AttributeError, OSError):
         return False
-    if SENDER_CPU is not None:
-        try:
-            os.sched_setaffinity(0, {SENDER_CPU})
-        except (AttributeError, OSError):
-            pass
     return True
 
 
@@ -344,6 +363,7 @@ def sender_main(path: str, width: int, height: int, sock, parent_pid: int, slot_
     signal.signal(signal.SIGABRT, signal.SIG_IGN)       # the watchdog's signal to the cgroup, likewise
     slot = Slot.open(path, width, height, slot_fd)
     try:
+        pin_to_core()                                    # with or without the priority: the moves are the stalls
         slot.h[RT] = 1 if set_realtime() else 0
         gc.disable()
         send = sock.send if sock is not None else len

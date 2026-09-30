@@ -34,6 +34,29 @@ spin margin would absorb it at more CPU. To watch on the Pi, not tuned here.
 
 The driver's tests pass on the box (119 of the driver's, the tool's and the soak's), the child a real subprocess there.
 
+### The lone late sync, chased (2026-09-30, about 04:40 to 05:00)
+
+At the wall (section 2) the owner noticed the one sync 849 us late in a 60 s run of `grid`. MEASURED on the box, dry
+runs of 60 s at real-time priority, the sender's stats and a new one, how late the sleep woke:
+
+| The child | Worst, us | sd, us | The sleep woke at worst, us late |
+|---|---|---|---|
+| unpinned, spin 2 ms | 365 | 10 | 445 |
+| unpinned, spin 4 ms | 274 | 8 | 332 |
+| pinned to core 19 by taskset (the parent too) | 36 | 2 | 563 |
+| pinned itself to core 19 (the parent free), run 1 | 259 | 6 | 723 |
+| pinned itself, run 2 | 32 | 2 | 979 |
+| both by taskset, run 2 | 714 | 18 | 187 |
+| pinned itself, run 3 | 194 | 7 | 491 |
+| both by taskset, run 3 | 254 | 6 | 370 |
+
+The sleep is not it: it never woke later than its 2 ms margin. The stall is inside the busy-wait, at SCHED_FIFO 50,
+a few hundred microseconds about once a minute, and pinning does not remove it reliably (INFERENCE: a machine-level
+event, an SMI or an interrupt on that core; `/sys/kernel/debug/x86/smi_count` is not readable here). The spike's own
+good runs had the same outliers (N15b 746 us, N13b 611 us) and the same "a couple of dips" verdicts. The child now
+pins itself to the highest core it may use (`sender_cpu`), which is harmless and was decisive in two runs of four.
+OPEN: the same measurement on the Pi 5, whose stalls will be its own.
+
 ## 2. At the wall (OPEN)
 
 Waits on the owner, the LEDVision VM off, sudo granted: the plan's Task 11 (the rgb check, steady by eye at 20 and 30
