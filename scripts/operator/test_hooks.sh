@@ -337,7 +337,7 @@ ours = [c for c in cmds if "scripts/operator/" in c]
 assert len(ours) == 6, ours
 bad = [c for c in ours if not c.startswith("python3 \"$CLAUDE_PROJECT_DIR/scripts/operator/")]
 assert not bad, bad
-# other tools' hooks (graft, 2026-09-30) must be anchored too; ${CLAUDE_PROJECT_DIR:-.} is anchored in a hook
+# the hooks of other tools (graft, 2026-09-30) must be anchored too; the :-. fallback is anchored in a hook
 others = [c for c in cmds if c not in ours]
 bad = [c for c in others if "$CLAUDE_PROJECT_DIR/" not in c and "${CLAUDE_PROJECT_DIR:-.}/" not in c]
 assert not bad, bad
