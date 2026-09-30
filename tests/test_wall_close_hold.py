@@ -10,7 +10,7 @@ import pytest
 
 from arcade.flash import BUDGET, flash_area, square_flashes
 from show.wall import HOLD_S, GovernedDisplay
-from tests.test_wall_hold import H, W, Clocked, TornDisplay, in_time, reversal, strobe
+from tests.test_wall_hold import H, MODELS, W, Clocked, TornDisplay, in_time, reversal, strobe, torn_display
 
 TEAR = 28   # call 28 (tick 27), split 33, the reversal top first 10 Hz: today's close reads 7 to 8 (C53)
 
@@ -38,7 +38,10 @@ def closes(frames, inner, fps, at):
         if k in at:
             w, t = copy.deepcopy((wall, ticks))
             w.display.tears = lambda n: False
-            w.close()
+            try:
+                w.close()
+            except OSError:      # the steady sender carries a torn burst's error to the next push, which may be
+                pass             # the close's own black: the driver's close still lands black (asserted below)
             yield k, w.display, t.slept
         try:
             wall.push(f)
@@ -52,12 +55,12 @@ def phases(tear, fps):
     return {tear + 1, tear + 2, tear + fps + 1, tear + 2 * fps + 1, *range(tear + 3 * fps - 1, tear + 3 * fps + 3)}
 
 
-@pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+@pytest.mark.parametrize("model", MODELS)
 @pytest.mark.parametrize("torn", [(TEAR,), (TEAR, TEAR + 1)], ids=["one tear", "the counted send tears"])
-def test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black(torn, card):
+def test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black(torn, model):
     fps = 20
     end = (TEAR - 1) + (len(torn) + 2) * fps + 2               # the hold's end and two ticks beyond
-    inner = TornDisplay(lambda n: n in torn, split=33, card=card)
+    inner = torn_display(lambda n: n in torn, split=33, model=model)
     frames = reversal(10, fps, end + 1, top_first=True)
     at = phases(TEAR - 1, fps) if len(torn) == 1 else phases(TEAR - 1 + fps, fps)   # the last tear's hold
     for k, shown, slept in closes(frames, inner, fps, at):     # j = k - (TEAR - 1)
