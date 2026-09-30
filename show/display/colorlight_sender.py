@@ -52,8 +52,16 @@ SENDER_CPU = None                       # a core to pin the child to; None until
 # The header's int64 fields. Both sides read and write single fields without the lock: a field is one aligned
 # 64-bit store, and no reading depends on two fields changing together.
 (FRAME, LEVEL, STOP, PAUSE, BEATS, FRAMES, ERRNO, ERRORS, RT, SLIPS, LATE, WORST, DEV_N, DEV_SUM,
- DEV_SUMSQ) = range(15)
+ DEV_SUMSQ, WAKE_WORST) = range(16)
 HEADER_LEN = 16                         # int64s; 128 bytes before the frame
+
+
+def spin_ns_from_env() -> int:
+    """SPIN_NS, or COLORLIGHT_SPIN_MS from the environment: a bench knob for the sleep's margin."""
+    try:
+        return int(float(os.environ["COLORLIGHT_SPIN_MS"]) * 1e6)
+    except (KeyError, ValueError):
+        return SPIN_NS
 
 
 class FileLock:
@@ -189,14 +197,18 @@ class Slot:
                 pass
 
 
-def wait_until(target_ns: int, clock: Callable[[], int], sleep: Callable[[float], None], spin_ns: int = SPIN_NS) -> None:
+def wait_until(target_ns: int, clock: Callable[[], int], sleep: Callable[[float], None], spin_ns: int = SPIN_NS) -> int:
     """Sleep to spin_ns before the target, then busy-wait to it. time.sleep alone wakes 0.6 to 2.4 ms late; a
-    pure busy-wait at real-time priority once stalled 37 ms (the spike's step 6)."""
+    pure busy-wait at real-time priority once stalled 37 ms (the spike's step 6). Returns how late the sleep
+    woke, ns (0 when it did not sleep): past spin_ns, the spin cannot hold the deadline."""
     ahead = target_ns - clock() - spin_ns
+    late = 0
     if ahead > 0:
         sleep(ahead / 1e9)
+        late = max(0, clock() - (target_ns - spin_ns))
     while clock() < target_ns:
         pass
+    return late
 
 
 class Sender:
@@ -250,7 +262,9 @@ class Sender:
             self.deadline = now                                              # moves, no catch-up burst
             self._last_sync = None                                           # the interval across a stall is not
             h[SLIPS] += 1                                                    # counted (its square overflows at 3 s)
-        wait_until(self.deadline, self.clock, self.sleep, self.spin)
+        woke_late = wait_until(self.deadline, self.clock, self.sleep, self.spin)
+        if woke_late > h[WAKE_WORST]:
+            h[WAKE_WORST] = woke_late
         at = self.clock()
         try:
             if self._primed:
@@ -303,7 +317,7 @@ def stats_of(h: np.ndarray) -> dict:
     var = h[DEV_SUMSQ] / n - mean * mean if n else 0.0
     return {"frames": int(h[FRAMES]), "late": int(h[LATE]), "slips": int(h[SLIPS]), "worst_us": h[WORST] / 1e3,
             "mean_us": mean / 1e3, "sd_us": math.sqrt(max(var, 0.0)) / 1e3, "errors": int(h[ERRORS]),
-            "rt": bool(h[RT])}
+            "rt": bool(h[RT]), "wake_worst_us": h[WAKE_WORST] / 1e3}
 
 
 def set_realtime(priority: int = RT_PRIORITY) -> bool:
@@ -333,7 +347,7 @@ def sender_main(path: str, width: int, height: int, sock, parent_pid: int, slot_
         slot.h[RT] = 1 if set_realtime() else 0
         gc.disable()
         send = sock.send if sock is not None else len
-        Sender(slot, send, parent_alive=lambda: os.getppid() == parent_pid).run()
+        Sender(slot, send, spin_ns=spin_ns_from_env(), parent_alive=lambda: os.getppid() == parent_pid).run()
     finally:
         if sock is not None:
             sock.close()

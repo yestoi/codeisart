@@ -262,9 +262,9 @@ def stats_line(display) -> str | None:
     except Exception:                       # a closed display, a slot gone: a line for the log is never a failure
         return None
     return ("colorlight sender: %d frames, %d late (over 1 ms), worst %.0f us, sync to sync sd %.0f us, %d slips, "
-            "%d send errors, %d restarts, real-time %s" % (s["frames"], s["late"], s["worst_us"], s["sd_us"],
-                                                           s["slips"], s["errors"], s["restarts"],
-                                                           "yes" if s["rt"] else "no"))
+            "%d send errors, %d restarts, real-time %s, the sleep woke at worst %.0f us late"
+            % (s["frames"], s["late"], s["worst_us"], s["sd_us"], s["slips"], s["errors"], s["restarts"],
+               "yes" if s["rt"] else "no", s.get("wake_worst_us", 0.0)))
 
 
 def _open_raw_socket(iface: str) -> socket.socket:

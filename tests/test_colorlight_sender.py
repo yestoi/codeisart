@@ -200,7 +200,7 @@ def test_stats_read_the_header(slot):
     assert 0 <= s["worst_us"] < 3 * clock.step / 1e3 and abs(s["mean_us"]) < 3 * clock.step / 1e3
     assert s["sd_us"] < 3 * clock.step / 1e3
     assert stats_of(np.zeros(16, np.int64)) == {"frames": 0, "late": 0, "slips": 0, "worst_us": 0.0, "mean_us": 0.0,
-                                                "sd_us": 0.0, "errors": 0, "rt": False}
+                                                "sd_us": 0.0, "errors": 0, "rt": False, "wake_worst_us": 0.0}
 
 
 # --- the plan review's findings (2026-09-30)
@@ -236,3 +236,30 @@ def test_the_bgr_swap_writes_into_the_packets_without_a_copy(width):
         assert np.shares_memory(sender.bgr, sender.packets) and sender.bgr.size == 4 * width * 3
     finally:
         s.close()
+
+
+# --- at the wall, 2026-09-30: a lone sync a few hundred us late shows; is it the sleep waking past its margin?
+
+def test_the_worst_wake_past_the_spin_margin_is_recorded(slot):
+    clock = FakeClock()
+    real_sleep = clock.sleep
+
+    def oversleeps(seconds):
+        real_sleep(seconds + (0.0025 if len(clock.slept) == 4 else 0.0))   # the 4th sleep wakes 2.5 ms late
+    clock.sleep = oversleeps
+    sender, sock, _ = make(slot, clock=clock)
+    for _ in range(8):
+        sender.tick()
+    s = stats_of(slot.h)
+    assert 2400 < s["wake_worst_us"] < 2600                       # how late the sleep returned, at worst
+    assert 400 < s["worst_us"] < 600                               # and so the sync, past the 2 ms spin
+
+
+def test_the_spin_margin_can_be_set_from_the_environment(monkeypatch):
+    from show.display.colorlight_sender import spin_ns_from_env
+    monkeypatch.delenv("COLORLIGHT_SPIN_MS", raising=False)
+    assert spin_ns_from_env() == SPIN_NS
+    monkeypatch.setenv("COLORLIGHT_SPIN_MS", "4")
+    assert spin_ns_from_env() == 4_000_000
+    monkeypatch.setenv("COLORLIGHT_SPIN_MS", "nonsense")
+    assert spin_ns_from_env() == SPIN_NS
