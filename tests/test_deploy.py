@@ -61,7 +61,7 @@ def test_readme_names_the_soak_and_the_pattern_tool():
 
 def test_readme_says_the_sender_needs_cap_sys_nice():
     text = (DEPLOY / "README.md").read_text()
-    assert "CAP_SYS_NICE" in text and "59 frames" in text
+    assert "CAP_SYS_NICE" in text and "60.32 frames" in text and "59 frames" not in text
 
 
 def test_readme_warns_against_setcap_on_the_pi():

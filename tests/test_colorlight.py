@@ -44,9 +44,10 @@ def test_it_opens_dark_at_the_safe_brightness_and_the_first_sync_carries_it():
     assert d.brightness == SAFE_BRIGHTNESS == 0.4 and c.launches == 1
     c.crank(3)
     out = bursts(sock.sent)
-    assert kinds(out[0]) == [BRIGHTNESS] * 2 + [ROW] * H                       # the prime, before any push
-    assert [p for p in out[1] if p[12] == SYNC] == [sync_bytes(102)] * SYNC_REPS
-    assert [p for p in out[1] if p[12] == BRIGHTNESS] == [brightness_bytes(102)] * 2
+    assert kinds(out[0]) == [ROW] * H                                          # the prime, before any push
+    syncs = [p for p in out[1] if p[12] == SYNC]
+    assert len(syncs) == 1 and syncs[0] == sync_bytes(102, 0)                  # one S2 sync, counter 0, the level 0.4
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)
     assert not any(row_pixels(p, W).any() for b in out for p in b if p[12] == ROW)
     d.close()
 
@@ -64,19 +65,20 @@ def test_push_copies_the_frame_and_the_wire_shows_it_bgr_until_the_next_push():
     d.close()
 
 
-def test_set_brightness_reaches_every_packet_and_nan_is_dark():
+def test_set_brightness_reaches_the_sync_and_nan_is_dark():
     d, sock, clock, c = display()
     d.set_brightness(0.2)
     assert d.brightness == 0.2
     sock.sent.clear()
     c.crank(2)
-    assert [p[35] for p in sock.sent if p[12] == SYNC] == [51] * 4              # two bursts, two syncs each
-    assert [p[13] for p in sock.sent if p[12] == BRIGHTNESS] == [51] * 4
+    assert [p[35] for p in sock.sent if p[12] == SYNC] == [51] * 2              # two bursts, one sync each
+    assert [p[38:41] for p in sock.sent if p[12] == SYNC] == [bytes([51] * 3)] * 2
     d.set_brightness(math.nan)
     sock.sent.clear()
     c.crank(2)
-    assert [p[35] for p in sock.sent if p[12] == SYNC] == [0] * 4
-    assert [p[13] for p in sock.sent if p[12] == BRIGHTNESS] == [0] * 4
+    assert [p[35] for p in sock.sent if p[12] == SYNC] == [0] * 2
+    assert all(p[36] == 0x05 for p in sock.sent if p[12] == SYNC)               # dark, and still the level switch
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)
     d.close()
 
 
@@ -111,7 +113,7 @@ def test_a_failed_send_comes_back_from_the_next_push_which_stores_nothing():
     assert d.slot.h[PAUSE] == 0
     c.crank(2)
     out = bursts(sock.sent[n:])
-    assert kinds(out[0]) == [BRIGHTNESS] * 2 + [ROW] * H and out[1][0][12] == SYNC
+    assert kinds(out[0]) == [ROW] * H and out[1][0][12] == SYNC
     assert all((row_pixels(p, W) == (0, 0, 200)).all() for p in out[1] if p[12] == ROW)
     d.close()
 
@@ -132,7 +134,7 @@ def test_a_dead_sender_raises_then_is_restarted_after_a_second_starting_dark():
     assert c.launches == 2 and d.restarts == 1 and c.alive
     c.crank(2)
     out = bursts(sock.sent)
-    assert kinds(out[0]) == [BRIGHTNESS] * 2 + [ROW] * H                       # the prime, and it is not black:
+    assert kinds(out[0]) == [ROW] * H                                          # the prime, and it is not black:
     assert all((row_pixels(p, W) == (0, 0, 200)).all() for b in out for p in b if p[12] == ROW)   # the slot's frame
     d.close()
 
@@ -164,6 +166,7 @@ def test_close_with_a_dead_child_starts_a_fresh_one_to_drain_black():
     sock.sent.clear()
     d.close()
     out = bursts(sock.sent)
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)                     # the drain: syncs and rows only
     assert c.launches == 2 and len(out) >= CLOSE_FRAMES
     assert not any(row_pixels(p, W).any() for b in out for p in b if p[12] == ROW)
     assert not c.alive and sock.closed == 1
@@ -191,7 +194,7 @@ def test_a_child_that_stops_beating_counts_as_dead():
     d, sock, clock, c = display()
     c.beats = 0                                                                 # alive, but never ticks again
     d.push(red())
-    clock.sleep(DEAD_S)
+    clock.sleep(DEAD_S + 0.001)                                                 # past the threshold, not on its float edge
     with pytest.raises(OSError, match="not running"):
         d.push(red())
     d.close()
@@ -213,6 +216,7 @@ def test_close_drains_black_for_a_second_stops_after_a_whole_burst_and_closes_th
     slot = d.slot
     d.close()
     out = bursts(sock.sent)
+    assert not any(p[12] == BRIGHTNESS for p in sock.sent)                     # the drain: syncs and rows only
     assert len(out) >= CLOSE_FRAMES
     assert not any(row_pixels(p, W).any() for p in out[-1] if p[12] == ROW)
     assert sock.sent[-1][12] == ROW and sock.sent[-1][14] == H - 1
@@ -366,7 +370,7 @@ def test_pause_stops_the_stream_until_the_next_push():
     assert len(sock.sent) == n and d.slot.h[PAUSE] == 1                         # nothing on the wire, no error
     d.push(red())                                                               # a push resumes it: a prime first
     c.crank(2)
-    assert kinds(bursts(sock.sent[n:])[0]) == [BRIGHTNESS] * 2 + [ROW] * H
+    assert kinds(bursts(sock.sent[n:])[0]) == [ROW] * H
     d.close()
 
 
@@ -386,7 +390,7 @@ def test_close_with_a_hung_child_replaces_it_to_drain_black():
     c.crank(2)
     c.beats = 0                                                                 # alive, hung: no beat from now on
     d.push(red())                                                               # the last look that saw it beat
-    clock.sleep(DEAD_S)
+    clock.sleep(DEAD_S + 0.001)                                                 # past the threshold, not on its float edge
     sock.sent.clear()
     launch = c.launch
     d._launch = lambda slot, sock: (setattr(c, "beats", None), launch(slot, sock))[1]   # a fresh child beats

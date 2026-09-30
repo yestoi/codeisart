@@ -1,9 +1,10 @@
 """Bench (2026-09-30, not part of the repo): ghost_map.py's pictures with the sender's cadence changed, one knob at
 a time. The pictures still run through tools/wall_pattern.py's own governed run; only the child that puts the
-frames on the wire is replaced by ghost_child.py (beside this file), which is the repo's sender with its sync
-repeats, brightness-packet repeats and output rate taken from these flags.
+frames on the wire is replaced by ghost_child.py (beside this file), which is the repo's sender with its output
+rate taken from this flag. (The sync-repeat and brightness-packet knobs of 2026-09-30 are gone: the driver sends
+the S2 format now, one sync a frame and no brightness packet; the rate knob is for the 60.00 trial.)
 
-    cd ~/codeisart && sudo .venv/bin/python ~/bench/ghost_knobs.py [--sync-reps N] [--bright-reps N] [--out-fps F] \
+    cd ~/codeisart && sudo .venv/bin/python ~/bench/ghost_knobs.py [--out-fps F] \
         8 --step 0 --row 18 --iface eth0 --seconds 20
 
 Everything after the knobs is ghost_map.py's command line.
@@ -20,7 +21,7 @@ if not (ROOT / "tools" / "wall_pattern.py").is_file():
     raise SystemExit("ghost_knobs: run it from the repository (cd ~/codeisart)")
 sys.path.insert(0, str(ROOT))
 
-KNOBS = {"--sync-reps": "GHOST_SYNC_REPS", "--bright-reps": "GHOST_BRIGHT_REPS", "--out-fps": "GHOST_FPS"}
+KNOBS = {"--out-fps": "GHOST_FPS"}
 argv = sys.argv[1:]
 while argv and argv[0] in KNOBS:
     os.environ[KNOBS[argv[0]]] = argv[1]
@@ -46,8 +47,6 @@ if init.__kwdefaults__ and "launch" in init.__kwdefaults__:
 else:
     raise SystemExit("ghost_knobs: ColorlightDisplay's launch default not found; the driver has changed")
 
-print("ghost_knobs: sync x%s, brightness x%s, %s frames a second" % (
-    os.environ.get("GHOST_SYNC_REPS", "2"), os.environ.get("GHOST_BRIGHT_REPS", "2"),
-    os.environ.get("GHOST_FPS", "59")), flush=True)
+print("ghost_knobs: the S2 format, %s frames a second" % os.environ.get("GHOST_FPS", "60.32"), flush=True)
 sys.argv = [str(HERE / "ghost_map.py"), *argv]
 runpy.run_path(str(HERE / "ghost_map.py"), run_name="__main__")

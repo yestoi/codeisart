@@ -6,8 +6,8 @@
 
 ffmpeg decodes and scales the file (letterboxed) to the wall's size as raw RGB; each frame goes through
 show.wall.GovernedDisplay (the flash governor at --fps, the show's gamma) to the display, so nothing the governor
-would hold reaches the wall. Brightness is the card's packet, 0.1 unless asked, never over CAP (0.4). Pushes are
-paced by absolute deadlines, as wall_pattern.py; the colorlight driver sends 59 a second whatever --fps is. Ends
+would hold reaches the wall. Brightness is the level in the card's sync, 0.1 unless asked, never over CAP (0.4). Pushes
+are paced by absolute deadlines, as wall_pattern.py; the colorlight driver sends 60.32 a second whatever --fps is. Ends
 dark: the governed black frames, then the driver's own drain. Prints the sender's stats at the end.
 """
 from __future__ import annotations

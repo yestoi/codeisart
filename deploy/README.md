@@ -83,9 +83,9 @@ pixels in software. Falcon Player's output brightness must equal `show.toml`'s
 
 The unit grants `CAP_NET_RAW` (`AmbientCapabilities`), needed only for the `colorlight`
 backend, and `CAP_SYS_NICE`: the driver sends from a child process at real-time priority
-(SCHED_FIFO 50), 59 frames a second whatever the show's `fps`, because the card flickers at
-any other rate (docs/superpowers/reviews/2026-09-29-sender-card-spike.md). Without the
-capability the sender runs at ordinary priority and logs a warning; the sync may then be
+(SCHED_FIFO 50), 60.32 frames a second whatever the show's `fps`, the S2 sender card's own rate
+and format, which the card draws clean (docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md).
+Without the capability the sender runs at ordinary priority and logs a warning; the sync may then be
 late now and then. Do not `setcap` the venv's python on the Pi: a binary with file
 capabilities drops the unit's ambient ones, and the sender loses its priority silently. On
 a bench without the unit, `sudo`, or `setcap cap_net_raw,cap_sys_nice+ep` (both). After the

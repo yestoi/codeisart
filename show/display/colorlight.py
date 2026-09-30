@@ -1,12 +1,13 @@
 """Raw Ethernet driver for the Colorlight 5A-75B/E receiving card (Linux only, needs CAP_NET_RAW), as a steady
-sender: whatever rate the caller pushes at, the card gets OUTPUT_FPS (59) frames a second from a child process,
-sync first, the pixels BGR, the sync within 100 us of its deadline (show/display/colorlight_sender.py). The spec:
-docs/superpowers/specs/2026-09-29-route-a-steady-sender-design.md; the measurements behind it:
-docs/superpowers/reviews/2026-09-29-sender-card-spike.md, section 5.
+sender: whatever rate the caller pushes at, the card gets OUTPUT_FPS (60.32) frames a second from a child process,
+sync first (the S2 sender card's format), the pixels BGR, the sync within 100 us of its deadline
+(show/display/colorlight_sender.py). The spec: docs/superpowers/specs/2026-09-29-route-a-steady-sender-design.md;
+the measurements behind it: docs/superpowers/reviews/2026-09-29-sender-card-spike.md, section 5, and the format,
+docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md, section 2.
 
 push(frame) checks the frame, then the sender's news (below), copies the frame into the shared slot and returns:
-nothing is sent by the caller's thread. set_brightness stores the level; every sync and brightness packet from
-the next tick carries it. The wall is black from the moment the display opens (the card keeps its last picture
+nothing is sent by the caller's thread. set_brightness stores the level; every sync from the next tick carries it
+(there is no separate brightness packet: the sync's byte 36 = 05 makes the card obey the sync's level). The wall is black from the moment the display opens (the card keeps its last picture
 through a restart otherwise), and close() runs black for CLOSE_HOLD_S, stops the sender after a whole burst,
 closes the socket and unlinks the slot.
 

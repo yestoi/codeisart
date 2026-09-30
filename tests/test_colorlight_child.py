@@ -6,9 +6,10 @@ import socket
 import time
 
 from show.display.colorlight import spawn_sender
+from show.display.colorlight_packets import DST_MAC, SRC_MAC
 from show.display.colorlight_sender import BEATS, FRAMES, STOP, Slot, set_realtime
 
-LENGTHS = {0x01: 112, 0x0A: 77}
+LENGTHS = {0x01: 1036}
 
 
 def packets(stream):
@@ -34,11 +35,13 @@ def test_the_child_sends_on_the_socket_it_was_handed_beats_and_stops_after_a_who
         ours.settimeout(20.0)
         stream, got = b"", []
         deadline = time.monotonic() + 20.0
-        while sum(1 for p in got if p[12] == 0x01) < 6 and time.monotonic() < deadline:
+        while sum(1 for p in got if p[12] == 0x01) < 3 and time.monotonic() < deadline:
             stream += ours.recv(65536)
             whole, stream = packets(stream)
             got += whole
-        assert sum(1 for p in got if p[12] == 0x01) >= 6, "no third frame in 20 s"
+        assert sum(1 for p in got if p[12] == 0x01) >= 3, "no third frame in 20 s"
+        assert not any(p[12] == 0x0A for p in got)                       # no brightness packet from the child
+        assert all(p[:12] == DST_MAC + SRC_MAC and p[12] in (0x01, 0x55) for p in got)   # the stream cut right
         assert slot.h[BEATS] > 0 and slot.h[FRAMES] >= 3
         frames = int(slot.h[FRAMES])
         os.kill(child.pid, signal.SIGINT)                # Ctrl-C, systemctl stop and the watchdog's SIGABRT

@@ -5,7 +5,7 @@
     python tools/wall_pattern.py panels --iface eth0                 # each panel's row and column, "r,c"
     python tools/wall_pattern.py grid  --iface eth0                  # alignment and tearing: lines every 8 px
     python tools/wall_pattern.py border --iface eth0                 # the last row and column: a line on every edge
-    python tools/wall_pattern.py steps --iface eth0 --brightness 0.4 # the brightness packet
+    python tools/wall_pattern.py steps --iface eth0 --brightness 0.4 # the sync's level byte
     python tools/wall_pattern.py gamma --iface eth0                  # who applies gamma
     python tools/wall_pattern.py rgb   --backend sdl                 # the same picture in a window
     python tools/wall_pattern.py rgb   --png rgb.png                 # or as a file, with no display
@@ -15,11 +15,11 @@
 The colorlight backend needs Linux and CAP_NET_RAW (show/display/colorlight.py), so on the wall this runs
 from the Omarchy box or a Pi, after the card's one-time LEDVision setup. The default is 128x64, the four
 panels 2 x 2; `--width 128 --height 32` is one row of two panels, `--width 64 --height 64` a column.
-It runs until Ctrl-C, or for --seconds, and leaves the wall dark. On the colorlight backend the driver sends 59
+It runs until Ctrl-C, or for --seconds, and leaves the wall dark. On the colorlight backend the driver sends 60.32
 frames a second from a child process whatever --fps is (--fps paces the pushes only), and prints the sender's
-timing at the end; --dry-run is that driver on a socket that discards, no card and no root. Brightness is the card's brightness packet,
-0.1 unless asked, and never over CAP (0.4, what the power supplies are sized for) or the config's
-brightness_cap. No pattern lights half the wall (no `white`, Q64). Every frame passes the flash governor
+timing at the end; --dry-run is that driver on a socket that discards, no card and no root. Brightness is the level
+byte of the card's sync packet, 0.1 unless asked, and never over CAP (0.4, what the power supplies are sized for)
+or the config's brightness_cap. No pattern lights half the wall (no `white`, Q64). Every frame passes the flash governor
 (show.wall.GovernedDisplay) on its way to the display, as the show's do. `--config show.toml` takes the wall
 from the show's config (backend, size, interface, DDP address, gamma, cap); a flag on the line wins. Each
 pattern prints what to look for; write what the panel shows into docs/superpowers/workflow/evidence/hardware.md.
@@ -77,8 +77,9 @@ LOOK_FOR = {
              "LEDVision layout is wrong.",
     "steps": "A grey block that gets brighter every 2 seconds in four steps, with a bar along the bottom that "
              "grows a quarter of the wall a step. Each step should look about twice as bright as the one "
-             "before. No change at all: the card ignores the brightness packet on this firmware (write the "
-             "firmware version). Uneven steps: write which ones.",
+             "before. No change at all: the card ignores the sync's level on this firmware (write the firmware "
+             "version; on 13.17 it obeys it when the sync's byte 36 is 05, measured 2026-09-30). Uneven steps: "
+             "write which ones.",
     "gamma": "Top row, from a few metres so the middle patch blends: a grey patch (128), a fine checker, a "
              "lighter patch (186). The checker matches the LEFT patch: the card sends bytes as they are, keep "
              "gamma = 2.2 in arcade.toml. It matches the RIGHT patch: the card applies gamma, set gamma = 1.0. "

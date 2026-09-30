@@ -1,5 +1,12 @@
 # Route A: the steady sender for the Colorlight 5A-75E
 
+> **2026-09-30:** the rate and the packets in this spec (59 frames a second; the 112-byte sync twice, the 0x0A
+> brightness packet twice, the row tail 08 88) are superseded: the driver sends the S2 sender card's format at
+> 60.32 (one 1036-byte sync with a frame counter, byte 36 = 05, no brightness packet, the row tail 00 00),
+> which removes the second picture the old format made the card draw. See
+> `docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md` section 2 and
+> `docs/superpowers/plans/2026-09-30-s2-format.md`. The slot, the hold, the restart, the drain and the close stand.
+
 2026-09-29. The driver in `show/display/colorlight.py`, shared by the show, the arcade and the pattern tool,
 made to drive the card (firmware 13.17) without the flicker. What it must do was measured at the wall the same
 day: `docs/superpowers/reviews/2026-09-29-sender-card-spike.md`, section 5 (each change with its runs), within
