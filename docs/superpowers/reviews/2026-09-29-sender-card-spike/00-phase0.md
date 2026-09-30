@@ -322,7 +322,9 @@ whether one frame in a thousand went out in another order.
 
 1. **Rule 3 against itself.** The brief lets an S2-style sync go out, which carries level 0xff, and says
    "never a level above 0.4". The sender allows 0xff only in a sync with the S2's source type, with dim
-   pixels. Is that the rule?
+   pixels. Is that the rule? **Answered 2026-09-29:** "Whatever is easiest. It's in a controlled environment
+   and wont harm anyone. Lets prove out the hypothesis before tuning." The sender's reading stands, and the
+   run sheet has a short form of nine runs that comes first.
 2. **The sync before the rows** (section 4): the owner's word before B1. The one warning against it turned
    out to be about a stream of syncs without rows, which the sender cannot produce.
 3. ~~Step 6~~: done on 2026-09-29 (section 7).

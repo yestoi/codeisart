@@ -33,7 +33,7 @@ def forms(flags):
 def test_the_sheet_has_its_runs():
     names = [name for name, flags in commands()]
     for name in ("A0", "A1", "A2", "A2q", "A3", "A4", "A5", "B1", "B3", "B4", "B6", "C1", "C2", "D0", "D1", "D2",
-                 "L1", "L8", "E2", "F1"):
+                 "L1", "L8", "E2", "F1", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"):
         assert name in names, name
     assert len(names) == len(set(names)) >= 40             # a name is a file: none is used twice
 
@@ -142,3 +142,20 @@ def test_the_helpers_run_in_bash_and_a_blind_pair_keeps_its_names(tmp_path):
     assert calls[-1] == (".venv/bin/python tools/sender_spike/send.py --iface enp5s0 "
                          "--stamp --log runs/A1.csv --wait sleep")
     assert "A2 picture, none, clean" in (tmp_path / "runs" / "verdicts.txt").read_text()
+
+
+def test_the_short_form_compares_like_with_like():
+    import dataclasses
+    by_name = {n: send.plan_from(shlex.split(f)) for n, f in commands() if n in ["S%d" % i for i in range(1, 10)]}
+    assert len(by_name) == 9
+    s1, s2, s3, s4, s5, s6, s7, s8, s9 = (by_name["S%d" % i] for i in range(1, 10))
+    for test, control in ((s4, s3), (s7, s6)):             # the same rate, the same light
+        assert (test.fps, test.pixel, test.sync.level) == (control.fps, control.pixel, control.sync.level)
+    assert (s4.fps, s7.fps) == (20, 60)
+    for whole in (s4, s7):                                 # the S2's packets, order and single sync
+        assert whole.sync == dataclasses.replace(send.S2_SYNC, level=25)
+        assert (whole.sync_reps, whole.bright_reps, whole.row_tail, whole.order) == (1, 0, b"\x00\x00", "sync-rows")
+    assert s8.sync == send.S2_SYNC and s8.fps == 60.32 and s8.pixel == 25     # the capture, byte for byte
+    assert s5 == s3 and s9 == s1                           # the controls are the runs they repeat
+    assert (s2.fps, s2.pixel) == (20, 128)                 # the run on record as flickering
+    assert s1 == send.plan_from(shlex.split(HELPER["run"]))

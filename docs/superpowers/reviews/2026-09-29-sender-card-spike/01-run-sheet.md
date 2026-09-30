@@ -19,13 +19,14 @@ spike then has its main answer, and the S2 batch unreached is an honest "unknown
 | The card keeps something from an earlier run | The base comes back after the first S2-style runs, after the guessed value, and at the end |
 | The sender's own jitter is as large as the jitter under test | Step 6's numbers decide which jitter runs count |
 
-## Three things that need the owner's word before the session
+## The owner's word
 
 1. **The S2's sync carries level 0xff.** The brief's safety rule 3 lets an S2-style sync go out with pixels of
    25 or less, and says in the same paragraph "never a level above 0.4". The sender reads it this way: 0xff
    only in a sync with the S2's source type (0x00), and then the pixels are dim and nothing lifts that;
-   every other level is capped at 0.4. Only D1 and L8 send 0xff. If the owner reads the rule the other way,
-   they are left out, and the S2's level stays untested.
+   every other level is capped at 0.4. Only D1, L8 and S8 send 0xff.
+   **Answered 2026-09-29:** "Whatever is easiest. It's in a controlled environment and wont harm anyone."
+   The sender's reading stands.
 2. **The sync before the rows.** B1, D1, D2, L7, L8 and batch E send the sync first, as the S2, LEDVision and
    Falcon Player do. The one warning against it (menull, 13.39) turns out to be about something else: his
    "init-style" is fifty syncs in a row with no rows between them, which is the brief's safety rule 2 and
@@ -34,6 +35,40 @@ spike then has its main answer, and the S2 batch unreached is an honest "unknown
    power cycle. If the card does stop answering: power-cycle, run A2, go on without the sync-first runs.
 3. **Flicker on purpose**, as the brief's rule 4 says: the owner's word before each batch. A4 and A5 are
    meant to flicker (20 frames a second, as on 2026-09-29 at 16:12).
+
+## The short form: prove the hypothesis first
+
+The owner, 2026-09-29: "Lets prove out the hypothesis before tuning." So the first thing at the wall is not
+the whole sheet but these nine runs, about 12 minutes: does sending as the S2 sends take the flicker away,
+yes or no? Which field does it, how much jitter the card bears and the rest of the sheet are tuning, and
+come after a yes. The helpers and the rules below apply.
+
+| Run | Command | What the owner is asked | What it settles |
+|---|---|---|---|
+| S1 | `run S1` | the three questions | The base: a picture, as steady as on record? |
+| S2 | `run S2 --fps 20` | the three questions | A run known to flicker. It must flicker tonight |
+| S3 | `run S3 --pixel 25 --fps 20` | the three questions | DIM. The same, dim: can its flicker be seen? This is what S4 is compared with |
+| S4 | `run S4 --s2 --sync-level 0.1 --fps 20` | the three questions; against S3 | DIM. **The test by eye:** the S2's packets, order and single sync at S3's rate and light. A picture? Less flicker than S3? |
+| S5 | `run S5 --pixel 25 --fps 20` | the three questions; as S3? | S3 again: the control, and whether S4 left something in the card |
+| S6 | `run S6 --pixel 25` | the three questions; a clip | DIM. The base at 60, for the camera |
+| S7 | `run S7 --s2 --sync-level 0.1` | the three questions; a clip | DIM. **The test by camera:** the S2's way at 60, against S6's clip |
+| S8 | `run S8 --s2 --fps 60.32` | a picture? brighter than S7? | DIM. The capture byte for byte, its rate and its level 0xff. Brighter than S7: the card obeys the level of an S2-style sync |
+| S9 | `run S9` | as S1? | The base again. Not as S1: power-cycle, run it again, write down both |
+
+Where S3 cannot be seen to flicker, S3 to S5 are run again with `--brightness 0.4` (and `--sync-level 0.4`
+in S4), under the names S3b, S4b, S5b.
+
+Reading it:
+
+| S4 against S3 (by eye, at 20) | S7 against S6 (by camera, at 60) | What it says | Next |
+|---|---|---|---|
+| less flicker | steadier, or both steady | Sending as the S2 sends helps: a Linux sender can do what the sender card does | The ladder of batch D: which of its fields it is |
+| the same | steadier | The S2's way helps only at its own rate | Batch B (rate and jitter), then the ladder at 60 by camera |
+| the same | the same | No field of the S2 helps; what is left is timing | Batch B. If that shows nothing either, the finding is that the cause is out of a sender's reach |
+| no picture in S4 or S7 | | The card refuses something of the S2's | The ladder of batch D from its bottom: which rung loses the picture |
+
+At 20 frames a second the S2's header still says 60 (bytes 31, 32). If S4 is no steadier than S3 and S7 is
+steadier than S6, that field is the first suspect: batch E.
 
 ## Before the session
 
