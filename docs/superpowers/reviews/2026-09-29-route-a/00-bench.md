@@ -90,7 +90,71 @@ What the session settled:
   the first failure by design; the show's loop holds and carries on (a `--hold` for the tool would show it). OPEN.
 - **The 240 fps clip** (step 5): not made tonight. OPEN.
 
-## 3. The Pi 5 (OPEN)
+## 3. The Pi 5 (2026-09-30, about 08:15 to 08:36)
 
-The show's target. Set up tomorrow (the owner, 2026-09-30). `tools/sender_spike/send.py --dry-run` there, then
-`--stamp` on a link, then `wall_pattern.py --dry-run` under the arcade's load.
+The show's target: a Raspberry Pi 5 Model B Rev 1.1, 8 GB, 4 cores, Raspberry Pi OS Lite 64-bit (Trixie, the
+2026-09-15 image), kernel 6.18.50+rpt-rpi-2712 (PREEMPT, `CONFIG_HZ=250`, `CONFIG_RT_GROUP_SCHED` not set), Python
+3.13.5, main at 8a54a91. The card on the Pi's own port, `eth0`, up at 1000 Mb/s; SSH over Wi-Fi.
+
+### Dry runs, no card
+
+`tools/sender_spike/send.py --dry-run --fps 59 --order sync-rows --seconds 30`, ordinary priority, the Pi idle: 1769
+frames, every one within 20 us of its tick; the sync after its tick mean 0.3 us, worst 1.4 us. MEASURED.
+
+`tools/wall_pattern.py grid --dry-run`, MEASURED by the sender's stats as in section 1. "Busy" is four shell loops
+spinning, one a core: a stand-in for load, not the arcade.
+
+| The Pi | Priority | Pushes a second | Seconds | Frames | Late (over 1 ms) | Worst, us | sd, us | The sleep woke at worst, us late |
+|---|---|---|---|---|---|---|---|---|
+| idle | ordinary | 20 | 30 | 1770 | 0 | 5 | 0 | 74 |
+| idle | real-time (sudo) | 30 | 60 | 3540 | 0 | 5 | 0 | 10 |
+| busy | ordinary | 30 | 60 | 3540 | 834 | 4001 | 1160 | 4992 |
+| busy | real-time (sudo) | 30 | 60 | 3542 | 0 | 3 | 0 | 8 |
+
+Idle, the Pi is steadier than the Omarchy box (a worst of 5 us against the box's 200 to 300), and no lone late sync
+came in these runs; they are 30 to 60 s each and the box's came about once a minute, so longer runs would say more.
+Real-time priority is not optional on the Pi: with the cores busy and ordinary priority a quarter of the frames were
+late. With it the load does not show. About 61 C after two minutes of the four busy cores, `vcgencmd get_throttled`
+0x0.
+
+The driver's and the wall tool's tests pass on the Pi (302 passed, 119 s). The full suite on the Pi, run beside the
+wall runs below: 1735 passed, 2 skipped, 6 failed, 766 s (321 s on the Mac). All six are the flash governor's 0.5 ms
+budget (`tests/arcade/test_flash.py::test_governor_under_half_ms_at_128x32` and five of
+`tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share`), not the driver. Run again on the idle Pi,
+five of the six still fail. MEASURED there, the governor's median a tick:
+
+| Wall | static, ms | strobe, ms | The whole tick, mean, ms |
+|---|---|---|---|
+| 128x32 | 0.455 | 0.500 | 0.9 to 1.0 |
+| 64x64 | 0.519 | 0.585 | 1.0 to 1.1 |
+| 128x64 | 0.948 | 1.043 | 1.5 to 1.6 |
+
+The whole tick is inside its 2 ms budget at every size. The governor alone is about twice its 0.5 ms at the arcade's
+128x64. OPEN, the owner's: the budget was met on the Mac; on the Pi 5 either the governor gets faster or the budget
+is set for the Pi.
+
+### At the wall, from the Pi (08:28 to 08:36)
+
+The owner at the wall. `sudo .venv/bin/python tools/wall_pattern.py <pattern> --iface eth0 --fps 30`, brightness 0.1,
+`real-time yes` in every stats line, no send errors, no slips. The full test suite was running on the Pi beside all
+three runs. The owner's words as typed.
+
+| Run | What | Frames | Worst, us | sd, us | The owner's words |
+|---|---|---|---|---|---|
+| 1 | `grid`, 60 s | 3542 | 9 | 1 | "Looks good. However, if there is supposed to be a line around all edges, that wasn't the case" |
+| 2 | `grid`, 20 s, photographed | 1182 | 8 | 1 | "There is no line at the bottom and right sides" |
+| 3 | `border`, 30 s | 1772 | 9 | 1 | "Looked great" |
+
+`grid` starts its lines at pixel 0, so its last row and column are dark by design; the photograph shows 16 cells by
+8, the top and the left edge lit, the lines unbroken across the seams. `border` (new that morning) lights all four
+edges, the last row and column with them. SEEN.
+
+OPEN on the Pi:
+
+- `send.py --stamp` on the link (the kernel's stamps): not run, the wall runs came first.
+- Runs longer than 60 s, for the lone late sync.
+- The driver under the arcade itself, not a stand-in load.
+- Real time under the systemd unit: the kernel allows it; `real-time yes` in the unit's log is not yet seen.
+- The 20 pushes run and Q66 (`--stop-for`) from the Pi.
+- NetworkManager asks `eth0` for DHCP every 45 s and its packets reach the card. Left alone: DHCP on `eth0` is the
+  way in if Wi-Fi fails.

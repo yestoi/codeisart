@@ -1,10 +1,12 @@
 # Pi 5 deployment
 
 The show's target is a Raspberry Pi 5 (2026-09-29); these steps were written on a Pi 4 and are
-the same. Nothing here is installed by the repo. The owner installs it by hand on the Pi.
+the same. Nothing here is installed by the repo. The owner installs it by hand on the Pi. Steps 1
+to 4 were run on the Pi 5 on 2026-09-30 (Raspberry Pi OS Lite, Trixie, Python 3.13).
 
 1. Flash Raspberry Pi OS Lite (64-bit), or the Falcon Player image for the DDP path.
-2. `sudo apt install -y git python3-venv python3-dev build-essential libsdl2-dev alsa-utils`
+2. `sudo apt install -y git python3-venv python3-dev build-essential libsdl2-dev alsa-utils swig liblgpio-dev`
+   (`swig` and `liblgpio-dev`: on Trixie pip builds `lgpio` from source, and step 4 fails without them.)
 3. `git clone <repo> /home/pi/codeisart && cd /home/pi/codeisart`
 4. `python3 -m venv .venv && .venv/bin/pip install -e '.[pi]'`
 5. Edit `show.toml`: set `backend` to `ddp` or `colorlight`, and `brightness`.
