@@ -78,11 +78,16 @@ class Cranked:
         from show.display.colorlight_sender import Sender
         self._Sender, self.sock, self.clock, self.fps = Sender, sock, clock, fps
         self.sender, self.alive, self.exitcode, self.launches = None, False, None, 0
+        self.slot = None
         self.beats = beats
 
     def launch(self, slot, sock):
+        from show.display.colorlight_sender import Slot
         self.launches += 1
-        self.sender = self._Sender(slot, self.sock.send, clock=self.clock.now, sleep=self.clock.sleep)
+        if self.slot is not None:
+            self.slot.close()
+        self.slot = Slot.open(slot.path, slot.width, slot.height)      # as the child: its own opening, a fresh take
+        self.sender = self._Sender(self.slot, self.sock.send, clock=self.clock.now, sleep=self.clock.sleep)
         self.alive = True
         return self
 

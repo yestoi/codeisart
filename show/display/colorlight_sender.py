@@ -25,6 +25,7 @@ import gc
 import math
 import mmap
 import os
+import re
 import signal
 import socket
 import sys
@@ -96,7 +97,8 @@ class Slot:
     def create(cls, width: int, height: int, directory: str | None = None) -> "Slot":
         if directory is None and os.path.isdir("/dev/shm"):
             directory = "/dev/shm"
-        fd, path = tempfile.mkstemp(prefix="colorlight-", suffix=".slot", dir=directory)
+        cls.sweep(directory or tempfile.gettempdir())
+        fd, path = tempfile.mkstemp(prefix="colorlight-%d-" % os.getpid(), suffix=".slot", dir=directory)
         try:
             os.ftruncate(fd, cls.size(width, height))
             mm = mmap.mmap(fd, cls.size(width, height))
@@ -105,6 +107,28 @@ class Slot:
             os.unlink(path)
             raise
         return cls(path, width, height, fd, mm, own=True)
+
+    @staticmethod
+    def sweep(directory: str) -> None:
+        """The slot files of parents that are gone (a crash, a watchdog kill: their close never ran), so that a
+        week of restarts does not fill /dev/shm. A file is named for its parent's pid."""
+        try:
+            names = os.listdir(directory)
+        except OSError:
+            return
+        for name in names:
+            m = re.fullmatch(r"colorlight-(\d+)-.*\.slot", name)
+            if not m or int(m.group(1)) == os.getpid():
+                continue
+            try:
+                os.kill(int(m.group(1)), 0)
+            except ProcessLookupError:
+                try:
+                    os.unlink(os.path.join(directory, name))
+                except OSError:
+                    pass
+            except OSError:
+                pass                                                # alive but not ours to signal: leave it
 
     @classmethod
     def open(cls, path: str, width: int, height: int) -> "Slot":

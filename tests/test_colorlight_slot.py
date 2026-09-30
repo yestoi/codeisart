@@ -41,6 +41,21 @@ def test_take_does_not_wait_for_a_lock_the_other_side_holds():
         slot.close()
 
 
+def test_slot_files_carry_the_parents_pid_and_a_dead_parents_are_swept(tmp_path):
+    dead = 2 ** 22 - 7                                              # a pid nothing has (above pid_max on Linux)
+    (tmp_path / f"colorlight-{dead}-abc.slot").write_bytes(b"x")
+    (tmp_path / f"colorlight-{os.getpid()}-abc.slot").write_bytes(b"x")     # a live parent's: another display
+    (tmp_path / "other.slot").write_bytes(b"x")
+    slot = Slot.create(8, 4, directory=str(tmp_path))
+    try:
+        assert f"colorlight-{os.getpid()}-" in os.path.basename(slot.path)
+        left = sorted(p.name for p in tmp_path.iterdir())
+        assert f"colorlight-{dead}-abc.slot" not in left
+        assert f"colorlight-{os.getpid()}-abc.slot" in left and "other.slot" in left
+    finally:
+        slot.close()
+
+
 def test_the_slot_starts_no_child_process():
     # A multiprocessing lock starts the resource tracker, a child that lives as long as the show and that the
     # soak counts as a child left behind (tools/show_soak.py). The slot's lock is on its own file instead.

@@ -14,7 +14,8 @@ The sender's news comes back through push: a send that raised in the child (reco
 raised by the next push, which stores nothing, so show.wall.GovernedDisplay starts its hold as before; the
 push that ends the hold (the counted frame again) clears the pause and the stream restarts on it. A child that
 died, or stopped beating for DEAD_S, makes push raise "not running" until RESTART_S after, when the next push
-starts it again (dark) and is taken.
+starts it again and is taken; the new child resumes on the slot's last frame, a governed one, never on black of
+its own. A close finding the child dead starts one to drain black.
 
 Brightness: the display starts at SAFE_BRIGHTNESS (0.4, the power-supply cap of both configs) unless
 make_display passes the configured level. A level that is NaN or not above 0 is sent as 0: dark, never bright.
@@ -117,6 +118,7 @@ class ColorlightDisplay:
         self._seen_errors = 0
         self._died_at: float | None = None
         self._beat = (0, 0.0)
+        self._warned_rt = False
         self.sock = sock if sock is not None else _open_raw_socket(iface)
         self.slot = None
         try:
@@ -145,7 +147,8 @@ class ColorlightDisplay:
             self._sleep(POLL_S)
         self._beat = (int(h[BEATS]), self._clock())
         self._died_at = None
-        if not h[RT]:
+        if not h[RT] and not self._warned_rt:
+            self._warned_rt = True
             log.warning("the colorlight sender runs without real-time priority (CAP_SYS_NICE or root gives it): "
                         "the sync may be late now and then")
 
@@ -203,7 +206,8 @@ class ColorlightDisplay:
             raise ValueError(f"frame dtype {frame.dtype} is not uint8; convert before push")
         self._check()
         self.slot.write(frame)
-        self.slot.h[PAUSE] = 0
+        if int(self.slot.h[ERRORS]) == self._seen_errors:   # a failure that landed meanwhile keeps its pause:
+            self.slot.h[PAUSE] = 0                          # the next push raises it and the hold follows
 
     def set_brightness(self, level: float) -> None:
         self.brightness = level
@@ -219,9 +223,15 @@ class ColorlightDisplay:
         if self.slot is None:
             return
         try:
+            self.slot.write(np.zeros((self.height, self.width, 3), np.uint8))
+            if self._child is None or not self._child.is_alive():       # died before the close: a fresh child
+                self._reap()                                            # drains the black, best effort
+                try:
+                    self._start()
+                except OSError:
+                    log.exception("closing: no sender to drain black with; the wall keeps its last picture")
             child = self._child
             if child is not None and child.is_alive():
-                self.slot.write(np.zeros((self.height, self.width, 3), np.uint8))
                 self.slot.h[PAUSE] = 0
                 self._sleep(CLOSE_HOLD_S)
                 self.slot.h[STOP] = 1

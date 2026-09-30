@@ -46,8 +46,11 @@ The parts, all in `show/display/colorlight.py` unless a file grows past reason:
 **The packets** (as today): the three builders, the constants of the layout, `SYNC_REPS = 2`,
 `BRIGHTNESS_REPS = 2`.
 
-**The slot**: one frame of shared memory (`multiprocessing.shared_memory`) with a header of int64 and float64
-fields, and one lock (`multiprocessing.Lock`). The parent writes a frame under the lock and bumps a counter.
+**The slot**: one frame in a file-backed mmap (`/dev/shm` where there is one; the file named for the parent's
+pid, and the files of parents that are gone swept at the next create) with a header of int64 fields, and one
+lock: a flock on the file itself, one per opening, released by the kernel if its holder dies. (A
+`multiprocessing` lock or process would start Python's resource tracker, a child that lives as long as the show
+and that the soak counts as a child left behind.) The parent writes a frame under the lock and bumps a counter.
 The sender, at each tick, tries the lock without waiting: if it gets it and the counter moved, it copies the
 frame out; if not, it keeps the frame it has. The lock is held for microseconds by either side, and the
 sender never blocks on it, so the parent cannot make it late. Header fields: the frame counter, the level (a
@@ -58,18 +61,25 @@ real-time flag (whether the priority was granted), and the stats of section 6.
 and a sleep. No time in it that a test cannot fake. Each tick: read the stop and pause flags; take a new frame
 if there is one; write the pixels (BGR) into the prebuilt row packets *before* the wait, so the sync leaves on
 the deadline and the rows right behind it; wait for the deadline (sleep to `SPIN_NS` before it, then spin);
-send sync, sync, brightness, brightness, the rows; record the sync's lateness; set the next deadline. Absolute
-deadlines from a start time; a tick that is a period or more behind moves the whole grid and is counted a slip,
-never followed by a catch-up burst (as the spike's loop and `arcade/runner.py`). `send` is `sock.send`, one
-packet a call, as the measured sender did.
+send sync, sync, brightness, brightness, the rows; record the sync's lateness; set the next deadline. The first
+burst after a start or a pause is a *prime*: brightness and rows, no sync, so that the sync that follows shows a
+whole frame and never the rows a torn burst left. Absolute deadlines from a start time; a tick that is a period
+or more behind moves the whole grid and is counted a slip, never followed by a catch-up burst (as the spike's
+loop and `arcade/runner.py`); the interval across a slip is not counted in the stats. `send` is `sock.send`,
+one packet a call, as the measured sender did. The loop allocates nothing a frame: the swap writes into the
+packets in place.
 
-**The child** (`_sender_main`): attaches the slot, asks for SCHED_FIFO 50 (a refusal sets the real-time flag
-off and the sender runs at ordinary priority; the parent logs a warning once: the show goes on, roughly), turns
-garbage collection off (the loop allocates nothing a frame), runs the core until the stop flag, then exits.
-The start method is `spawn`: the arcade makes its camera, and MediaPipe's threads, before the display, and a
-fork behind them is not safe. The socket is opened in the *parent* (its errors raise from the constructor as
-today, naming CAP_NET_RAW and the interface) with `PACKET_QDISC_BYPASS` set before the bind, and handed to the
-child as a duplicated descriptor; the parent keeps its own, for a restart.
+**The child** (`sender_main`, run as `python -m show.display.colorlight_sender`): attaches the slot, asks for
+SCHED_FIFO 50 (a refusal sets the real-time flag off and the sender runs at ordinary priority; the parent logs a
+warning once per display: the show goes on, roughly), turns garbage collection off, ignores SIGINT and SIGTERM
+(both reach the whole process group, from Ctrl-C and from a systemd stop; the parent's close must drain black
+first, and stops the child by the flag, or by SIGKILL past `JOIN_S`), runs the core until the stop flag, then
+exits. It is a plain subprocess of the same interpreter, not a fork (the arcade makes its camera, and
+MediaPipe's threads, before the display) and not `multiprocessing` (its resource tracker, section 2's slot).
+The socket is opened in the *parent* (its errors raise from the constructor as today, naming CAP_NET_RAW and
+the interface) with `PACKET_QDISC_BYPASS` set before the bind, and inherited by the child as a descriptor; the
+parent keeps its own, for a restart. A socket with no descriptor (`DiscardSocket`) is a dry run: the child
+sends to nowhere.
 
 **The facade** (`ColorlightDisplay`): the unchanged `Display` protocol.
 
@@ -118,8 +128,10 @@ If a blink shows, "keep the last whole frame running" is one flag in the core.
 
 **A dead sender** (the child gone, or its heartbeat still for `DEAD_S = 1.0` s): `push` raises `OSError`
 ("the sender is not running") and does not take the frame; the driver restarts the child at the first push
-`RESTART_S = 1.0` s or more after it died, on the same socket and slot, starting dark. The show daemon's push
-failures, its lights-off after 10 s and the soak's counters all see this, as they see a failed send.
+`RESTART_S = 1.0` s or more after it died, on the same socket and slot, and the new child resumes on the slot's
+last frame (a governed one: a black of the driver's own between two content frames would be a change the
+governor never counted). The show daemon's push failures, its lights-off after 10 s and the soak's counters
+all see this, as they see a failed send. A `close` that finds the child dead starts one to drain the black.
 
 **A dead parent**: the child watches its parent (`os.getppid()`, once a tick); when the parent is gone it runs
 black for `CLOSE_HOLD_S` and exits, so a crashed show leaves a dark wall, not a frozen picture, until systemd

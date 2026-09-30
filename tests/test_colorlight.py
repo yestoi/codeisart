@@ -131,7 +131,59 @@ def test_a_dead_sender_raises_then_is_restarted_after_a_second_starting_dark():
     d.push(red())                                                               # restarted, and this frame taken
     assert c.launches == 2 and d.restarts == 1 and c.alive
     c.crank(2)
-    assert all((row_pixels(p, W) == (0, 0, 200)).all() for p in bursts(sock.sent)[1] if p[12] == ROW)
+    out = bursts(sock.sent)
+    assert kinds(out[0]) == [BRIGHTNESS] * 2 + [ROW] * H                       # the prime, and it is not black:
+    assert all((row_pixels(p, W) == (0, 0, 200)).all() for b in out for p in b if p[12] == ROW)   # the slot's frame
+    d.close()
+
+
+def test_a_restart_resumes_on_the_slots_last_frame_not_dark(caplog):
+    d, sock, clock, c = display()
+    d.push(red())
+    c.crank(2)
+    c.alive = False
+    with pytest.raises(OSError, match="not running"):                          # the death is noticed here
+        d.push(red())
+    clock.sleep(RESTART_S * 2)
+    sock.sent.clear()
+    with caplog.at_level("WARNING", logger="show.display.colorlight"):
+        d.push(np.full((H, W, 3), 50, np.uint8))                                # the restart takes this frame...
+    c.crank(1)
+    first, second = bursts(sock.sent)[:2]                                       # the start's prime, then one burst
+    assert all((row_pixels(p, W) == (0, 0, 200)).all() for p in first if p[12] == ROW)   # ...after the last frame,
+    assert all((row_pixels(p, W) == 50).all() for p in second if p[12] == ROW)          # and nothing black
+    assert sum("real-time priority" in r.message for r in caplog.records) == 1  # once: the first start, not this
+    d.close()
+
+
+def test_close_with_a_dead_child_starts_a_fresh_one_to_drain_black():
+    d, sock, clock, c = display()
+    d.push(red())
+    c.crank(2)
+    c.alive = False                                                             # died, or was killed, before the close
+    sock.sent.clear()
+    d.close()
+    out = bursts(sock.sent)
+    assert c.launches == 2 and len(out) >= CLOSE_FRAMES
+    assert not any(row_pixels(p, W).any() for b in out for p in b if p[12] == ROW)
+    assert not c.alive and sock.closed == 1
+
+
+def test_push_does_not_clear_a_pause_from_a_failure_it_has_not_seen():
+    d, sock, clock, c = display()
+    slot, write = d.slot, d.slot.write
+
+    def write_as_the_child_fails(frame):                                        # the failure lands during the push
+        slot.h[ERRORS] += 1
+        slot.h[PAUSE] = 1
+        write(frame)
+
+    slot.write = write_as_the_child_fails
+    d.push(red())
+    assert slot.h[PAUSE] == 1                                                   # still paused: the hold comes next
+    slot.write = write
+    with pytest.raises(OSError, match="send failed"):
+        d.push(red())
     d.close()
 
 
