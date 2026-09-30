@@ -1,24 +1,13 @@
 import numpy as np
 import pytest
 
-from show.display.colorlight import ColorlightDisplay, brightness_packet, frame_packet
+from show.display.colorlight import ColorlightDisplay
 from show.display.fake import FakeDisplay
+from tests.colorlight_fakes import SYNC, Cranked, FakeClock, FakeSocket
 from tools import wall_pattern as wp
 
 LAYOUTS = [(128, 64), (128, 32), (64, 64)]
 RED, GREEN, BLUE, WHITE = (wp.LEVEL, 0, 0), (0, wp.LEVEL, 0), (0, 0, wp.LEVEL), (wp.LEVEL,) * 3
-
-
-class FakeSocket:
-    def __init__(self):
-        self.sent = []
-
-    def send(self, data):
-        self.sent.append(bytes(data))
-        return len(self.sent[-1])
-
-    def close(self):
-        pass
 
 
 class Recording(FakeDisplay):
@@ -181,14 +170,15 @@ def test_run_says_what_to_look_for_and_where_to_write_it():
 
 
 def test_the_colorlight_backend_gets_the_level_in_its_first_packets():
-    sock = FakeSocket()
-    display = ColorlightDisplay(128, 32, "eth0", sock=sock, brightness=0.1)
+    sock, fake = FakeSocket(), FakeClock()
+    c = Cranked(sock, fake)
+    display = ColorlightDisplay(128, 32, "eth0", sock=sock, brightness=0.1, launch=c.launch, clock=fake.seconds,
+                                sleep=c.sleep)
     clock = iter(np.arange(0.0, 100.0, 1.0))
-    run("rgb", display, brightness=0.1, seconds=1.0, fps=1, clock=lambda: next(clock))
-    assert sock.sent[0] == brightness_packet(0.1)
-    assert sock.sent[1] == frame_packet(0.1)
-    levels = {p[14 + 21] for p in sock.sent if p[12:14] == b"\x01\x07"}
+    run("rgb", display, brightness=0.1, seconds=1.0, fps=1, clock=lambda: next(clock), sleep=lambda s: c.crank(2))
+    levels = {p[35] for p in sock.sent if p[12] == SYNC}
     assert levels == {int(0.1 * 255)}
+    assert sock.closed == 1
 
 
 def test_main_builds_the_display_from_its_arguments(monkeypatch):
@@ -224,3 +214,114 @@ def test_png_saves_the_pattern_without_a_display(tmp_path):
     with Image.open(path) as im:
         assert im.size == (128 * 8, 64 * 8)
         assert im.getpixel((8 * 16, 8 * 31)) == RED
+
+
+# --- the steady sender: deadline pacing, a dry run, the sender's stats
+
+def test_run_is_paced_by_deadlines_not_by_sleep_after_push():
+    display, slept, now = Recording(), [], [0.0]
+
+    def clock():
+        now[0] += 0.02                      # every read costs 20 ms: a slow render
+        return now[0]
+
+    def sleep(s):
+        slept.append(s)
+        now[0] += s
+
+    run("rgb", display, brightness=0.1, seconds=2.0, fps=10, clock=clock, sleep=sleep)
+    assert all(0 < s < 0.1 for s in slept)                       # never the whole period: the render's time is taken off
+    assert 17 <= len(display.frames) - 2 <= 21                   # about 10 a second for 2 s, the two black ones aside
+
+
+def test_run_restarts_the_grid_after_a_late_tick_with_no_catch_up():
+    display, slept, now, pushed_at = Recording(), [], [0.0], []
+    reads = [0]
+
+    def clock():
+        reads[0] += 1
+        now[0] += 0.5 if reads[0] == 6 else 0.001              # one stall of half a second
+        return now[0]
+
+    def sleep(s):
+        slept.append(s)
+        now[0] += s
+
+    push = display.push
+    display.push = lambda frame: (pushed_at.append(now[0]), push(frame))
+    run("rgb", display, brightness=0.1, seconds=1.5, fps=10, clock=clock, sleep=sleep)
+    assert min(slept) > 0.05 and len(display.frames) - 2 <= 12  # no burst of pushes after the stall
+    gaps = [b - a for a, b in zip(pushed_at, pushed_at[1:])][:-2]
+    assert min(gaps) > 0.05 and max(gaps) > 0.4                 # the late push at once, the next a period after it
+
+
+def test_run_prints_the_senders_stats_at_the_end():
+    class WithStats(Recording):
+        def stats(self):
+            return {"frames": 5, "late": 0, "slips": 0, "worst_us": 30.0, "mean_us": 0.0, "sd_us": 4.0,
+                    "errors": 0, "restarts": 0, "rt": True}
+
+    said = []
+    clock = iter(np.arange(0.0, 100.0, 1.0))
+    run("rgb", WithStats(), brightness=0.1, seconds=1.0, fps=1, clock=lambda: next(clock), out=said.append)
+    assert any("colorlight sender: 5 frames" in s and "real-time yes" in s for s in said)
+
+
+def test_run_reports_a_close_that_fails_and_still_returns():
+    class FailsAtClose(Recording):
+        def push(self, frame):
+            if self.frames and not frame.any():                  # the governed black at the close
+                raise OSError("the colorlight sender's send failed: Network is down")
+            super().push(frame)
+
+    display, said = FailsAtClose(), []
+    clock = iter(np.arange(0.0, 100.0, 1.0))
+    assert run("rgb", display, brightness=0.1, seconds=1.0, fps=1, clock=lambda: next(clock), out=said.append) == 1
+    assert display.closed and any("closing the wall failed" in s for s in said)
+
+
+def test_dry_run_builds_the_colorlight_driver_on_a_socket_that_discards(monkeypatch):
+    made = {}
+
+    def fake_dry(width, height, brightness):
+        made.update(width=width, height=height, brightness=brightness)
+        return Recording()
+
+    monkeypatch.setattr(wp, "dry_display", fake_dry)
+    monkeypatch.setattr(wp.time, "sleep", lambda s: None)
+    assert wp.main(["rgb", "--dry-run", "--brightness", "0.2", "--seconds", "0.01"]) == 0
+    assert made == {"width": 128, "height": 64, "brightness": 0.2}
+
+
+def test_dry_display_is_the_driver_with_a_discarding_socket():
+    sock, clock = FakeSocket(), FakeClock()
+    c = Cranked(sock, clock)
+    d = wp.dry_display(128, 64, 0.1, launch=c.launch, clock=clock.seconds, sleep=c.sleep)
+    assert d.width == 128 and d.brightness == 0.1
+    assert d.sock.send(b"x" * 405) == 405 and d.sock is not sock       # the discarding sink, not a raw socket
+    d.close()
+
+
+def test_stop_for_pauses_the_display_and_pushes_nothing_meanwhile():
+    class Pausable(Recording):
+        def __init__(self):
+            super().__init__()
+            self.paused_at = []
+
+        def pause(self):
+            self.paused_at.append(len(self.frames))
+
+    display, said, now = Pausable(), [], [0.0]
+
+    def clock():
+        return now[0]
+
+    def sleep(s):
+        now[0] += s
+
+    run("grid", display, brightness=0.1, seconds=12.0, fps=10, clock=clock, sleep=sleep, out=said.append,
+        stop_for=3.0)
+    assert len(display.paused_at) == 1 and 45 <= display.paused_at[0] <= 55    # at 5 s in
+    assert 85 <= len(display.frames) - 2 <= 95                                  # 3 s of no pushes out of 12
+    assert any("stopped the stream for 3" in s for s in said)
+    assert wp.build_parser().parse_args(["grid", "--stop-for", "3"]).stop_for == 3.0

@@ -1,5 +1,6 @@
 """The wall's hold after a failed push and its dark start (it14 T-wall, C51, C52): the plan's, as given."""
 import ast
+import math
 from pathlib import Path
 
 import numpy as np
@@ -43,6 +44,61 @@ class TornDisplay:
 
     def close(self):
         self.closed = True
+
+
+class SteadyDisplay:
+    """The steady sender's model (route A): push raises the error its last torn burst carried back and stores
+    nothing, or stores the frame and clears the pause; then the tick's bursts run, ceil(59 / fps) of them. A burst
+    numbered in `tears` (bursts counted from 1) writes the rows above `split`, sends no sync and pauses the sender;
+    the burst after a push that ends a pause is a prime (rows, no sync). The sync of a burst shows the rows the
+    burst before it sent. shown: (tick, the wall after each burst)."""
+    def __init__(self, tears, split=H // 2, fps=20):
+        self.tears, self.split, self.per_tick = tears, split, math.ceil(59 / fps)
+        self.bursts, self.tick, self.closed = 0, 0, False
+        self.rows, self.screen, self.shown = DARK.copy(), DARK.copy(), []
+        self.pending, self.paused, self.primed, self.error = DARK.copy(), False, False, None
+
+    def push(self, frame):
+        if self.error is not None:
+            error, self.error = self.error, None
+            raise error
+        self.pending = frame.copy()
+        self.paused = False
+        self._run()
+
+    def _run(self):
+        for _ in range(self.per_tick):
+            if self.paused:
+                self.shown.append((self.tick, self.screen.copy()))
+                continue
+            self.bursts += 1
+            if self.primed:
+                self.screen = self.rows.copy()                # the sync: the last burst's rows show
+            self.primed = True
+            if self.tears(self.bursts):
+                self.rows[:self.split] = self.pending[:self.split]
+                self.paused, self.primed, self.error = True, False, OSError("torn")
+            else:
+                self.rows = self.pending.copy()
+            self.shown.append((self.tick, self.screen.copy()))
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self):
+        self.pending, self.paused = DARK.copy(), False      # the driver's own black, held a second
+        self._run()
+        self._run()
+        self.closed = True
+
+
+MODELS = ("probe", "card", "steady")
+
+
+def torn_display(tears, split=H // 2, model="probe", fps=20):
+    if model == "steady":
+        return SteadyDisplay(tears, split=split, fps=fps)
+    return TornDisplay(tears, split=split, card=model == "card")
 
 
 def in_time(shown, fps):
@@ -93,25 +149,25 @@ TEARS = {"every 2nd": lambda n: n % 2 == 0, "every 3rd": lambda n: n % 3 == 0, "
          "call 5": lambda n: n == 5}
 
 
-@pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+@pytest.mark.parametrize("model", MODELS)
 @pytest.mark.parametrize("tears", TEARS, ids=list(TEARS))
 @pytest.mark.parametrize("hz,fps", [(10, 20), (10, 30), (5, 30)])
 @pytest.mark.parametrize("pattern", [reversal, strobe], ids=["reversal", "strobe"])
-def test_torn_pushes_keep_the_wall_in_the_budget_in_real_time(pattern, hz, fps, tears, card):
-    inner = TornDisplay(TEARS[tears], card=card)
+def test_torn_pushes_keep_the_wall_in_the_budget_in_real_time(pattern, hz, fps, tears, model):
+    inner = torn_display(TEARS[tears], model=model, fps=fps)
     drive(pattern(hz, fps, 4 * fps), inner, fps)
     seq, n = in_time(inner.shown, fps)
     assert flash_area(seq, fps=n) == 0.0 and square_flashes(seq, fps=n) <= BUDGET
 
 
-@pytest.mark.parametrize("card", [False, True], ids=["probe", "card"])
+@pytest.mark.parametrize("model", MODELS)
 @pytest.mark.parametrize("split", [24, 33])
 @pytest.mark.parametrize("lead", [0, 1])
-def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, split, card):
+def test_one_torn_push_at_any_call_keeps_the_wall_in_the_budget(lead, split, model):
     frames = reversal(10, 20, 120, top_first=True)
     frames = frames[:1] * lead + frames
     for call in range(1, 11):
-        inner = TornDisplay(lambda n, call=call: n == call, split=split, card=card)
+        inner = torn_display(lambda n, call=call: n == call, split=split, model=model)
         drive(frames, inner, 20)
         seq, n = in_time(inner.shown, 20)
         assert square_flashes(seq, fps=n) <= BUDGET and flash_area(seq, fps=n) == 0.0, call
@@ -178,8 +234,8 @@ def test_from_a_dark_wall_the_first_second_is_in_the_budget(pattern, hz, fps):
 def test_every_governed_wall_starts_from_dark_and_the_show_s_holds():
     made = {p.name for p in [*(ROOT / "show").rglob("*.py"), *(ROOT / "tools").glob("*.py")]
             if "GovernedDisplay(" in p.read_text()}
-    assert made == {"main.py", "wall_pattern.py"}
-    for path in (ROOT / "show" / "main.py", ROOT / "tools" / "wall_pattern.py"):
+    assert made == {"main.py", "wall_pattern.py", "wall_video.py"}
+    for path in (ROOT / "show" / "main.py", ROOT / "tools" / "wall_pattern.py", ROOT / "tools" / "wall_video.py"):
         wraps = [n for n in ast.walk(ast.parse(path.read_text())) if isinstance(n, ast.Call)
                  and isinstance(n.func, ast.Name) and n.func.id == "GovernedDisplay"]
         assert wraps, path

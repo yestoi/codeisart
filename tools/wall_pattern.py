@@ -8,12 +8,15 @@
     python tools/wall_pattern.py gamma --iface eth0                  # who applies gamma
     python tools/wall_pattern.py rgb   --backend sdl                 # the same picture in a window
     python tools/wall_pattern.py rgb   --png rgb.png                 # or as a file, with no display
+    python tools/wall_pattern.py rgb   --dry-run --seconds 30        # the driver's timing on this machine, no card
     python tools/wall_pattern.py panels --config show.toml           # the show's wall, cap and gamma
 
 The colorlight backend needs Linux and CAP_NET_RAW (show/display/colorlight.py), so on the wall this runs
 from the Omarchy box or a Pi, after the card's one-time LEDVision setup. The default is 128x64, the four
 panels 2 x 2; `--width 128 --height 32` is one row of two panels, `--width 64 --height 64` a column.
-It runs until Ctrl-C, or for --seconds, and leaves the wall dark. Brightness is the card's brightness packet,
+It runs until Ctrl-C, or for --seconds, and leaves the wall dark. On the colorlight backend the driver sends 59
+frames a second from a child process whatever --fps is (--fps paces the pushes only), and prints the sender's
+timing at the end; --dry-run is that driver on a socket that discards, no card and no root. Brightness is the card's brightness packet,
 0.1 unless asked, and never over CAP (0.4, what the power supplies are sized for) or the config's
 brightness_cap. No pattern lights half the wall (no `white`, Q64). Every frame passes the flash governor
 (show.wall.GovernedDisplay) on its way to the display, as the show's do. `--config show.toml` takes the wall
@@ -37,6 +40,7 @@ if str(ROOT) not in sys.path:          # run as a script, the repository is not 
     sys.path.insert(0, str(ROOT))
 
 from show.config import load_config  # noqa: E402
+from show.display.colorlight import ColorlightDisplay, DiscardSocket, stats_line  # noqa: E402
 from show.display import make_display  # noqa: E402
 from show.font import CELL_H, CELL_W, Font  # noqa: E402
 from show.renderer import draw_text  # noqa: E402
@@ -48,7 +52,13 @@ LEVEL = 128                   # the byte the solid colours use
 STEP_SECONDS = 2.0            # how long `steps` holds each level
 STEPS = (0.125, 0.25, 0.5, 1.0)   # shares of --brightness, low to high
 MAX_FPS = 60.0                # the push rate the tool refuses over
+STOP_AT_S = 5.0               # --stop-for: the stream is stopped this far into the run
 BACKENDS = ("colorlight", "sdl", "ddp")   # the displays the tool can choose; a config's `fake` is refused
+
+
+def dry_display(width: int, height: int, brightness: float, **kw):
+    """The driver on a socket that keeps nothing: its timing with no card and no root (--dry-run)."""
+    return ColorlightDisplay(width, height, "", sock=DiscardSocket(), brightness=brightness, **kw)
 HARDWARE_MD = "docs/superpowers/workflow/evidence/hardware.md"
 FONT_PATH = ROOT / "fonts" / "5x7.bin"
 
@@ -191,12 +201,16 @@ def _rate_refusal(fps: float, gamma: float) -> str | None:
 def run(pattern: str, display, width: int, height: int, brightness: float = 0.1, seconds: float = 0.0,
         fps: float = 20.0, clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep, out: Callable[[str], None] = print,
-        gamma: float = 2.2, cap: float = CAP) -> int:
-    """Show pattern on display, every frame through the flash governor, until seconds have passed (0: until
-    Ctrl-C), then close the governed wall: two governed black frames (the card shows a frame when the next one
-    starts). Returns 0; 1 after an OSError from the display, said, the wall closed; or 2 without touching the
-    display when the pattern is unknown, the brightness is not in (0, min(cap, CAP)], the fps not in
-    (0, MAX_FPS] or the gamma not in [GAMMA_MIN, GAMMA_MAX]. The display is reached only through the wall."""
+        gamma: float = 2.2, cap: float = CAP, stop_for: float = 0.0) -> int:
+    """Show pattern on display, every frame through the flash governor, a push due every 1/fps after the last was
+    due (a late one runs at once and the grid restarts from it), until seconds have passed (0: until Ctrl-C);
+    then the sender's stats, said, and the governed wall closed: two governed black frames, then the display's
+    own close. Returns 0; 1 after an OSError from the display or from the close, said, the wall closed; or 2
+    without touching the display when the pattern is unknown, the brightness is not in (0, min(cap, CAP)], the
+    fps not in (0, MAX_FPS] or the gamma not in [GAMMA_MIN, GAMMA_MAX]. The display is reached only through the
+    wall. stop_for > 0: STOP_AT_S into the run the display is paused (the driver's own stop, as after a failed
+    send) and nothing is pushed for stop_for seconds; the push after that restarts the stream: the owner's Q66
+    check at the wall (the picture stays, steady, no blink at the stop or the restart)."""
     refusal = _refusal(pattern, brightness, cap) or _rate_refusal(fps, gamma)
     if refusal:
         out(refusal)
@@ -209,25 +223,49 @@ def run(pattern: str, display, width: int, height: int, brightness: float = 0.1,
     # and never over brightness, itself at most min(cap, CAP).
     level = brightness * STEPS[0] if pattern == "steps" else brightness
     code = 0
+    stopped = None                       # when the stream was stopped (--stop-for), or None
     try:
         wall.set_brightness(level)
         start = clock()
+        period = 1.0 / fps
+        due = start + period                 # when the second push is due; the clock is read once a push
+        now = clock()
         while True:
-            t = clock() - start
+            t = now - start
             if seconds > 0 and t >= seconds:
                 break
             if pattern == "steps" and brightness * STEPS[step_of(t)] != level:
                 level = brightness * STEPS[step_of(t)]
                 wall.set_brightness(level)
-            wall.push(PATTERNS[pattern](width, height, t))
-            sleep(1.0 / fps)
+            if stop_for > 0 and stopped is None and t >= STOP_AT_S:
+                stopped = t
+                pause = getattr(display, "pause", None)
+                if pause is not None:
+                    pause()
+                out(f"wall_pattern: stopped the stream for {stop_for:g} s at {t:.1f} s: the picture should stay, "
+                    "steady, with no blink at the stop or at the restart")
+            if stopped is None or t >= stopped + stop_for:
+                wall.push(PATTERNS[pattern](width, height, t))
+            now = clock()
+            if now < due:                    # on time: sleep to the deadline, the next one a period after it
+                sleep(due - now)
+                now, due = due, due + period
+            else:                            # late: the next push runs at once, the grid restarts from now
+                due = now + period           # (as arcade/runner.py: no catch-up burst)
     except KeyboardInterrupt:
         pass
     except OSError as e:
         out(f"wall_pattern: the display failed: {e}")
         code = 1
     finally:
-        wall.close()        # the counted frame again if its send failed, then governed black, then closed
+        line = stats_line(display)
+        if line:
+            out(line)
+        try:
+            wall.close()    # the counted frame again if its send failed, then governed black, then closed
+        except OSError as e:                 # a torn burst's error, carried back into the close's own black:
+            out(f"wall_pattern: closing the wall failed: {e}")   # the display's close has still landed black
+            code = 1
     return code
 
 
@@ -259,6 +297,10 @@ def build_parser(defaults: bool = True) -> argparse.ArgumentParser:
     p.add_argument("--ddp-host", default=d("127.0.0.1"))
     p.add_argument("--ddp-port", type=int, default=d(4048))
     p.add_argument("--png", default=d(""), help="save the pattern to this file and exit; no display is opened")
+    p.add_argument("--dry-run", action="store_true",
+                   help="the colorlight driver on a socket that discards: its timing alone, no card, no root")
+    p.add_argument("--stop-for", type=float, default=d(0.0),
+                   help=f"stop the stream {STOP_AT_S:g} s into the run for this many seconds (the Q66 check)")
     return p
 
 
@@ -282,6 +324,15 @@ def main(argv: list[str] | None = None) -> int:
         save_png(args.pattern, args.width, args.height, args.png)
         print(f"wall_pattern: saved {args.pattern} to {args.png}")
         return 0
+    if args.dry_run:
+        refusal = _refusal(args.pattern, args.brightness, cap) or _rate_refusal(args.fps, args.gamma)
+        if refusal:
+            print(refusal)
+            return 2
+        display = dry_display(args.width, args.height, args.brightness)
+        return run(args.pattern, display, args.width, args.height, brightness=args.brightness,
+                   seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap,
+                   stop_for=args.stop_for)
     if args.backend not in BACKENDS:
         print(f"wall_pattern: the tool has no {args.backend!r} display; choose --backend from {', '.join(BACKENDS)}")
         return 2
@@ -298,7 +349,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wall_pattern: cannot open the {args.backend} display: {e}")
         return 1
     return run(args.pattern, display, args.width, args.height, brightness=args.brightness,
-               seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap)
+               seconds=args.seconds, fps=args.fps, sleep=time.sleep, gamma=args.gamma, cap=cap,
+               stop_for=args.stop_for)
 
 
 if __name__ == "__main__":

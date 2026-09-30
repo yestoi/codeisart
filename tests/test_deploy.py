@@ -34,7 +34,7 @@ def test_unit_is_read_only_but_entries_and_tmp():
     assert svc["ReadWritePaths"] == svc["WorkingDirectory"] + "/entries"
     assert "LG_WD=/tmp" in svc["Environment"]
     assert "PYTHONUNBUFFERED=1" in svc["Environment"]
-    assert svc["AmbientCapabilities"] == "CAP_NET_RAW"
+    assert svc["AmbientCapabilities"] == "CAP_NET_RAW CAP_SYS_NICE"
     assert svc["SupplementaryGroups"].split() == ["audio", "gpio"]
     assert svc["User"] == "pi"
 
@@ -57,3 +57,13 @@ def test_readme_names_the_soak_and_the_pattern_tool():
     text = (DEPLOY / "README.md").read_text()
     assert "python -m tools.show_soak" in text
     assert "wall_pattern.py --config show.toml" in text
+
+
+def test_readme_says_the_sender_needs_cap_sys_nice():
+    text = (DEPLOY / "README.md").read_text()
+    assert "CAP_SYS_NICE" in text and "59 frames" in text
+
+
+def test_readme_warns_against_setcap_on_the_pi():
+    text = (DEPLOY / "README.md").read_text()
+    assert "setcap" in text and "cap_sys_nice" in text

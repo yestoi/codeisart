@@ -1,0 +1,119 @@
+"""The slot the parent and the sender share: one frame and a header, a lock the sender never waits on."""
+import os
+import subprocess
+import sys
+
+import numpy as np
+import pytest
+
+from show.display.colorlight_sender import FRAME, HEADER_LEN, LEVEL, PAUSE, STOP, Slot
+
+
+def test_a_frame_written_is_taken_whole_and_only_once():
+    slot = Slot.create(8, 4)
+    try:
+        frame = np.arange(8 * 4 * 3, dtype=np.uint8).reshape(4, 8, 3)
+        into = np.zeros((4, 8, 3), np.uint8)
+        assert not slot.take(into) and not into.any()          # nothing written yet
+        slot.write(frame)
+        assert slot.h[FRAME] == 1
+        assert slot.take(into) and (into == frame).all()
+        assert not slot.take(into)                              # the same frame is not new twice
+        frame[0, 0] = 7
+        assert not slot.take(into) and into[0, 0, 0] == 0       # write copied: the caller's array is not shared
+    finally:
+        slot.close()
+
+
+def test_take_does_not_wait_for_a_lock_the_other_side_holds():
+    slot = Slot.create(8, 4)
+    other = Slot.open(slot.path, 8, 4)                          # the other side: its own opening of the file
+    try:
+        slot.write(np.ones((4, 8, 3), np.uint8))
+        into = np.zeros((4, 8, 3), np.uint8)
+        assert other.lock.acquire(block=False)
+        try:
+            assert not slot.take(into) and not into.any()       # held elsewhere: the last frame again, at once
+        finally:
+            other.lock.release()
+        assert slot.take(into) and into.all()
+    finally:
+        other.close()
+        slot.close()
+
+
+def test_slot_files_carry_the_parents_pid_and_a_dead_parents_are_swept(tmp_path):
+    dead = 2 ** 22 - 7                                              # a pid nothing has: probed, not assumed
+    while True:
+        try:
+            os.kill(dead, 0)
+        except ProcessLookupError:
+            break
+        except OSError:
+            pass
+        dead -= 1
+    (tmp_path / f"colorlight-{dead}-abc.slot").write_bytes(b"x")
+    (tmp_path / f"colorlight-{os.getpid()}-abc.slot").write_bytes(b"x")     # a live parent's: another display
+    (tmp_path / "other.slot").write_bytes(b"x")
+    slot = Slot.create(8, 4, directory=str(tmp_path))
+    try:
+        assert f"colorlight-{os.getpid()}-" in os.path.basename(slot.path)
+        left = sorted(p.name for p in tmp_path.iterdir())
+        assert f"colorlight-{dead}-abc.slot" not in left
+        assert f"colorlight-{os.getpid()}-abc.slot" in left and "other.slot" in left
+    finally:
+        slot.close()
+
+
+def test_the_slot_starts_no_child_process():
+    # A multiprocessing lock starts the resource tracker, a child that lives as long as the show and that the
+    # soak counts as a child left behind (tools/show_soak.py). The slot's lock is on its own file instead.
+    code = """
+import multiprocessing.resource_tracker as rt
+import numpy as np
+from show.display.colorlight_sender import Slot
+s = Slot.create(8, 4); s.write(np.zeros((4, 8, 3), np.uint8)); s.take(np.zeros((4, 8, 3), np.uint8)); s.close()
+print("tracker", rt._resource_tracker._pid)
+"""
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "tracker None"
+
+
+def test_the_header_starts_at_zero_and_is_shared_through_the_file():
+    slot = Slot.create(8, 4)
+    try:
+        assert len(slot.h) == HEADER_LEN and not slot.h.any()
+        slot.h[LEVEL], slot.h[STOP], slot.h[PAUSE] = 102, 1, 1
+        other = Slot.open(slot.path, 8, 4)
+        try:
+            assert other.h[LEVEL] == 102 and other.h[STOP] == 1 and other.h[PAUSE] == 1
+            slot.write(np.full((4, 8, 3), 9, np.uint8))
+            into = np.zeros((4, 8, 3), np.uint8)
+            assert other.take(into) and (into == 9).all()
+        finally:
+            other.close()
+        assert os.path.exists(slot.path)
+    finally:
+        slot.close()
+    assert not os.path.exists(slot.path)                        # the creator unlinks; a second close is harmless
+    slot.close()
+
+
+def test_open_by_descriptor_closes_the_inherited_one():
+    if not os.path.isdir("/proc/self/fd"):
+        pytest.skip("the descriptor is reopened through /proc, which this system has not")
+    slot = Slot.create(8, 4)
+    before = len(os.listdir("/proc/self/fd"))
+    inherited = os.dup(slot.fd)
+    other = Slot.open(slot.path, 8, 4, fd=inherited)
+    try:
+        # the reopened descriptor and mmap's own dup of it: two more, not three (the inherited one is closed;
+        # its number is reused, so the count is the check, not the number)
+        assert len(os.listdir("/proc/self/fd")) == before + 2
+        assert other.lock.acquire(block=False)                       # and the lock is a separate one from the parent's
+        assert not slot.lock.acquire(block=False)
+        other.lock.release()
+    finally:
+        other.close()
+        slot.close()

@@ -26,6 +26,7 @@ import numpy as np
 from show.audio import AudioCues
 from show.config import PHOSPHORS, Config, load_config
 from show.display import Display, make_display
+from show.display.colorlight import stats_line
 from show.entries import load_entries, rescan
 from show.font import CELL_H, CELL_W, Font
 from show.input import PressQueue, make_buttons
@@ -424,6 +425,9 @@ class ShowLoop:
                 log.exception("closing the lights failed")
         if self.wall is not None:
             try:
+                line = stats_line(self.wall.display)
+                if line:
+                    log.info(line)
                 self._now = self.clock()                      # the wall's clock at the close: its wait (C53)
                 self.wall.close()
             except Exception:

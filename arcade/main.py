@@ -20,6 +20,7 @@ from arcade.runner import Runner
 from arcade.scores import Scores, SessionLog
 from arcade.sources import SCRIPTS, make_sources
 from show.display import Display, make_display
+from show.display.colorlight import stats_line
 from show.font import Font
 
 COMMANDS = ("run", "doctor")
@@ -161,6 +162,9 @@ def run(args) -> int:
         except KeyboardInterrupt:
             pass
         finally:
+            line = stats_line(display)
+            if line:
+                log.info(line)
             display.close()
         return 0
     finally:

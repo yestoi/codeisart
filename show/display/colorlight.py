@@ -1,139 +1,270 @@
-"""Raw Ethernet driver for Colorlight 5A-75B/E receiving cards (Linux only, needs CAP_NET_RAW).
+"""Raw Ethernet driver for the Colorlight 5A-75B/E receiving card (Linux only, needs CAP_NET_RAW), as a steady
+sender: whatever rate the caller pushes at, the card gets OUTPUT_FPS (59) frames a second from a child process,
+sync first, the pixels BGR, the sync within 100 us of its deadline (show/display/colorlight_sender.py). The spec:
+docs/superpowers/specs/2026-09-29-route-a-steady-sender-design.md; the measurements behind it:
+docs/superpowers/reviews/2026-09-29-sender-card-spike.md, section 5.
 
-Constants diffed on 2026-09-27 against Falcon Player's src/channeloutput/ColorLight-5a-75.cpp
-(master) and H. Kubota's protocol notes (hkubota.wordpress.com, 2022-01-31, updated 2022-09-29).
-chubby75 documents the card's hardware, not this protocol. Every packet: destination MAC
-11:22:33:44:55:66, source MAC 22:22:33:44:55:66, then a packet-type byte at offset 12 whose
-first data byte shares the EtherType field at offset 13.
+push(frame) checks the frame, then the sender's news (below), copies the frame into the shared slot and returns:
+nothing is sent by the caller's thread. set_brightness stores the level; every sync and brightness packet from
+the next tick carries it. The wall is black from the moment the display opens (the card keeps its last picture
+through a restart otherwise), and close() runs black for CLOSE_HOLD_S, stops the sender after a whole burst,
+closes the socket and unlinks the slot.
 
-- 0x01 display frame, 112 bytes, EtherType 0x0107: data[21] brightness, data[22] 0x05,
-  data[24..26] brightness for R, G, B (data counted from offset 14).
-- 0x0A brightness, 77 bytes, EtherType 0x0A<b>: then b, b, 0xFF, zeros.
-- 0x55 row data, EtherType 0x5500 | row >> 8: row & 0xFF, pixel offset (2 bytes), pixel count
-  (2 bytes), 0x08, 0x88, then pixels in RGB order (Falcon Player; Kubota's panel needed BGR).
-  A row wider than CHUNK_PIXELS is split into equal packets.
+The sender's news comes back through push: a send that raised in the child (recorded, the sender paused) is
+raised by the next push, which stores nothing, so show.wall.GovernedDisplay starts its hold as before; the
+push that ends the hold (the counted frame again) clears the pause and the stream restarts on it. A child that
+died, or stopped beating for DEAD_S, makes push raise "not running" until RESTART_S after, when the next push
+starts it again and is taken; the new child resumes on the slot's last frame, a governed one, never on black of
+its own. A close finding the child dead starts one to drain black.
 
-Falcon Player's loop sends each display frame packet and then the next frame's rows; push()
-does the same, so the card shows a pushed frame when the next push starts. Verify the pixel
-order with the rgb test pattern on the panel before trusting colours.
-
-Brightness. The display starts at SAFE_BRIGHTNESS (0.4, the power-supply cap of both the arcade
-and the show daemon configs) unless make_display passes the configured level, so a push before
-set_brightness never runs the wall at 255. Falcon Player sends the 0x0A packet with every frame
-(twice on firmware 13 and later); this driver sends it on set_brightness and again every
-BRIGHTNESS_EVERY pushes, between the display frame packet and the rows, so a card that browns out
-and restarts is back at the cap within 0.1 s at 30 Hz. The display frame packet carries the level
-on every push as well. A level that is NaN or not above 0 is sent as 0: it fails dark, never bright.
+Brightness: the display starts at SAFE_BRIGHTNESS (0.4, the power-supply cap of both configs) unless
+make_display passes the configured level. A level that is NaN or not above 0 is sent as 0: dark, never bright.
 """
 from __future__ import annotations
 
-import math
+import errno
+import logging
+import os
 import socket
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
-DST_MAC = bytes.fromhex("112233445566")
-SRC_MAC = bytes.fromhex("222233445566")
-ETH_ROW = 0x5500
-ETH_FRAME = 0x0107
-ETH_BRIGHTNESS = 0x0A00
-CHUNK_PIXELS = 256          # most pixels per row packet; Falcon Player allows up to 497
-ROW_HEADER_LEN = 14 + 7     # Ethernet header plus the 7-byte row header
-FRAME_PAYLOAD_LEN = 98
-BRIGHTNESS_PAYLOAD_LEN = 63
+from show.display.colorlight_packets import (BRIGHTNESS_PAYLOAD_LEN, CHUNK_PIXELS, DST_MAC, ETH_BRIGHTNESS,  # noqa: F401
+                                             ETH_FRAME, ETH_ROW, FRAME_PAYLOAD_LEN, ROW_HEADER_LEN, SRC_MAC,
+                                             brightness_packet, chunk_pixels, frame_packet, level_byte,
+                                             row_buffers, row_packets)
+from show.display.colorlight_sender import BEATS, CLOSE_HOLD_S, ERRNO, ERRORS, LEVEL, PAUSE, RT, STOP, Slot, stats_of
+
+log = logging.getLogger(__name__)
+
 SAFE_BRIGHTNESS = 0.4       # the level before set_brightness: arcade.toml's brightness, show.toml's cap
-BRIGHTNESS_EVERY = 3        # pushes between brightness packets: 0.1 s at 30 Hz
+START_S = 2.0               # the child's first beat must come within this of its start
+DEAD_S = 1.0                # a child that has not beaten for this long is dead
+RESTART_S = 1.0             # a dead child is started again at the first push this long after it died
+JOIN_S = 3.0                # the close waits this long for the child, then terminates it
+POLL_S = 0.01               # the start's wait between looks at the beat
+SOL_PACKET, PACKET_QDISC_BYPASS = 263, 20   # past the port's queue: it reorders one frame in a thousand
+ROOT = Path(__file__).resolve().parents[2]  # the repository: on the child's path whatever the parent's cwd
 
 
-def _eth(ethertype: int) -> bytes:
-    return DST_MAC + SRC_MAC + ethertype.to_bytes(2, "big")
+class DiscardSocket:
+    """A socket that keeps nothing, for a dry run of the driver: no card, no root. It has no descriptor to hand
+    the child, which then sends to nowhere itself."""
+    family = type = proto = 0
+
+    def fileno(self) -> int:
+        return -1
+
+    def send(self, data) -> int:
+        return len(data)
+
+    def close(self) -> None:
+        pass
 
 
-def _level(level: float) -> int:
-    if not level > 0.0:   # NaN, zero or negative: dark
-        return 0
-    return int(min(1.0, level) * 255)
+class SenderProcess:
+    """The child as the driver sees it: alive, joined, terminated (SIGKILL: the child ignores SIGTERM), its exit code."""
+
+    def __init__(self, proc: subprocess.Popen):
+        self._proc = proc
+        self.pid = proc.pid
+
+    def is_alive(self) -> bool:
+        return self._proc.poll() is None
+
+    def join(self, timeout: float | None = None) -> None:
+        try:
+            self._proc.wait(timeout)
+        except subprocess.TimeoutExpired:
+            pass
+
+    def terminate(self) -> None:
+        if self.is_alive():
+            self._proc.kill()
+
+    @property
+    def exitcode(self) -> int | None:
+        return self._proc.poll()
 
 
-def _row_header(row: int, offset: int, count: int) -> bytes:
-    return _eth(ETH_ROW | (row >> 8)) + bytes([row & 0xFF, offset >> 8, offset & 0xFF,
-                                               count >> 8, count & 0xFF, 0x08, 0x88])
-
-
-def _chunk_pixels(width: int) -> int:
-    """Pixels per row packet: the row split into the fewest equal packets of at most CHUNK_PIXELS."""
-    chunks = math.ceil(width / CHUNK_PIXELS) if width > 0 else 0
-    if chunks == 0 or width % chunks:
-        raise ValueError(f"width {width} does not split into {chunks} equal row packets")
-    return width // chunks
-
-
-def row_packets(row: int, pixels: np.ndarray) -> list[bytes]:
-    """Reference encoder for one row of (width, 3) RGB pixels; push() must match it byte for byte."""
-    chunk = _chunk_pixels(pixels.shape[0])
-    out = []
-    for off in range(0, pixels.shape[0], chunk):
-        data = np.ascontiguousarray(pixels[off : off + chunk], dtype=np.uint8)
-        out.append(_row_header(row, off, chunk) + data.tobytes())
-    return out
-
-
-def frame_packet(brightness: float) -> bytes:
-    b = _level(brightness)
-    payload = bytearray(FRAME_PAYLOAD_LEN)
-    payload[21] = b
-    payload[22] = 0x05
-    payload[24] = payload[25] = payload[26] = b
-    return _eth(ETH_FRAME) + bytes(payload)
-
-
-def brightness_packet(level: float) -> bytes:
-    b = _level(level)
-    payload = bytearray(BRIGHTNESS_PAYLOAD_LEN)
-    payload[0] = payload[1] = b
-    payload[2] = 0xFF
-    return _eth(ETH_BRIGHTNESS | b) + bytes(payload)
+def spawn_sender(slot: Slot, sock) -> SenderProcess:
+    """The sender in a child: this interpreter running show.display.colorlight_sender, the socket inherited as a
+    descriptor (the parent keeps its own for a restart). A plain subprocess, not multiprocessing: a fork behind
+    MediaPipe's threads is not safe, and multiprocessing's spawn starts a resource tracker that outlives the
+    child and that the show's soak counts as a child left behind."""
+    fd = sock.fileno()
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(ROOT) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    argv = [sys.executable, "-m", "show.display.colorlight_sender", slot.path, str(slot.width), str(slot.height),
+            str(fd), str(int(sock.family)), str(int(sock.type)), str(sock.proto), str(os.getpid()), str(slot.fd)]
+    fds = (fd, slot.fd) if fd >= 0 else (slot.fd,)          # the slot's too: its path may be gone by a restart
+    return SenderProcess(subprocess.Popen(argv, pass_fds=fds, env=env, cwd=str(ROOT)))
 
 
 class ColorlightDisplay:
-    def __init__(self, width: int, height: int, iface: str, sock=None, brightness: float = SAFE_BRIGHTNESS):
-        self._chunk = _chunk_pixels(width)
-        chunks = width // self._chunk
+    def __init__(self, width: int, height: int, iface: str, sock=None, brightness: float = SAFE_BRIGHTNESS, *,
+                 launch: Callable = spawn_sender, clock: Callable[[], float] = time.monotonic,
+                 sleep: Callable[[float], None] = time.sleep):
+        chunk_pixels(width)                       # a width that does not split is refused before anything opens
         self.width, self.height = width, height
-        # One prebuilt packet per (row, chunk); headers are fixed, push() fills the pixels.
-        self._packets = np.zeros((height, chunks, ROW_HEADER_LEN + self._chunk * 3), np.uint8)
-        for y in range(height):
-            for c in range(chunks):
-                header = _row_header(y, c * self._chunk, self._chunk)
-                self._packets[y, c, :ROW_HEADER_LEN] = np.frombuffer(header, np.uint8)
-        self._pixels = self._packets[:, :, ROW_HEADER_LEN:]
-        if sock is None:
-            sock = _open_raw_socket(iface)
-        self.sock = sock
         self.brightness = brightness
-        self._since_brightness = 0   # pushes since the last brightness packet
+        self.restarts = 0
+        self._launch, self._clock, self._sleep = launch, clock, sleep
+        self._child = None
+        self._seen_errors = 0
+        self._died_at: float | None = None
+        self._beat = (0, 0.0)
+        self._warned_rt = False
+        self.sock = sock if sock is not None else _open_raw_socket(iface)
+        self.slot = None
+        try:
+            self.slot = Slot.create(width, height)
+            self.slot.h[LEVEL] = level_byte(brightness)
+            self._start()
+        except BaseException:
+            self.sock.close()
+            if self.slot is not None:
+                self.slot.close()
+            raise
 
-    def set_brightness(self, level: float) -> None:
-        self.brightness = level
-        self.sock.send(brightness_packet(level))
-        self._since_brightness = 0
+    # -- the child ---------------------------------------------------------------------------------------------
+
+    def _start(self) -> None:
+        h = self.slot.h
+        h[STOP] = 0
+        h[PAUSE] = 0
+        before = int(h[BEATS])
+        self._child = self._launch(self.slot, self.sock)
+        deadline = self._clock() + START_S
+        while int(h[BEATS]) == before:
+            if not self._child.is_alive() or self._clock() >= deadline:
+                self._reap()
+                raise OSError(errno.ESRCH, "the colorlight sender did not start")
+            self._sleep(POLL_S)
+        self._beat = (int(h[BEATS]), self._clock())
+        self._died_at = None
+        if not h[RT] and not self._warned_rt:
+            self._warned_rt = True
+            log.warning("the colorlight sender runs without real-time priority (CAP_SYS_NICE or root gives it): "
+                        "the sync may be late now and then")
+
+    def _reap(self) -> None:
+        child = self._child
+        if child is None:
+            return
+        if child.is_alive():
+            child.terminate()
+        child.join(JOIN_S)
+
+    def _alive(self) -> bool:
+        if self._child is None or not self._child.is_alive():
+            return False
+        beats, now = int(self.slot.h[BEATS]), self._clock()
+        if beats != self._beat[0]:
+            self._beat = (beats, now)
+            return True
+        return now - self._beat[1] < DEAD_S
+
+    def _check(self) -> None:
+        """The sender's news since the last push: a failed send raises it; a dead sender raises, or is
+        restarted once RESTART_S has passed."""
+        h = self.slot.h
+        errors = int(h[ERRORS])
+        if errors != self._seen_errors:
+            self._seen_errors = errors
+            code = int(h[ERRNO])
+            raise OSError(code, "the colorlight sender's send failed: %s"
+                          % (os.strerror(code) if code else "unknown error"))
+        if self._alive():
+            return
+        now = self._clock()
+        if self._died_at is None:
+            self._died_at = now
+            self._reap()
+            log.error("the colorlight sender died (exit code %s); a restart in %.0f s",
+                      getattr(self._child, "exitcode", None), RESTART_S)
+        if now - self._died_at < RESTART_S:
+            raise OSError(errno.ESRCH, "the colorlight sender is not running")
+        try:
+            self._start()
+        except OSError:
+            self._died_at = self._clock()
+            raise
+        self.restarts += 1
+        log.info("the colorlight sender restarted (%d so far)", self.restarts)
+
+    # -- the Display protocol ----------------------------------------------------------------------------------
 
     def push(self, frame: np.ndarray) -> None:
         if frame.shape != (self.height, self.width, 3):
             raise ValueError(f"frame shape {frame.shape} is not ({self.height}, {self.width}, 3)")
         if frame.dtype != np.uint8:
             raise ValueError(f"frame dtype {frame.dtype} is not uint8; convert before push")
-        self.sock.send(frame_packet(self.brightness))   # shows the rows sent by the previous push
-        self._since_brightness += 1
-        if self._since_brightness >= BRIGHTNESS_EVERY:
-            self.sock.send(brightness_packet(self.brightness))
-            self._since_brightness = 0
-        self._pixels[...] = frame.reshape(self.height, -1, self._chunk * 3)
-        for packet in self._packets.reshape(-1, self._packets.shape[-1]):
-            self.sock.send(packet.data)
+        self._check()
+        self.slot.write(frame)
+        if int(self.slot.h[ERRORS]) == self._seen_errors:   # a failure that landed meanwhile keeps its pause:
+            self.slot.h[PAUSE] = 0                          # the next push raises it and the hold follows
+
+    def set_brightness(self, level: float) -> None:
+        self.brightness = level
+        self.slot.h[LEVEL] = level_byte(level)
+
+    def pause(self) -> None:
+        """Stop the stream after its current burst, as a failed send does; the next push resumes it (a prime
+        first). For the bench: the owner's Q66 check, a stopped stream and its restart, by the production path."""
+        self.slot.h[PAUSE] = 1
+
+    def stats(self) -> dict:
+        s = stats_of(self.slot.h)
+        s["restarts"] = self.restarts
+        return s
 
     def close(self) -> None:
-        self.sock.close()
+        """Black for CLOSE_HOLD_S, the sender stopped after a whole burst, the socket closed, the slot unlinked."""
+        if self.slot is None:
+            return
+        try:
+            self.slot.write(np.zeros((self.height, self.width, 3), np.uint8))
+            if not self._alive():                                       # dead, or hung: a fresh child drains
+                self._reap()                                            # the black, best effort
+                try:
+                    self._start()
+                except OSError:
+                    log.exception("closing: no sender to drain black with; the wall keeps its last picture")
+            child = self._child
+            if child is not None and child.is_alive():
+                self.slot.h[PAUSE] = 0
+                self._sleep(CLOSE_HOLD_S)
+                self.slot.h[STOP] = 1
+                child.join(JOIN_S)
+                if child.is_alive():
+                    log.error("the colorlight sender did not stop in %.0f s; terminated", JOIN_S)
+                    child.terminate()
+                    child.join(JOIN_S)
+        finally:
+            self.sock.close()
+            self.slot.close()
+            self.slot = None
+
+
+def stats_line(display) -> str | None:
+    """One line for the log at a close, when the display is the colorlight driver; None otherwise."""
+    stats = getattr(display, "stats", None)
+    if stats is None:
+        return None
+    try:
+        s = stats()
+    except Exception:                       # a closed display, a slot gone: a line for the log is never a failure
+        return None
+    return ("colorlight sender: %d frames, %d late (over 1 ms), worst %.0f us, sync to sync sd %.0f us, %d slips, "
+            "%d send errors, %d restarts, real-time %s, the sleep woke at worst %.0f us late"
+            % (s["frames"], s["late"], s["worst_us"], s["sd_us"], s["slips"], s["errors"], s["restarts"],
+               "yes" if s["rt"] else "no", s.get("wake_worst_us", 0.0)))
 
 
 def _open_raw_socket(iface: str) -> socket.socket:
@@ -143,9 +274,15 @@ def _open_raw_socket(iface: str) -> socket.socket:
     try:
         sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
     except PermissionError as e:
-        raise PermissionError(f"a raw socket on {iface} needs CAP_NET_RAW: run under the arcade's systemd unit "
-                              "(AmbientCapabilities=CAP_NET_RAW) or grant it once with "
-                              "sudo setcap cap_net_raw+ep on the venv's real python binary") from e
+        raise PermissionError(f"a raw socket on {iface} needs CAP_NET_RAW: run under the show's systemd unit "
+                              "(AmbientCapabilities=CAP_NET_RAW CAP_SYS_NICE), under sudo, or grant both once "
+                              "with sudo setcap cap_net_raw,cap_sys_nice+ep on the venv's real python binary "
+                              "(a binary with file capabilities drops the unit's ambient ones: both or "
+                              "neither)") from e
+    try:
+        sock.setsockopt(SOL_PACKET, PACKET_QDISC_BYPASS, 1)
+    except OSError as e:
+        log.warning("cannot bypass the port's queue on %s (%s): packets go through it", iface, e)
     try:
         sock.bind((iface, 0))
     except OSError as e:

@@ -1,6 +1,7 @@
-# Pi 4 deployment
+# Pi 5 deployment
 
-Nothing here is installed by the repo. The owner installs it by hand on the Pi.
+The show's target is a Raspberry Pi 5 (2026-09-29); these steps were written on a Pi 4 and are
+the same. Nothing here is installed by the repo. The owner installs it by hand on the Pi.
 
 1. Flash Raspberry Pi OS Lite (64-bit), or the Falcon Player image for the DDP path.
 2. `sudo apt install -y git python3-venv python3-dev build-essential libsdl2-dev alsa-utils`
@@ -70,7 +71,17 @@ pixels in software. Falcon Player's output brightness must equal `show.toml`'s
 ## Colorlight raw backend
 
 The unit grants `CAP_NET_RAW` (`AmbientCapabilities`), needed only for the `colorlight`
-backend. The card sits on a dedicated USB gigabit Ethernet adapter.
+backend, and `CAP_SYS_NICE`: the driver sends from a child process at real-time priority
+(SCHED_FIFO 50), 59 frames a second whatever the show's `fps`, because the card flickers at
+any other rate (docs/superpowers/reviews/2026-09-29-sender-card-spike.md). Without the
+capability the sender runs at ordinary priority and logs a warning; the sync may then be
+late now and then. Do not `setcap` the venv's python on the Pi: a binary with file
+capabilities drops the unit's ambient ones, and the sender loses its priority silently. On
+a bench without the unit, `sudo`, or `setcap cap_net_raw,cap_sys_nice+ep` (both). After the
+first start under the unit, check the close's log line says `real-time yes`, or `chrt -p`
+on the child (`pgrep -f colorlight_sender`) says SCHED_FIFO 50; a kernel built with
+CONFIG_RT_GROUP_SCHED refuses SCHED_FIFO inside a service's cgroup. The card sits on the
+Pi's own Ethernet port; a USB adapter batches packets and has not been measured.
 
 ## LEDVision settings record
 
