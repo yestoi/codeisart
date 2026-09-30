@@ -38,7 +38,7 @@ not 60.32, never the content's 20 or 30, not 55 or below (MEASURED: N15b, N19, N
 **The timing**: the first sync within 100 us of its deadline (MEASURED: 0.25 ms of jitter shows, N21). The
 recipe that held about 50 us at the port (step 6): real-time priority SCHED_FIFO 50, absolute deadlines on
 `perf_counter_ns`, a sleep to 2 ms before the tick then a busy-wait, `PACKET_QDISC_BYPASS` on the socket.
-Never a pure busy-wait (it stalled 37 ms once); never `time.sleep` alone (0.6 to 2.4 ms late).
+Never a pure busy-wait (it stalled 37 ms once); never `time.sleep` alone (0.6 to 2.4 ms late). Superseded for the rows on 2026-09-30: with the rows paced across the frame (docs/superpowers/plans/2026-09-30-paced-rows.md) the sender spins between rows and from the last row to the sync, pinned to a core, as the bench child did when the wall was clean; the 37 ms stall was unpinned.
 
 ## 2. Where the sender runs: a separate process (DECIDED)
 

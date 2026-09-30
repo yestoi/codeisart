@@ -1,11 +1,23 @@
-"""The steady sender of the Colorlight driver: 60.32 frames a second to the card, whatever the caller's rate.
+"""The steady sender of the Colorlight driver: 60.00 frames a second to the card, whatever the caller's rate.
 
 The spec: docs/superpowers/specs/2026-09-29-route-a-steady-sender-design.md, its rate and packets superseded by
-docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md section 2. What the card wants was measured on
-2026-09-29 (the sync first, within 100 us of its deadline; pixels BGR) and 2026-09-30 (the S2 sender card's
-format at its own 60.32 frames a second: one 1036-byte sync a frame with a frame counter, the rows right behind
-it, no 0x0A brightness packet; in that format 59 shows nothing, and in our old format anything under 60 drew a
-second picture).
+docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md section 2 and 08-wall-session-evening.md
+section 1. What the card wants was measured on 2026-09-29 (the sync first, within 100 us of its deadline; pixels
+BGR), on 2026-09-30 (the S2 sender card's format: one 1036-byte sync a frame with a frame counter, no 0x0A
+brightness packet; in that format 59 shows shimmer and the copy, and in our old format anything under 60 drew a
+second picture) and on the evening of 2026-09-30 (in the S2 mode the card shows rows as they land: a 1 ms burst
+of rows after the sync tears on motion, the rows paced evenly across the 15.5 ms after the sync do not, and
+60.00 beat 60.32 on the lobby, which ticks 30 a second).
+
+A frame on the wire: the sync on its deadline, then row packet k in its own slot ROW_SPREAD_NS * (k + 1) // n
+after that deadline (64 slots of 242 us on the 128-wide wall; 128 of 121 us on a 512-wide one), the last 1.17 ms
+before the next sync. Between rows the sender spins (a slot is far inside time.sleep's lateness), so in a steady
+stream it never sleeps: the frame is the rows, then the spin to the next sync. A row whose wait ended after the
+next row's slot began is counted as one that missed its slot, the worst lateness beside it. A new frame is
+swapped to BGR into the packets one packet at a time, inside that packet's slot (the whole 512 x 192 frame at
+once is 800 us on the Pi 5, and the tick's top now sits in the 1.17 ms before the sync). The prime (the rows
+before the first sync after a start or a pause) is still a burst, and swaps the whole frame: that leaves the
+packets whole after a burst torn by a failed send.
 
 The Slot is one frame in shared memory (a file-backed mmap, /dev/shm where there is one) with a header of int64
 fields and one lock, a flock on the file itself (a multiprocessing lock would start Python's resource tracker, a
@@ -14,8 +26,8 @@ sender tries the lock without waiting at each tick and keeps the frame it has wh
 can never make it late.
 
 The Sender runs in a child process (sender_main): real-time priority SCHED_FIFO 50 when it can have it, garbage
-collection off, absolute deadlines on perf_counter_ns, a sleep to SPIN_NS before each deadline and then a
-busy-wait. It sends the last frame it took until a new one comes. It starts dark, and sends black for
+collection off, absolute deadlines on perf_counter_ns, a sleep to SPIN_NS before a deadline further off than
+that (only the one after a prime: in a steady stream the wait is a spin from the last row) and then a busy-wait. It sends the last frame it took until a new one comes. It starts dark, and sends black for
 CLOSE_HOLD_S when its parent dies. A send that raises ends the burst (no sync follows a torn frame), records
 the error and pauses the sender until the parent's next push clears the pause; the first burst after a start or
 a pause is a prime (the rows, no sync), so the sync that follows shows a whole frame.
@@ -39,9 +51,13 @@ import numpy as np
 
 from show.display.colorlight_packets import COUNTER_OFFSET, row_buffers, sync_bytes
 
-OUTPUT_FPS = 60.32                      # the S2's own rate: clean 2026-09-30 (25-45 s runs); on 2026-09-29 (S8b, 30 s)
-                                        # a slight all-panel dip every 3-6 s was seen at it; 59 in this format is black
-PERIOD_NS = round(1e9 / OUTPUT_FPS)
+OUTPUT_FPS = 60.00                      # with the rows paced: A/B on the lobby, 2026-09-30 evening, 60.32 "an acceptable
+                                        # amount of flicker", 60.00 "near perfect, one flicker in 30 s" (the lobby ticks
+                                        # 30 a second: 60.00 shows every frame twice); 59 in this format: shimmer, the copy
+PERIOD_NS = round(1e9 / OUTPUT_FPS)     # 16 666 667
+ROW_SPREAD_NS = 15_500_000              # the rows paced across this after the sync: 15.5 ms "zero flicker" on the
+                                        # video, 14 some, 16.4 (the rows meeting the next sync) worse; the last row
+                                        # lands PERIOD_NS - ROW_SPREAD_NS = 1.17 ms before the next sync
 SPIN_NS = 2_000_000                     # sleep to this before the deadline, then busy-wait
 LATE_NS = 1_000_000                     # a sync this long after its deadline is counted late
 PAUSE_POLL_S = 0.005                    # while paused: nothing sent, the flags read this often
@@ -53,8 +69,8 @@ SENDER_CPU = None                       # a core to pin the child to; None: the 
 # The header's int64 fields. Both sides read and write single fields without the lock: a field is one aligned
 # 64-bit store, and no reading depends on two fields changing together.
 (FRAME, LEVEL, STOP, PAUSE, BEATS, FRAMES, ERRNO, ERRORS, RT, SLIPS, LATE, WORST, DEV_N, DEV_SUM,
- DEV_SUMSQ, WAKE_WORST) = range(16)
-HEADER_LEN = 16                         # int64s; 128 bytes before the frame
+ DEV_SUMSQ, WAKE_WORST, ROWS_LATE, ROW_WORST) = range(18)
+HEADER_LEN = 18                         # int64s; 144 bytes before the frame
 
 
 def spin_ns_from_env() -> int:
@@ -200,8 +216,10 @@ class Slot:
 
 def wait_until(target_ns: int, clock: Callable[[], int], sleep: Callable[[float], None], spin_ns: int = SPIN_NS) -> int:
     """Sleep to spin_ns before the target, then busy-wait to it. time.sleep alone wakes 0.6 to 2.4 ms late; a
-    pure busy-wait at real-time priority once stalled 37 ms (the spike's step 6). Returns how late the sleep
-    woke, ns (0 when it did not sleep): past spin_ns, the spin cannot hold the deadline."""
+    pure busy-wait at real-time priority once stalled 37 ms (the spike's step 6, unpinned). With the rows paced
+    the sync's wait in a steady stream is the spin alone (the last row lands 1.17 ms before the deadline, under
+    spin_ns), which the bench child did at the wall, pinned, and was clean (2026-09-30 evening). Returns how late
+    the sleep woke, ns (0 when it did not sleep): past spin_ns, the spin cannot hold the deadline."""
     ahead = target_ns - clock() - spin_ns
     late = 0
     if ahead > 0:
@@ -210,6 +228,16 @@ def wait_until(target_ns: int, clock: Callable[[], int], sleep: Callable[[float]
     while clock() < target_ns:
         pass
     return late
+
+
+def spin_until(target_ns: int, clock: Callable[[], int]) -> int:
+    """Busy-wait to the target, never a sleep: a row's slot is 242 us at 64 rows, far inside time.sleep's
+    lateness (0.6 to 2.4 ms, the spike). Returns how late the wait ended, ns: about 0 when it waited, more when
+    the target had passed."""
+    now = clock()
+    while now < target_ns:
+        now = clock()
+    return now - target_ns
 
 
 class Sender:
@@ -310,13 +338,15 @@ class Sender:
 
 def stats_of(h: np.ndarray) -> dict:
     """The sender's numbers so far, from the header: frames sent (with a sync), late ones, slips, the worst
-    lateness and the spread of the sync-to-sync interval, in microseconds."""
+    lateness and the spread of the sync-to-sync interval, in microseconds, the rows that missed their slot and
+    the worst row lateness."""
     n = int(h[DEV_N])
     mean = h[DEV_SUM] / n if n else 0.0
     var = h[DEV_SUMSQ] / n - mean * mean if n else 0.0
     return {"frames": int(h[FRAMES]), "late": int(h[LATE]), "slips": int(h[SLIPS]), "worst_us": h[WORST] / 1e3,
             "mean_us": mean / 1e3, "sd_us": math.sqrt(max(var, 0.0)) / 1e3, "errors": int(h[ERRORS]),
-            "rt": bool(h[RT]), "wake_worst_us": h[WAKE_WORST] / 1e3}
+            "rt": bool(h[RT]), "wake_worst_us": h[WAKE_WORST] / 1e3,
+            "rows_late": int(h[ROWS_LATE]), "row_worst_us": h[ROW_WORST] / 1e3}
 
 
 def sender_cpu() -> int | None:

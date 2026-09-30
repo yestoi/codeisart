@@ -7,7 +7,8 @@ import pytest
 
 from show.display.colorlight_packets import COUNTER_OFFSET, row_packets, sync_bytes
 from show.display.colorlight_sender import (BEATS, CLOSE_FRAMES, CLOSE_HOLD_S, DEV_N, ERRNO, ERRORS, FRAMES, LEVEL,
-                                            LATE, OUTPUT_FPS, PAUSE, PERIOD_NS, SLIPS, STOP, Sender, Slot)
+                                            LATE, OUTPUT_FPS, PAUSE, PERIOD_NS, ROW_SPREAD_NS, ROW_WORST, ROWS_LATE,
+                                            SLIPS, STOP, Sender, Slot)
 from tests.colorlight_fakes import BRIGHTNESS, ROW, SYNC, Cranked, FakeClock, FakeSocket, bursts, kinds, row_pixels
 
 W, H = 128, 64
@@ -103,8 +104,12 @@ def test_the_counter_counts_syncs_from_zero_wraps_at_a_byte_and_carries_on_throu
     assert not any(p[12] == BRIGHTNESS for p in sock.sent)
 
 
-def test_the_rate_and_the_close_follow_the_winning_run():
-    assert OUTPUT_FPS == 60.32 and PERIOD_NS == round(1e9 / 60.32) == 16578249
+def test_the_rate_the_spread_and_the_close_follow_the_evening_at_the_wall():
+    # 08-wall-session-evening.md: 60.00 with the rows paced over 15.5 ms "near perfect"; 60.32 an acceptable
+    # flicker; 14 ms some flicker; 16.4 ms (the rows meeting the next sync) worse.
+    assert OUTPUT_FPS == 60.00 and PERIOD_NS == round(1e9 / 60.0) == 16_666_667
+    assert ROW_SPREAD_NS == 15_500_000
+    assert PERIOD_NS - ROW_SPREAD_NS >= 1_100_000                              # the last row 1.17 ms before the next sync
     assert CLOSE_FRAMES == round(CLOSE_HOLD_S * OUTPUT_FPS) == 60
     assert round(CLOSE_HOLD_S * Cranked(FakeSocket(), FakeClock()).fps) >= CLOSE_FRAMES   # a close's sleep cranks a second
 
@@ -173,7 +178,7 @@ def test_run_sends_black_for_a_second_when_the_parent_is_gone(slot):
 
 # --- the pacing, on the fake clock
 
-from show.display.colorlight_sender import LATE_NS, SPIN_NS, stats_of, wait_until  # noqa: E402
+from show.display.colorlight_sender import LATE_NS, SPIN_NS, spin_until, stats_of, wait_until  # noqa: E402
 
 
 def sync_times(sock, clock, sender, n):
@@ -206,6 +211,15 @@ def test_the_wait_sleeps_to_spin_ns_before_the_deadline_then_spins():
     assert clock.slept == []
 
 
+def test_the_spin_between_rows_never_sleeps_and_returns_its_lateness():
+    clock = FakeClock(step_ns=10_000)
+    target = clock.t + 242_000                                                # one row's slot at 64 rows
+    assert 0 <= spin_until(target, clock.now) < clock.step
+    assert target <= clock.t < target + clock.step and clock.slept == []
+    clock.t += 500_000                                                        # the target 500 us in the past
+    assert 500_000 <= spin_until(target, clock.now) <= 500_000 + 2 * clock.step   # at once, the lateness handed back
+
+
 def test_a_stall_moves_the_grid_once_with_no_catch_up(slot):
     sender, sock, clock = make(slot)
     times = sync_times(sock, clock, sender, 4)
@@ -226,8 +240,9 @@ def test_stats_read_the_header(slot):
     assert s["frames"] == 10 and s["late"] == 0 and s["slips"] == 0 and s["errors"] == 0 and s["rt"] is False
     assert 0 <= s["worst_us"] < 3 * clock.step / 1e3 and abs(s["mean_us"]) < 3 * clock.step / 1e3
     assert s["sd_us"] < 3 * clock.step / 1e3
-    assert stats_of(np.zeros(16, np.int64)) == {"frames": 0, "late": 0, "slips": 0, "worst_us": 0.0, "mean_us": 0.0,
-                                                "sd_us": 0.0, "errors": 0, "rt": False, "wake_worst_us": 0.0}
+    assert stats_of(np.zeros(18, np.int64)) == {"frames": 0, "late": 0, "slips": 0, "worst_us": 0.0, "mean_us": 0.0,
+                                                "sd_us": 0.0, "errors": 0, "rt": False, "wake_worst_us": 0.0,
+                                                "rows_late": 0, "row_worst_us": 0.0}
 
 
 # --- the plan review's findings (2026-09-30)
