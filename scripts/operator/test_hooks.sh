@@ -333,8 +333,13 @@ check "every hook command in settings.json is anchored to the project dir" 'pyth
 import json, sys
 hooks = json.load(open(sys.argv[1]))["hooks"]
 cmds = [h["command"] for groups in hooks.values() for g in groups for h in g["hooks"]]
-assert len(cmds) == 6, cmds
-bad = [c for c in cmds if not c.startswith("python3 \"$CLAUDE_PROJECT_DIR/scripts/operator/")]
+ours = [c for c in cmds if "scripts/operator/" in c]
+assert len(ours) == 6, ours
+bad = [c for c in ours if not c.startswith("python3 \"$CLAUDE_PROJECT_DIR/scripts/operator/")]
+assert not bad, bad
+# other tools' hooks (graft, 2026-09-30) must be anchored too; ${CLAUDE_PROJECT_DIR:-.} is anchored in a hook
+others = [c for c in cmds if c not in ours]
+bad = [c for c in others if "$CLAUDE_PROJECT_DIR/" not in c and "${CLAUDE_PROJECT_DIR:-.}/" not in c]
 assert not bad, bad
 P'
 check "worktrees of subagents start from the local HEAD, not the remote's" 'python3 - "$HERE/../../.claude/settings.json" <<"P"
