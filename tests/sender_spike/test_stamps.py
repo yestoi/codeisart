@@ -64,7 +64,7 @@ def test_what_is_not_a_stamp_is_none():
     assert send.parse_stamp(answer(1, kind=2, software_ns=T0)) is None          # an ACK stamp: not ours
 
 
-def test_only_the_first_sync_of_a_frame_asks_for_a_stamp():
+def test_the_last_row_and_the_first_sync_of_a_frame_ask_for_a_stamp():
     sock = FakeSocket()
     sink = send.Stamper(sock, hardware=False)
     plan = send.plan_from(["--seconds", "1", "--tail-seconds", "0"])
@@ -72,8 +72,20 @@ def test_only_the_first_sync_of_a_frame_asks_for_a_stamp():
     send.run(plan, sink.send, clock.now, send.waiter("sleep", 0, clock.now, clock.sleep))
     assert len(sock.sent) == 68 * 60
     asked = [i for i, anc in sock.asked]
-    assert asked == [68 * n + 66 for n in range(60)]
-    assert all(sock.sent[i][12] == 0x01 for i in asked)
+    assert asked == [68 * n + k for n in range(60) for k in (65, 66)]
+    assert all(sock.sent[68 * n + 65][12] == 0x55 and sock.sent[68 * n + 65][14] == 63 for n in range(60))
+    assert all(sock.sent[68 * n + 66][12] == 0x01 for n in range(60))
+    assert sink.asked[:4] == [("row", 0), ("sync", 0), ("row", 1), ("sync", 1)]
+
+
+def test_in_the_sync_first_order_the_sync_asks_first():
+    sock = FakeSocket()
+    sink = send.Stamper(sock, hardware=False)
+    plan = send.plan_from(["--s2", "--seconds", "1", "--tail-seconds", "0"])
+    clock = Clock(oversleep=0, per_read=1000)
+    send.run(plan, sink.send, clock.now, send.waiter("sleep", 0, clock.now, clock.sleep))
+    assert [i for i, anc in sock.asked] == [65 * n + k for n in range(60) for k in (0, 64)]
+    assert sink.asked[:4] == [("sync", 0), ("row", 0), ("sync", 1), ("row", 1)]
     level, kind, data = sock.asked[0][1][0]
     assert (level, kind) == (SOL_SOCKET, SCM_TIMESTAMPING)
     assert struct.unpack("I", data)[0] == send.SOF_TX_SCHED | send.SOF_TX_SOFTWARE
@@ -96,17 +108,44 @@ def test_the_socket_is_told_to_report_stamps_without_the_packet():
                      | send.SOF_OPT_TX_SWHW)
 
 
+def two_frames(sink):
+    """Two frames of the base through the sink: the kernel's numbers 0 to 3 are row, sync, row, sync."""
+    for n in range(2):
+        for p in send.row_packets(send.bars(25)) + [send.sync_packet(send.SyncSpec(), n)] * 2:
+            sink.send(p)
+
+
 def test_drain_empties_the_queue_and_keeps_the_stamps_by_frame():
     sock = FakeSocket()
     sink = send.Stamper(sock, hardware=True)
-    sock.queue = [answer(0, SCHED, software_ns=T0), answer(0, SND, software_ns=T0 + 40_000),
-                  answer(0, SND, hardware_ns=5_000_000), answer(1, SCHED, software_ns=T0 + 16_000_000)]
+    two_frames(sink)
+    sock.queue = [answer(1, SCHED, software_ns=T0), answer(1, SND, software_ns=T0 + 40_000),
+                  answer(1, SND, hardware_ns=5_000_000), answer(3, SCHED, software_ns=T0 + 16_000_000)]
     sink.drain()
     assert sock.queue == []
     assert sink.stamps == {"queue": {0: T0, 1: T0 + 16_000_000}, "driver": {0: T0 + 40_000}, "port": {0: 5_000_000}}
-    sock.queue = [answer(1, SND, software_ns=T0 + 16_050_000)]
+    sock.queue = [answer(3, SND, software_ns=T0 + 16_050_000)]
     sink.drain()
     assert sink.stamps["driver"] == {0: T0 + 40_000, 1: T0 + 16_050_000}
+
+
+def test_the_last_rows_stamps_are_kept_apart_from_the_syncs():
+    sock = FakeSocket()
+    sink = send.Stamper(sock, hardware=True)
+    two_frames(sink)
+    sock.queue = [answer(0, SND, software_ns=T0 + 30_000), answer(1, SND, software_ns=T0 + 40_000),
+                  answer(2, SND, hardware_ns=7_000_000), answer(0, SCHED, software_ns=T0 + 1)]
+    sink.drain()
+    assert sink.stamps == {"driver-row": {0: T0 + 30_000}, "driver": {0: T0 + 40_000}, "port-row": {1: 7_000_000},
+                           "queue-row": {0: T0 + 1}}
+
+
+def test_a_stamp_for_a_packet_that_never_asked_is_dropped():
+    sock = FakeSocket()
+    sink = send.Stamper(sock, hardware=False)
+    sock.queue = [answer(5, SND, software_ns=T0)]
+    sink.drain()
+    assert sink.stamps == {}
 
 
 def test_waiting_drains_first():
@@ -114,6 +153,7 @@ def test_waiting_drains_first():
     sink = send.Stamper(sock, hardware=False)
     sock.queue = [answer(0, SND, software_ns=T0)]
     order = []
+    two_frames(sink)
     wait = sink.draining(lambda target: order.append(("wait", target, len(sock.queue))))
     wait(123)
     assert order == [("wait", 123, 0)]
@@ -163,6 +203,36 @@ def test_the_report_counts_the_stamps_that_did_not_come():
     assert got["max"] == 16.667                            # a gap in the stamps is not a long interval
 
 
+def test_the_report_counts_the_frames_whose_sync_left_before_their_last_row():
+    period = 16_666_667
+    rows = [T0 + n * period for n in range(600)]
+    sync = [t + 8_000 for t in rows]                       # the sync 8 us behind the last row, as sent
+    for n in (50, 51, 300):
+        sync[n] = rows[n] - 20_000                         # the port's queue let it overtake
+    text = send.stamp_report(send.plan_from([]), 600, stamps_at({"driver": sync, "driver-row": rows}))
+    assert "the sync left before the last row of its frame in 3 of 600 frames" in text
+    behind = numbers(text, "the sync behind the last row at the driver, us")
+    assert behind["min"] == -20.0 and behind["max"] == 8.0
+
+
+def test_the_report_says_when_no_sync_overtook_its_rows():
+    period = 16_666_667
+    rows = [T0 + n * period for n in range(600)]
+    text = send.stamp_report(send.plan_from([]), 600,
+                             stamps_at({"driver": [t + 8_000 for t in rows], "driver-row": rows}))
+    assert "the sync left before the last row of its frame in 0 of 600 frames" in text
+
+
+def test_in_the_sync_first_order_the_rows_follow_the_sync():
+    period = 16_666_667
+    sync = [T0 + n * period for n in range(600)]
+    rows = [t + 250_000 for t in sync]
+    rows[7] = sync[7] - 5_000                              # a row ahead of its sync: the order was broken
+    text = send.stamp_report(send.plan_from(["--order", "sync-rows"]), 600,
+                             stamps_at({"driver": sync, "driver-row": rows}))
+    assert "the last row left before the sync of its frame in 1 of 600 frames" in text
+
+
 def test_the_report_without_any_stamp_says_so():
     text = send.stamp_report(send.plan_from([]), 600, {})
     assert "no stamps came back" in text
@@ -187,12 +257,13 @@ def test_the_command_prints_the_stamps_and_writes_them_to_the_log(tmp_path, caps
 
     class Answering(send.Stamper):
         def send(self, packet):
-            first = packet[12] == 0x01 and self.last != 0x01
+            before = len(sock.asked)
             super().send(packet)
-            if first:
-                n = len(sock.asked) - 1
-                sock.queue += [answer(n, SCHED, software_ns=T0 + n * period),
-                               answer(n, SND, software_ns=T0 + n * period + 30_000)]
+            if len(sock.asked) > before:                   # the kernel numbers the packets that ask
+                key = before
+                what, n = self.asked[key]
+                at = T0 + n * period + (0 if what == "sync" else -9_000)
+                sock.queue += [answer(key, SCHED, software_ns=at), answer(key, SND, software_ns=at + 30_000)]
 
     clock = Clock(oversleep=0, per_read=1000)
     path = tmp_path / "s.csv"
@@ -204,6 +275,8 @@ def test_the_command_prints_the_stamps_and_writes_them_to_the_log(tmp_path, caps
     assert numbers(out, "from the queue to the driver, us")["mean"] == 30.0
     assert sock.closed and sock.queue == []
     lines = path.read_text().splitlines()
-    assert lines[1] == "frame,black,tick_ns,sync_ns,added_ns,burst_ns,queue_ns,driver_ns"
-    assert lines[2].split(",")[6:] == ["0", "30000"]
-    assert lines[2 + 119].split(",")[6:] == [str(119 * period), str(119 * period + 30_000)]
+    assert "the sync left before the last row of its frame in 0 of 60 frames" in out
+    assert lines[1] == ("frame,black,tick_ns,sync_ns,added_ns,burst_ns,"
+                        "queue_ns,driver_ns,queue_row_ns,driver_row_ns")
+    assert lines[2].split(",")[6:] == ["0", "30000", "-9000", "21000"]      # from the first sync's queue stamp
+    assert lines[2 + 119].split(",")[6:] == [str(119 * period + d) for d in (0, 30_000, -9_000, 21_000)]

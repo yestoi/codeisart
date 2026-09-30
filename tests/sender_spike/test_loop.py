@@ -182,13 +182,33 @@ def test_jitter_holds_each_sync_back_by_a_logged_random_time():
         assert abs(bench.log.syncs[n] - bench.log.ticks[n] - added[n]) <= 100
 
 
-def test_jitter_in_the_base_order_comes_after_the_rows():
+@pytest.mark.parametrize("order", ["rows-sync", "sync-rows"])
+def test_jitter_holds_the_whole_frame_back(order):
     bench = Bench()
-    frames = bench.run(["--jitter-ms", "1", "--seconds", "1"])
+    frames = bench.run(["--order", order, "--jitter-ms", "2", "--seconds", "1"])
+    log = bench.log
+    assert max(log.added) > 1_500_000
     for n, f in enumerate(frames):
+        assert abs(f[0][0] - log.ticks[n] - log.added[n]) <= 100       # its first packet, late by the added time
+
+
+def test_jitter_does_not_open_a_pause_between_the_rows_and_the_sync():
+    # a pause there changes the flicker by itself (2026-09-29, "A steadier" twice): jitter must not be one
+    spacing = {}
+    for jitter in ("0", "2"):
+        bench = Bench()
+        frames = bench.run(["--jitter-ms", jitter, "--seconds", "1"])
+        spacing[jitter] = {[t for t, p in f if p[12] == 0x01][0] - [t for t, p in f if p[12] == 0x55][-1]
+                           for f in frames}
+    assert spacing["2"] == spacing["0"] and len(spacing["0"]) == 1
+
+
+def test_jitter_and_a_gap_are_two_things():
+    frames = Bench().run(["--jitter-ms", "2", "--gap-ms", "5", "--seconds", "1"])
+    for f in frames:
         last_row = [t for t, p in f if p[12] == 0x55][-1]
         sync = [t for t, p in f if p[12] == 0x01][0]
-        assert abs(sync - last_row - bench.per_send - bench.log.added[n]) <= 200
+        assert 5_000_000 <= sync - last_row <= 5_010_000
 
 
 def test_the_random_times_come_from_the_seed():
@@ -306,6 +326,16 @@ def test_a_packet_of_another_type_never_leaves_the_loop(builder, monkeypatch):
     monkeypatch.setattr(send, builder, real)
 
 
+def test_run_refuses_byte_37():
+    import dataclasses
+    plan = send.plan_from(["--s2"])
+    plan = dataclasses.replace(plan, sync=dataclasses.replace(plan.sync, mark37_every=241))
+    bench = Bench()
+    with pytest.raises(ValueError, match="byte 37"):
+        send.run(plan, bench.send, bench.now, bench.wait)
+    assert bench.sent == []
+
+
 def test_run_checks_its_plan():
     import dataclasses
     plan = dataclasses.replace(send.plan_from(["--s2"]), pixel=128)
@@ -320,7 +350,7 @@ def test_late_is_counted_from_when_the_frame_was_due(order):
     bench = Bench(per_send=240_000)                        # 68 packets take 16.3 ms: the frames fall behind
     frames = bench.run(["--order", order, "--jitter-ms", "3", "--seconds", "1", "--tail-seconds", "0"])
     log = bench.log
-    due = [t + (a if order == "sync-rows" else 0) for t, a in zip(log.ticks, log.added)]
+    due = [t + a for t, a in zip(log.ticks, log.added)]
     late = sum(1 for f, d in zip(frames, due) if f[0][0] - d > 1_000_000)
     assert 0 < late < 60
     assert log.late == late + log.slips                    # a frame that made the grid move was late too

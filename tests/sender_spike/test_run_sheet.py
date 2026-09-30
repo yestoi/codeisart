@@ -9,44 +9,85 @@ from tools.sender_spike import send
 
 SHEET = pathlib.Path(__file__).resolve().parents[2] / "docs/superpowers/reviews/2026-09-29-sender-card-spike/01-run-sheet.md"
 LAYOUTS = ["", "--order sync-rows", "--gap-ms 12"]
-LIFT = "--sync-level 0.1 --pixel 128 --level-field-proven"
+RATES = ["", "--fps 20"]
+LIFT = "--pixel 128 --level-field-proven"
+HELPER = {"run": "--qdisc-bypass --stamp", "plain": "--qdisc-bypass --stamp", "queued": "--stamp",
+          "old": "--stamp"}
 
 
 def commands():
     text = SHEET.read_text()
-    found = re.findall(r"`(run|plain) (\w+)((?: [^`;]*)?)(?:;[^`]*)?`", text)
-    return [(name, flags.strip()) for helper, name, flags in found if "..." not in flags and "$" not in flags]
+    found = re.findall(r"`(run|plain|queued|old) (\w+)((?: [^`;]*)?)(?:;[^`]*)?`", text)
+    return [(name, (HELPER[helper] + " " + flags.strip()).strip()) for helper, name, flags in found
+            if "..." not in flags and "$" not in flags]
+
+
+def forms(flags):
+    """The command with each thing its placeholders may stand for."""
+    out = [flags]
+    for word, values in (("LAYOUT", LAYOUTS), ("RATE", RATES)):
+        out = [f.replace(word, v) for f in out for v in (values if word in f else [""])]
+    return out
 
 
 def test_the_sheet_has_its_runs():
     names = [name for name, flags in commands()]
-    for name in ("A0", "A1", "A2", "A3", "B1", "B3", "B4", "B6", "C1", "C2", "D1", "D2", "L1", "L7", "E2", "F1"):
+    for name in ("A0", "A1", "A2", "A2q", "A3", "A4", "A5", "B1", "B3", "B4", "B6", "C1", "C2", "D0", "D1", "D2",
+                 "L1", "L8", "E2", "F1"):
         assert name in names, name
-    assert len(names) >= 30
+    assert len(names) == len(set(names)) >= 40             # a name is a file: none is used twice
+
+
+def test_the_helpers_of_the_sheet_are_the_ones_the_test_knows():
+    text = SHEET.read_text()
+    assert "run()    { local n=$1; shift; sudo chrt -f 50 .venv/bin/python tools/sender_spike/send.py --iface enp5s0 \\\n" \
+           "              --qdisc-bypass --stamp --log runs/$n.csv" in text
+    assert "queued() { local n=$1; shift; sudo chrt -f 50 .venv/bin/python tools/sender_spike/send.py --iface enp5s0 \\\n" \
+           "              --stamp --log runs/$n.csv" in text
+    assert "plain()  { local n=$1; shift; sudo .venv/bin/python tools/sender_spike/send.py --iface enp5s0 \\\n" \
+           "              --qdisc-bypass --stamp --log runs/$n.csv" in text
+    assert "old()    { local n=$1; shift; sudo .venv/bin/python tools/sender_spike/send.py --iface enp5s0 \\\n" \
+           "              --stamp --log runs/$n.csv" in text
 
 
 @pytest.mark.parametrize("name, flags", commands())
 def test_the_sender_accepts_the_command(name, flags):
-    for layout in LAYOUTS if "LAYOUT" in flags else [""]:
-        if layout == "--gap-ms 12" and "--fps 120" in flags:
+    for form in forms(flags):
+        if "--gap-ms 12" in form and "--fps 120" in form:
             continue                                        # the sheet says so: 12 ms does not fit in 8.3
-        plan = send.plan_from(shlex.split(flags.replace("LAYOUT", layout)))
-        assert plan.seconds <= 10 and plan.iface == "enp5s0"
+        plan = send.plan_from(shlex.split(form))
+        assert plan.seconds <= 10 and plan.iface == "enp5s0" and plan.stamp == "sw"
+        assert plan.qdisc_bypass == (name not in ("A1", "A2q"))
 
 
 @pytest.mark.parametrize("name, flags", [c for c in commands() if "--s2" in c[1] or "--source-type" in c[1]])
 def test_the_dim_runs_are_dim_and_can_be_lifted_only_within_the_cap(name, flags):
-    assert send.plan_from(shlex.split(flags)).pixel == 25
-    if "--sync-level" not in flags:
-        lifted = send.plan_from(shlex.split(flags + " " + LIFT))
-        assert lifted.pixel == 128 and lifted.sync.level == 25
+    for form in forms(flags):
+        plan = send.plan_from(shlex.split(form))
+        assert plan.pixel == 25
+        if plan.sync.level <= 102:
+            assert send.plan_from(shlex.split(form + " " + LIFT)).pixel == 128
+        else:
+            with pytest.raises(ValueError, match="25"):
+                send.plan_from(shlex.split(form + " " + LIFT))
+
+
+def test_every_rung_but_the_last_has_the_dim_bases_light():
+    by_name = dict(commands())
+    for rung in ("L1", "L2", "L3", "L4", "L5", "L6", "L7"):
+        for form in forms(by_name[rung]):
+            plan = send.plan_from(shlex.split(form))
+            assert (plan.sync.level, plan.pixel) == (25, 25), rung
+    top = send.plan_from(shlex.split(forms(by_name["L8"])[0]))
+    assert (top.sync.level, top.pixel) == (255, 25)
 
 
 def test_the_ladder_adds_one_thing_a_rung():
     import dataclasses
     by_name = dict(commands())
-    rungs = [send.plan_from(shlex.split(by_name[n])) for n in ("L1", "L2", "L3", "L4", "L5", "L6", "L7")]
-    base = send.plan_from(["--pixel", "25"])
+    rungs = [send.plan_from(shlex.split(forms(by_name[n])[0]))
+             for n in ("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8")]
+    base = send.plan_from(shlex.split(HELPER["run"] + " --pixel 25"))
 
     def flat(plan):
         d = dataclasses.asdict(plan)
@@ -58,10 +99,39 @@ def test_the_ladder_adds_one_thing_a_rung():
 
     assert step(base, rungs[0]) == {"sync.source_type"}
     assert step(rungs[0], rungs[1]) == {"sync.counter", "sync.counter_start", "sync.bytes16", "sync.byte26",
-                                        "sync.declared_rate", "sync.level", "sync.byte36"}
+                                        "sync.declared_rate", "sync.byte36"}
     assert step(rungs[1], rungs[2]) == {"sync_reps"}
     assert step(rungs[2], rungs[3]) == {"bright_reps"}
     assert step(rungs[3], rungs[4]) == {"row_tail"}
     assert step(rungs[4], rungs[5]) == {"sync.length"}
     assert step(rungs[5], rungs[6]) == {"order"}
-    assert rungs[6] == send.plan_from(["--s2"])
+    assert step(rungs[6], rungs[7]) == {"sync.level"}
+    assert step(rungs[7], send.plan_from(shlex.split(HELPER["run"] + " --s2"))) == set()
+
+
+def test_the_helpers_run_in_bash_and_a_blind_pair_keeps_its_names(tmp_path):
+    """The sheet's own helper text, with stand-ins for sudo and tee: a pair is two runs under the pair's name."""
+    import subprocess
+    text = SHEET.read_text()
+    start = text.index("   run()    {")
+    block = text[start:text.index("   ```", start)]
+    script = ("sudo() { echo \"$*\" >> calls.txt; }\n" "tee() { if [ \"$1\" = -a ]; then cat >> \"$2\"; else cat > \"$2\"; fi; }\n" + block
+              + "\nmkdir -p runs\nfor i in 1 2 3 4 5 6 7 8; do ab P$i '--order sync-rows' ''; done\n"
+                "run A2\nold A1 --wait sleep\nsay A2 picture, none, clean\n")
+    done = subprocess.run(["bash", "-c", script], cwd=tmp_path, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
+    calls = (tmp_path / "calls.txt").read_text().splitlines()
+    pairs = [c for c in calls if "runs/P" in c]
+    assert len(pairs) == 16
+    for i in range(1, 9):
+        first, second = pairs[2 * i - 2], pairs[2 * i - 1]
+        assert "--log runs/P%d_1.csv" % i in first and "--log runs/P%d_2.csv" % i in second
+        assert ("--order sync-rows" in first) != ("--order sync-rows" in second)
+        order = (tmp_path / "runs" / ("P%d.order" % i)).read_text()
+        assert order.startswith("1: --order sync-rows") == ("--order sync-rows" in first)
+    assert "flags" not in done.stdout and "--order" not in done.stdout                   # a pair tells nothing
+    assert calls[-2].startswith("chrt -f 50 .venv/bin/python tools/sender_spike/send.py --iface enp5s0 "
+                                "--qdisc-bypass --stamp --log runs/A2.csv")
+    assert calls[-1] == (".venv/bin/python tools/sender_spike/send.py --iface enp5s0 "
+                         "--stamp --log runs/A1.csv --wait sleep")
+    assert "A2 picture, none, clean" in (tmp_path / "runs" / "verdicts.txt").read_text()

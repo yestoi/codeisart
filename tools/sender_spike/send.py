@@ -15,6 +15,7 @@ import gc
 import math
 import os
 import random
+import re
 import struct
 import sys
 import time
@@ -125,7 +126,7 @@ class Plan:
     tail_seconds: float = 1.0         # black frames after the picture
     pixel: int = BASE_PIXEL
     picture: str = "bars"
-    jitter_ms: float = 0.0            # each sync is held back by a random time up to this
+    jitter_ms: float = 0.0            # each frame, its sync with it, is held back by a random time up to this
     seed: int = 1
     wait: str = "hybrid"              # sleep, then busy-wait the last spin_ms; or "spin"; or "sleep"
     spin_ms: float = 2.0
@@ -187,6 +188,8 @@ def check(plan):
                         ("--byte36", plan.sync.byte36), ("--row-tail", plan.row_tail),
                         ("--sync-len", plan.sync.length)):
         seen(flag, value)
+    if plan.sync.mark37_every:
+        raise ValueError("byte 37 is not sent: what it asks of a card is not known (the owner's word first)")
     if not 0 <= plan.bright_level <= cap:
         raise ValueError("the brightness packet's level is above the cap of %g" % LEVEL_CAP)
     if not 0 <= plan.sync.level <= 255:
@@ -259,7 +262,7 @@ def parser():
     g.add_argument("--sync-reps", type=int, help="sync packets a frame (base 2, S2 1)")
     g.add_argument("--bright-reps", type=int, help="brightness packets a frame (base 2, S2 0)")
     g.add_argument("--jitter-ms", type=float, default=0.0,
-                   help="hold each sync back by a random time from 0 to this")
+                   help="hold each frame, and its sync with it, back by a random time from 0 to this")
     g.add_argument("--seed", type=int, default=1, help="of the random times")
     g = a.add_argument_group("the sync packet")
     g.add_argument("--s2-header", action="store_true", help="bytes 13 to 40 as the S2's; all else as the base")
@@ -425,8 +428,8 @@ def run(plan, send, now, wait):
         nonlocal moved
         added = jitter.randrange(top + 1) if top else 0
         tick += moved
-        due = tick + added if sync_first else tick
-        behind = now() - due
+        due = tick + added                        # jitter holds the whole frame back, in either order:
+        behind = now() - due                      # a pause between rows and sync would be a second variable
         if behind > period:                       # set aside for a period or more: move the grid,
             moved, tick, due = moved + behind, tick + behind, due + behind    # never catch up in a burst
             log.slips += 1
@@ -444,8 +447,8 @@ def run(plan, send, now, wait):
         else:
             for p in packets:
                 send(p)
-            if gap or added:
-                wait(now() + gap + added)
+            if gap:
+                wait(now() + gap)
             at = now()
             for p in syncs[n]:
                 send(p)
@@ -545,17 +548,22 @@ def report(plan, log):
 def write_log(path, plan, log, stamps=None):
     """One line a frame. The loop's times count from the first tick; each stamp clock from its first stamp."""
     t0 = log.ticks[0] if log.ticks else 0
-    kinds = [k for k in ("queue", "driver", "port") if (stamps or {}).get(k)]
-    zero = {k: min(stamps[k].values()) for k in kinds}
-    if "queue" in zero and "driver" in zero:
-        zero["driver"] = zero["queue"]                    # one clock: keep the time in the queue readable
+    kinds = [k for k in ("queue", "driver", "port", "queue-row", "driver-row", "port-row")
+             if (stamps or {}).get(k)]
+    zero = {}
+    for k in kinds:                                       # the kernel's clock has one zero, the port's another
+        clock = "port" if k.startswith("port") else "kernel"
+        zero[clock] = min(zero.get(clock, stamps[k][min(stamps[k])]), min(stamps[k].values()))
+    if "queue" in kinds:
+        zero["kernel"] = min(stamps["queue"].values())    # the first sync entering the queue
     with open(path, "w") as f:
         f.write("# %s\n" % describe(plan))
         f.write(",".join(["frame", "black", "tick_ns", "sync_ns", "added_ns", "burst_ns"]
-                         + [k + "_ns" for k in kinds]) + "\n")
+                         + [k.replace("-", "_") + "_ns" for k in kinds]) + "\n")
         for n, (tick, sync, added, burst) in enumerate(zip(log.ticks, log.syncs, log.added, log.bursts)):
             row = [n, int(n >= log.frames), tick - t0, sync - t0, added, burst]
-            row += [stamps[k][n] - zero[k] if n in stamps[k] else "" for k in kinds]
+            row += [stamps[k][n] - zero["port" if k.startswith("port") else "kernel"] if n in stamps[k] else ""
+                    for k in kinds]
             f.write(",".join(str(v) for v in row) + "\n")
 
 
@@ -607,12 +615,15 @@ class Plain:
 
 
 class Stamper:
-    """Sends through the socket; the first sync of each frame asks the kernel for its transmit stamps.
-    The kernel numbers the packets that ask, from 0: that number is the frame."""
+    """Sends through the socket. The last row and the first sync of each frame ask the kernel for their
+    transmit stamps, so that the order in which the two left can be read. The kernel numbers the packets
+    that ask, from 0; `asked` says which packet each number was."""
 
     def __init__(self, sock, hardware, close=None):
         self.sock, self.close = sock, close or sock.close
-        self.stamps = {}
+        self.stamps = {}                  # "queue", "driver", "port" of the sync, and the same with "-row"
+        self.asked = []                   # ("sync" | "row", frame) for each packet that asked, in order
+        self.count = {"sync": 0, "row": 0}
         self.last = None
         ask = SOF_TX_SCHED | SOF_TX_SOFTWARE | (SOF_TX_HARDWARE if hardware else 0)
         self.ask = [(SOL_SOCKET, SO_TIMESTAMPING, struct.pack("I", ask))]
@@ -621,7 +632,11 @@ class Stamper:
 
     def send(self, packet):
         kind = packet[12]
-        if kind == SYNC and self.last != SYNC:
+        what = ("sync" if kind == SYNC and self.last != SYNC
+                else "row" if kind == ROW and packet[13] == 0 and packet[14] == H - 1 else None)
+        if what:
+            self.asked.append((what, self.count[what]))
+            self.count[what] += 1
             self.sock.sendmsg([packet], self.ask)
         else:
             self.sock.send(packet)
@@ -634,8 +649,9 @@ class Stamper:
             except BlockingIOError:
                 return
             stamp = parse_stamp(ancdata)
-            if stamp:
-                self.stamps.setdefault(stamp[1], {})[stamp[0]] = stamp[2]
+            if stamp and stamp[0] < len(self.asked):
+                what, frame = self.asked[stamp[0]]
+                self.stamps.setdefault(stamp[1] + ("-row" if what == "row" else ""), {})[frame] = stamp[2]
 
     def draining(self, wait):
         """The loop's wait, with the error queue emptied before it: the idle time pays for the reading."""
@@ -664,6 +680,16 @@ def stamp_report(plan, frames, stamps):
     held = [driver[n] - queue[n] for n in range(frames) if n in queue and n in driver]
     if held:
         out.append(spread_line("from the queue to the driver, us", held, 1e3, 1))
+    rows = stamps.get("driver-row", {})
+    behind = [driver[n] - rows[n] for n in range(frames) if n in rows and n in driver]
+    if behind:                                    # the port's queue may let one packet overtake another
+        out.append(spread_line("the sync behind the last row at the driver, us", behind, 1e3, 1))
+        if plan.order == "rows-sync":
+            out.append("send: the sync left before the last row of its frame in %d of %d frames"
+                       % (sum(1 for b in behind if b < 0), len(behind)))
+        else:
+            out.append("send: the last row left before the sync of its frame in %d of %d frames"
+                       % (sum(1 for b in behind if b > 0), len(behind)))
     return "\n".join(out) if out else "send: no stamps came back"
 
 
@@ -716,7 +742,27 @@ def port_counter(iface, root="/sys/class/net"):
         return None
 
 
-def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_socket, port_counter=port_counter):
+def tc(argv):
+    import subprocess
+    return subprocess.run(argv, capture_output=True, text=True, timeout=5).stdout
+
+
+def queue_counter(iface, tc=tc):
+    """(requeues, new flows) of the port's queue so far, as `tc -s` counts them, or None.
+    Both stand still while packets go straight from the socket to the driver. They move when the port's
+    queue held packets, and a queue that sorts by flow (fq_codel: the packet type is the flow) may then
+    have let a sync overtake rows."""
+    try:
+        text = tc(["tc", "-s", "qdisc", "show", "dev", iface])
+    except (OSError, ValueError, __import__("subprocess").SubprocessError):
+        return None
+    requeues = re.search(r"requeues (\d+)", text)
+    flows = re.search(r"new_flow_count (\d+)", text)
+    return (int(requeues.group(1)), int(flows.group(1))) if requeues and flows else None
+
+
+def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_socket, port_counter=port_counter,
+         queue_counter=queue_counter):
     argv = sys.argv[1:] if argv is None else argv
     try:
         plan = plan_from(argv)
@@ -727,6 +773,7 @@ def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_s
     print(head, flush=True)
     sink = Plain() if plan.dry_run else open_sink(plan)
     before = None if plan.dry_run else port_counter(plan.iface)
+    queue = None if plan.dry_run else queue_counter(plan.iface)
     gc.disable()
     try:
         log = run(plan, sink.send, now, sink.draining(waiter(plan.wait, int(plan.spin_ms * 1e6), now, sleep)))
@@ -742,6 +789,12 @@ def main(argv=None, now=time.perf_counter_ns, sleep=time.sleep, open_sink=open_s
         ours = len(log.syncs) * (plan.sync_reps + plan.bright_reps + H)
         text.append("send: the port sent %d packets during the run: %d ours, %d not ours"
                     % (after - before, ours, after - before - ours))
+    queue_after = None if queue is None else queue_counter(plan.iface)
+    if queue_after is not None:
+        held = (queue_after[0] - queue[0], queue_after[1] - queue[1])
+        text.append("send: the port's queue held packets during the run: %d requeues, %d new flows; packets "
+                    "may have left in another order than they were sent" % held if any(held)
+                    else "send: the port's queue held no packet during the run")
     if plan.stamp:
         text.append(stamp_report(plan, log.frames, sink.stamps))
     if plan.log:                                          # the files first: a pipe's reader may be gone

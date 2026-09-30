@@ -287,3 +287,56 @@ def test_the_report_is_kept_beside_the_log(tmp_path, capsys):
     kept = (tmp_path / "a.report.txt").read_text()
     assert "sync to sync, ms" in kept and "60 fps for 1 s" in kept
     assert kept.strip() in out
+
+
+TC = """qdisc fq_codel 0: root refcnt 2 limit 10240p flows 1024 quantum 1514 target 5ms interval 100ms memory_limit 32Mb ecn drop_batch 64
+ Sent 14413497135 bytes 35391944 pkt (dropped 0, overlimits 0 requeues %d)
+ backlog 0b 0p requeues %d
+  maxpacket 405 drop_overlimit 0 new_flow_count %d ecn_mark 0
+  new_flows_len 0 old_flows_len 0
+"""
+
+
+def test_the_queue_counter_reads_what_tc_prints():
+    calls = []
+
+    def tc(argv):
+        calls.append(argv)
+        return TC % (123, 123, 120)
+    assert send.queue_counter("enp5s0", tc) == (123, 120)
+    assert calls == [["tc", "-s", "qdisc", "show", "dev", "enp5s0"]]
+
+
+def test_the_queue_counter_is_none_where_tc_says_nothing_it_knows():
+    assert send.queue_counter("enp5s0", lambda argv: "qdisc noqueue 0: root refcnt 2\n") is None
+
+    def absent(argv):
+        raise FileNotFoundError("tc")
+    assert send.queue_counter("enp5s0", absent) is None
+
+
+def test_the_command_says_when_the_ports_queue_held_packets(capsys):
+    c, s = Clock(oversleep=0, per_read=1000), Sockets()
+    counts = iter([(123, 120), (130, 134)])
+    send.main(["--seconds", "1"], now=c.now, sleep=c.sleep, open_sink=s.open,
+              port_counter=lambda iface: None, queue_counter=lambda iface: next(counts))
+    out = capsys.readouterr().out
+    assert "the port's queue held packets during the run: 7 requeues, 14 new flows" in out
+    assert "may have left" in out
+
+
+def test_the_command_says_when_the_ports_queue_stayed_empty(capsys):
+    c, s = Clock(oversleep=0, per_read=1000), Sockets()
+    counts = iter([(123, 120), (123, 120)])
+    send.main(["--seconds", "1"], now=c.now, sleep=c.sleep, open_sink=s.open,
+              port_counter=lambda iface: None, queue_counter=lambda iface: next(counts))
+    assert "the port's queue held no packet during the run" in capsys.readouterr().out
+
+
+def test_a_dry_run_does_not_ask_the_queue(capsys):
+    c, s = Clock(oversleep=0, per_read=1000), Sockets()
+
+    def never(iface):
+        raise AssertionError("asked")
+    send.main(["--dry-run", "--seconds", "1"], now=c.now, sleep=c.sleep, open_sink=s.open, queue_counter=never)
+    assert "queue" not in capsys.readouterr().out.split("scheduling")[1]
