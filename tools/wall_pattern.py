@@ -15,8 +15,9 @@
 The colorlight backend needs Linux and CAP_NET_RAW (show/display/colorlight.py), so on the wall this runs
 from the Omarchy box or a Pi, after the card's one-time LEDVision setup. The default is 128x64, the four
 panels 2 x 2; `--width 128 --height 32` is one row of two panels, `--width 64 --height 64` a column.
-It runs until Ctrl-C, or for --seconds, and leaves the wall dark. On the colorlight backend the driver sends 60.32
-frames a second from a child process whatever --fps is (--fps paces the pushes only), and prints the sender's
+It runs until Ctrl-C, or for --seconds, and leaves the wall dark. On the colorlight backend the driver sends 60.00
+frames a second from a child process whatever --fps is, the rows paced across each frame (--fps paces the pushes
+only), and prints the sender's
 timing at the end; --dry-run is that driver on a socket that discards, no card and no root. Brightness is the level
 byte of the card's sync packet, 0.1 unless asked, and never over CAP (0.4, what the power supplies are sized for)
 or the config's brightness_cap. No pattern lights half the wall (no `white`, Q64). Every frame passes the flash governor

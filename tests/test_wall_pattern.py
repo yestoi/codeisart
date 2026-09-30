@@ -259,7 +259,7 @@ def test_run_prints_the_senders_stats_at_the_end():
     class WithStats(Recording):
         def stats(self):
             return {"frames": 5, "late": 0, "slips": 0, "worst_us": 30.0, "mean_us": 0.0, "sd_us": 4.0,
-                    "errors": 0, "restarts": 0, "rt": True}
+                    "errors": 0, "restarts": 0, "rt": True, "wake_worst_us": 0.0, "rows_late": 0, "row_worst_us": 12.0}
 
     said = []
     clock = iter(np.arange(0.0, 100.0, 1.0))

@@ -1,6 +1,7 @@
 """Raw Ethernet driver for the Colorlight 5A-75B/E receiving card (Linux only, needs CAP_NET_RAW), as a steady
-sender: whatever rate the caller pushes at, the card gets OUTPUT_FPS (60.32) frames a second from a child process,
-sync first (the S2 sender card's format), the pixels BGR, the sync within 100 us of its deadline
+sender: whatever rate the caller pushes at, the card gets OUTPUT_FPS (60.00) frames a second from a child process,
+the sync first (the S2 sender card's format) within 100 us of its deadline, then the rows paced across the 15.5 ms
+after it (the card shows rows as they land; a burst tears), the pixels BGR
 (show/display/colorlight_sender.py). The spec: docs/superpowers/specs/2026-09-29-route-a-steady-sender-design.md;
 the measurements behind it: docs/superpowers/reviews/2026-09-29-sender-card-spike.md, section 5, and the format,
 docs/superpowers/reviews/2026-09-30-ghosting/00-path-forward.md, section 2.
@@ -261,10 +262,11 @@ def stats_line(display) -> str | None:
         s = stats()
     except Exception:                       # a closed display, a slot gone: a line for the log is never a failure
         return None
-    return ("colorlight sender: %d frames, %d late (over 1 ms), worst %.0f us, sync to sync sd %.0f us, %d slips, "
-            "%d send errors, %d restarts, real-time %s, the sleep woke at worst %.0f us late"
-            % (s["frames"], s["late"], s["worst_us"], s["sd_us"], s["slips"], s["errors"], s["restarts"],
-               "yes" if s["rt"] else "no", s.get("wake_worst_us", 0.0)))
+    return ("colorlight sender: %d frames, %d late (over 1 ms), worst %.0f us, sync to sync sd %.0f us, %d rows off "
+            "their slot, worst row %.0f us late, %d slips, %d send errors, %d restarts, real-time %s, the sleep woke "
+            "at worst %.0f us late"
+            % (s["frames"], s["late"], s["worst_us"], s["sd_us"], s["rows_late"], s["row_worst_us"], s["slips"],
+               s["errors"], s["restarts"], "yes" if s["rt"] else "no", s.get("wake_worst_us", 0.0)))
 
 
 def _open_raw_socket(iface: str) -> socket.socket:

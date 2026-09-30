@@ -250,7 +250,7 @@ def test_stats_and_the_line_for_the_log():
     s = d.stats()
     assert s["frames"] == 5 and s["restarts"] == 0 and s["rt"] is False
     line = stats_line(d)
-    assert "5 frames" in line and "real-time no" in line
+    assert "5 frames" in line and "0 rows off their slot" in line and "real-time no" in line
     assert stats_line(FakeDisplay()) is None
     d.close()
     assert stats_line(d) is None                                                # closed: no line, no exception
