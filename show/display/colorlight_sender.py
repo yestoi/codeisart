@@ -173,7 +173,8 @@ class Sender:
         now = self.clock()
         if self.deadline is None:
             self.deadline = now
-        elif now - self.deadline > self.period:                              # a period or more behind: the grid
+        due = self.deadline                                                  # lateness counts from this one
+        if now - due > self.period:                                          # a period or more behind: the grid
             self.deadline = now                                              # moves, no catch-up burst
             h[SLIPS] += 1
         wait_until(self.deadline, self.clock, self.sleep, self.spin)
@@ -193,7 +194,7 @@ class Sender:
             return True
         if self._primed:
             h[FRAMES] += 1
-            late = at - self.deadline
+            late = at - due
             if late > LATE_NS:
                 h[LATE] += 1
             if late > h[WORST]:

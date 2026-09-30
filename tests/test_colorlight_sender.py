@@ -7,7 +7,7 @@ import pytest
 
 from show.display.colorlight_packets import brightness_bytes, row_packets, sync_bytes
 from show.display.colorlight_sender import (BEATS, BRIGHTNESS_REPS, CLOSE_FRAMES, ERRNO, ERRORS, FRAMES, LEVEL,
-                                            PAUSE, STOP, SYNC_REPS, Sender, Slot)
+                                            LATE, PAUSE, SLIPS, STOP, SYNC_REPS, Sender, Slot)
 from tests.colorlight_fakes import BRIGHTNESS, ROW, SYNC, FakeClock, FakeSocket, bursts, kinds, row_pixels
 
 W, H = 128, 64
@@ -142,3 +142,62 @@ def test_run_sends_black_for_a_second_when_the_parent_is_gone(slot):
     assert len(out) == 3 + CLOSE_FRAMES + 1                                  # 3 ticks alive, a prime, then black
     assert all((row_pixels(p, W) == (0, 0, 200)).all() for p in out[2] if p[12] == ROW)
     assert not any(row_pixels(p, W).any() for burst in out[3:] for p in burst if p[12] == ROW)
+
+
+# --- the pacing, on the fake clock
+
+from show.display.colorlight_sender import LATE_NS, PERIOD_NS, SPIN_NS, stats_of, wait_until  # noqa: E402
+
+
+def sync_times(sock, clock, sender, n):
+    """The clock's reading at each burst's first sync, for n ticks."""
+    times = []
+    sock.hook = lambda k, p: times.append(clock.t) if p[12] == SYNC and sock.sent and sock.sent[-1][12] != SYNC else None
+    for _ in range(n):
+        sender.tick()
+    return times
+
+
+def test_syncs_sit_on_an_absolute_grid_with_no_drift(slot):
+    sender, sock, clock = make(slot)
+    times = sync_times(sock, clock, sender, 2001)                    # the prime, then 2000 syncs
+    assert len(times) == 2000
+    for k, t in enumerate(times):
+        assert abs(t - (times[0] + k * PERIOD_NS)) <= 3 * clock.step, k
+    assert clock.slept.count(0.0) == 0 and all(0 < s <= PERIOD_NS / 1e9 for s in clock.slept)
+
+
+def test_the_wait_sleeps_to_spin_ns_before_the_deadline_then_spins():
+    clock = FakeClock(step_ns=10_000)
+    target = clock.t + 10_000_000
+    wait_until(target, clock.now, clock.sleep, SPIN_NS)
+    assert len(clock.slept) == 1
+    assert abs(clock.slept[0] - (10_000_000 - SPIN_NS - clock.step) / 1e9) < 2 * clock.step / 1e9
+    assert target <= clock.t < target + 2 * clock.step
+    clock.slept.clear()
+    wait_until(clock.t + SPIN_NS // 2, clock.now, clock.sleep, SPIN_NS)    # inside the spin: no sleep at all
+    assert clock.slept == []
+
+
+def test_a_stall_moves_the_grid_once_with_no_catch_up(slot):
+    sender, sock, clock = make(slot)
+    times = sync_times(sock, clock, sender, 4)
+    clock.t += 100_000_000                                           # a 100 ms stall between ticks
+    more = sync_times(sock, clock, sender, 3)
+    assert slot.h[SLIPS] == 1
+    assert more[0] - times[-1] > 100_000_000                         # the late burst goes at once...
+    assert abs((more[1] - more[0]) - PERIOD_NS) <= 3 * clock.step   # ...and the grid restarts from it
+    assert abs((more[2] - more[1]) - PERIOD_NS) <= 3 * clock.step
+    assert slot.h[FRAMES] == 6 and slot.h[LATE] == 1
+
+
+def test_stats_read_the_header(slot):
+    sender, sock, clock = make(slot)
+    for _ in range(11):
+        sender.tick()
+    s = stats_of(slot.h)
+    assert s["frames"] == 10 and s["late"] == 0 and s["slips"] == 0 and s["errors"] == 0 and s["rt"] is False
+    assert 0 <= s["worst_us"] < 3 * clock.step / 1e3 and abs(s["mean_us"]) < 3 * clock.step / 1e3
+    assert s["sd_us"] < 3 * clock.step / 1e3
+    assert stats_of(np.zeros(16, np.int64)) == {"frames": 0, "late": 0, "slips": 0, "worst_us": 0.0, "mean_us": 0.0,
+                                                "sd_us": 0.0, "errors": 0, "rt": False}
