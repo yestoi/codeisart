@@ -42,6 +42,8 @@ def test_the_child_sends_on_the_socket_it_was_handed_beats_and_stops_after_a_who
         assert sum(1 for p in got if p[12] == 0x01) >= 3, "no third frame in 20 s"
         assert not any(p[12] == 0x0A for p in got)                       # no brightness packet from the child
         assert all(p[:12] == DST_MAC + SRC_MAC and p[12] in (0x01, 0x55) for p in got)   # the stream cut right
+        while int(slot.h[FRAMES]) < 3 and time.monotonic() < deadline:   # a frame counts after its last row, which
+            time.sleep(0.005)                                            # is paced 15.5 ms behind its sync
         assert slot.h[BEATS] > 0 and slot.h[FRAMES] >= 3
         frames = int(slot.h[FRAMES])
         os.kill(child.pid, signal.SIGINT)                # Ctrl-C, systemctl stop and the watchdog's SIGABRT

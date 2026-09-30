@@ -196,7 +196,7 @@ def test_syncs_sit_on_an_absolute_grid_with_no_drift(slot):
     assert len(times) == 2000
     for k, t in enumerate(times):
         assert abs(t - (times[0] + k * PERIOD_NS)) <= 3 * clock.step, k
-    assert clock.slept.count(0.0) == 0 and all(0 < s <= PERIOD_NS / 1e9 for s in clock.slept)
+    assert len(clock.slept) == 1 and 0 < clock.slept[0] <= PERIOD_NS / 1e9   # one sleep, before the first sync; then never
 
 
 def test_the_wait_sleeps_to_spin_ns_before_the_deadline_then_spins():
@@ -276,6 +276,8 @@ def test_the_bgr_swap_writes_into_the_packets_without_a_copy(width):
     try:
         sender, sock, _ = make(s)
         assert np.shares_memory(sender.bgr, sender.packets) and sender.bgr.size == 4 * width * 3
+        assert np.shares_memory(sender._bgr_rows, sender.packets) and np.shares_memory(sender._frame_rows, sender.frame)
+        assert len(sender._bgr_rows) == len(sender._frame_rows) == len(sender.rows) == len(sender._row_due)
     finally:
         s.close()
 
@@ -287,7 +289,7 @@ def test_the_worst_wake_past_the_spin_margin_is_recorded(slot):
     real_sleep = clock.sleep
 
     def oversleeps(seconds):
-        real_sleep(seconds + (0.0025 if len(clock.slept) == 4 else 0.0))   # the 4th sleep wakes 2.5 ms late
+        real_sleep(seconds + (0.0025 if not clock.slept else 0.0))     # the first sleep (before the first sync) wakes 2.5 ms late
     clock.sleep = oversleeps
     sender, sock, _ = make(slot, clock=clock)
     for _ in range(8):
@@ -319,6 +321,164 @@ def test_the_sender_pins_itself_to_the_highest_core_it_may_use(monkeypatch):
     monkeypatch.setattr(cs, "SENDER_CPU", None)
     monkeypatch.setattr(cs.os, "sched_getaffinity", lambda pid: {0}, raising=False)
     assert cs.sender_cpu() is None                                 # one core: nothing to choose, no pin
+
+
+# --- the rows paced across the frame (2026-09-30 evening: the card shows rows as they land; a burst tears)
+
+def stamped(slot, **kw):
+    """A sender whose socket stamps every send with the fake clock's reading: stamps of (packet, ns)."""
+    sock, clock, stamps = FakeSocket(), FakeClock(), []
+    sock.hook = lambda n, p: stamps.append((p, clock.t))
+    sender = Sender(slot, sock.send, clock=clock.now, sleep=clock.sleep, **kw)
+    return sender, sock, clock, stamps
+
+
+def test_the_rows_are_paced_across_the_frame_on_the_syncs_grid(slot):
+    sender, sock, clock, stamps = stamped(slot)
+    for _ in range(4):                                                        # the prime, then three frames
+        sender.tick()
+    syncs = [i for i, (p, _) in enumerate(stamps) if p[12] == SYNC]
+    assert len(syncs) == 3
+    for i, j in zip(syncs, syncs[1:] + [len(stamps)]):
+        t0, rows = stamps[i][1], stamps[i + 1 : j]
+        assert kinds([p for p, _ in rows]) == [ROW] * H
+        for k, (p, t) in enumerate(rows):                                     # one every 242 us, on the grid
+            assert abs(t - (t0 + ROW_SPREAD_NS * (k + 1) // H)) <= 3 * clock.step, k
+        if j < len(stamps):                                                   # then 1.17 ms of quiet to the next sync
+            assert abs((stamps[j][1] - rows[-1][1]) - (PERIOD_NS - ROW_SPREAD_NS)) <= 3 * clock.step
+    assert slot.h[ROWS_LATE] == 0 and slot.h[ROW_WORST] < 2 * clock.step
+    assert len(clock.slept) == 1                                              # only before the first sync: after that the
+    assert 0 < clock.slept[0] <= PERIOD_NS / 1e9                              # frame is the rows and a spin under SPIN_NS
+
+
+@pytest.mark.parametrize("width,height,sends", [(512, 64, 128), (512, 192, 384), (384, 4, 8)])
+def test_a_wide_wall_paces_every_row_packet_in_its_own_slot(width, height, sends):
+    s = Slot.create(width, height)
+    try:
+        sender, sock, clock, stamps = stamped(s)
+        sender.tick()
+        sender.tick()
+        i = next(k for k, (p, _) in enumerate(stamps) if p[12] == SYNC)
+        t0, rows = stamps[i][1], stamps[i + 1 :]
+        assert len(rows) == sends == len(sender.rows)
+        for k, (p, t) in enumerate(rows):                                     # 121 us apart at 128 sends, 40 at 384
+            assert abs(t - (t0 + ROW_SPREAD_NS * (k + 1) // sends)) <= 3 * clock.step, k
+        assert rows[-1][1] - t0 <= ROW_SPREAD_NS + 3 * clock.step             # the last still at 15.5 ms
+        chunk = width * height // sends
+        assert [(p[14], int.from_bytes(p[15:17], "big")) for p, _ in rows[:3]] == [(0, 0), (0, chunk), (1, 0)]
+    finally:
+        s.close()
+
+
+def test_the_prime_and_a_restarts_prime_stay_a_burst(slot):
+    sender, sock, clock, stamps = stamped(slot)
+    sender.tick()                                                             # the start's prime
+    assert kinds([p for p, _ in stamps]) == [ROW] * H
+    assert stamps[-1][1] - stamps[0][1] <= 2 * clock.step                     # back to back: no wait between rows
+    sender.tick()
+    slot.h[PAUSE] = 1
+    sender.tick()
+    slot.h[PAUSE] = 0
+    n = len(stamps)
+    sender.tick()                                                             # the restart's prime
+    again = stamps[n:]
+    assert kinds([p for p, _ in again]) == [ROW] * H and again[-1][1] - again[0][1] <= 2 * clock.step
+    sender.tick()                                                             # and the frame after it is paced
+    rows = stamps[n + H + 1 :]
+    assert stamps[n + H][0][12] == SYNC and len(rows) == H
+    assert rows[-1][1] - stamps[n + H][1] >= ROW_SPREAD_NS - 3 * clock.step
+
+
+def test_rows_that_miss_their_slot_are_counted_and_the_next_sync_holds(slot):
+    sender, sock, clock, stamps = stamped(slot)
+
+    def stall(n, p):
+        stamps.append((p, clock.t))
+        if p[12] == ROW and p[14] == 19 and slot.h[FRAMES] == 1:              # the second frame, right after row 19
+            clock.t += 1_000_000                                              # the sender loses 1 ms: inside the margin
+    sock.hook = stall
+    for _ in range(4):
+        sender.tick()
+    step = ROW_SPREAD_NS // H
+    expected = sum(1 for k in range(20, H) if 1_000_000 - (k - 19) * step > step)      # rows 20 to 22; row 23 by 32 us
+    assert slot.h[ROWS_LATE] == expected == 3
+    assert 1_000_000 - step <= slot.h[ROW_WORST] <= 1_000_000 - step + 3 * clock.step   # row 20, a slot into the ms
+    syncs = [t for p, t in stamps if p[12] == SYNC]
+    assert abs((syncs[2] - syncs[1]) - PERIOD_NS) <= 3 * clock.step           # the next sync on its deadline
+    assert slot.h[FRAMES] == 3 and slot.h[LATE] == 0 and slot.h[SLIPS] == 0
+    s = stats_of(slot.h)
+    assert s["rows_late"] == 3 and 1000 - step / 1e3 <= s["row_worst_us"] <= 1000 - step / 1e3 + 30
+
+
+def test_a_stall_past_the_margin_sends_every_row_and_makes_the_next_sync_late(slot):
+    sender, sock, clock, stamps = stamped(slot)
+
+    def stall(n, p):
+        stamps.append((p, clock.t))
+        if p[12] == ROW and p[14] == 60 and slot.h[FRAMES] == 1:              # the second frame, after row 60
+            clock.t += 3_300_000                                              # 3.3 ms lost: past the 1.17 ms margin
+    sock.hook = stall
+    for _ in range(4):
+        sender.tick()
+    frames = bursts([p for p, _ in stamps])
+    assert [kinds(f) for f in frames[1:]] == [[SYNC] + [ROW] * H] * 3        # every row of every frame went out
+    # Rows 61 to 63 go at once; the next sync is about 1.46 ms late on a grid that does not move, so rows 0 to 4
+    # of that frame find their slots (242 to 1 211 us) gone too, and row 5 (1 453 us) is back in its slot.
+    assert slot.h[ROWS_LATE] == 3 + 5
+    worst = 3_300_000 - (ROW_SPREAD_NS * 62 // H - ROW_SPREAD_NS * 61 // H)   # row 61: the stall less one slot
+    assert worst <= slot.h[ROW_WORST] <= worst + 3 * clock.step
+    syncs = [t for p, t in stamps if p[12] == SYNC]
+    late = 3_300_000 - (PERIOD_NS - ROW_SPREAD_NS * 61 // H)                  # the stall less what was left of the frame
+    measured = (syncs[2] - syncs[1]) - PERIOD_NS
+    assert late <= measured <= late + 10 * clock.step                         # plus the reads on the way to the sync
+    assert slot.h[LATE] == 1 and slot.h[SLIPS] == 0 and slot.h[FRAMES] == 3  # late (over 1 ms), no slip: the grid holds
+
+
+def test_a_fresh_frame_reaches_the_paced_rows_a_packet_at_a_time(slot):
+    sender, sock, _ = make(slot)
+    sender.tick()
+    sender.tick()                                                             # the prime, then a black frame
+    other = np.random.default_rng(7).integers(0, 256, (H, W, 3), dtype=np.uint8)
+    slot.write(other)
+    sock.sent.clear()
+    sender.tick()                                                             # the paced frame that takes it
+    rows = [p for p in sock.sent if p[12] == ROW]
+    assert rows == [p for y in range(H) for p in row_packets(y, other[y, :, ::-1])]      # every packet, BGR
+    sock.sent.clear()
+    sender.tick()                                                             # no push: the same rows again
+    assert [p for p in sock.sent if p[12] == ROW] == rows
+
+
+def test_a_torn_burst_leaves_no_mixed_frame_at_the_restarts_prime(slot):
+    blue = np.zeros((H, W, 3), np.uint8)
+    blue[..., 2] = 200
+    sock = FakeSocket(fail={PRIME + 1 + 27: OSError(errno.EIO, "io")})      # frame 2, row 26: the swap half done
+    sender, sock, _ = make(slot, sock)
+    slot.write(red())
+    sender.tick()                                                             # the prime: red
+    slot.write(blue)
+    sender.tick()                                                             # blue into the packets a row at a time, torn at 26
+    assert slot.h[PAUSE] == 1
+    slot.h[PAUSE] = 0                                                         # the pause cleared with no new push
+    sock.sent.clear()
+    sender.tick()                                                             # the restart's prime: one whole frame
+    rows = [p for p in sock.sent if p[12] == ROW]
+    assert len(rows) == H and all((row_pixels(p, W) == (200, 0, 0)).all() for p in rows)   # blue, BGR, every row
+    assert kinds(sock.sent) == [ROW] * H                                      # a prime: no sync in front of it
+
+
+def test_a_spread_of_zero_is_a_burst_with_no_row_counted_late(slot):
+    sender, sock, clock, stamps = stamped(slot, row_spread_ns=0)
+    for _ in range(3):
+        sender.tick()
+    syncs = [i for i, (p, _) in enumerate(stamps) if p[12] == SYNC]
+    rows = stamps[syncs[0] + 1 : syncs[1]]
+    assert len(rows) == H and rows[-1][1] - rows[0][1] <= H * clock.step      # one clock read a row, no wait
+    assert slot.h[ROWS_LATE] == 0 and slot.h[ROW_WORST] == 0                  # a burst has no slots to miss
+    with pytest.raises(ValueError):
+        Sender(slot, sock.send, clock=clock.now, sleep=clock.sleep, row_spread_ns=PERIOD_NS)
+    with pytest.raises(ValueError):
+        Sender(slot, sock.send, clock=clock.now, sleep=clock.sleep, row_spread_ns=-1)
 
 
 # --- the whole burst against the spike sender's, which is what the wall was clean with (2026-09-30)

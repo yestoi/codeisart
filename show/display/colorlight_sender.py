@@ -241,19 +241,27 @@ def spin_until(target_ns: int, clock: Callable[[], int]) -> int:
 
 
 class Sender:
-    """One output frame a tick. Testable with a fake socket and a fake clock; the child runs it for real."""
+    """One output frame a tick: the sync on its deadline, the rows paced across ROW_SPREAD_NS after it. Testable
+    with a fake socket and a fake clock; the child runs it for real."""
 
     def __init__(self, slot: Slot, send: Callable[[bytes], int], *, clock: Callable[[], int] = time.perf_counter_ns,
                  sleep: Callable[[float], None] = time.sleep, period_ns: int = PERIOD_NS, spin_ns: int = SPIN_NS,
-                 parent_alive: Callable[[], bool] = lambda: True):
+                 row_spread_ns: int = ROW_SPREAD_NS, parent_alive: Callable[[], bool] = lambda: True):
         self.slot, self.send, self.clock, self.sleep = slot, send, clock, sleep
         self.period, self.spin, self.parent_alive = period_ns, spin_ns, parent_alive
+        if not 0 <= row_spread_ns < period_ns:
+            raise ValueError(f"row_spread_ns {row_spread_ns} is not 0 to under the period {period_ns}")
         self.packets, self.pixels = row_buffers(slot.width, slot.height)
         self.rows = self.packets.reshape(-1, self.packets.shape[-1])
+        n = len(self.rows)
+        self._row_due = [row_spread_ns * (k + 1) // n for k in range(n)]      # each row's slot, ns after the deadline
+        self._row_step = row_spread_ns // n if n else 0                       # one slot; 0: a burst, no row late
         chunks, chunk = self.pixels.shape[1], self.pixels.shape[2] // 3
         self.bgr = self.pixels.reshape(slot.height, chunks, chunk, 3)      # the same bytes, a pixel at a time
         self._shape = (slot.height, chunks, chunk, 3)                       # a frame, as the packets cut it
         self.frame = np.zeros((slot.height, slot.width, 3), np.uint8)      # black: the dark start
+        self._bgr_rows = self.bgr.reshape(-1, chunk, 3)                     # the packets' pixels, a packet a row
+        self._frame_rows = self.frame.reshape(-1, chunk, 3)                 # the taken frame, cut the same way
         self._dark = False                                                  # the parent-death drain: black only
         self._level = -1
         self._sync = bytearray(sync_bytes(0, 0))                            # the level's sync; the counter goes in
@@ -269,7 +277,8 @@ class Sender:
             self._sync = bytearray(sync_bytes(level, self._counter))
 
     def tick(self) -> bool:
-        """One burst on its deadline, or a paused poll. False once the stop flag is set (nothing sent)."""
+        """One frame on its deadline (the sync, then the rows in their slots), or a paused poll. False once the
+        stop flag is set (nothing sent)."""
         h = self.slot.h
         h[BEATS] += 1
         if h[STOP]:
@@ -279,8 +288,9 @@ class Sender:
             self._primed = False
             self.sleep(PAUSE_POLL_S)
             return True
-        if not self._dark and self.slot.take(self.frame):
-            self.bgr[...] = self.frame.reshape(self._shape)[..., ::-1]       # BGR, in place, before the wait
+        fresh = not self._dark and self.slot.take(self.frame)                # swapped into the packets below, a
+                                                                             # packet a slot: the whole frame is
+                                                                             # 800 us at 512 x 192, the gap 1.17 ms
         self._level_sync()
         now = self.clock()
         if self.deadline is None:
@@ -294,17 +304,32 @@ class Sender:
         if woke_late > h[WAKE_WORST]:
             h[WAKE_WORST] = woke_late
         at = self.clock()
+        bgr, src = self._bgr_rows, self._frame_rows
         try:
             if self._primed:
                 self._sync[COUNTER_OFFSET] = self._counter
                 self.send(bytes(self._sync))
                 self._counter = (self._counter + 1) & 0xFF
-            for row in self.rows:
-                self.send(row.data)
+                for i, (off, row) in enumerate(zip(self._row_due, self.rows)):   # each row in its slot on the grid
+                    if fresh:
+                        bgr[i] = src[i, :, ::-1]                             # this packet's pixels, BGR, in its slot
+                    late = spin_until(self.deadline + off, self.clock)
+                    self.send(row.data)
+                    if self._row_step:                                       # 0 is a burst (the bench): not counted
+                        if late > self._row_step:                            # past the next slot's start: missed
+                            h[ROWS_LATE] += 1
+                        if late > h[ROW_WORST]:
+                            h[ROW_WORST] = late
+            else:
+                if not self._dark:                                           # the prime: the whole frame swapped
+                    self.bgr[...] = self.frame.reshape(self._shape)[..., ::-1]   # (whole again after a torn burst)
+                for row in self.rows:                                        # then a burst, no sync before it
+                    self.send(row.data)
         except OSError as e:
             h[ERRNO] = e.errno or 0
             h[ERRORS] += 1
             h[PAUSE] = 1                                                     # nothing more until a push
+            self._primed = False                                             # and then a prime, whole again
             return True
         if self._primed:
             h[FRAMES] += 1
