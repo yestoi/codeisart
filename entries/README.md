@@ -26,11 +26,16 @@ Apple clang 17 at it16, the Pi 5's gcc 14.2 from the early probe (`docs/superpow
 - No `make`, `less`, `read`, `clear`, `/dev/tty`, `setsid`, `nohup`, background `&` or `daemon` in a run;
   run scripts are POSIX `sh` (dash on the Pi), run as `sh <script>`. A run that ends by a signal reads as a
   crash, so a run ends by the pipeline's cut (`run_seconds`) or by a normal exit.
-- No entry reads the terminal, needs raw modes or X11, or animates at character scale; large motion is
-  preferred (core plan, Task 19). endoh1 reads stdin from a file of its own directory, never the terminal.
+- No entry waits on the terminal, needs raw modes or X11, or animates at character scale; large motion is
+  preferred (core plan, Task 19). thadgavin (curses) polls it: `nodelay(stdscr,1)` and a `getch()` each frame
+  (`thadgavin.alt.c:59-60`, called at :97), which ends the program on `q`; the show never writes to a run's
+  terminal (`show/terminal.py` only reads the pty), so the poll finds nothing and the run goes on to the
+  pipeline's cut. endoh1 reads stdin from a file of its own directory, never the terminal.
 - `rows` (it16) gives the program a 24-row pty from RUN on, for a program whose frame ends in a newline on
   its 23rd line; the typing and the build stay at 23 rows. `full_screen` is used by none.
-- The wall is 128x64 (`show.poc.toml`): the strip shows "<author>, <year>".
+- The wall is 128x64 (`show.poc.toml`): the strip shows "<author>, <year>". An attribution longer than the
+  strip's 21 characters is shown in pieces cut at spaces, each three seconds, before `Not A.I.` (thadgavin's
+  three; C54, Q91).
 
 ## 1: sloane, "Homer's favorite"
 
