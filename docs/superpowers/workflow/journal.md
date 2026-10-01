@@ -1543,3 +1543,129 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   Q93.
 - Status: done. C54 is closed and D5's slack is done. By Q81 what is left for the run is the suite's time
   with Dodge's return (iteration 18), no new game.
+
+## Iteration 18 — 2026-10-01
+- Verdict on the sheets (written before any other tool call, after reading with the Read tool: the feel row in
+  `evidence/it18/dodge/games.md`, the LED sheet `dodge-128x64-led.png`, 24 of the GIF's 48 frames, the plain sheet
+  `it18-dodge.png` in three pieces, the first piece of `it18-dodge-raw-vs-pushed.png`; all stamped 708a42e, the plain
+  sheets `clean`): **Dodge is back as the game of iteration 15 and it reads right at 128x64.**
+  - The feel row: 17 metrics, every budget met, no failure. win_good 0.95, win_lazy 0.35, win_none 0.0,
+    round_seconds 49.5, fidelity 0.9934, range 0.9606, response 1 tick and 100 px, lit 0.0335, dim 0.0034,
+    score_visible 1.0, score_legible 1.0, flash_area_raw 0.0, square_flashes 0.0.
+  - The lobby: `DODGE` in dim amber for 2 s, the mirror figure, then the invite with the green hand-up icon, which
+    blinks dim and bright each half second. The figure raises its hand at 4.5 s and the game starts.
+  - Ready: `STEP SIDE` / `TO SIDE` in two lines, centred, whole, with the time bar on the top row and the score `0`
+    top right. The player's amber block already follows the body along the bottom row (left edge, centre, right
+    edge within 1.5 s).
+  - Play: cyan blocks fall, the amber block moves between the edges, the bar shortens from the right. The score is
+    white, about 12 px high, and reads at every frame. At 8.5 s and 9.0 s a falling block passes the score's cell:
+    it is cut at the cell's edge and the digit stays whole.
+  - The hit (11.0 s, plain sheet): the player's block turns red where it stood, beside the cyan block that hit it.
+    One small red square, no full-panel flash. The LED sheet's 20 samples do not hold this frame (10.5 s, then
+    12.0 s), so the hit is judged on the plain sheet only.
+  - Over (11.5 s to 13.5 s): the blocks stand still, the player's block is gone, the score `1` stays. A two-pixel
+    amber tick on the bottom row still follows the body.
+  - The card: `DODGE 1` / `BEST!` / `HAND UP = AGAIN`, three lines, all whole inside the panel, for 3 s.
+  - Raw against pushed, ticks 398 to 419: the two columns look the same in every pair, nothing is held.
+  - What the sheets do not show: the canonical round ends at score 1 after 4.5 s of play, so the later, faster part
+    of a round is in the numbers only (round_seconds 49.5 for the good bot), not in a picture. From 17 s to 54.5 s
+    the sheet is the lobby's invite with the figure walking, 38 s that say nothing about Dodge. Nobody has played
+    Dodge on the camera yet: the first live play is the owner's.
+- Checked after the verdict (05:27; against `evidence/it15/dodge-83fe13a/`, by a program):
+  - Dodge's feel row, budgets and failures in `feel.json` are equal to it15's, key by key. (it15's file also holds
+    Pong and Quick Draw; it18's run asked for Dodge alone.)
+  - The timeline file has the same bytes. All 48 GIF frames are equal, pixel by pixel.
+  - The five sheets (led, plain, distance, `it18-dodge.png`, raw-vs-pushed) differ from it15's only in the stamp's
+    row at the top (y 2 to 13, the sha); every frame below it is equal, pixel by pixel.
+  - `arcade_shot`'s numbers are it15's: 1650 frames, none black, held 0 of 1650, flash_area raw 0.005 and pushed
+    0.005, concurrent_area 0.026 (limit 0.1), square_flashes 5 (budget 6).
+  - So what the sheets do not show today, they did not show in it15 either; nothing got worse and nothing is new.
+- Plan: docs/superpowers/plans/2026-10-01-it18-suite-time-dodge.md (216 lines at d5906bd), one plan writer (opus),
+  written 04:12 to 04:27, after the operator's orient had measured where the time goes (evidence/it18/
+  orient-durations.txt, orient-durations-dodge.txt: the oracle's reports are 88 s of the suite, 112 s with Dodge,
+  95% of it bot plays). The adversarial review, round 1 (04:28 to 04:45, evidence/it18/plan-review.md): BLOCKED on
+  one finding. O2's `revert --no-edit` would commit with git's own message, without the reason and the trailers
+  the plan's own constraints ask for. Fixed in the plan at 04:46 (`revert --no-commit`, then a written commit;
+  the fallback the same way), with four notes taken: the worker timeout 120 s (300 s would pass the 10 minutes of
+  a command), a warning when the core count stops the pool, the exact `ROOT` check, two wordings. Round 2 (04:46
+  to 04:47, plan-review-round2.md): APPROVED. The reviewer built the pool to the plan's interface and reproduced
+  the design: 180 plays in 32.7 s, pooled plays equal to in-process plays, 0 children left. Q97 (4 workers)
+  defaulted.
+- Shipped: the suite's room and Dodge's return; 311e796..708a42e: 6 files, 1250 insertions, 9 deletions.
+  - T-pool (opus; 32df14c, merged 23c57d0): `tests/arcade/pooled.py` (new, 164 lines) and
+    `tests/arcade/test_oracle.py`. The 60 plain bot plays a game of the oracle's reports (good, lazy, Nobody, 20
+    seeds) are made before the first report by up to 4 plain `python -m tests.arcade.pooled` subprocesses and
+    stored where the reports already look (`tests.arcade.helpers.PLAYS`). A share is stored only if it is whole
+    and its worker imported this checkout's `arcade`; a failed worker gives a warning and its plays are made in
+    process as before. The workers are killed and waited for on every path; the deadline is 120 s. Not
+    `multiprocessing`: its resource tracker stays as a child and fails `tests/test_show_soak.py`. Six new test
+    items: the job list, the pool made every missing play, a pooled play equals the in-process play (one a game),
+    two failure cases. No seed, assert or band changed; nothing under `arcade/` changed.
+  - O2 (the orchestrator; 708a42e): Dodge returns, the revert of 16dbb91 with a written message. Exactly four
+    files, 991 insertions (`arcade/games/dodge.py`, `dodge_bots.py`, `dodge_feel.toml`,
+    `tests/arcade/test_dodge.py`); the diff against it15's 83fe13a is empty. The gate before it (the suite after
+    the pool at most 380 s) read 270.35 s.
+- Review: APPROVED after 1 round, no blocking finding (evidence/it18/code-review.md; a fresh opus reviewer,
+  311e796..708a42e, 05:18 to 05:28).
+  - No `assert` is removed or changed in the range; the five existing oracle tests are unchanged word for word.
+  - Its own probe: all 180 report plays made by `fill` in 4 workers and again in process, 0 of 180 differ, field
+    by field (the pool took 44.3 s at a load of 4 to 5).
+  - `fill`'s failure paths with fake workers (the deadline, Ctrl-C, a short file, another checkout's `arcade`, one
+    good worker beside a hung one): one warning a failed worker, nothing stored of a failed share, 0 children.
+  - Each of the six new items fails when what it guards is broken (a play one tick off, a key not pooled, 135 of
+    180 stored).
+  - Safety: the range touches no file of the display path, `arcade/flash.py`, `arcade/brightness.py`,
+    `arcade/runner.py`, `tools/` or `deploy/`. Dodge's frames reach the wall through the runner's governor over
+    the limiter, like every game. Not a safety slice.
+- Deploy: none (never deployed by the loop; nothing under `deploy/` touched; nothing pushed; nothing sent to the
+  card).
+- The Pi 5: not run. The plan has no Pi step: the Pi's subsets do not run `tests/arcade/test_oracle.py`, and
+  nothing of the show changed. No ssh call was made in this iteration.
+- Verify: 7 of 7 of the checklist (item 5 dropped, as before). 1 freshness: Dodge's sheets are stamped `708a42e`,
+  the plain ones `clean`, made from a clean detached checkout of the code head (verify-script.py.txt; `git
+  status` clean before and after); nothing but `docs/` changes after it. 2 the suite is green, twice. 3 skips: 3,
+  the baseline's 3. 4 collected: 1869, the base's 1809 plus 6 and Dodge's 54, none dropped. 6
+  evidence/it18/README.md, the decision on its first line. 7 the sheets, read above.
+- Tests: 1869 collected, 1866 passed, 3 skipped at 708a42e in the main checkout, under Q81's 420 s in every run:
+  301.58 s (the orchestrator, load 1.95 to 1.59), 312.30 s (the operator beside the reviewer, load 3.03 to 5.86),
+  308.37 s (the reviewer done, 05:28 to 05:33, load 2.31 to 4.30; evidence/it18/pytest-idle.txt). The Mac was
+  shared with another session all night, so none of the three is an idle time. Before: 325.84 s for 1806 passed
+  at 86f0607, and 371.06 s with Dodge reverted in. After the pool alone: 270.35 s for 1812 passed at 23c57d0.
+  The pool saves about 55 s without Dodge and about 70 s with it; Dodge now costs about 31 s (it cost 45 s).
+- Minutes: about 99, from 03:59 to 05:38 CDT: orient 12 (03:59 to 04:11, two measured suite runs); plan 36
+  (written 15; review 17; fix and confirmation 2); implement 29 (04:48 to 05:17; the orchestrator's own split:
+  T-pool 17.4, integration 10.7); review 10 (05:18 to 05:28); verify and report 21 (from 05:17, beside the review
+  and after it: the suite twice 10.5, Dodge's evidence 1, the reading and the writing the rest).
+- Loop decisions and deviations:
+  - The plan review blocked once (O2's commit message) and was confirmed in a second, two-minute round; the
+    adversarial round also took four notes into the plan before a line was built.
+  - The operator committed nothing on main while the orchestrator ran; no spawn was lost.
+  - Every agent wrote its whole report to evidence/it18/; the operator read the files, not the cut messages.
+  - The suite's first run and Dodge's evidence ran beside the reviewer; the second run after it. The review
+    asked for no fix, so nothing was run again. No run was over the limit, so none was read a second time for
+    that (Q83).
+  - T-pool's implementer saw one known load flake in its first full run
+    (`tests/test_show_shot.py::test_strobe_session_is_held`, the note "it15 (every plan; the orchestrator's
+    brief)"); it passed on a rerun and in every later full run (five).
+  - The implementer's deviations from the plan's wording (two private helpers `_read` and `_tail`, the helper
+    `report_keys()`, the deadline set just before the first start, one assert that names every differing field)
+    change no interface, assert or count; the reviewer read them.
+  - The reviewer started three read-only commands with a `cd`, against its brief; it wrote only its report.
+  - The commits of the orchestrator and its implementer carry the Opus 5.5 trailer of their own sessions (as in
+    it16 and it17).
+  - The roadmap's notes were edited by a small script (four replacements, each checked to match once), not by
+    hand; the diff is 9 lines in, 6 out.
+- Carried forward: nothing.
+- Noted, not carried: the pool's 120 s deadline is untested on the Pi 5 (the Pi's subsets do not run
+  `test_oracle.py`); when the deadline runs out the share's plays are made in process (up to 120 s more), and
+  `test_the_pool_made_every_missing_play` then fails, so it is not silent; a SIGTERM or SIGKILL to pytest leaves
+  the workers to run out (about 40 s) and their temporary directory behind; `pgrep -P` does not count a zombie on
+  macOS, so the child asserts catch a live worker, not an unreaped one (`fill` reaps on every path probed);
+  `[exit-1]` would also pass if `fill` ignored the exit code (the missing file warns too); on a one-core host the
+  pool does not start and warns; three of the four open pose games fit under 420 s at about 30 s each, the
+  fourth is tight; the canonical Dodge round ends at score 1, so no sheet shows the faster part of a round; ten
+  merged implementer worktrees and branches of it16 to it18 remain under `.claude/worktrees/` (the owner's
+  cleanup).
+- Owner questions: Q97 defaulted (4 workers). For the wall, unchanged: Q87, Q90, Q92, Q93, Q96.
+- Status: done. Dodge is on main and the suite has room. By Q81 nothing is left for the run (no new game): the
+  loop gates after this iteration and does not start iteration 19 (gate.md).

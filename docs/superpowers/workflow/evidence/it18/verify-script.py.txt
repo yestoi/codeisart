@@ -1,0 +1,32 @@
+"""Iteration 18's verify evidence for Dodge, from a clean detached checkout of the code head. Usage: it18-verify.py"""
+import os, subprocess, time
+S = "/private/tmp/claude-502/-Users-trey-dev-codeisart/55e7f702-6acd-44cf-b418-6da2919b2552/scratchpad"
+CO = S + "/it18-verify-checkout"
+PY = "/Users/trey/dev/codeisart/.venv/bin/python"
+EV = S + "/it18-ev"
+os.makedirs(EV, exist_ok=True)
+ENV = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+RUNS = [
+    ["-m", "tools.arcade_evidence", "--iteration", "18", "--games", "dodge", "--seeds", "20", "--out", f"{EV}/arcade"],
+    ["-m", "tools.arcade_shot", "dodge", "--lobby", "small", "--scenario", "canonical", "--raw-vs-pushed",
+     "--out", f"{EV}/it18-dodge"],
+]
+
+
+def status():
+    return subprocess.run(["git", "status", "--porcelain"], cwd=CO, capture_output=True, text=True).stdout.strip()
+
+
+head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=CO, capture_output=True, text=True).stdout.strip()
+with open(EV + "/arcade.txt", "a") as log:
+    log.write(f"# the detached checkout is at {head}; git status before: {status() or 'clean'}\n\n")
+    for args in RUNS:
+        t = time.time()
+        r = subprocess.run([PY, *args], cwd=CO, env=ENV, capture_output=True, text=True, timeout=580)
+        shown = " ".join(a.replace(EV + "/", "") for a in args)
+        log.write(f"$ python {shown}\n" + r.stdout)
+        if r.stderr:
+            log.write("[stderr]\n" + r.stderr[-3000:])
+        log.write(f"[exit {r.returncode}, {time.time() - t:.1f} s; git status after: {status() or 'clean'}]\n\n")
+        last = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
+        print(args[1], r.returncode, f"{time.time() - t:.1f}s", "|", last[:200], "| status:", status() or "clean")
