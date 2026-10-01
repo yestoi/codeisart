@@ -12,6 +12,7 @@
 #   soak         CARD, ~5 min: the lobby for 300 s, the Pi's temperature every 30 s
 #   checks       CARD, ~4 min: the wall-proven runs in order: rgb, border, video, lobby, line picture, rgb and
 #                lobby at level 0.4
+#   selftest     no card: the run wrapper on a healthy line, a disturbed line and a failing command
 #
 # Every CARD step starts after a dark lead (LEAD, 5 s) and puts 3 s of dark between segments. DRY=1 sends every
 # step to nowhere (no card). Full output: /tmp/wall_triage/<time>-<step>.log; the screen gets the sender's line,
@@ -35,12 +36,21 @@ say() { echo "== $(date +%T) $*"; }
 run() {   # label, command...: the output to the log; the key lines and any failure to the screen
     local label=$1; shift
     say "$label"
-    local part rc
+    local part rc since sender
+    since=$(date '+%F %T')
     part=$(mktemp)
     "$@" >"$part" 2>&1
     rc=$?
     { echo "### $(date +%T) $label: $*"; cat "$part"; } >>"$LOG"
     grep -E "ticks:|colorlight sender|pushed [0-9]+ frames" "$part" | sed -E 's/^ */   /' | cut -c1-210
+    sender=$(grep -m1 "colorlight sender" "$part")
+    if [ -n "$sender" ] && ! echo "$sender" | grep -qE ", 0 late \(over 1 ms\).*, 0 rows off their slot"; then
+        echo "   THE SENDER WAS DISTURBED (a late sync or rows off their slot). What the Pi logged during the run:"
+        journalctl --no-pager -o short --since "$since" --until "$(date '+%F %T')" 2>/dev/null \
+            | grep -vE "pam_unix|sudo|session-[0-9]+\.scope|New session|Removed session|logged out|Accepted publickey|Received disconnect|Disconnected from|user@1000|user-runtime" \
+            | tail -12 | cut -c1-160 | sed 's/^/     /'
+        echo "   (2026-09-30: a NetworkManager reload with Wi-Fi changes stalled the sender 14 ms; see the runbook)"
+    fi
     if [ $rc -ne 0 ]; then
         echo "   EXIT $rc. The last lines:"
         grep -vE "^(W0000|I0000|INFO)" "$part" | tail -8 | sed 's/^/   /'
@@ -129,8 +139,13 @@ checks)
     line 54; dark
     pattern rgb 10 "--brightness 0.4"; dark
     lobby 20 "--brightness 0.4" ;;
+selftest)
+    say "selftest: the run wrapper on a healthy and a disturbed sender line (no card)"
+    run "healthy" echo "  colorlight sender: 599 frames, 0 late (over 1 ms), worst 3 us, sync to sync sd 0 us, 0 rows off their slot"
+    run "disturbed" echo "  colorlight sender: 3239 frames, 1 late (over 1 ms), worst 13919 us, sync to sync sd 346 us, 135 rows off their slot"
+    run "a failing command" false ;;
 *)
-    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+    awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
     exit 2 ;;
 esac
 say "done. Full output: $LOG"

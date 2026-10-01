@@ -7,6 +7,9 @@ nothing after it did. The record is `docs/superpowers/reviews/2026-09-30-ghostin
 Ground rules, from the wall sessions:
 - Nothing goes to the card without the owner's "go". Every card step below starts after a 5 s dark lead.
 - One run at a time. Let a run go dark before the next one starts.
+- Nothing reconfigures the Pi while the wall runs: no Wi-Fi or NetworkManager changes, no `systemctl` reloads,
+  no package installs. On 2026-09-30 a NetworkManager reload with Wi-Fi changes, made from another session,
+  stalled the sender 14 ms in the middle of a run. On the card a stall like that is a blink.
 - The driver's settings are not changed to chase a flicker: 60.00 frames a second, rows paced over 15.5 ms,
   the S2 sync first, the pinned real-time sender. Each was proven by eye at the wall.
 
@@ -28,7 +31,7 @@ ssh trey@codeisart.local ./wall_triage state
 |---|---|
 | up under 10 minutes | The first-boot window: the one shimmer came about 9 minutes after a boot. Go to step 2. |
 | `throttled` other than `0x0` | The Pi was hot or under-volted. Fix the power or the cooling first. |
-| link changes above 2, or a recent `Link is Down` | The cable to the card dropped. Reseat it and run again. |
+| a `Link is Down` line | The link to the card dropped that many seconds after boot. If that falls inside a run, reseat the cable and run again. On 2026-09-30 it dropped once at 195 s, while cables were handled, before any run. |
 | something holding the card | Another program is driving the card. Stop it first, because two senders fight. |
 | `NOT THE WALL-PROVEN SET` | The Pi's checkout is off main. Run `git -C ~/codeisart checkout main` before anything else. |
 
@@ -126,6 +129,11 @@ ssh trey@codeisart.local ./wall_triage checks
 Every card run prints the sender's own line at its close. A healthy one reads: worst sync under 20 us, sync to
 sync sd 0 to 2 us, 0 rows off their slot, 0 slips, 0 send errors, 0 restarts, `real-time yes`.
 
+If the line shows a late sync or rows off their slot, the sender was disturbed. The script then prints what
+the Pi logged during that run: look for network changes, `systemctl` reloads or installs. On 2026-09-30 a dry
+run read `1 late (over 1 ms), worst 13919 us, sync to sync sd 346 us, 135 rows off their slot` while another
+session reloaded NetworkManager twice and changed the Wi-Fi connections.
+
 If the wall flickers while that line is healthy, the Pi sent a clean stream. The fault is past the Pi: the
 card, the cable or the panels. That was the case for the one shimmer on 2026-09-30.
 
@@ -138,6 +146,7 @@ Don't chase these again without new evidence:
   old, so its average was meaningless.
 - **The Pi's CPU load.** A burst load on three cores beside a still changed nothing.
 - **Greys on the card.** The `steps` and `gamma` stills were clean.
+- **`sched: DL replenish lagged too much` in the kernel log.** It came 138 s after boot, before any run.
 - **A different program or setting.** The Pi ran the same code, script, config and level as the clean
   afternoon soak, with no bench knobs.
 
@@ -145,6 +154,7 @@ Don't chase these again without new evidence:
 
 | What | Where |
 |---|---|
+| a self-test of the script, no card | `./wall_triage selftest` |
 | the script | `docs/superpowers/reviews/2026-09-30-ghosting/bench/wall_triage.sh`, linked as `~/wall_triage` on the Pi |
 | the probes it calls | `lobby_probe.py`, `burst_load.py`, `arcade_load.py`, `direct_play.py` in the same `bench/` folder |
 | the media | `~/bench` on the Pi, not in git: `rick.mp4`, `lobby.png`, `person.jpg` |

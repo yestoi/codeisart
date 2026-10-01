@@ -78,13 +78,24 @@ rose and fell between 7.50 and 7.87 of 255 once a second: the lobby's breathing,
   when NTP synced. The Pi 5's clock keeps time through a power-off only with an RTC battery. Without one, at a
   site with no network, the clock is wrong after every power cycle. The arcade's night brightness cap and the
   show's quiet hours both read the local clock.
+- **A reload of the Pi's network stalls the sender.** MEASURED in the dry test of the triage script at 23:25:13: the
+  line picture read `1 late (over 1 ms), worst 13919 us, sync to sync sd 346 us, 135 rows off their slot, worst
+  row 26551 us late`, the only stall in about two hours of sender runs that night. In the same window another
+  session on the owner's Mac ran `netplan generate`, reloaded NetworkManager twice (each reload about 430 ms) and
+  added and updated Wi-Fi connections (23:25:30 to 23:25:58). One coincidence, but the timing is tight. On the
+  card it would be a blink. It is not the shimmer: nothing like it was logged during the shimmering run. The
+  runbook now says nothing reconfigures the Pi while the wall runs, and the triage script prints the Pi's log
+  for any run whose sender line is disturbed. Not yet tested on purpose.
 - Not causes, recorded so they are not chased again: NetworkManager retries DHCP on `eth0` every 45 s, four at a
   time, then rests for 5 minutes (left alone since 2026-09-30, it is the way in if Wi-Fi fails). A `systemd`
   process at 56 % CPU in `ps` was the measuring ssh session's own user manager, seconds old.
 
 ## 4. Bench added this session
 
-In `bench/`: `wall_triage.sh` (the runbook's steps: `state`, `probe`, `sweep`, `video-lobby`, `soak`, `checks`;
+In `bench/`: `wall_triage.sh` (the runbook's steps: `state`, `probe`, `sweep`, `video-lobby`, `soak`, `checks`, `selftest`;
 `DRY=1` sends every step nowhere), `lobby_probe.py` (the lobby dry, every frame measured), `burst_load.py` (a
 bursty load on cores 0 to 2, never the sender's core 3), and `arcade_load.py` (the lobby under the arcade on the
 Pi; until now only in `~/bench` on the Pi). The media stay on the Pi in `~/bench`.
+
+Every step of `wall_triage.sh` was run with `DRY=1` on the Pi after the session (23:19 to 23:32), nothing sent to
+the card: all exited 0, and the dry soak read 17999 frames, worst sync 11 us, 0 rows off their slot, 62 to 66 °C.
