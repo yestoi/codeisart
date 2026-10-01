@@ -23,6 +23,7 @@ from show.config import Config, load_config
 from show.entries import EntryError, load_entries, load_entry
 from show.pipeline import EntryPlayer, Phase
 from show.terminal import Terminal
+from tests.show_helpers import HELLO_C, write_entry
 
 ROOT = Path(__file__).resolve().parents[1]
 ENTRIES = ROOT / "entries"
@@ -40,9 +41,18 @@ FINAL_LIT_MIN = 100      # non-space cells the program leaves lit as DWELL begin
 REP = re.compile(rb"\x1b\[\d*b")   # REP, "repeat the last character": pyte drops it (review B5)
 SUM_LINE = re.compile(r"^([0-9a-f]{64})  (\S+)$", re.MULTILINE)
 
+# The banner `show/pipeline.py`'s _fail writes: its own row, "*** <reason> ***", one of four reasons.
+BANNER = re.compile(r"\*\*\* (build timed out|build failed \(exit -?\d+\)|crashed \(signal \d+\)"
+                    r"|terminal error \(\w+\)) \*\*\*")
+
 HAPPY = [Phase.SOURCE, Phase.BUILD, Phase.RUN, Phase.DWELL, Phase.DONE]
 
 needs_cc = pytest.mark.skipif(shutil.which("cc") is None, reason="no C compiler")
+
+
+def banners(lines: list[str]) -> list[str]:
+    """The pipeline's banners at the start of the rows: a program's rows of stars are not one."""
+    return [m.group(0) for m in (BANNER.match(line) for line in lines) if m]
 
 
 def slug(d: Path) -> str:
@@ -192,7 +202,7 @@ def test_entry_plays_through(entry_dir, tmp_path):
         f"phases {[p.value for p in rec.phases]} after {rec.seconds:.1f} real s (deadline {PLAY_DEADLINE}); "
         f"failure {player.failure!r}; the screen:\n{screen}")
     assert player.failure is None
-    assert not any(line.startswith("***") for line in player.term.screen.display), screen
+    assert banners(player.term.screen.display) == [], screen
     w = rec.witness
     if entry_dir in CURATED:
         ran = rec.at[Phase.DWELL] - rec.at[Phase.RUN]
@@ -207,3 +217,72 @@ def test_entry_plays_through(entry_dir, tmp_path):
     assert w.non_ascii is None, f"the program drew a character >= 128: {w.non_ascii}"
     rep = REP.search(bytes(w.run_bytes))
     assert rep is None, f"the run sent REP {rep.group()!r}, which pyte drops (review B5)"
+
+
+# ---- the banner ----
+
+def test_banners_tell_the_pipeline_from_stars():
+    found = [
+        "*** build timed out ***",
+        "*** build failed (exit 3) ***",
+        "*** build failed (exit -9) ***",
+        "*** crashed (signal 11) ***",
+        "*** terminal error (TypeError) ***",
+    ]
+    for banner in found:
+        assert banners([banner]) == [banner]
+    assert banners(["*** crashed (signal 11) ***  ** *"]) == ["*** crashed (signal 11) ***"]
+    stars = ["***      *** *  * *   ** *", "*** *** *", "*" * 78, "***", "*** not a reason ***"]
+    assert banners(stars) == []
+
+
+@needs_cc
+def test_a_program_that_draws_stars_plays_through(tmp_path):
+    src = tmp_path / "src" / "imc"
+    shutil.copytree(ENTRIES / "imc", src)
+    toml = src / "entry.toml"
+    lines = toml.read_text().splitlines()
+    assert any(line.startswith("run = ") for line in lines)
+    toml.write_text("\n".join(
+        'run = "./prog -text -size 78 22 -limit 256 2>/dev/null"' if line.startswith("run = ") else line
+        for line in lines) + "\n")
+    player, rec = play(src, tmp_path, play_config())
+    display = player.term.screen.display
+    assert rec.phases == HAPPY, f"phases {[p.value for p in rec.phases]}; failure {player.failure!r}"
+    assert player.failure is None
+    assert any(line.startswith("***") for line in display), "the premise: the program's rows start with stars"
+    assert banners(display) == []
+
+
+def build_failed(tmp_path):
+    return write_entry(tmp_path / "src", "fails", 1, HELLO_C, build="exit 3"), "build failed (exit 3)"
+
+
+def build_timeout(tmp_path):
+    return (write_entry(tmp_path / "src", "slow", 1, HELLO_C, build="sleep 30", build_seconds=1.0),
+            "build timed out")
+
+
+def crash(tmp_path):
+    return (write_entry(tmp_path / "src", "dies", 1, HELLO_C, build="true", run="kill -s KILL $$"),
+            "crashed (signal 9)")
+
+
+def terminal_error(tmp_path):
+    return write_entry(tmp_path / "src", "broken", 1, HELLO_C, build="true"), "terminal error (RuntimeError)"
+
+
+@pytest.mark.parametrize("make", [build_failed, build_timeout, crash, terminal_error],
+                         ids=["build-failed", "build-timeout", "crash", "terminal-error"])
+def test_a_failed_play_is_still_caught(make, tmp_path, monkeypatch):
+    entry_dir, reason = make(tmp_path)
+    if make is terminal_error:
+        def pump(self, *args, **kwargs):
+            raise RuntimeError("the pty broke")
+        monkeypatch.setattr(Terminal, "pump", pump)
+    player, rec = play(entry_dir, tmp_path, play_config())
+    display = player.term.screen.display
+    assert Phase.ERROR_HOLD in rec.phases, [p.value for p in rec.phases]
+    assert player.failure == reason
+    assert banners(display) == [f"*** {player.failure} ***"], "\n".join(display)
+    assert any(line.startswith("***") for line in display)
