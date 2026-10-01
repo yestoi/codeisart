@@ -29,6 +29,7 @@ class Entry:
     run_seconds: float = 20.0
     fallback: Path | None = None
     full_screen: bool = False
+    rows: int | None = None  # the pty's rows in RUN and FALLBACK; None: as today
 
     @property
     def plaque(self) -> str:
@@ -74,6 +75,9 @@ def load_entry(dir: Path) -> Entry:
     full_screen = data.get("full_screen", False)
     if not isinstance(full_screen, bool):
         raise EntryError(f"{toml_path}: full_screen must be true or false")
+    rows = data.get("rows")
+    if rows is not None and (not _is_int(rows) or rows < 1):
+        raise EntryError(f"{toml_path}: rows must be an integer >= 1")
     source = dir / data["source"]
     if not source.is_file():
         raise EntryError(f"{toml_path}: source {source} does not exist")
@@ -84,7 +88,7 @@ def load_entry(dir: Path) -> Entry:
         build=data["build"], run=data["run"],
         build_seconds=seconds["build_seconds"], run_seconds=seconds["run_seconds"],
         fallback=fallback if fallback.is_file() else None,
-        full_screen=full_screen,
+        full_screen=full_screen, rows=rows,
     )
 
 

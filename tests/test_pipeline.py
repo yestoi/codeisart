@@ -439,6 +439,65 @@ def test_full_screen_entry_gets_24_rows(tmp_path, cfg, make_player):
         assert size in screen_lines(player.term), (full, screen_lines(player.term))
 
 
+# it16 T-rows: an entry's `rows` is the pty's rows from RUN on; SOURCE and BUILD keep today's rows.
+
+ROWS_CPS = 2000  # characters a second: HELLO_C types over several ticks
+
+
+def test_player_rows_follow_the_entry_then_the_config(tmp_path, cfg, make_player):
+    assert cfg.rows == 24
+    cases = [((None, False), (23, 23)), ((None, True), (24, 24)), ((24, False), (24, 23)),
+             ((12, False), (12, 23)), ((30, False), (24, 23)), ((12, True), (12, 24))]
+    for station, ((rows, full), want) in enumerate(cases, start=1):
+        player = make_player(write_entry(tmp_path, f"r{station}", station, HELLO_C, rows=rows,
+                                         full_screen=full), cfg)
+        assert (player.rows, player.typing_rows) == want, (rows, full)
+
+
+def test_an_entry_with_rows_gets_that_pty_size(tmp_path, cfg, make_player):
+    for station, (rows, size) in enumerate(((24, "24 80"), (30, "24 80"), (12, "12 80")), start=1):
+        player = make_player(write_entry(tmp_path, f"stty{station}", station, HELLO_C, build="true",
+                                         run="stty size", rows=rows), cfg)
+        play_through(player)
+        assert player.failure is None
+        assert size in screen_lines(player.term), (rows, screen_lines(player.term))
+
+
+def test_a_24_row_entry_types_and_builds_at_23_rows_and_runs_at_24(tmp_path, cfg, make_player):
+    slow = dataclasses.replace(cfg, typewriter_cps=ROWS_CPS)
+    player = make_player(write_entry(tmp_path, "tall", 1, HELLO_C, build="true", run="stty size", rows=24),
+                         slow)
+    seen: list[tuple[Phase, int, int]] = []
+
+    def size(p: EntryPlayer, play: Play, now: float) -> None:
+        seen.append((p.phase, p.term.rows, p.term.screen.lines))
+
+    play = start(player)
+    size(player, play, 0.0)
+    drive(player, play, each=size)
+    assert player.failure is None and play.phases == HAPPY
+    first_run = next(i for i, (phase, _, _) in enumerate(seen) if phase == P.RUN)
+    typing = seen[:first_run]
+    print(f"{len(typing)} SOURCE and BUILD ticks, {len(seen) - first_run} from RUN on")
+    assert {phase for phase, _, _ in typing} == {P.SOURCE, P.BUILD}
+    assert sum(phase == P.SOURCE for phase, _, _ in typing) > 1
+    assert all((rows, lines) == (23, 23) for _, rows, lines in typing), typing
+    assert all((rows, lines) == (24, 24) for _, rows, lines in seen[first_run:]), seen[first_run:]
+    assert "24 80" in screen_lines(player.term)
+
+
+@needs_cc
+def test_the_fallback_replays_at_the_entry_rows(tmp_path, cfg, make_player):
+    player = make_player(write_entry(tmp_path, "crash", 1, CRASH_C, rows=24,
+                                     fallback=cast("recorded output\r\n")), cfg)
+    play = drive(player, start(player), until=P.FALLBACK)
+    assert player.failure is not None and player.failure.startswith("crashed (signal ")
+    assert (player.term.rows, player.term.screen.lines) == (24, 24)
+    drive(player, play)
+    assert play.phases == [P.SOURCE, P.BUILD, P.RUN, P.ERROR_HOLD, P.FALLBACK, P.DWELL, P.DONE]
+    assert "recorded output" in screen_lines(player.term)
+
+
 # C49: stop() never raises; a pump that raises inside the kill still leaves the master closed.
 
 UNPUMPED = 0.3  # seconds the escape waits in the pty, no tick pumping it

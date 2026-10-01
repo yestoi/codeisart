@@ -7,7 +7,7 @@ def write_entry(root: Path, slug: str, station: int, source: str, *,
                 build: str = "cc -o prog prog.c", run: str = "./prog",
                 run_seconds: float = 5.0, build_seconds: float = 30.0,
                 fallback: str | None = None, full_screen: bool | None = None,
-                year: int = 2026) -> Path:
+                year: int = 2026, rows: int | None = None) -> Path:
     d = root / slug
     d.mkdir(parents=True)
     (d / "prog.c").write_text(source)
@@ -18,6 +18,8 @@ def write_entry(root: Path, slug: str, station: int, source: str, *,
     )
     if full_screen is not None:
         text += f'full_screen = {"true" if full_screen else "false"}\n'
+    if rows is not None:
+        text += f"rows = {rows}\n"
     (d / "entry.toml").write_text(text)
     if fallback is not None:
         (d / "fallback.cast").write_text(fallback)

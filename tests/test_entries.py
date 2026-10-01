@@ -105,6 +105,20 @@ def test_full_screen_must_be_a_bool(tmp_path, bad):
         load_entry(d)
 
 
+def test_rows_defaults_none_and_reads_an_integer(tmp_path):
+    assert load_entry(write_entry(tmp_path, "a", 1, HELLO_C)).rows is None
+    assert load_entry(write_entry(tmp_path, "b", 2, HELLO_C, rows=24)).rows == 24
+    assert load_entry(write_entry(tmp_path, "c", 3, HELLO_C, rows=1)).rows == 1
+
+
+@pytest.mark.parametrize("bad", ["0", "-1", "true", "23.5", '"24"'])
+def test_rows_must_be_an_integer_of_at_least_one(tmp_path, bad):
+    d = write_entry(tmp_path, "a", 1, HELLO_C)
+    _set(d, "rows", bad)
+    with pytest.raises(EntryError, match="rows must be an integer >= 1"):
+        load_entry(d)
+
+
 def test_load_entries_skips_bad_and_duplicate_stations(tmp_path, caplog):
     write_entry(tmp_path, "a", 1, HELLO_C)
     write_entry(tmp_path, "b", 2, HELLO_C)

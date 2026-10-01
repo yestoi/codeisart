@@ -82,8 +82,16 @@ class EntryPlayer:
         return self.phase == Phase.DONE
 
     @property
-    def rows(self) -> int:
+    def typing_rows(self) -> int:
+        """Rows in SOURCE and BUILD: the typed line and the build's last line stay above the strip."""
         return self.cfg.rows if self.entry.full_screen else self.cfg.rows - 1
+
+    @property
+    def rows(self) -> int:
+        """The pty's rows in RUN and FALLBACK: the entry's `rows`, at most the config's, else typing_rows."""
+        if self.entry.rows is not None:
+            return min(self.entry.rows, self.cfg.rows)
+        return self.typing_rows
 
     def run_timeout(self) -> float:
         cap = self.cfg.crowd_run_seconds if self.crowd else self.cfg.idle_run_seconds
@@ -100,7 +108,7 @@ class EntryPlayer:
         self._typed = 0.0
         self._fed = 0
         self._last = now
-        self.term.reset(self.rows)
+        self.term.reset(self.typing_rows)
         self.term.feed(f"{e.title}\n{e.plaque}\n\n$ cat {e.source.name}\n".encode())
         self._enter(Phase.SOURCE, now)
 
@@ -167,6 +175,9 @@ class EntryPlayer:
 
     def _start_run(self, now: float) -> None:
         self.term.feed(f"$ {self.entry.run}\n".encode())
+        # The run's size, before the capture's header and the pty's TIOCSWINSZ; pyte keeps content and cursor.
+        self.term.rows = self.rows
+        self.term.screen.resize(self.rows, self.term.columns)
         if self.cfg.capture and self.entry.fallback is None:
             self._writer = CastWriter(self.entry.dir / CAPTURE_TEMP, self.term.columns, self.term.rows,
                                       self.clock)

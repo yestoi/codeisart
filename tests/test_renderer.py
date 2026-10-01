@@ -1,5 +1,6 @@
 import statistics
 import time
+from pathlib import Path
 
 import numpy as np
 import pyte
@@ -387,6 +388,29 @@ def test_ink_view_full_screen_without_the_strip_draws_every_row(font):
     rows_lit = frame.any(axis=2).all(axis=1)
     assert rows_lit[2 : 2 + 51].all()                   # 24 rows are 51 px, centred in 56
     assert not rows_lit[:2].any() and not rows_lit[2 + 51 :].any()
+
+
+def lettered_screen(lines: int) -> pyte.Screen:
+    """Row y holds 80 of the letter chr(ord("A") + y)."""
+    screen = pyte.Screen(COLS, lines)
+    stream = pyte.Stream(screen)
+    for y in range(lines):
+        stream.feed(f"\x1b[{y + 1};1H" + chr(ord("A") + y) * COLS)
+    return screen
+
+
+def test_a_24_row_screen_renders_its_first_23_rows_under_the_strip():
+    from show.config import load_config
+    from show.renderer import renderer_for
+    root = Path(__file__).resolve().parents[1]
+    cfg = load_config(root / "show.poc.toml")
+    real = Font.load(root / "fonts" / "5x7.bin")
+    tall, short = lettered_screen(24), lettered_screen(23)
+    assert tall.display[23] == "X" * COLS and tall.display[:23] == short.display
+    frame = renderer_for(cfg, real).render(tall, strip="NOW")
+    expected = renderer_for(cfg, real).render(short, strip="NOW")
+    assert frame.shape == (cfg.height, cfg.width, 3) and frame[:-8].any()
+    assert np.array_equal(frame, expected)
 
 
 def test_ink_view_draws_no_cursor(font):
