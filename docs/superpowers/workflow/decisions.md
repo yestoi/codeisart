@@ -689,3 +689,17 @@ default: kept as it is; the wall decides (GATE C: keep, change or replace). No v
 deadline: the owner's look at the entries on the wall (GATE C)
 answer:
 status: defaulted (standing instruction)
+
+### Q94: Does the curated test's banner check hold the pipeline's four failure texts itself, or does `show/pipeline.py` export them?
+asked: it17 (the plan writer; T-stars). `tests/test_curated_entries.py:195` refused any screen row starting `***`, including a program's own stars (imc's views 5 and 6 and its default view start 8 of 22 rows so). The plan matches only the banner `_fail` writes, `*** <reason> ***`, for the four reasons of its call sites today (`show/pipeline.py:170, 172, 198, 274`), as a pattern kept in the test. A new test plays a real failure of each reason, and another plays imc's fifth view
+default: the pattern lives in the test. A fifth reason added to `_fail` later would not match it, but `player.failure is None`, the strongest of the three asserts, still stops it. The other choice: `show/pipeline.py` gets a `banner(reason)` helper or pattern that `_fail` and the test share (a change to the pipeline, outside this slice)
+deadline: it17's code review
+answer:
+status: defaulted (standing instruction)
+
+### Q95: Does iteration 17 also correct the README's strip line?
+asked: it17 (the plan writer; O2). The slice names `entries/README.md:29` (thadgavin polls the terminal: `nodelay` and `getch()` each frame, and the show never writes to the pty). Line 33 says the strip shows "<author>, <year>", which C54 makes incomplete for thadgavin's three pieces
+default: O2 corrects both lines in one docs commit. The other choice: line 29 only, line 33 left as it is
+deadline: O2
+answer:
+status: defaulted (standing instruction)

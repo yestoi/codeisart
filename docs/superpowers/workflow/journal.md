@@ -1386,9 +1386,9 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   - Under four implementers the worktree suites read 406 to 472 s and the timing test
     `test_tick_budget_with_the_governors_share[strobe-128x64]` (`tests/arcade/test_headless.py:237`) failed in
     four of them; measured again with no agent running (Q83): 327.7 s, clean. Nothing was cut or skipped for it.
-- Minutes: about 177, from 23:57 to 02:54 CDT: orient 6; plan 66 (written 17; review 28; fix 12; confirm 5);
+- Minutes: about 174, from 23:57 to 02:51 CDT (the commit dc4629c): orient 6; plan 66 (written 17; review 28; fix 12; confirm 5);
   implement 61 (01:03 to 02:04; the orchestrator's own split: serial O1 2 and T-rows 10.7; GROUP 1 18; GROUP E
-  14; E-endoh1 7.4 after a lost spawn; integration about 17); review 18; verify and report about 30 (from 02:24:
+  14; E-endoh1 7.4 after a lost spawn; integration about 17); review 18; verify and report about 27 (from 02:24:
   the casts 5, the suite 5.5, the sheets 6, the reading and the writing the rest).
 - Loop decisions and deviations:
   - The operator committed on main (5a8ec51, the Pi lock's rule) between the orchestrator's merge and its spawn
