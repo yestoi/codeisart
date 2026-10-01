@@ -57,16 +57,18 @@ Ian Collier, IOCCC 1992 (`1992/imc`). The Mandelbrot set and Julia sets in chara
 
 - Files: `imc.c` (no `.alt.c` exists), `tour.sh` (ours).
 - Build: `-std=gnu90`, the silencers `-Wno-implicit-function-declaration -Wno-format`, `-fsigned-char -O2`.
-- Run: `sh tour.sh`, the archive's `try.sh` without its build, key waits and pager: six views at 78x22, six
-  seconds each, cleared by `ESC[H ESC[2J`: the 16-shade view `-mask 15 -limit 15`, then try.sh's five
-  (`-limit 256 -julia 0.5 -0.5`; `-limit 1024 -julia 2 -2.5`; `-limit 1024 -centre 1 2 -julia 2 -2.5`;
-  `-limit 256`; `-limit 1024`). It exits 0 after 36 s, under the 40 s cut; crowd mode's 10 s shows the
-  first two. stderr is dropped: imc writes a progress dot a row there, which shares the pty and would
-  shift every row by one.
+- Run: `sh tour.sh`, the archive's `try.sh` without its build, key waits and pager: four views at 78x22, nine
+  seconds each, cleared by `ESC[H ESC[2J`: the 16-shade view `-mask 15 -limit 15`, then three of try.sh's
+  five (`-limit 256 -julia 0.5 -0.5`; `-limit 1024 -centre 1 2 -julia 2 -2.5`; `-limit 256`). It exits 0
+  after 36 s, under the 40 s cut; crowd mode's 10 s shows the first view and the start of the second.
+  stderr is dropped: imc writes a progress dot a row there, which shares the pty and would shift every row
+  by one.
 - `rows`: not set (23). A view is a blank line, 22 rows of 78 columns and a newline.
 - Warnings: Mac 2 (`-Wimplicit-int`, `-Wdeprecated-non-prototype`); Pi 12.
-- Known: the last two views look nearly alike (469 and 471 lit cells) and the fourth lights only 10 rows;
-  all six kept in the archive's order (Q86).
+- Known: the third view (try.sh's `-limit 1024 -centre 1 2 -julia 2 -2.5`) lights only 10 rows. Dropped by
+  the owner at the wall on 2026-10-01 (Q86, Q92): `-limit 1024 -julia 2 -2.5`, one lit block at 128x64, and
+  `-limit 1024`, nearly alike to `-limit 256` (471 and 469 lit cells). The owner found the entry hard to read
+  on the 2 x 2 wall and put it down to the wall's size.
 
 ## 3: thadgavin, "Most portable output"
 
