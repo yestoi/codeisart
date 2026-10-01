@@ -26,9 +26,9 @@ working directory that holds `docs/superpowers/workflow/`.
 | Script | Hook | What it does |
 |---|---|---|
 | `precompact.py` | `PreCompact` (auto, manual) | Appends a `## Compaction footer` to `state.md`: time, trigger, HEAD, up to 20 lines of `git status --short`, the last journal heading, whether `gate.md` exists. Keeps only the newest footer. Never blocks. |
-| `reinject.py` | `SessionStart` (compact; startup and resume with `--fresh`) | Prints the re-entry banner, the note that `config.md`'s Loop rules override the skill, `state.md`, the last journal entry, the open question in `decisions.md`, `gate.md` if present, and "invoke the workflow-loop skill". `--fresh` adds that the last session's agents are gone (an agent named in `in_flight` is not waited for) and the list of state files. |
+| `reinject.py` | `SessionStart` (compact; startup and resume with `--fresh`) | Prints the re-entry banner, the note that `config.md`'s Loop rules override the skill, `state.md`, the last journal entry, the open question in `decisions.md`, `gate.md` if present, `pi-lock.md` if present (before `state.md`), and "invoke the workflow-loop skill". `--fresh` adds that the last session's agents are gone (an agent named in `in_flight` is not waited for) and the list of state files. |
 | `stop.py` | `Stop` | Refuses to let the session stop while the roadmap has an unchecked `- [ ] M` milestone and no gate is open. Allows the stop on `gate.md`, `STOP`, a finished roadmap, `stop_hook_active` while `phase: gated`, or when the counter in `workflow/.blocks` reaches `stop-blocks` from `config.md` (`iterations-per-run` when that line is missing); the counter starts again whenever HEAD has moved since the last block (`workflow/.blocks-head`), so only blocks with nothing committed between them add up. Also allows it, without counting, while `state.md`'s `in_flight` names an agent and `state.md` was written in the last 45 minutes: the agent's report starts the next turn. Past 45 minutes it blocks and tells the operator to check the agent. |
-| `guard_bash.py` | `PreToolUse` (Bash) | Blocks (exit 2) `git push` and `gh pr create` unless `workflow/push-allowed` exists; `git reset --hard`, `git checkout .`, `git checkout -- .`, `git restore .`, `git clean`, `git branch -D`; recursive `rm` outside `/private/tmp/`, `/tmp/` or a `.venv`; any write to `tests/arcade/fixtures/real/`. |
+| `guard_bash.py` | `PreToolUse` (Bash) | Blocks (exit 2) `git push` and `gh pr create` unless `workflow/push-allowed` exists; `git reset --hard`, `git checkout .`, `git checkout -- .`, `git restore .`, `git clean`, `git branch -D`; recursive `rm` outside `/private/tmp/`, `/tmp/` or a `.venv`; any write to `tests/arcade/fixtures/real/`. While `workflow/pi-lock.md` exists: any `ssh`, `scp`, `rsync` or `sftp` to `codeisart.local` except `ssh <host> '<remote>'` whose remote command is one quoted string that starts `flock -w 300 /tmp/pi5.lock ` and is one command or one `sh -c '<script>'` (a command whose text only quotes such a line, a commit message for one, is refused too: write that text with the Write or Edit tool). |
 | `guard_write.py` | `PreToolUse` (Write, Edit, MultiEdit, NotebookEdit) | Blocks (exit 2) any file-tool write under `tests/arcade/fixtures/real/`, closing the gap `guard_bash.py` cannot cover. |
 | `_common.py` | none | Shared guard and file parsing. |
 
@@ -67,3 +67,8 @@ When the loop needs you it writes `docs/superpowers/workflow/gate.md`, sets `pha
    `state.md`, and continues.
 
 To allow pushing to the remote once and for all, `touch docs/superpowers/workflow/push-allowed`.
+
+While the Pi is shared with another session, `docs/superpowers/workflow/pi-lock.md` holds the rule: every
+Pi command runs under `flock -w 300 /tmp/pi5.lock` inside the ssh call. The file is printed after every
+compaction and at every session start, and the Bash guard refuses a Pi command without the lock while it
+exists. To lift the rule, delete the file.

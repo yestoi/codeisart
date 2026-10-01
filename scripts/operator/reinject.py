@@ -4,7 +4,8 @@
 Prints to stdout, which Claude Code adds to context: the re-entry banner (after a
 compaction) or the new-session banner (--fresh),
 state.md, the last '## Iteration' journal entry, the last open question in
-decisions.md, gate.md if present, the note that config.md's Loop rules
+decisions.md, gate.md if present, pi-lock.md if present (the shared Pi's lock
+rule, printed before state.md), the note that config.md's Loop rules
 override the skill, and the instruction to invoke the workflow-loop skill.
 With --fresh it also says that the last session's agents are gone, and lists
 the state files and their purposes. Inert unless OPERATOR=1 and state.md exists.
@@ -29,6 +30,8 @@ FILES = [
     ("decisions.md", "every question asked of the owner, its default, its deadline, and the answer, one block each"),
     ("gate.md", "exists only while the loop is stopped for the owner: the question, the evidence paths, "
                 "the default and deadline"),
+    ("pi-lock.md", "exists only while the Pi is shared with another session: every Pi command runs under "
+                   "its lock, and the Bash guard refuses one that does not; only the owner removes it"),
     ("live-smoke.md", "the owner's per-game live-webcam verdicts (responded y/n, understood y/n, "
                       "want another go 1 to 5, broken)"),
     ("evidence/itNN/", "README with the decision on line 1, feel table, reviewer verdict, sheets, GIFs, traces"),
@@ -58,6 +61,11 @@ def main():
     if fresh:
         out += [FRESH, ""]
     out += [RULES, ""]
+    pi_lock = c.read_text(c.wf("pi-lock.md"))
+    if pi_lock is not None:
+        out.append("## pi-lock.md (the Pi is shared: this rule holds while the file exists, and the Bash guard enforces it)")
+        out.append(pi_lock.rstrip())
+        out.append("")
     if fresh:
         out.append("## Workflow state files (docs/superpowers/workflow/)")
         out += [f"- {name}: {purpose}" for name, purpose in FILES]

@@ -106,7 +106,11 @@ not read this file by themselves.
     `ssh trey@codeisart.local 'flock -w 300 /tmp/pi5.lock <command>'`. If the lock is not free in 5 minutes, the
     operator does the Mac's work and tries again later; a check that never got the lock is journaled as not run.
     Nothing left in /tmp on the Pi is relied on: a command brings what it needs in the same call (a `git archive`
-    piped into a `mktemp -d`), and removes it.
+    piped into a scratch directory with a literal name under /tmp), and removes it.
+    The rule in full is `pi-lock.md` beside this file, so that it outlives a compaction: `reinject.py` prints
+    that file after every compaction and at every session start, and while it exists `guard_bash.py` refuses
+    a Pi command that is not one quoted remote command starting `flock -w 300 /tmp/pi5.lock `. Only the owner
+    lifts the rule (he deletes `pi-lock.md`).
 9. **Never change directory.** No `cd` in a Bash command: use absolute paths and `git -C`. Agents in a
    worktree use the worktree's absolute path.
 10. **Time and size.** A slice is what fits the time, not a count of tasks: about six tasks when most run

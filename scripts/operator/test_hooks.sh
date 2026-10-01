@@ -167,6 +167,14 @@ check "--fresh says the last session's agents are gone" 'printf "%s" "$OUT" | gr
 check "--fresh prints the Loop rules note too" 'printf "%s" "$OUT" | grep -q "Loop rules override"'
 check "--fresh opens as a new session, not as a compaction" '[ "$(printf "%s\n" "$OUT" | head -1)" = "You are the arcade operator, starting a new session. Enter the workflow loop at the phase in state.md. Do not redo an iteration the journal marks done and do not re-plan a committed plan. Files are truth." ]'
 check "--fresh never says to SendMessage a lost agent" '! printf "%s" "$OUT" | grep -q "Context was compacted" && ! printf "%s" "$OUT" | grep -q "(SendMessage it instead)"'
+check "--fresh lists pi-lock.md among the state files" 'printf "%s" "$OUT" | grep -q "^- pi-lock.md: "'
+check "no pi-lock section without pi-lock.md" '! printf "%s" "$OUT" | grep -q "^## pi-lock.md"'
+printf '# The Pi is shared\nPI-LOCK-MARKER\n' > "$WF/pi-lock.md"
+run 1 reinject.py "$SS_JSON"
+check "after a compaction prints pi-lock.md, before state.md" '[ "$(printf "%s\n" "$OUT" | grep -n -e "^PI-LOCK-MARKER" -e "^## state.md" | head -1 | cut -d: -f2)" = "PI-LOCK-MARKER" ]'
+run 1 reinject.py "$SS_JSON" --fresh
+check "--fresh prints pi-lock.md too" 'printf "%s" "$OUT" | grep -q "^## pi-lock.md" && printf "%s" "$OUT" | grep -q "^PI-LOCK-MARKER"'
+rm "$WF/pi-lock.md"
 rm "$WF/gate.md"; printf '# Iteration journal\n' > "$WF/journal.md"
 python3 - "$WF/decisions.md" <<'P'
 import sys; p=sys.argv[1]; s=open(p).read().replace("answer:\nstatus: open","answer: 1.2 s\nstatus: answered"); open(p,"w").write(s)
@@ -253,6 +261,39 @@ check "ignores non-Bash tools" '[ $RC -eq 0 ]'
 touch "$WF/push-allowed"
 expect_allow 'git push origin main'
 expect_block 'git reset --hard HEAD~1'
+PI_OK="flock -w 300 /tmp/pi5.lock"
+expect_allow 'ssh trey@codeisart.local uptime'
+printf '# The Pi is shared\n' > "$WF/pi-lock.md"
+expect_block 'ssh trey@codeisart.local uptime'
+expect_block 'ssh trey@codeisart.local'
+expect_block 'ssh -o BatchMode=yes codeisart.local uptime'
+expect_block '/usr/bin/ssh trey@codeisart.local "uptime"'
+expect_block "ssh trey@codeisart.local 'flock -w 30 /tmp/pi5.lock uptime'"
+expect_block "ssh trey@codeisart.local 'flock -w 300 /tmp/other.lock uptime'"
+expect_block "ssh trey@codeisart.local '$PI_OK'"
+expect_block "ssh trey@codeisart.local $PI_OK uptime"
+expect_block "ssh trey@codeisart.local 'uptime; $PI_OK true'"
+expect_block "ssh trey@codeisart.local '$PI_OK true; uptime'"
+expect_block "ssh trey@codeisart.local '$PI_OK true && uptime'"
+expect_block "ssh trey@codeisart.local \"$PI_OK sh -c 'true'; uptime\""
+expect_block 'scp x.sh trey@codeisart.local:/tmp/x.sh'
+expect_block 'rsync -a -e ssh x trey@codeisart.local:/tmp/x'
+expect_block 'sftp trey@codeisart.local'
+expect_block 'bash -c "true; ssh trey@codeisart.local uptime"'
+expect_block 'git status |ssh trey@codeisart.local cat'
+expect_block "ssh trey@codeisart.local '$PI_OK uptime' && ssh trey@codeisart.local uptime"
+expect_block "echo it's; ssh trey@codeisart.local uptime"
+expect_allow "ssh trey@codeisart.local '$PI_OK uptime'"
+expect_allow "ssh -o BatchMode=yes trey@codeisart.local \"$PI_OK sh -c 'uname -a; uptime'\""
+expect_allow "git archive --format=tar HEAD | ssh trey@codeisart.local \"$PI_OK sh -c 'rm -rf /tmp/it16-operator; mkdir /tmp/it16-operator && tar -x -f - -C /tmp/it16-operator && sh /tmp/it16-operator/pi_a.sh; rm -rf /tmp/it16-operator; exit 0'\""
+expect_allow "echo it's; ssh trey@codeisart.local '$PI_OK uptime'"
+expect_allow "rsync -a x y; ssh trey@codeisart.local '$PI_OK uptime'"
+expect_allow 'ssh trey@otherhost.local uptime'
+expect_allow 'scp x.sh trey@otherhost.local:/tmp/x.sh'
+expect_allow 'ls /Users/trey/dev/codeisart'
+expect_allow 'git -C /Users/trey/dev/codeisart log --oneline -3'
+expect_allow 'grep -rn codeisart.local docs'
+rm "$WF/pi-lock.md"
 
 echo "# guard_write.py"
 setup

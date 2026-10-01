@@ -11,7 +11,12 @@ Blocks when the command:
     /private/tmp/ or /tmp/ and not inside a .venv directory; targets containing
     `..`, `$`, `~` or a leading glob are never trusted;
   - writes to tests/arcade/fixtures/real/ (rm, mv, tee, truncate, unlink, ln,
-    sed -i, any `>` redirect, or cp with it as the destination).
+    sed -i, any `>` redirect, or cp with it as the destination);
+  - reaches the Pi (ssh, scp, rsync or sftp to codeisart.local) while
+    docs/superpowers/workflow/pi-lock.md exists, in any form but
+    `ssh <host> '<remote>'` with the remote command one quoted string that starts
+    `flock -w 300 /tmp/pi5.lock ` and is one command or one `sh -c '<script>'`,
+    so that nothing runs on the shared Pi outside the lock.
 Regexes are deliberately conservative: a false block is cheap, a false allow is not.
 Quoted strings are scanned too, so `bash -c "git push"` is caught.
 Inert unless OPERATOR=1 and state.md exists. Internal errors block.
@@ -40,6 +45,12 @@ DESTRUCTIVE = [
 FIXTURES = re.compile(r"fixtures/real")
 FIXTURE_WRITE = re.compile(r"(?:^|[\s;&|(`])(?:rm|mv|tee|truncate|unlink|ln|shred)\b|\bsed\s+(?:\S+\s+)*-i|>|\bgit\s+(?:rm|mv)\b")
 SPLIT = re.compile(r"&&|\|\||[;&|\n()`]|\$\(")
+PI_HOST = re.compile(r"(?:^|@)codeisart(?:\.local)?(?::|$)")
+PI_TOOLS = ("ssh", "scp", "rsync", "sftp")
+PI_LOCK = ["flock", "-w", "300", "/tmp/pi5.lock"]
+PI_REASON = ("the Pi is shared, docs/superpowers/workflow/pi-lock.md: only "
+             "ssh trey@codeisart.local \"flock -w 300 /tmp/pi5.lock sh -c '<script>'\" or one command in its place")
+OPERATORS = ("|", ";", "&", "&&", "||")
 
 
 def block(reason):
@@ -97,9 +108,53 @@ def check_cp_dest(toks):
             block("cp into tests/arcade/fixtures/real/")
 
 
+def pi_tool(tok):
+    return tok.lstrip(";&|()`$").rsplit("/", 1)[-1]
+
+
+def pi_remote_ok(remote):
+    r = tokens(remote)
+    if r[:4] != PI_LOCK or len(r) < 5:
+        return False
+    return (r[4:6] == ["sh", "-c"] and len(r) == 7) or not re.search(r"[;&|\n`]|\$\(", remote)
+
+
+def check_pi(command, depth=0):
+    if depth > 4:
+        block("command nesting too deep to analyse")
+    try:
+        toks, whole = shlex.split(command, posix=True), True
+    except ValueError:
+        toks, whole = tokens(command), False
+    for i, tok in enumerate(toks):
+        tool = pi_tool(tok)
+        if tool not in PI_TOOLS:
+            continue
+        host = None
+        for j in range(i + 1, len(toks)):
+            if PI_HOST.search(toks[j]):
+                host = j
+            if host is not None or toks[j] in OPERATORS or toks[j].endswith(";") or pi_tool(toks[j]) in PI_TOOLS:
+                break
+        if host is None:
+            continue
+        rest = toks[host + 1:]
+        if whole:
+            ok = bool(rest) and pi_remote_ok(rest[0])
+        else:
+            ok = rest[:4] == PI_LOCK and len(rest) > 4
+        if tool != "ssh" or not ok:
+            block(PI_REASON)
+    for t in toks:
+        if whole and re.search(r"\s", t):
+            check_pi(t, depth + 1)
+
+
 def analyse(command, depth=0):
     if depth > 4:
         block("command nesting too deep to analyse")
+    if depth == 0 and os.path.exists(c.wf("pi-lock.md")):
+        check_pi(command)
     for rx in PUSH:
         if rx.search(command) and not os.path.exists(c.wf("push-allowed")):
             block("push needs docs/superpowers/workflow/push-allowed")
