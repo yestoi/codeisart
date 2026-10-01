@@ -1,0 +1,9 @@
+title = "Plasma"
+author = "Gavin Buttimore and Thaddaeus Frogley"
+year = 2000
+station = 3
+source = "thadgavin.alt.c"
+build = "cc -std=gnu99 -Wall -Wno-empty-body -Wno-implicit-int -Wno-unsequenced -include unistd.h -include stdlib.h -DZ=30 -DZS=0 -fsigned-char -O2 -o prog thadgavin.alt.c -lncurses -lm"
+run = "TERM=vt100 ./prog"
+build_seconds = 60
+run_seconds = 40
