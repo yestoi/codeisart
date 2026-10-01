@@ -62,3 +62,45 @@ autoplay picks an entry after `attract_autoplay_minutes`. Words back: "attract y
 - A dark wall: read the play's log first (the form above prints it to the terminal); `./wall_triage state` on the
   Pi; the runbook `docs/runbooks/wall-shimmer.md`.
 - Nothing goes to the card without your word; a run is never started while another is on the wall.
+
+## Results: the session of 2026-10-01, 08:58 to 09:10 CDT (the owner at the wall, a session on the Mac driving the Pi)
+
+Before it: main pushed and the Pi pulled to fd4a09c; promptviz's run paused by the owner; the Pi's load 0.00,
+48 C, never throttled, up 10.5 h; nothing held the card; the driver at the wall-proven set. Every run went under
+the lock, on the owner's "go", after a dark lead of 5 or 10 s, at the config's level 0.15. The form was Q90's
+default with `--pipe --wait --quiet` in place of `--pty` (the ssh call has no terminal):
+`sudo systemd-run --pipe --wait --collect --quiet --uid=trey -p AmbientCapabilities='CAP_NET_RAW CAP_SYS_NICE' -p WorkingDirectory=/home/trey/codeisart /home/trey/codeisart/.venv/bin/python -m show --config show.poc.toml --backend colorlight --play <name>`.
+Every play logged `audio unavailable, cues are muted` (no sound device; expected) and no other error.
+
+| Run | Play | On the wall | Exit | The sender's line | The owner's words |
+|---|---|---|---|---|---|
+| 0 | `hello`, `--backend fake` (no card) | 12 s | not captured; the log shows the play and the close | none (no card) | not on the wall |
+| 1 | `hello` | 12 s | 0 | 754 frames, 0 late, worst sync 5 us, 0 rows off their slot, real-time yes | "Looked good." |
+| 2 | `sloane` | 50 s | 0 | 3030 frames, 0 late, worst 11 us, 0 rows off | "Looks great." |
+| 3 | `imc` | 46 s | 0 | 2813 frames, 0 late, worst 7 us, 0 rows off | "four views. It was a bit difficult to understand what was going on, but I blame the 2x2 limitations on resolution." |
+| 4 | `thadgavin` | 53 s | 0 | 3216 frames, 0 late, worst 6 us, 0 rows off | "This looked cool." |
+| 5 | `endoh1` | 47 s | 0 | 2873 frames, 0 late, worst 5 us, 0 rows off | "Ok, that was actually really cool. The source code looked exactly like the starting animation." |
+| 6 | `endoh3` | 50 s | 0 | 3011 frames, 0 late, worst 5 us, 0 rows off | clock yes, ticks yes ("yes to both") |
+| 7 | the show without `--play`, 120 s | 120 s | 124 (the stop, below) | none: the close did not run | "attract yes, wall is black" |
+
+Every sender's line also read sync to sync sd 0 us, 0 slips, 0 send errors, 0 restarts.
+
+What the session decided:
+- All five entries are kept.
+- Q90: the show reaches the card as user trey with two capabilities; the form ran seven times, real-time yes.
+- Q93: the donut stays in the ink view. Q87: the plasma stays at the archive's speed under the governor.
+- Q86, Q92: imc's tour becomes four views (views 3 and 6 dropped, nine seconds each). The owner found imc
+  hard to read at this size and put it down to the 2 x 2 wall's resolution, not to the entry.
+- endoh1's cut field (26 lines in 23 rows): no tear was named; kept.
+- Not answered: Q96 (the bare `2000` on thadgavin's strip; the owner did not name it, it stays as built). The
+  owner did not name the strip in run 1 either ("Looked good.").
+
+Run 7's stop, a finding. The session ended the show with `timeout -s INT 120` inside the unit. GNU timeout
+signals its child and then its own process group, so the show got SIGINT twice; the second came as `_close`
+began (`show/main.py:402`) and the show left by a traceback: no "closing: the wall goes black" line, the lights'
+close skipped, no sender's line, exit 124. The wall went black all the same (the owner: "wall is black"): the
+sender's own drain when its parent dies (`CLOSE_HOLD_S`, black for a second) did it. This is the roadmap's note
+"it13 (the next task in `show/main.py`...)" (1), a signal while `_close` runs, seen for the first time on the
+card. One Ctrl-C at a terminal or `systemctl stop` sends one signal and does not meet it.
+
+Still open from this sheet: the Pi's own fallback recordings (after imc's tour is changed), Q66's check.

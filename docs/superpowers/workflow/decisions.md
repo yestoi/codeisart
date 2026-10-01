@@ -638,15 +638,15 @@ status: defaulted (standing instruction)
 asked: it16 (the plan writer; E-imc). The tour is six views at 78x22, 6 s each: the probe's 16-shade Mandelbrot, then the five of the archive's try.sh; the last two (`-limit 256`, `-limit 1024`) light 469 and 471 cells and look nearly the same, and the fourth (`-centre 1 2`) lights only 10 rows
 default: kept, all six, in the archive's order. The other choice: drop one of the last two and hold the others longer
 deadline: the owner's look at the entries on the wall (GATE C)
-answer:
-status: defaulted (standing instruction)
+answer: at the wall, 2026-10-01, after imc's play: "four views. It was a bit difficult to understand what was going on, but I blame the 2x2 limitations on resolution." The tour drops its last view (and its third, Q92): four views of nine seconds each (docs/superpowers/workflow/evidence/it16/wall-session.md, Results)
+status: answered (owner, 2026-10-01)
 
 ### Q87: Does the plasma (thadgavin) run at the archive's speed even if the governor holds it often?
 asked: it16 (the plan writer; E-thadgavin). The entry is built with the alt's `-DZ=30 -DZS=0`; its whole-screen redraw is the flash question, and the governor's numbers at 128x64 come with the sheets
 default: kept at Z=30; the numbers (held, area, squares) go to the owner with the sheets and the wall decides. Nothing is tuned for the governor before the owner has seen it. The other choice: a slower Z
 deadline: the owner's look at the entries on the wall (GATE C)
-answer:
-status: defaulted (standing instruction)
+answer: at the wall, 2026-10-01, after the plasma's play: "This looked cool." Kept at the archive's speed under the governor (docs/superpowers/workflow/evidence/it16/wall-session.md, Results)
+status: answered (owner, 2026-10-01)
 
 ### Q88: Is a fallback recording over 5 MB committed?
 asked: it16 (the plan writer; the operator's fallback step). `fallback.cast` lives in the entry directory and is tracked (spec 4.3)
@@ -666,8 +666,8 @@ status: answered (owner, 2026-10-01)
 asked: it16 (the operator, writing evidence/it16/wall-session.md). Every wall run so far was `sudo .venv/bin/python <tool>` (the pattern tool, the arcade, the bench). The show builds and runs the entries, so under `sudo` the five IOCCC programs would run as root on the Pi; `deploy/show.service` runs the show as a plain user with `AmbientCapabilities=CAP_NET_RAW CAP_SYS_NICE`. The show daemon has never driven this wall (the wall-session sheet's "step one")
 default: the wall session plays the entries through `sudo systemd-run --pty --collect --uid=trey -p AmbientCapabilities='CAP_NET_RAW CAP_SYS_NICE' -p WorkingDirectory=/home/trey/codeisart ... -m show --config show.poc.toml --backend colorlight --play <name>`, the unit's settings by hand; not `sudo python`. The form is unproven as a whole (the sender's real-time child under a unit as user trey was proven dry on 2026-09-30). The loop runs neither (rule 9a). The other choice: `sudo python` as the tools did, the entries as root
 deadline: the wall session (GATE C)
-answer:
-status: defaulted (standing instruction)
+answer: at the wall, 2026-10-01: the owner said "go" to this form and runs 1 to 7 went as user trey with the two capabilities (`systemd-run --pipe --wait` over ssh); every sender's line read real-time yes (docs/superpowers/workflow/evidence/it16/wall-session.md, Results)
+status: answered (owner, 2026-10-01)
 
 ### Q91: Is the short strip's cut attribution fixed by wrapping it over more alternations?
 asked: it16 (the operator's read of the sheets, the reviewer's note). At 128x64 the strip holds 21 characters and shows `f"{author}, {year}"[:21]` and `Not A.I.` in turn (Q58); thadgavin's reads `Gavin Buttimore and T`: the second author and the year never reach the wall. The other four fit
@@ -680,15 +680,15 @@ status: defaulted (standing instruction)
 asked: it16 (the operator's read of the final sheets, evidence/it16/it16-imc-p1.png, 20 s to 25 s). The tour's third view (`-limit 1024 -julia 2 -2.5`, the archive's try.sh's) prints `*` in every one of its 78 x 22 cells: on the wall it is a lit rectangle for six seconds with nothing to read. The first view is a field of shades (the set is the bright body), the second and fourth are clear, the fifth and sixth are the same picture (Q86). It is the program's own output for the archive's arguments, not a fault of the build (the recording's text was read)
 default: kept, all six, as Q86 stands; the owner sees it at the wall. Nothing is curated away before the owner has seen it. The other choice: a tour of four views (the first, second, fourth and fifth) of nine seconds each, a change to `entries/imc/tour.sh` and its README section only
 deadline: the owner's look at the entries on the wall (GATE C)
-answer:
-status: defaulted (standing instruction)
+answer: at the wall, 2026-10-01: "four views" (see Q86). The third view is dropped (docs/superpowers/workflow/evidence/it16/wall-session.md, Results)
+status: answered (owner, 2026-10-01)
 
 ### Q93: Is the donut (sloane) clear enough in the ink view, where its body is as bright as the floor under it?
 asked: it16 (the operator's read of the final sheets, evidence/it16/it16-sloane-p1.png and -p2.png). "Homer's favorite" draws the donut over a checkered floor of `.` and `#`, and a banner in ASCII letters scrolls along the top row. In the ink view a character is only its light: the donut's shades (`,-+=#$@`) lie between the floor's two levels, so on the sheet the hole and the floor's squares read and the donut's body hardly stands out from them. On a still sheet the turning does not show; at the wall the motion may carry it
 default: kept as it is; the wall decides (GATE C: keep, change or replace). No view or brightness rule is changed for one entry. The other choices: none cheap (the program has no switch for the floor; a patched source would no longer be the entry as published)
 deadline: the owner's look at the entries on the wall (GATE C)
-answer:
-status: defaulted (standing instruction)
+answer: at the wall, 2026-10-01, after the donut's play: "Looks great." Kept in the ink view (docs/superpowers/workflow/evidence/it16/wall-session.md, Results)
+status: answered (owner, 2026-10-01)
 
 ### Q94: Does the curated test's banner check hold the pipeline's four failure texts itself, or does `show/pipeline.py` export them?
 asked: it17 (the plan writer; T-stars). `tests/test_curated_entries.py:195` refused any screen row starting `***`, including a program's own stars (imc's views 5 and 6 and its default view start 8 of 22 rows so). The plan matches only the banner `_fail` writes, `*** <reason> ***`, for the four reasons of its call sites today (`show/pipeline.py:170, 172, 198, 274`), as a pattern kept in the test. A new test plays a real failure of each reason, and another plays imc's fifth view
@@ -730,4 +730,11 @@ asked: the owner, 2026-10-01, in a session after the gate of iteration 18, on re
 default: none taken (the owner decided)
 deadline: none
 answer: "I do have a microphone, but we are not going to do a yelling thing or clapping thing. I don't have a motion grid. So lets remove those games out." The session told the owner that the motion grid is not hardware (it is computed from the camera's frames) and that spec 13's step 3 has a jump-only Strongman with no microphone. The owner then: "Lets keep tug and rename Strongman to Jump then." So: Tug stays as the spec has it (M7b, with Paint). Strongman becomes Jump (`jump`, title JUMP): the jump phase alone (nose rise over body scale, the bar first, the number at 2x, the best of the night), no roar, no `voice`; it reads pose only and moves to M7a's open games. The list stays ten: Copy Me, Pong, Quick Draw, Dodge, Tug, Flap, Swat, Paint, Jump, Freeze. Neither game was started, so no code changes. What follows from it, the session's reading and the owner's to change: no game reads `voice` or `clap`, so M5's audio source is not built until an attract mode needs it; `Sensed`'s audio fields, the actors and the soak's claps stay as they are (the engine is not changed)
+status: answered (owner, 2026-10-01)
+
+### Q100: Does the wall show the attribution strip?
+asked: the owner, 2026-10-01, at the wall after D5's session (evidence/it16/wall-session.md, Results)
+default: none taken (the owner decided)
+deadline: none
+answer: "I don't want the text on the screen showing author attrib. Leave the full screen for the program. I will be showcases authors on portraits outside of the wall." The strip is off: a new config key `strip` (default false; show.toml and show.poc.toml follow it) and `Renderer(strip_row=False)` draw no strip in any state, and the ink view is centred on the whole wall. It replaces the spec's permanent strip on row 24 (show spec 4.4) and makes Q54, Q58, Q91 and Q96 (the strip's look, its short form, its pieces, the bare year) matter only with `strip = true`. What went with the strip, the session's reading and told to the owner: the attract line `PRESS A BUTTON ON ANY PORTRAIT`, the press notices (`PLAYING`, `QUEUED #n`, `NEXT: ...`) and `Not A.I.`; the lights still answer a press. Not changed: the program's terminal keeps its 23 rows (the five entries were built and judged at that size); giving it the 24th row is a separate change with the entries checked again. The credit (CC BY-SA 4.0: author, year, the archive, the licence) is the portraits' to carry
 status: answered (owner, 2026-10-01)
