@@ -10,6 +10,7 @@
 - Plan review: only for a safety slice (Loop rule 4), one round. Verdict in evidence/itNN/plan-review.md. (Owner decision 2026-09-28; it replaces Q6's review of every plan.)
   For the run of Q80 (iterations 16 to 19): every plan gets one adversarial review round by a fresh-context reviewer (`model: opus`), the owner's ask of 2026-09-30; a safety slice keeps rule 4's form. Verdict in evidence/itNN/plan-review.md.
 - Suite time, the run of Q80 (owner decision Q81, 2026-09-30 night): the limit is 420 s on an idle machine. The baseline at 4ec98e4 is 1762 passed, 3 skipped in 319.03 s on the Mac (it15: 1313 and 1; the owner's driver work added the rest, and the two new skips are its `/proc` tests). The verify checklist's items 3 and 4 count from that baseline. No entry is reverted or left out for the suite's time under the limit; the curated entries' tests stay short (one build an entry, runs cut by the fake clock).
+  Another session works on the Mac in this run (owner decision Q83, 2026-10-01): a suite time over the limit or a timing failure is measured once more before anything is decided on it; the journal gives both readings.
 - The wall, the run of Q80 (owner decision Q82, 2026-09-30 night): the 2 x 2 wall in hand, 128x64 (`show.poc.toml`, the ink view), and no other. Sheets, the governor's numbers and every judgement of an entry are made at 128x64. No code, config, test or tuning for a wall the owner does not have (512x192, 512x128): no sheets at those sizes in this run, and a finding that shows only there is one line in the journal, not a fix (a safety gap is carried under rule 5 as always). The terminal is not the wall: it stays 80 by 23 and the strip. Tests that exist at the default `Config()` are left as they are.
 - iterations-per-run: 4
   (Owner decision Q80, 2026-09-30 evening: the run is the show's entries, D5, iterations 16 to 19; it gates after
@@ -101,6 +102,11 @@ not read this file by themselves.
     the sender or any tool that opens the card's interface, a write outside ~/codeisart and /tmp, a `git` command
     that moves the Pi's checkout off main (a `git -C ~/codeisart pull --ff-only` after a push is allowed once the
     owner has pushed; the loop itself does not push). A Pi command is one ssh call, at most 10 minutes.
+    The Pi is shared (owner decision Q83, 2026-10-01): every Pi command runs under the lock, inside the ssh call:
+    `ssh trey@codeisart.local 'flock -w 300 /tmp/pi5.lock <command>'`. If the lock is not free in 5 minutes, the
+    operator does the Mac's work and tries again later; a check that never got the lock is journaled as not run.
+    Nothing left in /tmp on the Pi is relied on: a command brings what it needs in the same call (a `git archive`
+    piped into a `mktemp -d`), and removes it.
 9. **Never change directory.** No `cd` in a Bash command: use absolute paths and `git -C`. Agents in a
    worktree use the worktree's absolute path.
 10. **Time and size.** A slice is what fits the time, not a count of tasks: about six tasks when most run
