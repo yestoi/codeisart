@@ -1,0 +1,153 @@
+# the detached checkout is at 86f0607; git status before: clean
+
+$ python -m tools.show_shot --entry entries/thadgavin --governed --config show.poc.toml --seconds 70 --every-ms 1000 --look led --out it17-thadgavin
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+1.1s held 0 area 0.0000 sq 0  PLAYING
+2.1s held 0 area 0.0000 sq 1  PLAYING
+3.1s held 0 area 0.0000 sq 1  Gavin Buttimore and
+4.1s held 0 area 0.0409 sq 1  Thaddaeus Frogley,
+5.1s held 6 area 0.0419 sq 1  Thaddaeus Frogley,
+6.2s held 16 area 0.0369 sq 1  Thaddaeus Frogley,
+7.2s held 27 area 0.0374 sq 1  2000
+8.2s held 38 area 0.0381 sq 1  2000
+9.2s held 48 area 0.0267 sq 2  2000
+10.3s held 49 area 0.0068 sq 2  Not A.I.
+11.3s held 49 area 0.0000 sq 1  Not A.I.
+12.3s held 49 area 0.0000 sq 1  Not A.I.
+13.3s held 49 area 0.0000 sq 2  Gavin Buttimore and
+14.3s held 49 area 0.0000 sq 3  Gavin Buttimore and
+15.4s held 49 area 0.0007 sq 3  Gavin Buttimore and
+16.4s held 51 area 0.0206 sq 4  Thaddaeus Frogley,
+17.4s held 63 area 0.0431 sq 4  Thaddaeus Frogley,
+18.5s held 67 area 0.0338 sq 5  Thaddaeus Frogley,
+19.5s held 70 area 0.0243 sq 5  2000
+20.5s held 75 area 0.0068 sq 6  2000
+21.5s held 92 area 0.0000 sq 6  2000
+22.6s held 101 area 0.0212 sq 6  Not A.I.
+23.6s held 108 area 0.0299 sq 3  Not A.I.
+24.6s held 125 area 0.0499 sq 6  Not A.I.
+25.7s held 143 area 0.0393 sq 6  Gavin Buttimore and
+26.7s held 162 area 0.0000 sq 6  Gavin Buttimore and
+27.7s held 181 area 0.0000 sq 6  Gavin Buttimore and
+28.7s held 200 area 0.0000 sq 6  Thaddaeus Frogley,
+29.7s held 218 area 0.0293 sq 6  Thaddaeus Frogley,
+30.8s held 237 area 0.0000 sq 6  Thaddaeus Frogley,
+31.8s held 256 area 0.0000 sq 6  2000
+32.8s held 275 area 0.0000 sq 6  2000
+33.8s held 292 area 0.0297 sq 6  2000
+34.8s held 298 area 0.0237 sq 5  Not A.I.
+35.9s held 304 area 0.0453 sq 5  Not A.I.
+36.9s held 320 area 0.0295 sq 6  Not A.I.
+37.9s held 338 area 0.0345 sq 6  Gavin Buttimore and
+39.0s held 357 area 0.0000 sq 6  Gavin Buttimore and
+40.0s held 373 area 0.0298 sq 6  Gavin Buttimore and
+41.0s held 388 area 0.0391 sq 6  Thaddaeus Frogley,
+42.0s held 398 area 0.0458 sq 5  Thaddaeus Frogley,
+43.0s held 398 area 0.0222 sq 4  2000
+44.1s held 398 area 0.0026 sq 4  2000
+45.1s held 398 area 0.0007 sq 3  2000
+46.1s held 398 area 0.0007 sq 2  Not A.I.
+47.1s held 398 area 0.0000 sq 1  Not A.I.
+48.1s held 398 area 0.0000 sq 1  Not A.I.
+49.2s held 398 area 0.0000 sq 2  Gavin Buttimore and
+50.2s held 398 area 0.0017 sq 3  Gavin Buttimore and
+51.2s held 398 area 0.0000 sq 3  Gavin Buttimore and
+52.2s held 398 area 0.0000 sq 1  Thaddaeus Frogley,
+53.3s held 398 area 0.0000 sq 1  Thaddaeus Frogley,
+54.3s held 398 area 0.0000 sq 1  PRESS A BUTTON
+55.3s held 398 area 0.0000 sq 1  PRESS A BUTTON
+56.3s held 398 area 0.0000 sq 0  PRESS A BUTTON
+57.3s held 398 area 0.0000 sq 0  ON ANY PORTRAIT
+58.3s held 398 area 0.0000 sq 1  ON ANY PORTRAIT
+59.3s held 398 area 0.0000 sq 1  ON ANY PORTRAIT
+60.3s held 398 area 0.0000 sq 1  PRESS A BUTTON
+61.4s held 398 area 0.0000 sq 1  PRESS A BUTTON
+62.4s held 398 area 0.0000 sq 1  PRESS A BUTTON
+63.4s held 398 area 0.0000 sq 1  ON ANY PORTRAIT
+64.5s held 398 area 0.0000 sq 1  ON ANY PORTRAIT
+65.5s held 398 area 0.0000 sq 1  ON ANY PORTRAIT
+66.5s held 398 area 0.0000 sq 1  PRESS A BUTTON
+67.5s held 398 area 0.0000 sq 1  PRESS A BUTTON
+68.5s held 398 area 0.0000 sq 1  PRESS A BUTTON
+69.5s held 398 area 0.0000 sq 1  ON ANY PORTRAIT
+held 398 area 0.0499 squares 6
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 71.4 s; git status after: clean]
+
+$ python -m tools.show_shot --entry entries/sloane --governed --config show.poc.toml --seconds 70 --every-ms 1000 --look led --out it17-sloane
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.0s held 0 area 0.0000 sq 1  PLAYING
+3.1s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+4.1s held 0 area 0.0066 sq 1  Not A.I.
+5.1s held 0 area 0.0345 sq 1  Not A.I.
+6.1s held 0 area 0.0188 sq 1  Not A.I.
+7.1s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+8.2s held 0 area 0.0000 sq 3  Andy Sloane, 2006
+9.2s held 0 area 0.0000 sq 3  Andy Sloane, 2006
+10.2s held 0 area 0.0005 sq 2  Not A.I.
+11.2s held 0 area 0.0000 sq 2  Not A.I.
+12.2s held 0 area 0.0000 sq 1  Not A.I.
+13.3s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+14.3s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+15.3s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+16.3s held 0 area 0.0000 sq 2  Not A.I.
+17.4s held 0 area 0.0000 sq 2  Not A.I.
+18.4s held 0 area 0.0000 sq 2  Not A.I.
+19.4s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+20.5s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+21.5s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+22.5s held 0 area 0.0000 sq 1  Not A.I.
+23.5s held 0 area 0.0002 sq 2  Not A.I.
+24.5s held 0 area 0.0002 sq 2  Not A.I.
+25.6s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+26.6s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+27.6s held 0 area 0.0002 sq 2  Andy Sloane, 2006
+28.6s held 0 area 0.0000 sq 2  Not A.I.
+29.7s held 0 area 0.0000 sq 2  Not A.I.
+30.7s held 0 area 0.0000 sq 1  Not A.I.
+31.7s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+32.7s held 0 area 0.0005 sq 1  Andy Sloane, 2006
+33.7s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+34.8s held 0 area 0.0000 sq 1  Not A.I.
+35.8s held 0 area 0.0000 sq 2  Not A.I.
+36.8s held 0 area 0.0000 sq 2  Not A.I.
+37.9s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+38.9s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+39.9s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+40.9s held 0 area 0.0000 sq 1  Not A.I.
+42.0s held 0 area 0.0000 sq 1  Not A.I.
+43.0s held 0 area 0.0000 sq 2  Not A.I.
+44.0s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+45.0s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+46.0s held 0 area 0.0000 sq 2  Not A.I.
+47.1s held 0 area 0.0000 sq 1  Not A.I.
+48.1s held 0 area 0.0000 sq 1  Not A.I.
+49.1s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+50.1s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+51.1s held 0 area 0.0000 sq 1  PRESS A BUTTON
+52.1s held 0 area 0.0000 sq 1  PRESS A BUTTON
+53.2s held 0 area 0.0000 sq 0  PRESS A BUTTON
+54.2s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+55.2s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+56.2s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+57.2s held 0 area 0.0000 sq 1  PRESS A BUTTON
+58.2s held 0 area 0.0000 sq 1  PRESS A BUTTON
+59.2s held 0 area 0.0000 sq 1  PRESS A BUTTON
+60.3s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+61.3s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+62.3s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+63.3s held 0 area 0.0000 sq 1  PRESS A BUTTON
+64.3s held 0 area 0.0000 sq 1  PRESS A BUTTON
+65.4s held 0 area 0.0000 sq 1  PRESS A BUTTON
+66.4s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+67.4s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+68.4s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+69.4s held 0 area 0.0000 sq 1  PRESS A BUTTON
+held 0 area 0.0345 squares 3
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 71.4 s; git status after: clean]
+

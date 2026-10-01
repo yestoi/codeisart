@@ -1429,3 +1429,117 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   (imc's lit block), Q93 (the donut against its floor).
 - Status: done. D5 is built, reviewed and checked on the Pi; what is left of it is the owner's at the wall
   (GATE C). C54 goes to iteration 17.
+
+## Iteration 17 — 2026-10-01
+- Verdict on the sheets (written before any other tool call after the reading; the operator read with the Read
+  tool the led pages `evidence/it17/it17-thadgavin-p1..p3.png` and `it17-sloane-p1..p2.png`, cut into pieces of
+  five rows so that every 128x64 frame is read at full size: thadgavin's frames from 0 s to 65.5 s, all but the
+  last four of attract; sloane's from 0 s to 9.2 s and from 38.9 s to 48.1 s; every page read is stamped
+  `86f0607 clean`, governed, gamma 2.2, one frame a second for 70 s):
+  - thadgavin, the strip (C54): PASS. The bottom row reads `PRESS A BUTTON` at 0 s, `PLAYING` from 1.0 s to
+    2.1 s, then `Gavin Buttimore and` (3.1 s), `Thaddaeus Frogley,` (4.1 to 6.2 s), `2000` (7.2 to 9.2 s),
+    `Not A.I.` (10.3 to 12.3 s), and the same four again in that order, three frames each, through the whole
+    plasma. Every piece is whole words, starts at the left edge and ends before the right edge; nothing is cut,
+    and the year is on the wall (it16's sheet read `Gavin Buttimore and T`, no year). The first piece is seen for
+    one frame only in the first cycle (the cycle counts from the play's start, and `PLAYING` covers its first
+    two seconds); in every later cycle it has its three frames. The play ends inside the fifth cycle: the last
+    pieces are `Gavin Buttimore and` (49.2 to 51.2 s) and `Thaddaeus Frogley,` (52.2, 53.3 s), then attract's
+    `PRESS A BUTTON` at 54.3 s; that cycle's `2000` and `Not A.I.` are not shown. `2000` stands alone for three
+    seconds: read by itself it is a bare number, and whether a guest joins it to the two names is the owner's
+    eye at the wall (Q91's default, not the owner's answer).
+  - thadgavin, the picture: as in it16. The source is typed from 2 s, the build's lines pass from 7 s to 10 s,
+    the plasma fills the field from 11.3 s to 53.3 s with a dark row between it and the strip in every frame;
+    small blocky patches stand in the bands from about 23 s to 33 s (the held parts, Q87). The last four frames
+    (50.2 to 53.3 s) are one still picture, two and two alike: I take it for the end of the run and the dwell
+    and check it against it16's sheet after this is written. The strip's changes do not show in the picture
+    above them. held 398, area 0.0499 at most, squares 6 (it16: 400, 0.0575, 6).
+  - sloane (a short attribution), the strip: PASS, unchanged. `PLAYING` at 1.0 and 2.0 s, then
+    `Andy Sloane, 2006` and `Not A.I.` in turn, three frames each, two texts as before; no third text appears.
+    The picture is it16's: the source typed as the donut's shape (2 to 5 s), the build, then from 8.2 s the
+    floor in perspective with the dark arc near the middle and the banner's dark notches along the top row.
+    held 0, area 0.0345 at 5.1 s (in the typed source; it16 read 0.0223 at the same second), squares 3.
+- Checked after the verdict (03:55 to 03:56; evidence/it16/show-shot.txt, `entries/thadgavin/entry.toml`):
+  - The still frames at the plasma's end are the pipeline's, not a fault: `run_seconds = 40` cuts the run at
+    about 50.5 s and the dwell shows its last picture until 53.3 s. it16's log has the same seconds (area 0.0017
+    at 50.2 s, 0 after, attract at 54.3 s).
+  - sloane's larger area is one second of the typed source in a real-time play (0.0345 against 0.0223 at
+    5.1 s), under SMALL_AREA 0.1, held 0 in both; the strip's text is the same in both logs second by second.
+  - The bare `2000` is recorded as Q96 (defaulted: kept; the other choice fills the pieces from the end,
+    `Frogley, 2000`), and the wall sheet's thadgavin row asks for it (evidence/it16/wall-session.md).
+- Plan: docs/superpowers/plans/2026-10-01-it17-strip-wrap.md (159 lines at b60c4e2), one plan writer (opus),
+  written 02:53 to 03:03. One adversarial round (evidence/it17/plan-review.md, 03:04 to 03:17): APPROVED, no
+  blocking finding. Its notes: the banner check at the old line 195 runs only after `failure is None` passed,
+  so it never sees a banner, before or after (true but vacuous: the new failure tests carry the proof); a
+  full-screen entry (none today) would show the pieces out of order; the change `Gavin Buttimore and` to
+  `Thaddaeus Frogley,` flips 254 pixels against the old strip's 229, fewer of them rising (177 against 190),
+  nothing held, area 0, squares 0. The owner's questions from the plan: Q94 (the banner pattern lives in the
+  test), Q95 (O2 corrects both README lines); both defaulted.
+- Shipped: C54 and D5's slack; f8bcc14..86f0607: 4 files, 178 insertions, 8 deletions.
+  - T-strip (opus; f99fad5, merged 28a5036): `show/state.py`, `wrap_words(text, width)` beside `strip_chars`
+    (a text that fits is one piece; else its words, each cut to the width, fill the pieces greedily); the short
+    strip's playing branch shows the pieces in turn and `Not A.I.` last, three seconds each, counted from the
+    play's start. Only `show.poc.toml` gives a short strip (21 characters); the long strip, the notice and
+    attract are unchanged. Six new tests in `tests/test_state.py`; one expected value changed, the old line 450
+    (`Test Autho` becomes `Test`, `Author,`, `2026`, `Not A.I.`, `Test` again).
+  - T-stars (sonnet; 40018e3, merged 7283d11): `tests/test_curated_entries.py`, `BANNER` and `banners(lines)`:
+    the play-through check refuses the pipeline's four banners, not a program's stars. New tests: the pattern
+    against stars, imc's fifth view played through, a failed play of each of the four kinds still caught.
+  - O2 (the orchestrator; 86f0607): `entries/README.md`: thadgavin polls the terminal (`nodelay`, `getch()`),
+    the show never writes to a run's pty; the strip's pieces.
+- Review: APPROVED after 1 round, no blocking finding (evidence/it17/code-review.md; a fresh opus reviewer,
+  f8bcc14..86f0607, 03:44 to 03:49).
+  - Exactly two asserts changed. `tests/test_state.py` old 450: stronger (the cycle's four texts and the wrap
+    back are pinned). `tests/test_curated_entries.py` old 195: weaker as a predicate by design (a program's own
+    stars pass), equal for every banner `_fail` writes; it follows `player.failure is None`, so no failed play
+    the old line stopped passes now.
+  - The banner pattern against `_fail`'s four call sites as written, and a probe: 18 reason strings fed into a
+    real `Terminal(80, 23)` after four screens (empty, cursor mid-row, 30 rows of stars, cursor moved): exactly
+    the one banner found every time.
+  - `wrap_words` on the six real `entry.toml` files at 21: thadgavin three pieces, the others one each; no piece
+    can be empty. Safety: the range touches neither the display path, the governor nor the limiter, and no piece
+    is longer than the old cut text.
+- Deploy: none (never deployed by the loop; nothing under `deploy/` touched; nothing pushed; nothing sent to the
+  card).
+- The Pi 5 (the operator inline, one call under the lock in pi-lock.md's form, the lock free;
+  evidence/it17/pi-checks.md): the show's Linux tests with `tests/test_state.py`, at 86f0607, 03:45:38 to
+  03:46:13: 147 passed, 0 skipped, 34.61 s; the entries' peaks and finals are it16's (endoh3 812, its face
+  depends on the second). The tree was untarred into `/tmp/it17-operator` and removed in the same call.
+- Verify: 7 of 7 of the checklist (item 5 dropped, as before). 1 freshness: the 12 sheets are stamped
+  `86f0607` clean, the code head, made from a clean detached checkout (verify-script.py.txt); nothing but
+  `docs/` changes after it. 2 the suite is green. 3 skips: 3, the baseline's 3. 4 collected: 1809, the base's
+  1797 plus 12, none dropped. 6 evidence/it17/README.md, the decision on its first line. 7 the sheets, read
+  above.
+  - The governor's numbers at 128x64, the whole play (show-shot.txt): thadgavin held 398, area 0.0499,
+    squares 6 (it16: 400, 0.0575, 6); sloane 0, 0.0345, 3 (it16: 0, 0.0223, 3).
+- Tests: 1809 collected, 1806 passed, 3 skipped, 328.26 s at 86f0607 in the main checkout (03:46 to 03:51, the
+  reviewer's focused tests and the Pi's call beside it; evidence/it17/pytest-idle.txt), under Q81's 420 s. The
+  orchestrator's run at 7283d11: 327.50 s. The baseline was 1794 and 3 in 327.61 s: 12 tests cost under a
+  second.
+- Minutes: about 68, from 02:51 to 03:59 CDT: orient 2; plan 26 (written 10; review 13); implement 25
+  (03:18 to 03:43; the orchestrator's own split: the two tasks together 10.5, integration 12); review 5; verify
+  and report 15 (from 03:44, beside the review: the Pi 1, the suite 5.5, the sheets 2.5, the reading and the
+  writing the rest).
+- Loop decisions and deviations:
+  - The operator committed nothing on main while the orchestrator ran (it16's lesson); no spawn was lost.
+  - Every agent wrote its whole report to evidence/it17/; the operator read the files, not the cut messages.
+  - The Pi's check, the suite and the sheets ran while and right after the reviewer read; the review asked
+    for no fix, so nothing was run again.
+  - The guard refused the first form of the Pi's call: a `;` set right after the closing quote is read as part
+    of the remote command's last word. A space before the operator passes. Nothing reached the Pi from the
+    refused call.
+  - The reviewer ran one read-only `pytest --collect-only` after a `cd`, against its brief; it wrote nothing.
+  - The commits of the orchestrator and its implementers carry the Opus 5.5 or Sonnet 5.5 trailer of their own
+    sessions, not the plan's line (as in it16).
+  - T-strip added `ROOT` to `tests/test_state.py` and two checks beyond the plan in the fitting test; T-stars
+    imports `HELLO_C` and `write_entry` from `tests.show_helpers` (not edited).
+- Carried forward: nothing. C54 is closed.
+- Noted, not carried: the first piece is seen for one second in a play's first cycle (`PLAYING` covers the
+  play's first two seconds; the cycle counts from the play's start, as the two texts did before); a play ends
+  where its cycle stands (thadgavin's fifth cycle ends after the second piece); a word longer than the strip
+  is cut (none today); a full-screen entry (none today) would show the pieces out of order; the banner pattern
+  is the test's own copy of `_fail`'s four texts (Q94); nine merged implementer worktrees and branches of it16
+  and it17 remain under `.claude/worktrees/` (the owner's cleanup).
+- Owner questions: Q94, Q95, Q96 defaulted. For the wall: Q96 (the bare `2000`), with it16's Q87, Q90, Q92,
+  Q93.
+- Status: done. C54 is closed and D5's slack is done. By Q81 what is left for the run is the suite's time
+  with Dodge's return (iteration 18), no new game.

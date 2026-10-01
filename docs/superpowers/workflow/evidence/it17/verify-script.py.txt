@@ -1,0 +1,30 @@
+"""Iteration 17's verify sheets, from a clean detached checkout of the code head. Usage: it17-verify.py [name ...]"""
+import os, subprocess, sys, time
+S = "/private/tmp/claude-502/-Users-trey-dev-codeisart/55e7f702-6acd-44cf-b418-6da2919b2552/scratchpad"
+CO = S + "/it17-verify-checkout"
+PY = "/Users/trey/dev/codeisart/.venv/bin/python"
+EV = S + "/it17-ev"
+os.makedirs(EV, exist_ok=True)
+ENV = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+NAMES = sys.argv[1:] or ["thadgavin", "sloane"]
+
+
+def status():
+    return subprocess.run(["git", "status", "--porcelain"], cwd=CO, capture_output=True, text=True).stdout.strip()
+
+
+head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=CO, capture_output=True, text=True).stdout.strip()
+with open(EV + "/show-shot.txt", "a") as log:
+    log.write(f"# the detached checkout is at {head}; git status before: {status() or 'clean'}\n\n")
+    for name in NAMES:
+        args = ["-m", "tools.show_shot", "--entry", f"entries/{name}", "--governed", "--config", "show.poc.toml",
+                "--seconds", "70", "--every-ms", "1000", "--look", "led", "--out", f"{EV}/it17-{name}"]
+        t = time.time()
+        r = subprocess.run([PY, *args], cwd=CO, env=ENV, capture_output=True, text=True, timeout=580)
+        shown = " ".join(a.replace(EV + "/", "") for a in args)
+        log.write(f"$ python {shown}\n" + r.stdout)
+        if r.stderr:
+            log.write("[stderr]\n" + r.stderr[-3000:])
+        log.write(f"[exit {r.returncode}, {time.time() - t:.1f} s; git status after: {status() or 'clean'}]\n\n")
+        last = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
+        print(name, r.returncode, f"{time.time() - t:.1f}s", "|", last, "| status:", status() or "clean")

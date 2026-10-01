@@ -703,3 +703,10 @@ default: O2 corrects both lines in one docs commit. The other choice: line 29 on
 deadline: O2
 answer:
 status: defaulted (standing instruction)
+
+### Q96: Does thadgavin's year stay alone on the strip for three seconds?
+asked: it17 (the operator's read of the sheets, evidence/it17/it17-thadgavin-p1.png; the code review's note on Q58). Q91's wrap is greedy: at 21 characters `Gavin Buttimore and Thaddaeus Frogley, 2000` becomes `Gavin Buttimore and`, `Thaddaeus Frogley,`, `2000`, then `Not A.I.`. The year is on the wall now (it16 showed `Gavin Buttimore and T`), but for three seconds the strip reads a bare `2000`. Q58 (each text cut to the width) was the owner's answer; for an attribution longer than the strip it is replaced by Q91's default, not by an owner's answer
+default: kept, the greedy wrap as built (86f0607); the owner sees it at the wall. The other choices: the year joined to the last name by filling the pieces from the end (`Gavin Buttimore`, `and Thaddaeus`, `Frogley, 2000`), a change to `wrap_words` and its tests; or a shorter `author` in `entries/thadgavin/entry.toml` (it changes the credit)
+deadline: the owner's look at the entries on the wall (GATE C)
+answer:
+status: defaulted (standing instruction)
