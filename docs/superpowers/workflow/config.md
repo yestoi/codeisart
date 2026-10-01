@@ -9,9 +9,14 @@
 - Gates: gate-deploys: false, gate-iteration-plans: false
 - Plan review: only for a safety slice (Loop rule 4), one round. Verdict in evidence/itNN/plan-review.md. (Owner decision 2026-09-28; it replaces Q6's review of every plan.)
   For the run of Q80 (iterations 16 to 19): every plan gets one adversarial review round by a fresh-context reviewer (`model: opus`), the owner's ask of 2026-09-30; a safety slice keeps rule 4's form. Verdict in evidence/itNN/plan-review.md.
+- Suite time, the run of Q80 (owner decision Q81, 2026-09-30 night): the limit is 420 s on an idle machine. The baseline at 4ec98e4 is 1762 passed, 3 skipped in 319.03 s on the Mac (it15: 1313 and 1; the owner's driver work added the rest, and the two new skips are its `/proc` tests). The verify checklist's items 3 and 4 count from that baseline. No entry is reverted or left out for the suite's time under the limit; the curated entries' tests stay short (one build an entry, runs cut by the fake clock).
 - iterations-per-run: 4
   (Owner decision Q80, 2026-09-30 evening: the run is the show's entries, D5, iterations 16 to 19; it gates after
   iteration 19 or when D5 is done and rule 8 asks for the owner. Before it, Q49 set 6 for iterations 10 to 15.
+  Owner decision Q81, 2026-09-30 night: if D5 is done before iteration 19, the iterations left are D5's slack first
+  (a replaced entry, the review's fixes, the Reduced-tier sheets), then only the suite's time (roadmap.md, the note
+  "it15 (every plan)") with Dodge's return by `git revert 16dbb91`; no new game and no other arcade work. With none
+  of that left the loop gates.
   Before that, owner decision Q49, 2026-09-28 23:10, given as iteration 9 ended: "Lets continue onto the show daemon and other iterations until you need me next." The run starts at iteration 10, the show daemon's foundation tasks, and gates after iteration 15 or when rule 8 asks for the owner.
   Before it, owner decision Q42, 2026-09-28, answering the gate after iteration 8: iteration 9 is M4c, Pong by the body, then the loop gates and the operator moves to the show daemon.
   Before it, owner decision Q33, answering the gate after iteration 7: iteration 8 is M4b, then the loop gates and the operator moves to the show daemon. Before it, Q21: iterations 6 and 7. The loop counts iterations itself and gates at step 8.)
