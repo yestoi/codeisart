@@ -103,4 +103,11 @@ sender's own drain when its parent dies (`CLOSE_HOLD_S`, black for a second) did
 "it13 (the next task in `show/main.py`...)" (1), a signal while `_close` runs, seen for the first time on the
 card. One Ctrl-C at a terminal or `systemctl stop` sends one signal and does not meet it.
 
-Still open from this sheet: the Pi's own fallback recordings (after imc's tour is changed), Q66's check.
+Later the same morning (09:50 to 09:52, the Pi at ffb65a3): the strip off (Q100) and imc's four views, on the
+wall in the same form. `imc`: 46 s, exit 0, 2813 frames, 0 late, worst sync 8 us, 0 rows off. `sloane`: 50 s,
+exit 0, 3017 frames, 0 late, worst 6 us, 0 rows off. The owner: "Ok, looks good." (he did not name the view
+count or the bottom edge).
+
+Q66's check followed at 09:56: "held, no blink" (evidence/hardware.md).
+
+Still open from this sheet: the Pi's own fallback recordings (imc's cast still holds six views).

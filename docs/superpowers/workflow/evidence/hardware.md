@@ -372,3 +372,13 @@ The steady sender of `show/display/colorlight.py` (branch route-a; the report
 run was noticed. `--stop-for 5` (Q66): the picture holds through a stopped stream, "just the slightest blink at stop
 and restart", twice. The cable pulled: `send` raises errno 105 at once; the card holds its picture steady; the
 "stutter" seen once was the plug being moved.
+
+### 2026-10-01, 09:56 CDT: Q66 once more, the wall in its frame, from the Pi 5 (main ffb65a3)
+
+The paced S2 driver (60.00 frames a second, rows over 15.5 ms). `sudo .venv/bin/python tools/wall_pattern.py grid
+--iface eth0 --seconds 15 --stop-for 3` under the Pi's lock, after a 10 s dark lead, brightness 0.1: the stream
+stopped 5.0 s into the run for 3 s, then started again. The owner at the wall: "held, no blink". The sender's
+line: 718 frames, 0 late, worst sync 3 us, sync to sync sd 0 us, 0 rows off their slot, 0 slips, 0 send errors,
+0 restarts, real-time yes. So the card keeps its picture without packets, and the wall's quiet hold after a
+failed push (Q66) does not darken the wall. The receiver parameters are those saved on 2026-09-29/30; a later
+"Save to Receivers" in LEDVision asks for this check again.
