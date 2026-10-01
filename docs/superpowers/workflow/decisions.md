@@ -626,3 +626,31 @@ default: none taken; the owner said it
 deadline: none
 answer: "For tonights run, do as much work as possible before I am needed at the wall." The loop's reading: everything of D5 that does not need the owner's eyes on the panels is done in this run without a stop: the entries built, tested, reviewed, sheeted at 128x64, recorded, checked on the Pi 5 under Q83's lock; the review's fixes and a replaced entry in the iterations left (Q81); then the suite's time with Dodge's return (Q81). No question stops the loop (rule 8: the default is taken and listed). What needs the wall is not done by the loop and is made ready for the owner instead: one sheet for the wall session, docs/superpowers/workflow/evidence/itNN/wall-session.md, with the commands in order, what to look at for each entry (the strip, the donut's 24 rows, the plasma's light under the governor, the clock's width), the sheets' numbers to compare against, and the open questions each look answers. The rule 9a limits stand (no `python -m show` with a wall backend, no sender, no systemctl on the Pi by the loop).
 status: answered (owner, 2026-10-01)
+
+### Q85: Which of endoh3's two programs does the wall build, the plain clock or the archive's Unicode variant?
+asked: it16 (the plan writer; plan docs/superpowers/plans/2026-10-01-it16-five-entries.md, E-endoh3). The roadmap says the wall builds each entry's `.alt.c`; the probe built `prog.alt.c` and saw an 89-character line
+default: `prog.c`, the plain ASCII clock, with `rows = 24`; `prog.alt.c` is not copied. `prog.alt.c` prints 23 lines of 85 columns, seven of them with one three-byte Unicode letter (the 89 was a byte count): on 80 columns the lines wrap and the wall draws those letters as `?`. `prog.c` prints 23 lines of at most 79 columns, ASCII, and stays so over three generations on the Mac and on the Pi (evidence/it16/pi-probe-early.md). The research ran the 79-column clock too. The other choice: leave the entry out and take an alternate from the research notes
+deadline: the owner's look at the entries on the wall (GATE C)
+answer:
+status: defaulted (standing instruction)
+
+### Q86: Does imc's tour keep its last two views, which look nearly alike?
+asked: it16 (the plan writer; E-imc). The tour is six views at 78x22, 6 s each: the probe's 16-shade Mandelbrot, then the five of the archive's try.sh; the last two (`-limit 256`, `-limit 1024`) light 469 and 471 cells and look nearly the same, and the fourth (`-centre 1 2`) lights only 10 rows
+default: kept, all six, in the archive's order. The other choice: drop one of the last two and hold the others longer
+deadline: the owner's look at the entries on the wall (GATE C)
+answer:
+status: defaulted (standing instruction)
+
+### Q87: Does the plasma (thadgavin) run at the archive's speed even if the governor holds it often?
+asked: it16 (the plan writer; E-thadgavin). The entry is built with the alt's `-DZ=30 -DZS=0`; its whole-screen redraw is the flash question, and the governor's numbers at 128x64 come with the sheets
+default: kept at Z=30; the numbers (held, area, squares) go to the owner with the sheets and the wall decides. Nothing is tuned for the governor before the owner has seen it. The other choice: a slower Z
+deadline: the owner's look at the entries on the wall (GATE C)
+answer:
+status: defaulted (standing instruction)
+
+### Q88: Is a fallback recording over 5 MB committed?
+asked: it16 (the plan writer; the operator's fallback step). `fallback.cast` lives in the entry directory and is tracked (spec 4.3)
+default: no: a cast over 5 MB is not committed and the journal says so. The plan review measured the five casts at about 0.02 to 1.5 MB, so the rule should not bite
+deadline: none
+answer:
+status: defaulted (standing instruction)
