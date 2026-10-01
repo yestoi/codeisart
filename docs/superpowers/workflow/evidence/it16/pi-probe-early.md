@@ -15,3 +15,19 @@ gcc (Debian 14.2.0-19) 14.2.0. `unshare -rn` works (uid 0 inside).
 - endoh3, three generations (prog's output compiled and run, twice more): each prints 23 lines, widest 79, no non-ASCII or control byte. The loop's compile (`cc -std=c11 -Wall -Wextra -pedantic -fsigned-char -O3`) exits 0 with 0 warnings each time inside `unshare -rn` with the address space capped at 256 MB (`ulimit -v 262144`, the run's RLIMIT_AS, `show/sandbox.py` DEFAULT_MEMORY). The compile's seconds were not measured (`/usr/bin/time` and `bc` are not on the Pi).
 - sloane's first bytes: `ESC[2J`, a newline, `ESC[H`, then the frame. imc's first view: 23 lines, widest 78. endoh1's first bytes: `ESC[2J ESC[1;1H`, then the frame.
 - The operator's guard (scripts/operator/guard_bash.py:61) refuses a recursive rm of a /tmp path of 12 characters or fewer (`/tmp/it16-op`) and of a path holding `$`: the Pi's scratch directory is the literal `/tmp/it16-operator`, made and removed in the one call, under the lock.
+
+## 00:27 to 00:29 CDT, after the owner installed libncurses-dev (6.5+20250216-2)
+Under the lock again, the same form. thadgavin builds under gcc 14: exit 0, 7 warnings (6 sequence-point on `n`, 1 misleading-indentation).
+
+A finding the Mac cannot show: with `TERM=xterm` (what `show/terminal.py:73` gives every pty, and what the probe's run line sets) the Pi's ncurses 6.5 draws runs of one character with REP (`CSI n b`, "repeat the last character"; the Pi's xterm terminfo has `rep=`, the Mac's has not). pyte does not implement REP (`"b" in pyte.Stream.csi` is False; the escape goes to `Screen.debug` and nothing is drawn). The plasma in an 80x23 pty on the Pi for 2 s, pyte's screen against the same bytes with REP applied by hand (the session scratchpad's `ioccc/pi_thad.py`):
+
+| TERM | REP escapes | Lit cells of 1840 | Rows that differ from the true picture |
+|---|---|---|---|
+| xterm | 99 | 1232 | 22 of 23 |
+| vt100 | 0 | 1676 | 0 |
+| xterm-r6 | 0 | 1676 | 0 |
+| linux | 0 | 1676 | 0 |
+
+Row 5 under xterm, as pyte holds it: `#@=+:, .:=@#@==                 #@==:, .:+@#           ###         ###`; the true row: `#################################@==:, .:+@###########################`.
+On the Mac (ncurses 5.4's terminfo) both `TERM=xterm` and `TERM=vt100` send no REP and fill the screen (lit 1582 and 1677 after 2 s).
+What follows for the plan: the plasma runs as `TERM=vt100 ./prog` (vt100 is in both machines' terminfo and has no `rep`), and the curated test refuses a run whose bytes hold a REP escape, so the Pi's check catches it for any entry. The engine's own gap (pyte without REP under `TERM=xterm` on Linux) is a note: no entry in the repository sends REP once the plasma runs under vt100.
