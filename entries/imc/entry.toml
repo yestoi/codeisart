@@ -1,0 +1,9 @@
+title = "Mandelbrot"
+author = "Ian Collier"
+year = 1992
+station = 2
+source = "imc.c"
+build = "cc -std=gnu90 -Wall -Wno-implicit-function-declaration -Wno-format -fsigned-char -O2 -o prog imc.c"
+run = "sh tour.sh"
+build_seconds = 60
+run_seconds = 40
