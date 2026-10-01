@@ -654,3 +654,10 @@ default: no: a cast over 5 MB is not committed and the journal says so. The plan
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q89: In the run of Q80, what does the operator tell the owner while he sleeps?
+asked: the owner, 2026-10-01 01:13 CDT, as the build of iteration 16 ran
+default: none taken; the owner said it
+deadline: none
+answer: "I don't need updates anymore unless important sendmessages you can send me for outcome changing decisions or important findings. Going to sleep and setting up remoteconnect." No routine progress goes to the owner: progress is state.md and the journal. A push notification goes out only for a decision that changes the outcome (an entry cut or replaced, a safety gap, a gate, a run that cannot go on) or an important finding, and for something the owner must do before the wall session. The milestone report at an iteration's end is the journal entry and one or two lines in the session, without a push unless it holds one of those.
+status: answered (owner, 2026-10-01)
