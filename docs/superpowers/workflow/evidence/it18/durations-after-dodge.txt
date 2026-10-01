@@ -1,0 +1,37 @@
+# it18, the full suite after O2 (708a42e, Dodge returns; reverts 16dbb91), main checkout
+# command: SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /Users/trey/dev/codeisart/.venv/bin/python -m pytest -q -rs --durations=20
+# uptime before: 5:10  up 75 days, 13:01, 5 users, load averages: 1.95 2.08 2.19
+# uptime after:  5:15  up 75 days, 13:06, 5 users, load averages: 1.59 1.97 2.12
+
+============================= slowest 20 durations =============================
+33.91s setup    tests/arcade/test_oracle.py::test_feel_pong_meets_its_budgets
+7.01s call     tests/arcade/test_dodge.py::test_good_beats_lazy_beats_nobody
+6.07s call     tests/test_show_shot_governed.py::test_governed_entry_session_runs_the_entry_through_the_governor
+5.91s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-128x64]
+5.30s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-96x48]
+4.52s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+4.40s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-128x64]
+3.86s call     tests/test_curated_entries.py::test_entry_plays_through[sloane]
+3.67s call     tests/arcade/test_first_playable.py::test_first_playable_keeps_the_flash_rule
+3.63s call     tests/test_show_shot.py::test_strobe_session_is_held
+3.55s call     tests/test_entries.py::test_sample_entry_band_leaves_no_trail
+3.52s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[dodge-128x64]
+3.52s call     tests/test_curated_entries.py::test_entry_plays_through[endoh3]
+3.49s call     tests/test_curated_entries.py::test_entry_plays_through[endoh1]
+3.47s call     tests/test_curated_entries.py::test_entry_plays_through[imc]
+3.46s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-96x48]
+3.42s call     tests/test_entries.py::test_sample_entry_runs_with_large_motion
+3.29s call     tests/test_curated_entries.py::test_entry_plays_through[thadgavin]
+3.22s call     tests/arcade/test_lobby.py::test_mirror_under_real_noise_keeps_the_area_rule[128x64]
+3.22s call     tests/test_wall_close_hold.py::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-steady]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_colorlight_child.py:142: the descriptor is reopened through /proc, which this system has not; the path is used
+SKIPPED [1] tests/test_colorlight_slot.py:105: the descriptor is reopened through /proc, which this system has not
+SKIPPED [1] tests/test_sandbox.py:153: needs a working unshare -rn (Linux with unprivileged user namespaces); macOS has no unshare
+1866 passed, 3 skipped in 301.58s (0:05:01)
+
+# totals: 1869 collected (1866 + 3), 1866 passed, 3 skipped, 301.58 s (after T-pool: 1815, 1812, 3, 270.35 s; with 16dbb91
+# reverted at the orient, no pool: 371.06 s). Limit 420 s (Q81): one run, under it.
+# test_feel_meets_its_budgets[quickdraw] and [dodge] are not in the top 20 (each under 3.22 s; dodge was 25.07 s); the fill
+# (165 plays) and Pong's canonical are the 33.91 s setup. test_oracle.py collects 14 items, with
+# test_pooled_plays_are_the_in_process_plays[dodge] among them.

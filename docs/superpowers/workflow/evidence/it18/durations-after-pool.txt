@@ -1,0 +1,35 @@
+# it18, the full suite after T-pool's merge (23c57d0, the merge of 32df14c into 311e796), main checkout
+# command: SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /Users/trey/dev/codeisart/.venv/bin/python -m pytest -q -rs --durations=20
+# uptime before: 5:05  up 75 days, 12:56, 5 users, load averages: 2.08 2.48 2.34
+# uptime after:  5:10  up 75 days, 13:01, 5 users, load averages: 1.43 2.00 2.17
+
+============================= slowest 20 durations =============================
+26.91s setup    tests/arcade/test_oracle.py::test_feel_pong_meets_its_budgets
+6.07s call     tests/test_show_shot_governed.py::test_governed_entry_session_runs_the_entry_through_the_governor
+5.93s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-128x64]
+5.34s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-96x48]
+4.56s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+4.31s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-128x64]
+3.83s call     tests/test_curated_entries.py::test_entry_plays_through[sloane]
+3.59s call     tests/arcade/test_first_playable.py::test_first_playable_keeps_the_flash_rule
+3.58s call     tests/test_entries.py::test_sample_entry_band_leaves_no_trail
+3.57s call     tests/test_show_shot.py::test_strobe_session_is_held
+3.56s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-96x48]
+3.51s call     tests/test_curated_entries.py::test_entry_plays_through[endoh1]
+3.49s call     tests/test_curated_entries.py::test_entry_plays_through[endoh3]
+3.47s call     tests/test_curated_entries.py::test_entry_plays_through[imc]
+3.40s call     tests/test_entries.py::test_sample_entry_runs_with_large_motion
+3.31s call     tests/test_wall_close_hold.py::test_a_close_j_ticks_after_a_tear_stays_in_the_budget_and_ends_black[the counted send tears-steady]
+3.25s call     tests/arcade/test_oracle.py::test_evidence_package_for_pong
+3.20s call     tests/test_curated_entries.py::test_entry_plays_through[thadgavin]
+3.19s call     tests/arcade/test_lobby.py::test_mirror_under_real_noise_keeps_the_area_rule[128x64]
+3.03s call     tests/arcade/test_pong.py::test_scenarios_have_the_right_humans
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_colorlight_child.py:142: the descriptor is reopened through /proc, which this system has not; the path is used
+SKIPPED [1] tests/test_colorlight_slot.py:105: the descriptor is reopened through /proc, which this system has not
+SKIPPED [1] tests/test_sandbox.py:153: needs a working unshare -rn (Linux with unprivileged user namespaces); macOS has no unshare
+1812 passed, 3 skipped in 270.35s (0:04:30)
+
+# totals: 1815 collected (1812 + 3), 1812 passed, 3 skipped, 270.35 s (BASE 86f0607: 1809, 1806, 3, 325.84 s).
+# test_feel_meets_its_budgets[quickdraw] is not in the top 20 (under 3.03 s; was 24.95 s); the fill and Pong's canonical
+# are the 26.91 s setup (was 59.80 s). Gate for O2: at most 380 s; 270.35 s passes it on the first run.
