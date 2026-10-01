@@ -276,6 +276,8 @@ expect_block "ssh trey@codeisart.local 'uptime; $PI_OK true'"
 expect_block "ssh trey@codeisart.local '$PI_OK true; uptime'"
 expect_block "ssh trey@codeisart.local '$PI_OK true && uptime'"
 expect_block "ssh trey@codeisart.local \"$PI_OK sh -c 'true'; uptime\""
+expect_block "ssh trey@codeisart.local '$PI_OK true' '; reboot'"
+expect_block "ssh trey@codeisart.local '$PI_OK true' uptime"
 expect_block 'scp x.sh trey@codeisart.local:/tmp/x.sh'
 expect_block 'rsync -a -e ssh x trey@codeisart.local:/tmp/x'
 expect_block 'sftp trey@codeisart.local'
@@ -287,6 +289,8 @@ expect_allow "ssh trey@codeisart.local '$PI_OK uptime'"
 expect_allow "ssh -o BatchMode=yes trey@codeisart.local \"$PI_OK sh -c 'uname -a; uptime'\""
 expect_allow "git archive --format=tar HEAD | ssh trey@codeisart.local \"$PI_OK sh -c 'rm -rf /tmp/it16-operator; mkdir /tmp/it16-operator && tar -x -f - -C /tmp/it16-operator && sh /tmp/it16-operator/pi_a.sh; rm -rf /tmp/it16-operator; exit 0'\""
 expect_allow "echo it's; ssh trey@codeisart.local '$PI_OK uptime'"
+expect_allow "ssh trey@codeisart.local '$PI_OK uptime' 2>&1 | tail -5"
+expect_allow "ssh trey@codeisart.local '$PI_OK uptime' > /private/tmp/pi.log && echo done"
 expect_allow "rsync -a x y; ssh trey@codeisart.local '$PI_OK uptime'"
 expect_allow 'ssh trey@otherhost.local uptime'
 expect_allow 'scp x.sh trey@otherhost.local:/tmp/x.sh'

@@ -16,7 +16,9 @@ Blocks when the command:
     docs/superpowers/workflow/pi-lock.md exists, in any form but
     `ssh <host> '<remote>'` with the remote command one quoted string that starts
     `flock -w 300 /tmp/pi5.lock ` and is one command or one `sh -c '<script>'`,
-    so that nothing runs on the shared Pi outside the lock.
+    followed by nothing but a shell operator or a redirect (ssh appends every
+    later argument to the remote command), so that nothing runs on the shared
+    Pi outside the lock.
 Regexes are deliberately conservative: a false block is cheap, a false allow is not.
 Quoted strings are scanned too, so `bash -c "git push"` is caught.
 Inert unless OPERATOR=1 and state.md exists. Internal errors block.
@@ -139,8 +141,9 @@ def check_pi(command, depth=0):
         if host is None:
             continue
         rest = toks[host + 1:]
-        if whole:
-            ok = bool(rest) and pi_remote_ok(rest[0])
+        if whole:                                  # ssh joins every later argument onto the remote command
+            ok = (bool(rest) and pi_remote_ok(rest[0])
+                  and (len(rest) == 1 or rest[1] in OPERATORS or re.match(r"\d*[<>]", rest[1]) is not None))
         else:
             ok = rest[:4] == PI_LOCK and len(rest) > 4
         if tool != "ssh" or not ok:
