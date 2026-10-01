@@ -710,3 +710,10 @@ default: kept, the greedy wrap as built (86f0607); the owner sees it at the wall
 deadline: the owner's look at the entries on the wall (GATE C)
 answer:
 status: defaulted (standing instruction)
+
+### Q97: May the suite start 4 worker processes for the oracle's bot plays?
+asked: it18 (the plan writer; T-pool, plan 2026-10-01-it18-suite-time-dodge.md). The oracle's 20-seed reports are 95% bot plays (pong about 60 s, quickdraw 24 s, dodge 33 s, one after another). The plan makes them first in plain `python -m tests.arcade.pooled` subprocesses, dealt round robin, and stores them where the reports already look (`tests.arcade.helpers.PLAYS`); no seed, assert or band changes and nothing under `arcade/` changes. The plan writer's probe on the shared Mac: the 180 plays of the three games in 32.5 s with 4 workers, 40.8 s with 3, about 125 s in one process. For about 30 s of each suite run four cores are busy: on the Mac beside the other session, and on the Pi 5 (4 cores) when the suite runs there
+default: 4 workers (`PLAY_WORKERS = 4`, capped by the core count), the suite about 60 s shorter (about 270 s, about 300 s with Dodge, against 326 s and 371 s). The other choices: 3 workers (about 8 s slower); every core; or no workers and 5 seeds in the suite with 20 in the evidence tool, which changes what the suite asserts (spec 9.3's count)
+deadline: it18's code review
+answer:
+status: defaulted (standing instruction)
