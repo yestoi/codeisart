@@ -1,0 +1,377 @@
+# the detached checkout is at 9e3b8f0; git status before: clean
+
+$ python -m tools.show_shot --entry entries/sloane --governed --config show.poc.toml --seconds 70 --every-ms 1000 --look led --out it16-sloane
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.1s held 0 area 0.0000 sq 1  PLAYING
+3.1s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+4.1s held 0 area 0.0063 sq 1  Not A.I.
+5.2s held 0 area 0.0223 sq 1  Not A.I.
+6.2s held 0 area 0.0210 sq 1  Not A.I.
+7.2s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+8.2s held 0 area 0.0000 sq 3  Andy Sloane, 2006
+9.3s held 0 area 0.0000 sq 3  Andy Sloane, 2006
+10.3s held 0 area 0.0005 sq 2  Not A.I.
+11.3s held 0 area 0.0000 sq 2  Not A.I.
+12.3s held 0 area 0.0000 sq 1  Not A.I.
+13.3s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+14.4s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+15.4s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+16.4s held 0 area 0.0000 sq 1  Not A.I.
+17.4s held 0 area 0.0000 sq 2  Not A.I.
+18.5s held 0 area 0.0000 sq 2  Not A.I.
+19.5s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+20.5s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+21.5s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+22.6s held 0 area 0.0000 sq 1  Not A.I.
+23.6s held 0 area 0.0002 sq 2  Not A.I.
+24.6s held 0 area 0.0000 sq 2  Not A.I.
+25.6s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+26.7s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+27.7s held 0 area 0.0002 sq 2  Andy Sloane, 2006
+28.7s held 0 area 0.0000 sq 2  Not A.I.
+29.7s held 0 area 0.0000 sq 2  Not A.I.
+30.8s held 0 area 0.0000 sq 1  Not A.I.
+31.8s held 0 area 0.0005 sq 1  Andy Sloane, 2006
+32.8s held 0 area 0.0005 sq 1  Andy Sloane, 2006
+33.8s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+34.8s held 0 area 0.0000 sq 1  Not A.I.
+35.9s held 0 area 0.0000 sq 2  Not A.I.
+36.9s held 0 area 0.0000 sq 2  Not A.I.
+37.9s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+38.9s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+39.9s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+41.0s held 0 area 0.0000 sq 1  Not A.I.
+42.0s held 0 area 0.0000 sq 1  Not A.I.
+43.0s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+44.1s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+45.1s held 0 area 0.0000 sq 2  Andy Sloane, 2006
+46.1s held 0 area 0.0000 sq 2  Not A.I.
+47.1s held 0 area 0.0000 sq 1  Not A.I.
+48.1s held 0 area 0.0000 sq 1  Not A.I.
+49.1s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+50.2s held 0 area 0.0000 sq 1  Andy Sloane, 2006
+51.2s held 0 area 0.0000 sq 1  PRESS A BUTTON
+52.2s held 0 area 0.0000 sq 1  PRESS A BUTTON
+53.2s held 0 area 0.0000 sq 0  PRESS A BUTTON
+54.2s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+55.2s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+56.2s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+57.3s held 0 area 0.0000 sq 1  PRESS A BUTTON
+58.3s held 0 area 0.0000 sq 1  PRESS A BUTTON
+59.3s held 0 area 0.0000 sq 1  PRESS A BUTTON
+60.3s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+61.3s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+62.3s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+63.4s held 0 area 0.0000 sq 1  PRESS A BUTTON
+64.4s held 0 area 0.0000 sq 1  PRESS A BUTTON
+65.4s held 0 area 0.0000 sq 1  PRESS A BUTTON
+66.4s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+67.5s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+68.5s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+69.5s held 0 area 0.0000 sq 1  PRESS A BUTTON
+held 0 area 0.0223 squares 3
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 71.3 s; git status after: clean]
+
+$ python -m tools.show_shot --entry entries/imc --governed --config show.poc.toml --seconds 70 --every-ms 1000 --look led --out it16-imc
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.0s held 0 area 0.0000 sq 1  PLAYING
+3.0s held 0 area 0.0017 sq 2  Ian Collier, 1992
+4.1s held 3 area 0.0284 sq 2  Not A.I.
+5.1s held 3 area 0.0188 sq 1  Not A.I.
+6.1s held 7 area 0.0575 sq 2  Not A.I.
+7.1s held 11 area 0.0327 sq 2  Ian Collier, 1992
+8.1s held 11 area 0.0000 sq 3  Ian Collier, 1992
+9.1s held 11 area 0.0000 sq 3  Ian Collier, 1992
+10.1s held 11 area 0.0000 sq 0  Not A.I.
+11.2s held 11 area 0.0000 sq 0  Not A.I.
+12.2s held 11 area 0.0000 sq 0  Not A.I.
+13.2s held 11 area 0.0000 sq 0  Ian Collier, 1992
+14.2s held 11 area 0.0000 sq 1  Ian Collier, 1992
+15.2s held 11 area 0.0000 sq 1  Ian Collier, 1992
+16.2s held 11 area 0.0000 sq 1  Not A.I.
+17.2s held 11 area 0.0000 sq 1  Not A.I.
+18.2s held 11 area 0.0000 sq 0  Not A.I.
+19.2s held 11 area 0.0000 sq 0  Ian Collier, 1992
+20.3s held 11 area 0.0000 sq 1  Ian Collier, 1992
+21.3s held 11 area 0.0000 sq 1  Ian Collier, 1992
+22.3s held 11 area 0.0000 sq 0  Not A.I.
+23.3s held 11 area 0.0000 sq 0  Not A.I.
+24.3s held 11 area 0.0000 sq 0  Not A.I.
+25.3s held 11 area 0.0000 sq 0  Ian Collier, 1992
+26.3s held 11 area 0.0000 sq 1  Ian Collier, 1992
+27.3s held 11 area 0.0000 sq 1  Ian Collier, 1992
+28.3s held 11 area 0.0000 sq 1  Not A.I.
+29.4s held 11 area 0.0000 sq 1  Not A.I.
+30.4s held 11 area 0.0000 sq 0  Not A.I.
+31.4s held 11 area 0.0000 sq 0  Ian Collier, 1992
+32.4s held 11 area 0.0000 sq 1  Ian Collier, 1992
+33.4s held 11 area 0.0000 sq 1  Ian Collier, 1992
+34.4s held 11 area 0.0000 sq 0  Not A.I.
+35.4s held 11 area 0.0000 sq 0  Not A.I.
+36.5s held 11 area 0.0000 sq 0  Not A.I.
+37.5s held 11 area 0.0000 sq 0  Ian Collier, 1992
+38.5s held 11 area 0.0000 sq 0  Ian Collier, 1992
+39.5s held 11 area 0.0000 sq 0  Ian Collier, 1992
+40.5s held 11 area 0.0000 sq 0  Not A.I.
+41.5s held 11 area 0.0000 sq 0  Not A.I.
+42.6s held 11 area 0.0000 sq 0  Not A.I.
+43.6s held 11 area 0.0000 sq 0  Ian Collier, 1992
+44.6s held 11 area 0.0000 sq 0  Ian Collier, 1992
+45.6s held 11 area 0.0000 sq 0  Ian Collier, 1992
+46.7s held 11 area 0.0000 sq 0  Not A.I.
+47.7s held 11 area 0.0000 sq 0  Not A.I.
+48.7s held 11 area 0.0000 sq 1  PRESS A BUTTON
+49.8s held 11 area 0.0000 sq 1  PRESS A BUTTON
+50.8s held 11 area 0.0000 sq 0  PRESS A BUTTON
+51.8s held 11 area 0.0000 sq 0  ON ANY PORTRAIT
+52.8s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+53.8s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+54.8s held 11 area 0.0000 sq 1  PRESS A BUTTON
+55.8s held 11 area 0.0000 sq 1  PRESS A BUTTON
+56.8s held 11 area 0.0000 sq 1  PRESS A BUTTON
+57.8s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+58.9s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+59.9s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+60.9s held 11 area 0.0000 sq 1  PRESS A BUTTON
+61.9s held 11 area 0.0000 sq 1  PRESS A BUTTON
+62.9s held 11 area 0.0000 sq 1  PRESS A BUTTON
+63.9s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+64.9s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+65.9s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+66.9s held 11 area 0.0000 sq 1  PRESS A BUTTON
+67.9s held 11 area 0.0000 sq 1  PRESS A BUTTON
+68.9s held 11 area 0.0000 sq 1  PRESS A BUTTON
+70.0s held 11 area 0.0000 sq 1  ON ANY PORTRAIT
+held 11 area 0.0575 squares 3
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 71.2 s; git status after: clean]
+
+$ python -m tools.show_shot --entry entries/thadgavin --governed --config show.poc.toml --seconds 70 --every-ms 1000 --look led --out it16-thadgavin
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.1s held 0 area 0.0000 sq 1  PLAYING
+3.1s held 0 area 0.0000 sq 1  Gavin Buttimore and T
+4.1s held 0 area 0.0431 sq 1  Not A.I.
+5.1s held 4 area 0.0437 sq 1  Not A.I.
+6.1s held 16 area 0.0286 sq 1  Not A.I.
+7.1s held 30 area 0.0575 sq 1  Gavin Buttimore and T
+8.1s held 42 area 0.0239 sq 1  Gavin Buttimore and T
+9.2s held 50 area 0.0266 sq 2  Gavin Buttimore and T
+10.2s held 50 area 0.0051 sq 2  Not A.I.
+11.2s held 50 area 0.0000 sq 1  Not A.I.
+12.3s held 50 area 0.0000 sq 1  Not A.I.
+13.3s held 50 area 0.0000 sq 2  Gavin Buttimore and T
+14.3s held 50 area 0.0000 sq 3  Gavin Buttimore and T
+15.3s held 50 area 0.0007 sq 3  Gavin Buttimore and T
+16.4s held 52 area 0.0055 sq 4  Not A.I.
+17.4s held 64 area 0.0431 sq 4  Not A.I.
+18.4s held 68 area 0.0338 sq 5  Not A.I.
+19.4s held 71 area 0.0243 sq 5  Gavin Buttimore and T
+20.5s held 74 area 0.0068 sq 6  Gavin Buttimore and T
+21.5s held 92 area 0.0000 sq 6  Gavin Buttimore and T
+22.5s held 102 area 0.0212 sq 6  Not A.I.
+23.5s held 107 area 0.0299 sq 2  Not A.I.
+24.5s held 124 area 0.0499 sq 6  Not A.I.
+25.6s held 142 area 0.0393 sq 6  Gavin Buttimore and T
+26.6s held 161 area 0.0000 sq 6  Gavin Buttimore and T
+27.6s held 180 area 0.0000 sq 6  Gavin Buttimore and T
+28.6s held 199 area 0.0000 sq 6  Not A.I.
+29.6s held 217 area 0.0298 sq 6  Not A.I.
+30.7s held 236 area 0.0000 sq 6  Not A.I.
+31.7s held 255 area 0.0000 sq 6  Gavin Buttimore and T
+32.7s held 274 area 0.0000 sq 6  Gavin Buttimore and T
+33.8s held 292 area 0.0101 sq 6  Gavin Buttimore and T
+34.8s held 300 area 0.0197 sq 6  Not A.I.
+35.8s held 304 area 0.0453 sq 4  Not A.I.
+36.8s held 320 area 0.0295 sq 6  Not A.I.
+37.9s held 338 area 0.0345 sq 6  Gavin Buttimore and T
+38.9s held 357 area 0.0000 sq 6  Gavin Buttimore and T
+39.9s held 375 area 0.0083 sq 6  Gavin Buttimore and T
+41.0s held 389 area 0.0393 sq 6  Not A.I.
+42.0s held 400 area 0.0450 sq 5  Not A.I.
+43.0s held 400 area 0.0231 sq 4  Not A.I.
+44.0s held 400 area 0.0044 sq 4  Gavin Buttimore and T
+45.1s held 400 area 0.0002 sq 3  Gavin Buttimore and T
+46.1s held 400 area 0.0007 sq 2  Not A.I.
+47.1s held 400 area 0.0000 sq 1  Not A.I.
+48.1s held 400 area 0.0000 sq 1  Not A.I.
+49.2s held 400 area 0.0000 sq 2  Gavin Buttimore and T
+50.2s held 400 area 0.0017 sq 3  Gavin Buttimore and T
+51.2s held 400 area 0.0000 sq 3  Gavin Buttimore and T
+52.2s held 400 area 0.0000 sq 1  Not A.I.
+53.3s held 400 area 0.0000 sq 1  Not A.I.
+54.3s held 400 area 0.0000 sq 1  PRESS A BUTTON
+55.3s held 400 area 0.0000 sq 1  PRESS A BUTTON
+56.3s held 400 area 0.0000 sq 0  PRESS A BUTTON
+57.4s held 400 area 0.0000 sq 0  ON ANY PORTRAIT
+58.4s held 400 area 0.0000 sq 1  ON ANY PORTRAIT
+59.4s held 400 area 0.0000 sq 1  ON ANY PORTRAIT
+60.4s held 400 area 0.0000 sq 1  PRESS A BUTTON
+61.4s held 400 area 0.0000 sq 1  PRESS A BUTTON
+62.4s held 400 area 0.0000 sq 1  PRESS A BUTTON
+63.5s held 400 area 0.0000 sq 1  ON ANY PORTRAIT
+64.5s held 400 area 0.0000 sq 1  ON ANY PORTRAIT
+65.5s held 400 area 0.0000 sq 1  ON ANY PORTRAIT
+66.5s held 400 area 0.0000 sq 1  PRESS A BUTTON
+67.5s held 400 area 0.0000 sq 1  PRESS A BUTTON
+68.5s held 400 area 0.0000 sq 1  PRESS A BUTTON
+69.5s held 400 area 0.0000 sq 1  ON ANY PORTRAIT
+held 400 area 0.0575 squares 6
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 71.3 s; git status after: clean]
+
+$ python -m tools.show_shot --entry entries/endoh1 --governed --config show.poc.toml --seconds 70 --every-ms 1000 --look led --out it16-endoh1
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.0s held 0 area 0.0000 sq 1  PLAYING
+3.0s held 0 area 0.0015 sq 1  Yusuke Endoh, 2012
+4.0s held 0 area 0.0051 sq 1  Not A.I.
+5.1s held 0 area 0.0112 sq 1  Not A.I.
+6.1s held 0 area 0.0125 sq 1  Not A.I.
+7.1s held 0 area 0.0117 sq 1  Yusuke Endoh, 2012
+8.1s held 0 area 0.0000 sq 1  Yusuke Endoh, 2012
+9.1s held 0 area 0.0027 sq 1  Yusuke Endoh, 2012
+10.2s held 8 area 0.1196 sq 1  Not A.I.
+11.2s held 14 area 0.0674 sq 2  Not A.I.
+12.3s held 14 area 0.0851 sq 1  Not A.I.
+13.3s held 14 area 0.1089 sq 1  Yusuke Endoh, 2012
+14.3s held 14 area 0.0950 sq 1  Yusuke Endoh, 2012
+15.4s held 14 area 0.0927 sq 1  Yusuke Endoh, 2012
+16.4s held 14 area 0.0850 sq 1  Not A.I.
+17.5s held 14 area 0.0743 sq 1  Not A.I.
+18.5s held 14 area 0.0803 sq 0  Not A.I.
+19.5s held 14 area 0.0759 sq 1  Yusuke Endoh, 2012
+20.6s held 14 area 0.0801 sq 1  Yusuke Endoh, 2012
+21.6s held 14 area 0.0696 sq 1  Yusuke Endoh, 2012
+22.7s held 14 area 0.0680 sq 1  Not A.I.
+23.7s held 14 area 0.0739 sq 1  Not A.I.
+24.7s held 14 area 0.0690 sq 0  Not A.I.
+25.8s held 14 area 0.0725 sq 0  Yusuke Endoh, 2012
+26.8s held 14 area 0.0681 sq 1  Yusuke Endoh, 2012
+27.9s held 14 area 0.0657 sq 1  Yusuke Endoh, 2012
+28.9s held 14 area 0.0625 sq 1  Not A.I.
+29.9s held 14 area 0.0648 sq 1  Not A.I.
+31.0s held 14 area 0.0663 sq 1  Not A.I.
+32.0s held 14 area 0.0652 sq 1  Yusuke Endoh, 2012
+33.1s held 14 area 0.0635 sq 1  Yusuke Endoh, 2012
+34.1s held 14 area 0.0599 sq 1  Not A.I.
+35.2s held 14 area 0.0573 sq 1  Not A.I.
+36.2s held 14 area 0.0629 sq 1  Not A.I.
+37.2s held 14 area 0.0659 sq 1  Yusuke Endoh, 2012
+38.3s held 14 area 0.0619 sq 1  Yusuke Endoh, 2012
+39.3s held 14 area 0.0576 sq 0  Yusuke Endoh, 2012
+40.3s held 14 area 0.0664 sq 1  Not A.I.
+41.4s held 14 area 0.0686 sq 1  Not A.I.
+42.4s held 14 area 0.0635 sq 1  Not A.I.
+43.5s held 14 area 0.0569 sq 1  Yusuke Endoh, 2012
+44.5s held 14 area 0.0604 sq 1  Yusuke Endoh, 2012
+45.5s held 14 area 0.0331 sq 1  Yusuke Endoh, 2012
+46.6s held 14 area 0.0000 sq 0  Not A.I.
+47.6s held 14 area 0.0000 sq 0  Not A.I.
+48.6s held 14 area 0.0000 sq 1  PRESS A BUTTON
+49.6s held 14 area 0.0000 sq 1  PRESS A BUTTON
+50.7s held 14 area 0.0000 sq 0  PRESS A BUTTON
+51.7s held 14 area 0.0000 sq 0  ON ANY PORTRAIT
+52.7s held 14 area 0.0000 sq 1  ON ANY PORTRAIT
+53.7s held 14 area 0.0000 sq 1  ON ANY PORTRAIT
+54.8s held 14 area 0.0000 sq 1  PRESS A BUTTON
+55.8s held 14 area 0.0000 sq 1  PRESS A BUTTON
+56.8s held 14 area 0.0000 sq 1  PRESS A BUTTON
+57.8s held 14 area 0.0000 sq 0  ON ANY PORTRAIT
+58.8s held 14 area 0.0000 sq 0  ON ANY PORTRAIT
+59.9s held 14 area 0.0000 sq 1  ON ANY PORTRAIT
+60.9s held 14 area 0.0000 sq 1  PRESS A BUTTON
+61.9s held 14 area 0.0000 sq 1  PRESS A BUTTON
+62.9s held 14 area 0.0000 sq 1  PRESS A BUTTON
+63.9s held 14 area 0.0000 sq 1  ON ANY PORTRAIT
+64.9s held 14 area 0.0000 sq 1  ON ANY PORTRAIT
+65.9s held 14 area 0.0000 sq 1  ON ANY PORTRAIT
+67.0s held 14 area 0.0000 sq 1  PRESS A BUTTON
+68.0s held 14 area 0.0000 sq 1  PRESS A BUTTON
+69.0s held 14 area 0.0000 sq 1  PRESS A BUTTON
+held 14 area 0.1196 squares 2
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 71.2 s; git status after: clean]
+
+$ python -m tools.show_shot --entry entries/endoh3 --governed --config show.poc.toml --seconds 70 --every-ms 1000 --look led --out it16-endoh3
+0.0s held 0 area 0.0000 sq 0  PRESS A BUTTON
+1.0s held 0 area 0.0000 sq 0  PLAYING
+2.0s held 0 area 0.0000 sq 1  PLAYING
+3.0s held 0 area 0.0000 sq 1  Yusuke Endoh, 2020
+4.0s held 0 area 0.0000 sq 1  Not A.I.
+5.1s held 0 area 0.0046 sq 1  Not A.I.
+6.1s held 0 area 0.0068 sq 1  Not A.I.
+7.1s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+8.1s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+9.1s held 0 area 0.0000 sq 1  Yusuke Endoh, 2020
+10.1s held 0 area 0.0000 sq 1  Not A.I.
+11.2s held 0 area 0.0000 sq 1  Not A.I.
+12.2s held 0 area 0.0000 sq 0  Not A.I.
+13.2s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+14.2s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+15.2s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+16.2s held 0 area 0.0000 sq 0  Not A.I.
+17.2s held 0 area 0.0000 sq 0  Not A.I.
+18.3s held 0 area 0.0000 sq 2  Not A.I.
+19.3s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+20.3s held 0 area 0.0000 sq 1  Yusuke Endoh, 2020
+21.3s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+22.3s held 0 area 0.0000 sq 0  Not A.I.
+23.3s held 0 area 0.0000 sq 2  Not A.I.
+24.4s held 0 area 0.0000 sq 2  Not A.I.
+25.4s held 0 area 0.0000 sq 1  Yusuke Endoh, 2020
+26.4s held 0 area 0.0000 sq 1  Yusuke Endoh, 2020
+27.4s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+28.4s held 0 area 0.0000 sq 2  Not A.I.
+29.4s held 0 area 0.0000 sq 2  Not A.I.
+30.4s held 0 area 0.0000 sq 0  Not A.I.
+31.4s held 0 area 0.0000 sq 1  Yusuke Endoh, 2020
+32.4s held 0 area 0.0000 sq 1  Yusuke Endoh, 2020
+33.4s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+34.5s held 0 area 0.0000 sq 2  Not A.I.
+35.5s held 0 area 0.0000 sq 2  Not A.I.
+36.5s held 0 area 0.0000 sq 0  Not A.I.
+37.5s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+38.5s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+39.5s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+40.5s held 0 area 0.0000 sq 2  Not A.I.
+41.5s held 0 area 0.0000 sq 1  Not A.I.
+42.5s held 0 area 0.0000 sq 0  Not A.I.
+43.6s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+44.6s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+45.6s held 0 area 0.0000 sq 2  Yusuke Endoh, 2020
+46.6s held 0 area 0.0000 sq 1  Not A.I.
+47.6s held 0 area 0.0000 sq 1  Not A.I.
+48.7s held 0 area 0.0000 sq 0  Not A.I.
+49.7s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+50.7s held 0 area 0.0000 sq 0  Yusuke Endoh, 2020
+51.8s held 0 area 0.0000 sq 1  PRESS A BUTTON
+52.8s held 0 area 0.0000 sq 1  PRESS A BUTTON
+53.8s held 0 area 0.0000 sq 1  PRESS A BUTTON
+54.8s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+55.8s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+56.8s held 0 area 0.0000 sq 1  PRESS A BUTTON
+57.8s held 0 area 0.0000 sq 1  PRESS A BUTTON
+58.9s held 0 area 0.0000 sq 1  PRESS A BUTTON
+59.9s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+60.9s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+61.9s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+62.9s held 0 area 0.0000 sq 1  PRESS A BUTTON
+63.9s held 0 area 0.0000 sq 1  PRESS A BUTTON
+64.9s held 0 area 0.0000 sq 0  PRESS A BUTTON
+66.0s held 0 area 0.0000 sq 0  ON ANY PORTRAIT
+67.0s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+68.0s held 0 area 0.0000 sq 1  ON ANY PORTRAIT
+69.0s held 0 area 0.0000 sq 1  PRESS A BUTTON
+held 0 area 0.0068 squares 2
+[stderr]
+no unshare: entries run without network isolation
+[exit 0, 71.4 s; git status after: clean]
+

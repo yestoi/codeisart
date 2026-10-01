@@ -1262,3 +1262,170 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   `iterations-per-run: 6`). The loop stops here for the iteration cap and writes gate.md with the list for the
   owner.
 - Status: done
+
+## Iteration 16 — 2026-10-01
+- Verdict on the sheets (written at 02:45 CDT, before any other tool call after the reading; the operator read with
+  the Read tool the led pages of the five entries, `evidence/it16/it16-<name>-p1..p3.png`, pages 1 and 2 cut into
+  three pieces each so that every 128x64 frame is read at full size; every page is stamped `9e3b8f0 clean`, governed,
+  gamma 2.2, 128x64, one frame a second for 70 s):
+  - All five, the frame of the play: PASS. The strip is on the bottom row in every frame and reads at the LED look:
+    `PRESS A BUTTON` at 0 s, `PLAYING` from 1 s, then the attribution and `Not A.I.` in turn every 3 s, and after
+    the play `PRESS A BUTTON` / `ON ANY PORTRAIT`. Four attributions are whole (`Andy Sloane, 2006`,
+    `Ian Collier, 1992`, `Yusuke Endoh, 2012`, `Yusuke Endoh, 2020`); the fifth is cut, `Gavin Buttimore and T`, no
+    year (C54, as in the previews). The source is typed as ink dots from 2 s (each source's shape shows: sloane's
+    disc, endoh1's word, endoh3's clock between two blocks), the build's lines pass from about 6 s, the run starts
+    between 8 and 11 s. No cursor block can be told apart in the ink view at this size (a cell is under 2 pixels
+    wide). After the play the attract scene returns and types the source again. The program's picture stops one row
+    above the strip in every run (a dark row between them); nothing of a picture lies under the strip.
+  - sloane, PLAYS; the picture is to be checked against what the entry is. The run is 8 s to 50 s: the picture
+    fills all 80 columns in three or four levels of light, wide bands with slanted edges (it reads as a floor or a
+    landscape seen in perspective) and one dark shape near the middle that changes in every frame (an arc, a
+    diagonal, a blob). It is not a ring: `wall-session.md` says "the donut turning", which this sheet does not
+    show; I check the entry's description and a frame of the cast as text right after this is written. Dark notches
+    appear along the top row from the right at 9 s and reach across the whole top by 34 s: from the sheet I cannot
+    tell whether they are the program's. held 0, area 0.0223 at most, squares 3.
+  - imc, PLAYS; two of the views read poorly at this size. The run is 8 s to 48 s. View 1 (8 to 13 s): bands of
+    light over the whole field, dim to the right: a gradient more than a set. View 2 (14 to 19 s): a clear picture
+    in two levels, a dark figure between lit bands: the best of them. View 3 (20 to 25 s): a lit rectangle, almost
+    every cell at one level: nothing to read for six seconds. View 4 (26 to 31 s): a lit patch at the bottom left
+    and a small diagonal, the rest dark. View 5 (32 to 37 s): fine filaments at the left and a column at the right.
+    From 38 s to 47 s the frames are the same picture as view 5: a sixth, different view is not on the sheet (to
+    check: the tour's sixth view, or the tour stops). held 11 (all of it at 4 to 7 s, in the typed source and the
+    build's scroll, none in the run), area 0.0575, squares 3.
+  - thadgavin, PLAYS, and it reads as a plasma: from 11 s to 53 s the field is full, dark curved bands on a lit
+    ground, a different figure in every frame. The governor holds a large part of it: held is 50 at 10 s (the
+    build's scroll), 400 at 42 s, so 350 held ticks between 16 s and 42 s, about two ticks of three there, and none
+    after 42 s; squares reach 6, the budget. From 21 s to 31 s small blocky patches stand in the bands (the held
+    parts). Whether it is still a plasma to the eye and comfortable is the owner's at the wall (Q87). The strip is
+    cut (above).
+  - endoh1, PASS, the clearest of the five. The typed source is the word "Fluid"; at 9 s the run fills it, at 10 s
+    it has melted into a tank (walls left and right, a floor, a surface that sloshes, bright grains in the body)
+    until 46 s. held 14, all in the first second of the melt (8 at 10.2 s, 14 at 11.2 s); area 0.1196 there, over
+    the small-area limit, which is why the governor held; squares 2. The walls reach the top row: the top of the
+    program's field is not seen (26 lines in 23 rows), and no tear shows at this sampling.
+  - endoh3, PASS. A black frame at 7 s (the clear before the run, the strip stays), then from 8 s to 50.7 s the
+    clock: twelve marks on an ellipse, sparse, between two lit blocks with curved inner edges, and a hand as a
+    stepped line. The hand's end moves between 38.5 s and 44.6 s: a tick is seen. held 0, area 0.0068, squares 2.
+- Checked after the verdict (02:45 to 02:47; the recordings `entries/sloane/fallback.cast` and
+  `entries/imc/fallback.cast` replayed through pyte and read as text, the archive's `try.sh`, `entries/README.md`):
+  - sloane is right, and it is the donut: "Homer's favorite" draws the donut over a checkered floor of `.` and
+    `#`, and a banner in ASCII letters scrolls in along the top row (the dark notches). In the ink view a character
+    is only its light, the donut's shades lie between the floor's two levels, and so the sheet shows the floor and
+    the hole and hardly the donut's body. Not a fault of the build or the pipeline: the owner's eyes at the wall,
+    where the turning may carry it (Q93, defaulted: kept).
+  - imc is right: the six views are the archive's `try.sh`'s arguments at 78 x 22. View 3
+    (`-limit 1024 -julia 2 -2.5`) is `*` in every cell, the program's own output; views 5 and 6 are the same
+    picture at two limits (Q86, known). Q92, defaulted: kept, the owner sees it; the other choice is four views.
+- Plan: docs/superpowers/plans/2026-10-01-it16-five-entries.md (299 lines at 29765db), one plan writer (opus),
+  written 23:59 to 00:16. One adversarial round (evidence/it16/plan-review.md, 00:17 to 00:45): BLOCKED on six
+  findings, all fixed in the plan before any code (00:45 to 00:57), confirmed in round 2 (plan-review-round2.md,
+  APPROVED, 00:58 to 01:03).
+  - B1: endoh1's run line fed `endoh1.alt.c`, an open vessel: the wall would have shown two bars, not fluid. The
+    plan now feeds `endoh1.c`. B2: `rows = 24` hid the line being typed under the strip in SOURCE; the plan split
+    `typing_rows` (SOURCE, BUILD) from `rows` (RUN on). B3: the curated test counted lit cells on the leftover
+    source, so a run that prints nothing passed; the witness is now counted from RUN. B4: the T-shot test asserted
+    a title the 128x64 strip never shows. B5 (the operator's, from the early Pi probe, pi-probe-early.md): under
+    `TERM=xterm` ncurses on the Pi draws the plasma with REP, which pyte drops; the plan runs it under
+    `TERM=vt100` and the curated test refuses a REP. B6: the Pi's check (a) left pytest's temp tree on the Pi
+    (Q83); the scratch directory is made, used and removed in one call.
+  - The owner's questions from the plan: Q85 (endoh3 builds `prog.c`, the plain clock), Q86 (imc's six views),
+    Q87 (the plasma at Z=30), Q88 (no cast over 5 MB); all defaulted.
+- Shipped: D5, the five entries on stations 1 to 5; b4ff165..9e3b8f0 without `docs/`: 40 files, 4026 insertions,
+  14 deletions (the published sources and five recordings are most of it).
+  - O1 (b8346cc): `.gitignore` tracks the run scripts and licences, ignores endoh3's `clock.c`.
+  - T-rows (82ad36d): `rows`, an optional `entry.toml` key; `EntryPlayer.typing_rows` for SOURCE and BUILD (23),
+    `rows` from RUN on; 7 tests, 11 cases.
+  - T-curated (9673491, merged 8105d8b): `tests/test_curated_entries.py`: every entry directory loads, has its
+    licence and sums, builds with `-Wall` and exit 0, and plays through `EntryPlayer` on a fake clock and a real
+    pty to a lit final screen: the phases, the witness counted from RUN, no character past column 80, ASCII only,
+    no REP.
+  - T-shot (7cc294f, merged 6eda8df): `tools/show_shot.py --entry <dir> --governed`, the governor's numbers
+    (held, area, squares) for one entry's play.
+  - The entries, each with the source as published, the built variant, `LICENSE.md` with the sums, `entry.toml`:
+    sloane (576a3d6, merged 3d6e782; `sloane.alt.c`, `rows = 24`), imc (17fc9b8, merged d4d6dbc; `sh tour.sh`,
+    six views of 6 s), thadgavin (a76b39e, merged 5809179; `TERM=vt100 ./prog`, `-DZ=30 -DZS=0`, `-lncurses`),
+    endoh1 (1c213ca, merged f8299af; builds `endoh1.alt.c` with `-DA=40`, fed `endoh1.c`, 36 s), endoh3 (95cf76d,
+    merged 511fab8; `prog.c`, `sh clock.sh`, `rows = 24`; KEPT, the cut rule did not fire). Every build has
+    `-Wall` and `-fsigned-char`, none has `-w`.
+  - O2 (27a10bd): `entries/README.md`, the curation rules and one section a station.
+  - The operator's (9e3b8f0): the five `fallback.cast`, recorded on the Mac by `--capture` (sloane 0.73 MB, imc
+    0.01, thadgavin 0.70, endoh1 1.54, endoh3 0.02; none near Q88's 5 MB). They show clang's warnings; the Pi's
+    own recordings are the owner's at the wall.
+  - Beside the iteration, at the owner's word in the run: the Pi lock (Q83) as a rule that outlives a compaction
+    (5a8ec51, 64ef043): `workflow/pi-lock.md`, printed by `reinject.py`, enforced by `guard_bash.py`;
+    `test_hooks.sh` 173 of 173.
+- Review: APPROVED after 1 round, no blocking finding (evidence/it16/code-review.md; a fresh opus reviewer,
+  b4ff165..27a10bd, 02:05 to 02:23).
+  - No assert removed or changed. All 8 published `.c` files are byte-identical to the fetched sources and their
+    sha256 equal the `LICENSE.md` sums.
+  - T-rows through `Show` on one shared Terminal: a tall entry is 23 rows in SOURCE and BUILD, 24 from RUN; the
+    next plain entry and attract are 23 again; the 24th row stays under the strip.
+  - All five played on the real clock through `EntryPlayer`: the happy phases, no REP, no byte over 127, the
+    process group empty after `stop()`. endoh3's cut rule over 234 faked times, three generations each: 702
+    compiles, every output 23 lines of at most 79 columns, ASCII.
+  - T-curated is falsifiable: six broken copies, an assert stopped each.
+  - Safety: the range touches neither the display path, the governor, the limiter nor brightness.
+  - Its notes: the guard's gap (fixed at once, 64ef043: only an operator or a redirect may follow the quoted
+    remote command); the strip's cut (C54); the `***` check (below); four more under "Noted".
+- Deploy: none (never deployed by the loop; nothing under `deploy/` touched; nothing pushed; nothing sent to the
+  card).
+- The Pi 5 (the operator inline, every call under the lock in pi-lock.md's form, the lock free each time;
+  evidence/it16/pi-checks.md): (a) the show's Linux tests, 106 passed, 0 skipped, 33.16 s at 27a10bd and 33.08 s
+  again at the code head 9e3b8f0 (the three tests that skip on the Mac run there); (b) every entry's build line
+  exits 0 under gcc 14 (warnings: sloane 6, imc 12, thadgavin 7, endoh1 0, endoh3 0); (c) endoh3's clock loop
+  still ticking at 15 s under `unshare -rn` and 256 MB, three generations of 23 lines, widest 79, ASCII.
+- Verify: 7 of 7 of the checklist (item 5 dropped, as before). 1 freshness: the 30 sheets are stamped
+  `9e3b8f0` clean, the code head, made from a clean detached checkout (verify-script.py.txt); nothing but `docs/`
+  changes after it. 2 the suite is green. 3 skips: 3, the baseline's 3. 4 collected: 1797, the base's 1765 plus
+  32, none dropped. 6 evidence/it16/README.md, the decision on its first line. 7 the sheets, read above.
+  - The governor's numbers at 128x64, the whole play (BUDGET 6, SMALL_AREA 0.1; show-shot.txt): sloane held 0,
+    area 0.0223, squares 3; imc 11, 0.0575, 3; thadgavin 400, 0.0575, 6; endoh1 14, 0.1196, 2; endoh3 0, 0.0068, 2.
+- Tests: 1797 collected, 1794 passed, 3 skipped, 327.61 s at 9e3b8f0 in the main checkout (02:30 to 02:36, load
+  1.5 before, 2.1 after; evidence/it16/pytest-idle.txt), under Q81's 420 s. The baseline was 1762 and 3 in
+  319.03 s: 32 tests cost about 9 s.
+  - Under four implementers the worktree suites read 406 to 472 s and the timing test
+    `test_tick_budget_with_the_governors_share[strobe-128x64]` (`tests/arcade/test_headless.py:237`) failed in
+    four of them; measured again with no agent running (Q83): 327.7 s, clean. Nothing was cut or skipped for it.
+- Minutes: about 177, from 23:57 to 02:54 CDT: orient 6; plan 66 (written 17; review 28; fix 12; confirm 5);
+  implement 61 (01:03 to 02:04; the orchestrator's own split: serial O1 2 and T-rows 10.7; GROUP 1 18; GROUP E
+  14; E-endoh1 7.4 after a lost spawn; integration about 17); review 18; verify and report about 30 (from 02:24:
+  the casts 5, the suite 5.5, the sheets 6, the reading and the writing the rest).
+- Loop decisions and deviations:
+  - The operator committed on main (5a8ec51, the Pi lock's rule) between the orchestrator's merge and its spawn
+    of E-endoh1: the worktree was cut from a head the implementer's base check did not expect, the spawn was
+    lost, about 4 minutes. Nothing changed on main. The lesson: the operator commits nothing on main while an
+    orchestrator is spawning worktree agents.
+  - The orchestrator's and the reviewer's final messages reached the operator cut off; each was asked to write
+    its whole report to evidence/it16/, and the operator read it there.
+  - The Pi's checks ran while the reviewer read (27a10bd), before the verdict, and (a) again at the code head; no
+    review fix touched an entry, the pipeline or the curated test.
+  - The code head (9e3b8f0) is the recordings' commit, after the reviewed range: `tests/test_show_shot*.py`
+    assert a clean `entries/`, so the casts are committed before the suite. They are data recorded by the
+    reviewed code and were not reviewed again.
+  - The first sheets were made in the main checkout with `state.md` uncommitted (stamped `+dirty`): previews
+    only, deleted; the evidence's sheets are from a clean detached checkout.
+  - The guard was changed in the run (the owner asked for the lock rule to outlive compactions), through a
+    scratch copy and `test_hooks.sh`, never in place. A Bash command whose text only quotes a Pi command line or
+    a blocked git command is refused too: such text is written with the Write or Edit tool (this entry's second
+    half was).
+  - The operator wrote two clock times from memory into state.md and corrected them; times come from `date`.
+  - The orchestrator's commits carry the Opus 5.5 or Sonnet 5.5 trailer of their own sessions, not the plan's
+    line. Implementers: T-rows and T-curated opus, T-shot sonnet, the entries one each.
+  - Q84: evidence/it16/wall-session.md is the owner's sheet for the session at the wall (the show has never put
+    a picture on this wall; run 0 dry on the Pi, Q90's form, hello, the five, attract).
+- Carried forward: C54 (the short strip cuts a long attribution: `Gavin Buttimore and T`, no year;
+  `show/state.py:166`; Q91's default is a wrap over more alternations), for iteration 17, D5's slack. With it,
+  the curated test's `***` check (`tests/test_curated_entries.py:195`), which also reads the program's own cells:
+  imc's later views start rows with `***`, and a longer fake-clock play would fail on them.
+- Noted, not carried: thadgavin's `getch()` every frame against the README's "No entry reads the terminal"
+  (harmless; the README line is fixed with C54's slice); `--session entry` without `--entry` ends in a
+  traceback (`tools/show_shot.py:281`, `:313`); a `rows` below 23 leaves pyte's cursor outside the screen (no
+  entry uses one); the fake-clock play sees about 3 real seconds of each run (the real-time plays and the Pi
+  cover the rest); hello on a very slow Mac could finish and leave 11 lit cells, under the test's 100; pyte has
+  no REP (an engine gap, refused by the test); seven merged implementer worktrees and branches remain under
+  `.claude/worktrees/` (deleting a branch by force is blocked for the loop: the owner's cleanup).
+- Owner questions: Q83, Q84, Q89 answered in the run (the owner); Q85 to Q88, Q90 to Q93 defaulted. For the
+  wall: Q87 (the plasma under the governor: 400 held ticks), Q90 (the show as a plain user, not root), Q92
+  (imc's lit block), Q93 (the donut against its floor).
+- Status: done. D5 is built, reviewed and checked on the Pi; what is left of it is the owner's at the wall
+  (GATE C). C54 goes to iteration 17.

@@ -661,3 +661,31 @@ default: none taken; the owner said it
 deadline: none
 answer: "I don't need updates anymore unless important sendmessages you can send me for outcome changing decisions or important findings. Going to sleep and setting up remoteconnect." No routine progress goes to the owner: progress is state.md and the journal. A push notification goes out only for a decision that changes the outcome (an entry cut or replaced, a safety gap, a gate, a run that cannot go on) or an important finding, and for something the owner must do before the wall session. The milestone report at an iteration's end is the journal entry and one or two lines in the session, without a push unless it holds one of those.
 status: answered (owner, 2026-10-01)
+
+### Q90: At the wall session, does the show reach the card as a plain user with two capabilities, or as root?
+asked: it16 (the operator, writing evidence/it16/wall-session.md). Every wall run so far was `sudo .venv/bin/python <tool>` (the pattern tool, the arcade, the bench). The show builds and runs the entries, so under `sudo` the five IOCCC programs would run as root on the Pi; `deploy/show.service` runs the show as a plain user with `AmbientCapabilities=CAP_NET_RAW CAP_SYS_NICE`. The show daemon has never driven this wall (the wall-session sheet's "step one")
+default: the wall session plays the entries through `sudo systemd-run --pty --collect --uid=trey -p AmbientCapabilities='CAP_NET_RAW CAP_SYS_NICE' -p WorkingDirectory=/home/trey/codeisart ... -m show --config show.poc.toml --backend colorlight --play <name>`, the unit's settings by hand; not `sudo python`. The form is unproven as a whole (the sender's real-time child under a unit as user trey was proven dry on 2026-09-30). The loop runs neither (rule 9a). The other choice: `sudo python` as the tools did, the entries as root
+deadline: the wall session (GATE C)
+answer:
+status: defaulted (standing instruction)
+
+### Q91: Is the short strip's cut attribution fixed by wrapping it over more alternations?
+asked: it16 (the operator's read of the sheets, the reviewer's note). At 128x64 the strip holds 21 characters and shows `f"{author}, {year}"[:21]` and `Not A.I.` in turn (Q58); thadgavin's reads `Gavin Buttimore and T`: the second author and the year never reach the wall. The other four fit
+default: iteration 17 (D5's slack) wraps a long attribution at word boundaries into pieces of at most the strip's width and shows them in turn before `Not A.I.` (`Gavin Buttimore and`, `Thaddaeus Frogley,`, `2000`, `Not A.I.`), three seconds each as today; an attribution that fits is shown as today. A carried fix under rule 5a (C54). The other choices: a shorter `author` in the entry's `entry.toml` (it changes the credit), or a scrolling strip (motion on the strip, more light changing)
+deadline: iteration 17's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q92: Does imc's tour keep its third view, which at this size is one lit block?
+asked: it16 (the operator's read of the final sheets, evidence/it16/it16-imc-p1.png, 20 s to 25 s). The tour's third view (`-limit 1024 -julia 2 -2.5`, the archive's try.sh's) prints `*` in every one of its 78 x 22 cells: on the wall it is a lit rectangle for six seconds with nothing to read. The first view is a field of shades (the set is the bright body), the second and fourth are clear, the fifth and sixth are the same picture (Q86). It is the program's own output for the archive's arguments, not a fault of the build (the recording's text was read)
+default: kept, all six, as Q86 stands; the owner sees it at the wall. Nothing is curated away before the owner has seen it. The other choice: a tour of four views (the first, second, fourth and fifth) of nine seconds each, a change to `entries/imc/tour.sh` and its README section only
+deadline: the owner's look at the entries on the wall (GATE C)
+answer:
+status: defaulted (standing instruction)
+
+### Q93: Is the donut (sloane) clear enough in the ink view, where its body is as bright as the floor under it?
+asked: it16 (the operator's read of the final sheets, evidence/it16/it16-sloane-p1.png and -p2.png). "Homer's favorite" draws the donut over a checkered floor of `.` and `#`, and a banner in ASCII letters scrolls along the top row. In the ink view a character is only its light: the donut's shades (`,-+=#$@`) lie between the floor's two levels, so on the sheet the hole and the floor's squares read and the donut's body hardly stands out from them. On a still sheet the turning does not show; at the wall the motion may carry it
+default: kept as it is; the wall decides (GATE C: keep, change or replace). No view or brightness rule is changed for one entry. The other choices: none cheap (the program has no switch for the floor; a patched source would no longer be the entry as published)
+deadline: the owner's look at the entries on the wall (GATE C)
+answer:
+status: defaulted (standing instruction)

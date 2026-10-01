@@ -15,6 +15,8 @@ Each call: `git archive 27a10bd` piped into one ssh call under `flock -w 300 /tm
 
 The plasma (thadgavin) passes the curated test's REP refusal on the Pi: under `TERM=vt100` ncurses 6.5 sends no `CSI n b`, and the peak (1677 of 1840 cells) is the full picture of the early probe (pi-probe-early.md).
 
+Run again at the code head 9e3b8f0 (the five fallback casts committed; no review fix was needed), 02:32:10 to 02:32:43, under the lock, the lock free: **106 passed, 0 skipped, 33.08 s**; the same peaks and finals (endoh3 807, 807 this time: its face depends on the second it starts in).
+
 ## (b) Each entry's build line under gcc 14
 Every build exits 0, with `-Wall` and `-fsigned-char`, no error.
 
