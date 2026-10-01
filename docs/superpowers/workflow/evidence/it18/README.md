@@ -54,3 +54,7 @@ The operator's reading of the sheets is the first item of the journal's entry fo
 | plan-review.md, plan-review-round2.md | the plan's adversarial review: BLOCKED on one finding, then APPROVED |
 | orchestrator-report.md | the build: tasks, deviations, tests, commits, minutes |
 | code-review.md | the code review: APPROVED, the probes of the pool and of its failure paths, the notes |
+
+Note (2026-10-01, owner decision Q98): the PNG and GIF files named above are not in git; they are on the Mac in
+this folder. The commit ids named here are the ones before the trim of the unpushed commits; the table of ids
+before and after is ../sha-map-2026-10-01.md.

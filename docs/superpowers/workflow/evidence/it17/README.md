@@ -30,3 +30,7 @@ the journal's entry for iteration 17.
 | plan-review.md | the plan's adversarial review: APPROVED, no blocking finding |
 | orchestrator-report.md | the build: tasks, deviations, tests, commits, minutes |
 | code-review.md | the code review: APPROVED, the two changed asserts, the banner probe, the notes |
+
+Note (2026-10-01, owner decision Q98): the PNG and GIF files named above are not in git; they are on the Mac in
+this folder. The commit ids named here are the ones before the trim of the unpushed commits; the table of ids
+before and after is ../sha-map-2026-10-01.md.

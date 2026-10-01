@@ -11,23 +11,27 @@ Flap, Swat, Freeze) and whatever the wall session asks of the entries.
 Deadline: none (nothing is in flight; no agent runs)
 
 ## Where the work stands
-- Code head 708a42e; main is at the gate's commit, 55 commits ahead of origin/main (d7d0051). The loop does not
-  push. The suite: 1869 collected, 1866 passed, 3 skipped (macOS), 301.58 s on the quieter Mac and 308 to 312 s
+- Code head 47a142c; main is 56 commits ahead of origin/main (d7d0051). The loop does not
+  push. The suite: 1877 collected, 1874 passed, 3 skipped (macOS; 8 of them the ignore rule's tests of Q98), 301.58 s on the quieter Mac and 308 to 312 s
   beside promptviz's session, under Q81's 420 s.
 - Iteration 16 (9e3b8f0; evidence/it16/): D5, the five IOCCC entries on stations 1 to 5 (sloane, imc, thadgavin,
   endoh1, endoh3), each built and played through the pipeline and the governor at 128x64, with fallback
   recordings. The Pi 5 builds and runs all five under the lock (gcc 14, `unshare -rn`).
-- Iteration 17 (86f0607; evidence/it17/): C54 closed. The 128x64 strip shows a long attribution in whole pieces
+- Iteration 17 (6e4d020; evidence/it17/): C54 closed. The 128x64 strip shows a long attribution in whole pieces
   (`Gavin Buttimore and`, `Thaddaeus Frogley,`, `2000`, `Not A.I.`), where it16 cut it at `Gavin Buttimore and T`.
-- Iteration 18 (708a42e; evidence/it18/): the oracle's bot plays are made by 4 worker processes (the suite
+- Iteration 18 (47a142c; evidence/it18/): the oracle's bot plays are made by 4 worker processes (the suite
   325.84 s to 270.35 s, no seed, assert or band changed), and Dodge is back on main, equal to it15's build and
   evidence. Nobody has played Dodge on the camera.
 - Nothing was sent to the card, nothing under `deploy/` was touched, nothing was pushed. The Pi was used only
   under the lock (Q83); `pi-lock.md` still stands and only the owner deletes it.
+- After the gate (Q98, the owner at the push): the evidence images of iterations 16 to 18 are out of the
+  unpushed commits and evidence images are ignored from here on; the ids from dc4629c on changed
+  (evidence/sha-map-2026-10-01.md). The sheets are on the Mac in their folders.
 - Carried: only C52's arcade half, which waits on Q67.
 
 ## What the owner does first (before anything at the wall)
-1. Push main: `git -C /Users/trey/dev/codeisart push` (55 commits).
+1. Push main: `git -C /Users/trey/dev/codeisart push` (56 commits, about 5 MB; the plain form, not `--all`:
+   the agents' local branches still hold the old commits with the images).
 2. The wall session for D5: `docs/superpowers/workflow/evidence/it16/wall-session.md`. It starts with "Before
    the session" (the pull on the Pi under the lock, promptviz off the Pi or the lock kept), then run 0 dry,
    hello on the card, the five entries, attract. The show daemon has never put a picture on this wall.

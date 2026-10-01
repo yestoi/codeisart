@@ -33,3 +33,7 @@ The operator's reading of the sheets is the first item of the journal's entry fo
 | orchestrator-report.md | the build: tasks, deviations, tests, commits, minutes |
 | code-review.md | the code review: APPROVED, what "no blocking finding" covers, the notes |
 | wall-session.md | the owner's sheet for the session at the wall (Q84): the runs, what to look for, the words back |
+
+Note (2026-10-01, owner decision Q98): the PNG and GIF files named above are not in git; they are on the Mac in
+this folder. The commit ids named here are the ones before the trim of the unpushed commits; the table of ids
+before and after is ../sha-map-2026-10-01.md.

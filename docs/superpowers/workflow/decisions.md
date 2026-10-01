@@ -717,3 +717,10 @@ default: 4 workers (`PLAY_WORKERS = 4`, capped by the core count), the suite abo
 deadline: it18's code review
 answer:
 status: defaulted (standing instruction)
+
+### Q98: Are the loop's evidence images published with the repository?
+asked: the owner, 2026-10-01, at the push after the gate of iteration 18: the public repository had grown to 115 MB, 104 MB of it the loop's evidence (85 MB already pushed; the 55 unpushed commits would add 32 MB, 27 MB of it the sheets of iterations 16 to 18). The operator's scan found no key, token, `.env` or recording in the files or the history. The operator offered three choices: make the repository private and push as is (its lean); stay public and push as is; stay public and stop publishing evidence
+default: none taken (the owner asked)
+deadline: none
+answer: "3": the repository stays public and evidence images are no longer published. The operator rewrote the 20 unpushed commits from dc4629c on without the 48 PNGs and the GIF of iterations 16 to 18 (evidence/sha-map-2026-10-01.md has every id before and after; the old commits stay on the Mac under `refs/backup/main-before-evidence-trim-2026-10-01`), and `.gitignore` now leaves PNG, GIF and JPG under evidence/ out of git (config.md, "Evidence images are not committed"). What was already pushed (the images of iterations 1 to 15 and evidence/hardware/) stays as it is; removing it would need a rewrite of the public history and a forced push, which the owner did not ask for
+status: answered (owner, 2026-10-01)

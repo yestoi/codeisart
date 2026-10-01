@@ -1669,3 +1669,21 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - Owner questions: Q97 defaulted (4 workers). For the wall, unchanged: Q87, Q90, Q92, Q93, Q96.
 - Status: done. Dodge is on main and the suite has room. By Q81 nothing is left for the run (no new game): the
   loop gates after this iteration and does not start iteration 19 (gate.md).
+
+## Note, 2026-10-01 (after the gate): the evidence images of iterations 16 to 18 left git
+- The owner's decision at the push (Q98): the repository stays public, and the loop's evidence images are no
+  longer published. The 48 PNG sheets and the GIF of iterations 16 to 18 (26.6 MB) were only in unpushed commits.
+- What was done: the 20 unpushed commits from dc4629c on were rewritten without those 49 files. Each keeps its
+  message, author, dates and every other file; the tree at the end differs from the old one by exactly the 49
+  files. The images are still on the Mac, in the same folders, untracked and ignored.
+- The ids changed from dc4629c on. The entries above for iterations 17 and 18, decisions.md and the evidence files
+  name the ids as they were (86f0607 is now 6e4d020, 708a42e is now 47a142c, 23c57d0 is now 5a53650); the whole
+  table is evidence/sha-map-2026-10-01.md. state.md, gate.md and roadmap.md name the new ids. The old commits stay
+  on the Mac under `refs/backup/main-before-evidence-trim-2026-10-01`.
+- From here on: `.gitignore` leaves PNG, GIF and JPG under evidence/ out of git; `tests/test_gitignore.py` holds
+  it (its nested-`shots` sample is now a text file, since an evidence PNG is ignored by the new rule). config.md
+  says what the README must then carry in words.
+- Not changed: the images of iterations 1 to 15 and evidence/hardware/, which were pushed before (85 MB).
+- The suite on the trimmed tree with the new rule: 1877 collected (1869 and 8 new items in
+  `tests/test_gitignore.py`), 1874 passed, 3 skipped, 309.08 s (07:40 to 07:45, load 2.86 to 3.60;
+  evidence/pytest-after-trim-2026-10-01.txt). This is the baseline the next verify counts from.

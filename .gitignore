@@ -27,6 +27,12 @@ entries/*/*
 !entries/*/LICENSE.md
 entries/endoh3/clock.c
 
+# operator evidence: images stay on the machine that made them, text is tracked (owner decision Q98, 2026-10-01;
+# the images of it01 to it15 and hardware/ were tracked before it and stay tracked)
+docs/superpowers/workflow/evidence/**/*.png
+docs/superpowers/workflow/evidence/**/*.gif
+docs/superpowers/workflow/evidence/**/*.jpg
+
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
 
