@@ -35,6 +35,22 @@ def strip_chars(cfg: Config) -> int:
     return cfg.columns if cfg.view == "text" else cfg.width // CELL_W
 
 
+def wrap_words(text: str, width: int) -> list[str]:
+    """The text in pieces of 1 to `width` characters (C54, Q91; width >= 1). A text that fits is the one piece, its
+    spaces kept. Else its words (`text.split()`), each cut to `width` (the rest dropped), fill the pieces greedily in
+    order: a word joins the open piece after one space when it fits, else it opens the next piece."""
+    if len(text) <= width:
+        return [text]
+    pieces: list[str] = []
+    for word in text.split():
+        word = word[:width]
+        if pieces and len(pieces[-1]) + 1 + len(word) <= width:
+            pieces[-1] += " " + word
+        else:
+            pieces.append(word)
+    return pieces
+
+
 def eligible(entries: dict[int, Entry]) -> dict[int, Entry]:
     """Attract's and autoplay's entries: stations 1 to 5 when any of them is loaded, else all (Q56)."""
     festival = {s: e for s, e in entries.items() if 1 <= s <= FESTIVAL_STATIONS}
@@ -162,8 +178,8 @@ class Show:
             if notice is not None:
                 return notice[:w]
             e = self._current
-            half = int((now - self._started) // ALTERNATE_S) % 2
-            return (f"{e.author}, {e.year}" if half == 0 else "Not A.I.")[:w]
+            texts = wrap_words(f"{e.author}, {e.year}", w) + ["Not A.I."[:w]]  # C54: a long attribution in pieces
+            return texts[int((now - self._started) // ALTERNATE_S) % len(texts)]
         if self._current is None:
             return ATTRACT_STRIP[:w]
         e = self._current

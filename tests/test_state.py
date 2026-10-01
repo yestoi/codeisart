@@ -2,15 +2,18 @@
 import dataclasses
 import logging
 import random
+from pathlib import Path
 
 from show.audio import FakeAudio
 from show.config import Config
 from show.entries import load_entry
 from show.lights import FakeLights
 from show.state import (ATTRACT_SHORT, ATTRACT_STRIP, FULL_SCREEN_EVERY_S, FULL_SCREEN_SHOW_S, NOTICE_S, Show,
-                        eligible, strip_chars)
+                        eligible, strip_chars, wrap_words)
 from show.terminal import Terminal
 from tests.show_helpers import HELLO_C, write_entry
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakePlayer:
@@ -447,7 +450,74 @@ def test_short_strip_cuts_each_part_to_the_width(tmp_path, fast_cfg):
     assert show.strip(0.0) == "PRESS A BU" and show.strip(3.0) == "ON ANY POR"
     show.press(1, 1.0)
     assert show.strip(1.0) == "PLAYING"
-    assert show.strip(3.0) == "Test Autho" and show.strip(4.0) == "Not A.I."
+    assert show.strip(3.0) == "Test" and show.strip(4.0) == "Author," and show.strip(7.0) == "2026"
+    assert show.strip(10.0) == "Not A.I." and show.strip(13.0) == "Test"
+
+
+# -- a long attribution in pieces (C54, Q91) ---------------------------------------------------------------------
+
+
+def test_wrap_words_keeps_a_text_that_fits_whole():
+    assert wrap_words("Test Author, 2026", 21) == ["Test Author, 2026"]
+    assert wrap_words("Test Author, 2026", 17) == ["Test Author, 2026"]
+    assert wrap_words("a  b", 4) == ["a  b"]  # a text that fits is not re-spaced
+
+
+def test_wrap_words_breaks_greedily_at_spaces():
+    assert wrap_words("Gavin Buttimore and Thaddaeus Frogley, 2000", 21) == [
+        "Gavin Buttimore and", "Thaddaeus Frogley,", "2000"]
+    assert wrap_words("Test Author, 2026", 10) == ["Test", "Author,", "2026"]
+    assert wrap_words("ab cd ef", 5) == ["ab cd", "ef"]  # a piece may fill the width exactly
+
+
+def test_wrap_words_cuts_a_word_longer_than_the_width():
+    assert wrap_words("Supercalifragilistic Smith, 1999", 10) == ["Supercalif", "Smith,", "1999"]
+    assert wrap_words("Ab Supercalifragilistic", 10) == ["Ab", "Supercalif"]  # the rest is dropped, not carried
+
+
+def test_wrap_words_pieces_fit_and_keep_the_words():
+    dirs = sorted(d for d in (ROOT / "entries").iterdir() if (d / "entry.toml").is_file())
+    texts = [f"{e.author}, {e.year}" for e in map(load_entry, dirs)]
+    assert len(texts) >= 6
+    for text in texts:
+        for width in range(1, 46):
+            pieces = wrap_words(text, width)
+            assert pieces and all(1 <= len(p) <= width for p in pieces), (text, width, pieces)
+            if all(len(word) <= width for word in text.split()):
+                assert " ".join(pieces) == " ".join(text.split()), (text, width, pieces)
+
+
+def test_short_strip_wraps_a_long_attribution(tmp_path, fast_cfg):
+    cfg = ink(fast_cfg)
+    assert strip_chars(cfg) == 21
+    entries = {1: load(tmp_path, "a", 1), 3: load_entry(ROOT / "entries" / "thadgavin")}
+    show, *_ = make_show(tmp_path, cfg, entries)
+    show.press(1, 1.0)
+    show.press(3, 1.5)
+    t0 = 10.0
+    finish(show, t0)  # thadgavin starts from the queue: no notice
+    assert show.current.slug == "thadgavin"
+    for dt, want in ((0.0, "Gavin Buttimore and"), (2.9, "Gavin Buttimore and"), (3.0, "Thaddaeus Frogley,"),
+                     (6.0, "2000"), (9.0, "Not A.I."), (11.9, "Not A.I."), (12.0, "Gavin Buttimore and")):
+        assert show.strip(t0 + dt) == want, dt
+    show.press(1, t0 + 13.0)
+    assert show.strip(t0 + 13.0) == "QUEUED #1" and show.strip(t0 + 14.9) == "QUEUED #1"
+    assert show.strip(t0 + 15.0) == "Thaddaeus Frogley,"  # the cycle counts from the entry's start
+    assert all(len(show.strip(t0 + k / 10)) <= 21 for k in range(200))
+
+
+def test_short_strip_keeps_a_fitting_attribution_in_two_texts(tmp_path, fast_cfg):
+    cfg = ink(fast_cfg)
+    for slug, attribution in (("sloane", "Andy Sloane, 2006"), ("imc", "Ian Collier, 1992"),
+                              ("endoh1", "Yusuke Endoh, 2012"), ("endoh3", "Yusuke Endoh, 2020"),
+                              ("hello", "Trey, 2026")):
+        entry = load_entry(ROOT / "entries" / slug)
+        show, *_ = make_show(tmp_path, cfg, {entry.station: entry})
+        show.press(entry.station, 1.0)
+        assert show.current.slug == slug
+        # two texts, today's strings at today's times: a four-text cycle would give a piece at 7.0
+        for t, want in ((3.0, attribution), (4.0, "Not A.I."), (7.0, attribution), (10.0, "Not A.I.")):
+            assert show.strip(t) == want, (slug, t)
 
 
 def test_strip_chars_follows_the_view():
