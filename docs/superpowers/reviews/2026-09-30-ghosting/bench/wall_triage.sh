@@ -18,6 +18,7 @@
 # step to nowhere (no card). Full output: /tmp/wall_triage/<time>-<step>.log; the screen gets the sender's line,
 # the arcade's ticks, and the last lines of any run that fails.
 set -u
+SELF=$(readlink -f "$0")
 REPO=/home/trey/codeisart
 HERE=$REPO/docs/superpowers/reviews/2026-09-30-ghosting
 BENCH=$HERE/bench
@@ -145,7 +146,7 @@ selftest)
     run "disturbed" echo "  colorlight sender: 3239 frames, 1 late (over 1 ms), worst 13919 us, sync to sync sd 346 us, 135 rows off their slot"
     run "a failing command" false ;;
 *)
-    awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
+    awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$SELF"
     exit 2 ;;
 esac
 say "done. Full output: $LOG"
