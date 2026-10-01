@@ -1632,9 +1632,9 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   shared with another session all night, so none of the three is an idle time. Before: 325.84 s for 1806 passed
   at 86f0607, and 371.06 s with Dodge reverted in. After the pool alone: 270.35 s for 1812 passed at 23c57d0.
   The pool saves about 55 s without Dodge and about 70 s with it; Dodge now costs about 31 s (it cost 45 s).
-- Minutes: about 99, from 03:59 to 05:38 CDT: orient 12 (03:59 to 04:11, two measured suite runs); plan 36
+- Minutes: about 96, from 03:59 to 05:35 CDT: orient 12 (03:59 to 04:11, two measured suite runs); plan 36
   (written 15; review 17; fix and confirmation 2); implement 29 (04:48 to 05:17; the orchestrator's own split:
-  T-pool 17.4, integration 10.7); review 10 (05:18 to 05:28); verify and report 21 (from 05:17, beside the review
+  T-pool 17.4, integration 10.7); review 10 (05:18 to 05:28); verify and report 18 (from 05:17, beside the review
   and after it: the suite twice 10.5, Dodge's evidence 1, the reading and the writing the rest).
 - Loop decisions and deviations:
   - The plan review blocked once (O2's commit message) and was confirmed in a second, two-minute round; the
