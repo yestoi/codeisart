@@ -260,15 +260,19 @@ lines over 80, endoh1's scrolling frame, thadgavin's flash, endoh3's alt left ou
    `.venv/bin/python -m show --backend fake --capture --config show.poc.toml --play <name>`; check
    `entries/<name>/fallback.cast` exists and its size; then `git status --porcelain entries` shows only the five
    casts; commit `chore(entries): fallback recordings (it16)`. A cast over 5 MB is not committed (journal line).
-3. The Pi 5, read-only on its checkout (rule 9a): `git -C /Users/trey/dev/codeisart archive --format=tar HEAD |
-   ssh trey@codeisart.local 'rm -rf /tmp/it16 && mkdir /tmp/it16 && tar -x -C /tmp/it16'`; then `ssh
-   trey@codeisart.local 'gcc --version | head -1; env -C /tmp/it16 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
-   ~/codeisart/.venv/bin/python -m pytest -q -rs tests/test_curated_entries.py tests/test_entries.py
-   tests/test_sandbox.py tests/test_pipeline.py'` (the plays go through `unshare -rn` there, `show/sandbox.py:56-59`,
-   and RLIMIT_AS, `:32-33`); then per entry the warnings under gcc 14: `ssh trey@codeisart.local 'for d in sloane imc
-   thadgavin endoh1 endoh3; do b=$(sed -n "s/^build = \"\(.*\)\"$/\1/p" /tmp/it16/entries/$d/entry.toml); printf
-   "%s " $d; env -C /tmp/it16/entries/$d LC_ALL=C sh -c "$b" 2>&1 | grep -c "warning:"; done'`. A gcc 14 error is
-   fixed by adding the archive Makefile's own `-Wno-<x>` for that diagnostic (its `CSILENCE`), never `-w`.
+3. The Pi 5, read-only on its checkout (rule 9a) and shared (Q83): every call takes the lock inside the ssh call
+   and keeps nothing on the Pi between calls. One call a check: `git -C /Users/trey/dev/codeisart archive
+   --format=tar HEAD | ssh trey@codeisart.local 'flock -w 300 /tmp/pi5.lock sh -c "<script>"'`, where the script
+   makes /tmp/it16.$$ (the shell's pid), untars stdin into it, runs the check there and removes /tmp/it16.$$ at
+   its end, whatever the check's status. If flock gives up after 300 s: the Mac's work, then the call again; a
+   check that never got the lock is journaled as not run, never as passed. Check (a), the tests, with T the
+   untarred tree: `gcc --version | head -1; env -C T SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+   ~/codeisart/.venv/bin/python -m pytest -q -rs -p no:cacheprovider tests/test_curated_entries.py
+   tests/test_entries.py tests/test_sandbox.py tests/test_pipeline.py` (the plays go through `unshare -rn` there,
+   `show/sandbox.py:56-59`, and RLIMIT_AS, `:32-33`). Check (b), the warnings under gcc 14, per entry: the `build`
+   line read from `T/entries/<name>/entry.toml` and run by `env -C T/entries/<name> LC_ALL=C sh -c "$b" 2>&1 |
+   grep -c "warning:"`, the build's exit status printed beside it. A gcc 14 error is fixed by adding the archive
+   Makefile's own `-Wno-<x>` for that diagnostic (its `CSILENCE`), never `-w`.
 
 ## Decisions taken
 - The sums: in each LICENSE.md, checked for good by `test_curated_sources_match_the_licence_sums`; values in this plan.
@@ -295,4 +299,5 @@ lines over 80, endoh1's scrolling frame, thadgavin's flash, endoh3's alt left ou
 - endoh1's 26-line frame scrolls the pty by four rows each frame: a render between two 1 KB chunks can tear, and the
   top four rows of its 80x25 field are never seen. `rows` cannot reach 26; the sheet judges it.
 - endoh3 runs gcc inside the run's limits (RLIMIT_AS 256 MB on Linux, `show/pipeline.py:27`); the Pi step proves it.
-- Four parallel full suites slow each other on the Mac; a suite over 420 s while agents run is re-timed idle.
+- Four parallel full suites slow each other on the Mac, and another session works there (Q83): a suite over 420 s
+  or a timing failure is measured once more before anything is decided on it.
