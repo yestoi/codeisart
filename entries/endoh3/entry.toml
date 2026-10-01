@@ -1,0 +1,10 @@
+title = "Mirror clock"
+author = "Yusuke Endoh"
+year = 2020
+station = 5
+source = "prog.c"
+build = "cc -std=gnu17 -Wall -Wno-strict-prototypes -fsigned-char -O2 -o prog prog.c"
+run = "sh clock.sh"
+rows = 24
+build_seconds = 60
+run_seconds = 40
