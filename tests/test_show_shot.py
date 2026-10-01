@@ -38,7 +38,7 @@ def test_script_writes_stamped_plain_led_and_distance_sheets(tmp_path):
 
 @pytest.mark.parametrize("script", ["strip", "edges"])
 def test_every_frame_has_the_strip_lit(script, real_font):
-    cfg = Config()
+    cfg = Config(strip=True)                         # the strip is off by default (Q100)
     steps = ss.SCRIPTS[script]()
     frames = ss.frames_from_steps(steps, cfg, real_font)
     assert len(frames) == len(steps)
@@ -48,7 +48,7 @@ def test_every_frame_has_the_strip_lit(script, real_font):
 
 
 def test_fullscreen_script_hides_and_shows_the_strip(real_font):
-    cfg = Config()
+    cfg = Config(strip=True)
     steps = ss.SCRIPTS["fullscreen"]()
     assert [s.strip_visible for s in steps][:2] == [False, True]
     assert all(s.full_screen for s in steps[:2])
@@ -173,6 +173,9 @@ def test_attract_mode_scrolls(tmp_path, play_cfg, real_font):
     assert len(frames) >= 3
     assert not (frames[0][1] == frames[-1][1]).all()
     for label, frame in frames:
+        assert lit(frame[-CELL_H:]) == 0, label              # no strip by default (Q100): the last row is dark
+    with_strip = replace(play_cfg, strip=True)
+    for label, frame in ss.frames_from_attract(tmp_path, with_strip, real_font, seconds=0.6, every_ms=200):
         assert lit(frame[-CELL_H:]) > 0.5, label
     ink = Config(width=128, height=64, view="ink")
     frames = ss.frames_from_attract(tmp_path, ink, real_font, seconds=0.3, every_ms=150)

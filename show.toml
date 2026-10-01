@@ -4,7 +4,8 @@ brightness = 0.15        # night operating level
 brightness_cap = 0.40    # never exceeded, sized to the power supplies
 phosphor = "green"       # green | amber
 glow = false
-strip_look = "bright-on-field"   # reverse | dim-reverse | bright-on-field (Q54)
+strip = false            # the attribution strip on the last row; off: the portraits carry the credit (Q100)
+strip_look = "bright-on-field"   # reverse | dim-reverse | bright-on-field (Q54); only with strip = true
 gamma = 2.2              # the governor's light model: 1.0 (the card applies gamma) to 2.2 (bytes as they are)
 entries_dir = "entries"
 audio_dir = "audio"

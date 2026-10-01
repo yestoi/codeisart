@@ -436,7 +436,7 @@ def frames_from_strips(cfg: Config, font: Font) -> list[tuple[str, np.ndarray]]:
     play = _strip_script()[1]
     frames = []
     for look in STRIP_LOOKS:
-        renderer = renderer_for(replace(cfg, strip_look=look), font)
+        renderer = renderer_for(replace(cfg, strip_look=look, strip=True), font)   # the sheet's subject
         term = Terminal(cfg.columns, cfg.rows - 1)
         term.feed(play.data)
         for suffix, text in playing_strips(cfg):

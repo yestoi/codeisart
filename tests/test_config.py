@@ -76,6 +76,19 @@ def test_strip_look_gamma_and_fps_are_checked(tmp_path):
     assert load_config(p).gamma == 1.0
 
 
+def test_the_strip_is_off_everywhere_and_must_be_true_or_false(tmp_path):
+    assert Config().strip is False                       # Q100: the portraits carry the credit, not the wall
+    for name in ("show.toml", "show.poc.toml"):
+        assert load_config(ROOT / name).strip is False, name
+    p = tmp_path / "show.toml"
+    p.write_text("strip = true\n")
+    assert load_config(p).strip is True
+    for bad in ('strip = "no"', "strip = 0", "strip = 1"):
+        p.write_text(bad + "\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+
 def test_the_default_strip_look_is_the_loop_s_reading_everywhere():
     assert Config().strip_look == "bright-on-field"
     for name in ("show.toml", "show.poc.toml"):

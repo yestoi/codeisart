@@ -2,7 +2,10 @@
 
 The "ink" view is for a wall too small for the terminal's text (the 128x64 proof of concept): every cell becomes
 one dot lit by how much ink its glyph has, so ASCII art reads as the picture it stands for, and the strip keeps
-the bottom text row."""
+the bottom text row.
+
+Without a strip row (`strip_row=False`, the config's `strip = false`, Q100) no strip is ever drawn: the last row
+is the program's, and the ink view is centred on the whole wall."""
 from __future__ import annotations
 
 import numpy as np
@@ -26,7 +29,7 @@ def _code(ch: str) -> int:
 class Renderer:
     def __init__(self, font: Font, width: int, height: int, columns: int, rows: int,
                  phosphor: tuple[int, int, int], glow: bool = False, view: str = "text",
-                 strip_look: str = "reverse"):
+                 strip_look: str = "reverse", strip_row: bool = True):
         if strip_look not in STRIP_LOOKS:
             raise ValueError(f"strip_look must be one of {tuple(STRIP_LOOKS)}, got {strip_look!r}")
         if view not in VIEWS:
@@ -36,7 +39,7 @@ class Renderer:
         if view == "ink" and height <= CELL_H:
             raise ValueError(f"the ink view needs more than {CELL_H} rows of pixels, got {height}")
         self.width, self.height, self.columns, self.rows = width, height, columns, rows
-        self.glow, self.view, self.strip_look = glow, view, strip_look
+        self.glow, self.view, self.strip_look, self.strip_row = glow, view, strip_look, strip_row
         self.x0 = max(0, (width - columns * CELL_W) // 2)
         self.y0 = max(0, (height - rows * CELL_H) // 2)
         self._font = font
@@ -44,7 +47,8 @@ class Renderer:
         ink = self._atlas.reshape(len(self._atlas), -1).sum(axis=1).astype(np.float64)
         self._ink = np.clip(ink / max(ink[32:127].max(), 1.0), 0.0, 1.0)   # the densest printable glyph is full
         # ink view: pixels per column, the cell's 6:8 shape kept, every row fitting above the strip's text row
-        self.dot = min(width / columns, (height - CELL_H) / (rows * CELL_H / CELL_W))
+        self._ink_h = height - CELL_H if strip_row else height
+        self.dot = min(width / columns, self._ink_h / (rows * CELL_H / CELL_W))
         bold_rgb = np.array(phosphor, dtype=np.float64)
         self._phosphor = bold_rgb
         # palette index 0 black, 1 normal, 2 bold
@@ -64,7 +68,7 @@ class Renderer:
         key = (cursor.x, cursor.y, cursor.hidden, cursor_on, strip, full_screen, strip_visible)
         if self._frame is not None and screen is self._screen and not screen.dirty and key == self._key:
             return self._frame
-        frame = self._draw(screen, cursor_on, strip, not full_screen or strip_visible)
+        frame = self._draw(screen, cursor_on, strip, self.strip_row and (not full_screen or strip_visible))
         screen.dirty.clear()
         frame.flags.writeable = False
         self._frame, self._screen, self._key = frame, screen, key
@@ -119,12 +123,13 @@ class Renderer:
         return frame
 
     def _ink_frame(self, codes: np.ndarray, level: np.ndarray, rev: np.ndarray) -> np.ndarray:
-        """One dot per cell, sampled nearest to fill the cells' shape, centred above the strip's text row."""
+        """One dot per cell, sampled nearest to fill the cells' shape, centred above the strip's text row (on the
+        whole wall without a strip row)."""
         ink = self._ink[codes]
         lum = np.where(rev, 1.0 - ink, ink) * np.where(level == 2, 1.0, NORMAL)
         rows, columns = codes.shape
         dot_w, dot_h = self.dot, self.dot * CELL_H / CELL_W
-        area_h = self.height - CELL_H
+        area_h = self._ink_h
         ow, oh = min(self.width, round(columns * dot_w)), min(area_h, round(rows * dot_h))
         xs = np.minimum(((np.arange(ow) + 0.5) / dot_w).astype(np.intp), columns - 1)
         ys = np.minimum(((np.arange(oh) + 0.5) / dot_h).astype(np.intp), rows - 1)
@@ -143,9 +148,9 @@ class Renderer:
 
 
 def renderer_for(cfg, font: Font) -> Renderer:
-    """Every Renderer from a Config: size, phosphor, glow, view and the strip's look."""
+    """Every Renderer from a Config: size, phosphor, glow, view, the strip's look and whether there is a strip."""
     return Renderer(font, cfg.width, cfg.height, cfg.columns, cfg.rows, cfg.phosphor_rgb,
-                    glow=cfg.glow, view=cfg.view, strip_look=cfg.strip_look)
+                    glow=cfg.glow, view=cfg.view, strip_look=cfg.strip_look, strip_row=cfg.strip)
 
 
 def apply_glow(frame: np.ndarray, amount: float = 0.3) -> np.ndarray:

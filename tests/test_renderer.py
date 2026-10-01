@@ -399,11 +399,40 @@ def lettered_screen(lines: int) -> pyte.Screen:
     return screen
 
 
+def test_without_the_strip_row_the_text_view_leaves_the_last_row_to_the_program(font):
+    r = renderer(font, strip_row=False)
+    frame = r.render(make_screen("A"), strip="NOW: x by y, 2000")
+    assert cell(frame, 0, 0).any()
+    assert frame[STRIP_Y:].sum() == 0                    # no strip, whatever the caller passes
+    frame = r.render(make_screen("A" * COLS * ROWS, lines=ROWS), strip="NOW", full_screen=True, strip_visible=True)
+    assert (cell(frame, ROWS - 1, 0) == mask(font, "A")).all()   # the program's own 24th row, not the strip
+
+
+def test_without_the_strip_row_the_ink_view_is_centred_on_the_whole_wall(font):
+    frame = ink_renderer(font, strip_row=False).render(make_screen("A" * COLS * (ROWS - 1)), strip="NOW")
+    rows_lit = frame.any(axis=2).all(axis=1)
+    assert rows_lit[6 : 6 + 49].all()                   # 24 rows are 51 px, centred in 64; the pty's 23 are 49
+    assert not frame[:6].any() and not frame[6 + 49 :].any()
+
+
+def test_renderer_for_follows_the_configs_strip():
+    from show.config import load_config
+    from show.renderer import renderer_for
+    root = Path(__file__).resolve().parents[1]
+    cfg = load_config(root / "show.poc.toml")
+    real = Font.load(root / "fonts" / "5x7.bin")
+    assert cfg.strip is False
+    assert renderer_for(cfg, real).render(make_screen(), strip="NOW").sum() == 0
+    cfg.strip = True
+    assert renderer_for(cfg, real).render(make_screen(), strip="NOW")[-8:].any()
+
+
 def test_a_24_row_screen_renders_its_first_23_rows_under_the_strip():
     from show.config import load_config
     from show.renderer import renderer_for
     root = Path(__file__).resolve().parents[1]
     cfg = load_config(root / "show.poc.toml")
+    cfg.strip = True                                     # the strip is off by default (Q100)
     real = Font.load(root / "fonts" / "5x7.bin")
     tall, short = lettered_screen(24), lettered_screen(23)
     assert tall.display[23] == "X" * COLS and tall.display[:23] == short.display

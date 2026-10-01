@@ -380,7 +380,8 @@ def test_the_poc_config_pushes_ink_frames(tmp_path):
     for k in range(1, 21):
         loop.step(k / 20)
     assert loop.show is not None and loop.wall.governor.shape == (64, 128, 3)
-    assert inner.last.shape == (64, 128, 3) and inner.last[-8:].any() and inner.last[:-8].any()
+    assert inner.last.shape == (64, 128, 3) and inner.last[:-8].any()
+    assert not inner.last[-8:].any()                     # no strip (Q100): the bottom text row is dark
     assert inner.count == loop.wall.governed == 20
 
 

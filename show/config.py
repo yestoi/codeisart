@@ -25,6 +25,7 @@ class Config:
     phosphor: str = "green"
     glow: bool = False
     view: str = "text"       # text | ink (one dot a cell, for a wall smaller than the terminal: the 128x64 PoC)
+    strip: bool = False      # the strip on the last row; off (Q100): the portraits carry the credit, not the wall
     strip_look: str = "bright-on-field"   # the strip's look (Q54, the loop's reading)
     gamma: float = 2.2            # the governor's light model: 1.0 (the card applies gamma) to 2.2 (bytes as they are)
     entries_dir: Path = Path("entries")
@@ -74,6 +75,8 @@ def load_config(path: Path) -> Config:
         raise ValueError(f"{path}: phosphor must be one of {sorted(PHOSPHORS)}")
     if cfg.view not in ("text", "ink"):
         raise ValueError(f"{path}: view must be text or ink")
+    if not isinstance(cfg.strip, bool):
+        raise ValueError(f"{path}: strip must be true or false")
     if cfg.strip_look not in STRIP_LOOKS:
         raise ValueError(f"{path}: strip_look must be one of {STRIP_LOOKS}")
     if isinstance(cfg.gamma, bool) or not isinstance(cfg.gamma, (int, float)) or not 1.0 <= cfg.gamma <= 2.2:
