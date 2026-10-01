@@ -23,6 +23,9 @@ entries/*/*
 !entries/*/*.c
 !entries/*/entry.toml
 !entries/*/fallback.cast
+!entries/*/*.sh
+!entries/*/LICENSE.md
+entries/endoh3/clock.c
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
