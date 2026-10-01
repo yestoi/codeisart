@@ -65,7 +65,8 @@ canonical part. A play is a pure function of (game, bot, seed, layout) (`helpers
 ```
 # tests/arcade/pooled.py (new)
 PLAY_WORKERS = 4                  # worker processes at most: the Pi 5 has 4 cores, the shared Mac 4 fast ones (Q97)
-WORKER_TIMEOUT_S = 300.0          # from the first worker's start to the last's end; past it the rest are killed
+WORKER_TIMEOUT_S = 120.0          # from the first worker's start to the last's end; past it the rest are killed
+                                  # (the 180 plays take about 33 s; a hang must not push the suite past 10 minutes)
 ROLES = ("good", "lazy", "none")  # feel._bot_plays' three bots, in its order; "none" is bots.Nobody
 ROOT = Path(__file__).resolve().parents[2]   # the checkout this file is in (a worktree's own): the workers' cwd
 PYTHON = sys.executable           # the workers' interpreter (a module constant so a test can replace it)
@@ -83,7 +84,8 @@ def main(argv: list[str] | None = None) -> int         # the worker: argv [jobs.
 `fill`, so two implementers write the same function:
 1. `todo`: the jobs of `jobs(reports)` whose key is not in `plays` (an earlier test's play is kept and not remade). The
    key is `play_key(game_cls, type(bot_for(game_cls, role)).__name__, seed, layout)`, the memo's key for that play.
-2. `n = min(workers, os.cpu_count() or 1, len(todo))`. With `n < 2` it starts nothing and returns `set()`.
+2. `n = min(workers, os.cpu_count() or 1, len(todo))`. With `n < 2` it starts nothing and returns `set()`; when
+   `todo` holds two jobs or more and the core count is what made `n < 2`, it warns (`RuntimeWarning`, one line) first.
 3. In a `tempfile.TemporaryDirectory()`: worker k's share is `todo[k::n]` (round robin: each worker gets a mix of the
    games and bots), written as JSON; worker k is `subprocess.Popen([PYTHON, "-m", "tests.arcade.pooled", <jobs-k.json>,
    <out-k.pickle>], cwd=ROOT, stdout=DEVNULL, stderr=<err-k.txt in the directory>)`, the environment inherited (the
@@ -93,15 +95,16 @@ def main(argv: list[str] | None = None) -> int         # the worker: argv [jobs.
    still running is killed and waited for: no worker outlives `fill`, on any path (a raise, a timeout, Ctrl-C).
 5. A worker that exited 0 and wrote its file: the file holds `{"arcade": <the worker's arcade.__file__>, "plays":
    [bots.Play, ...]}` in its share's order. Its share is stored (`plays[key] = play`, the key added to the returned
-   set) only when the list has the share's length and that path is under `ROOT`.
+   set) only when the list has the share's length and `Path(<that path>).resolve().parents[1] == ROOT` (this
+   checkout's `arcade`, not a worktree's under it).
 6. Any other outcome for a worker (Popen raised OSError, a non-zero exit, the deadline, a missing or short file, an
    `arcade` outside ROOT): one `warnings.warn(..., RuntimeWarning)` naming the worker, its exit code and the last 20
    lines of its stderr; its share is not stored, so the memo makes those plays in this process as today (a game's own
    exception then raises there, with its traceback, where it raises today). Returns the keys it stored.
-`main`: reads the jobs, `play_job` each in order, pickles the dict of 5 to the out path, returns 0; an exception is not
+`main`: reads the jobs, `play_job` each in order, pickles step 5's dict (its two keys) to the out path, returns 0; an exception is not
 caught (exit 1, the traceback in the worker's stderr file). `if __name__ == "__main__": sys.exit(main())`.
 
-`tests/arcade/test_oracle.py` changes (its seven existing tests and their asserts stay word for word):
+`tests/arcade/test_oracle.py` changes (every existing test, five functions at BASE, and their asserts stay word for word):
 ```
 REPORT_PLAYS: list[tuple[type, str, list[int]]]   # [(Pong, LAYOUT, SEEDS)] + for each game of OTHER_GAMES
                                                   # (game, bots._layout(game, None), bots.seeds(game, that, 20))
@@ -149,13 +152,16 @@ patches `bots.play` in its own module), `tests/test_show_soak.py` (no child is l
 New items: 6 (5 calls under 3 s together, the pong comparison about 1.4 s).
 
 ## O2 (orchestrator, main checkout, after T-pool's merge and suite): Dodge returns
-`git -C /Users/trey/dev/codeisart revert --no-edit 16dbb91` (16dbb91 reverts the merge 83fe13a; its branch is already
-in main's history, so only this brings Dodge back). Check `git -C /Users/trey/dev/codeisart show --stat HEAD`: exactly
-the four files, 991 lines added, none removed, and `git -C /Users/trey/dev/codeisart diff 83fe13a HEAD -- <the four
-files>` empty (Dodge as it15 reviewed it). The revert's message is git's own (`--no-edit`); the journal names it.
-Nothing else in the commit: `REPORT_PLAYS` and the comparison test pick Dodge up from `all_games()` (MENU_ORDER already
-names `dodge`). Then the full suite with `--durations=20` added. A suite over 420 s is measured once more (Q83); over
-twice, Dodge goes back out by `git -C /Users/trey/dev/codeisart revert --no-edit <the revert's sha>` and the journal
+`git -C /Users/trey/dev/codeisart revert --no-commit 16dbb91` (16dbb91 reverts the merge 83fe13a; its branch is already
+in main's history, so only this brings Dodge back), then `git -C /Users/trey/dev/codeisart commit` with a written
+message (plan review, finding 1: `--no-edit` would leave git's own message, no reason and no trailers): the subject
+`feat(arcade): Dodge returns (it18 O2; reverts 16dbb91)`, one line on why (the suite after T-pool, its time), and the
+two trailers of the Global Constraints as the last paragraph. Check `git -C /Users/trey/dev/codeisart show --stat
+HEAD`: exactly the four files, 991 lines added, none removed, and `git -C /Users/trey/dev/codeisart diff 83fe13a HEAD
+-- <the four files>` empty (Dodge as it15 reviewed it). Nothing else in the commit: `REPORT_PLAYS` and the comparison
+test pick Dodge up from `all_games()` (MENU_ORDER already names `dodge`). Then the full suite with `--durations=20`
+added. A suite over 420 s is measured once more (Q83); over twice, Dodge goes back out the same way (`revert
+--no-commit <O2's sha>`, then a commit whose message gives the two suite times, with the trailers) and the journal
 says why.
 
 ## Expected counts and times (the Mac, the load noted beside each run)
