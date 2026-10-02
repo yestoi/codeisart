@@ -8,8 +8,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from arcade.bots import (BODY_HEIGHT, BODY_RANGE_SECONDS, MAX_PLAY_SECONDS, Move, Nobody, Play, for_game, play, seeds,
-                         win_rate)
+from arcade.bots import (BODY_HEIGHT, BODY_RANGE_SECONDS, MAX_PLAY_SECONDS, Move, Nobody, Play, _sensed, for_game, play,
+                         seeds, win_rate)
+from arcade.calibration import Calibration
 from arcade.config import ArcadeConfig
 from arcade.game import KINDS, Game, GameInfo
 from arcade.sensed import LEFT_HIP, RIGHT_HIP, RIGHT_WRIST
@@ -345,3 +346,23 @@ def test_move_pose_holds_the_named_pose(font5x7):
             assert (x, y) == (pytest.approx(cx + dx * h, abs=1e-6), pytest.approx(cy + dy * h, abs=1e-6)), f"kp {i}"
     with pytest.raises(ValueError, match="unknown pose"):
         play(Hands, Recorder(move=Move(pose="no_such_pose")), seed=0, won=never, font=font5x7)
+
+
+def test_move_lift_raises_the_whole_body():
+    cal = Calibration()
+    for i, before in ((0, None), (40, 0.45)):
+        (still,), (lifted,) = (_sensed(i, move, before, cal)[0].bodies for move in (Move(), Move(lift=0.1)))
+        for k, (a, b) in enumerate(zip(still.keypoints, lifted.keypoints)):
+            assert (b.x, b.y) == (pytest.approx(a.x, abs=1e-6), pytest.approx(a.y - 0.1, abs=1e-6)), f"tick {i}, kp {k}"
+
+
+def test_move_without_lift_is_todays_body(font5x7):
+    cal = Calibration()
+    for i, before in ((0, None), (40, 0.45)):
+        (today,), (zero,) = (_sensed(i, move, before, cal)[0].bodies for move in (Move(), Move(lift=0.0)))
+        assert [(k.x, k.y, k.conf) for k in zero.keypoints] == [(k.x, k.y, k.conf) for k in today.keypoints]
+        assert (zero.in_zone, zero.zone_x, zero.zone_y) == (today.in_zone, today.zone_x, today.zone_y)
+    seed = seeds(Probe, "128x32", 1)[0]
+    noisy = [s["anchor_x"] for s in probe(0.05, Move(), seed, font5x7)]
+    assert [s["anchor_x"] for s in probe(0.05, Move(lift=0.0), seed, font5x7)] == noisy
+    assert [s["anchor_x"] for s in probe(0.05, Move(lift=0.1), seed, font5x7)] == noisy   # lift draws no noise

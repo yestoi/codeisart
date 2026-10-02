@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 MAX_PLAY_SECONDS = 180.0
 BODY_HEIGHT = 0.7               # a bot's body at near 0.5; near 0 is 0.52 tall (in the zone), near 1 is 0.95
 BODY_RANGE_SECONDS = 0.8        # a bot's near moves at most 1 / this a second: a brisk step, not a teleport
+HIP_Y = Person().y0             # a bot's hip height in the camera frame (Person's); a Move's lift raises it
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -42,13 +43,16 @@ class Move:
     the hand's wrist at reach-box v wrist_y (0 top, 1 hip height), or down with None; hand "left", "right" or
     "both" (both wrists at wrist_y, one noise draw); near, the Depth value (arcade/input.py) the body stands at:
     0 far, 1 near, 0.5 its start. None: the start size (Person's). pose, a name in arcade.poses.POSES the body
-    holds on the tick (wrist_y, when set, then moves the hand's wrists), or None for stand."""
+    holds on the tick (wrist_y, when set, then moves the hand's wrists), or None for stand. lift, the share of the
+    frame height the whole body (its hips and every keypoint) is raised by on the tick, as Person.jump raises it;
+    it carries no noise draw, so a play without it draws as before."""
 
     x: float = 0.5
     hand: str = "right"
     wrist_y: float | None = None
     near: float | None = None
     pose: str | None = None
+    lift: float = 0.0
 
 
 class Bot(Protocol):
@@ -127,17 +131,18 @@ def _step(near: float, was: float | None) -> float:
 def _sensed(i: int, move: Move | None, before: float | None, cal: Calibration) -> tuple[Sensed, float | None]:
     """Tick i's record, shaped as actors._frames makes it, and the body's camera x (None without a body).
 
-    The Move becomes a Person(x, id=1) with its hips at zone x, moved there from its x on the tick before (so
-    vx is the tick's step), holding the Move's pose and its wrist (both with hand "both") at wrist_y, placed with
-    cal. An unknown pose raises ValueError. With near (already paced by play) the body is BODY_HEIGHT *
-    Depth.ratio(near) tall, else Person's own height."""
+    The Move becomes a Person(x, id=1) with its hips at zone x and lift above HIP_Y, moved there from its x on the
+    tick before (so vx is the tick's step), holding the Move's pose and its wrist (both with hand "both") at
+    wrist_y, placed with cal. An unknown pose raises ValueError. With near (already paced by play) the body is
+    BODY_HEIGHT * Depth.ratio(near) tall, else Person's own height."""
     t = i * TICK
     bodies, cx = (), None
     if move is not None:
         x0, _, x1, _ = cal.zone
         cx = min(x1, max(x0, x0 + move.x * (x1 - x0)))
         size = {} if move.near is None else {"height": BODY_HEIGHT * Depth.ratio(move.near)}
-        person = Person(cx if before is None else before, id=1, **size).walk(cx, TICK / 2, at=t - TICK)
+        person = Person(cx if before is None else before, HIP_Y - move.lift, id=1, **size)
+        person.walk(cx, TICK / 2, at=t - TICK)
         if move.pose is not None:
             person.pose(move.pose, at=t - TICK, seconds=2 * TICK)
         if move.wrist_y is not None:
