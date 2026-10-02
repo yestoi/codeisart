@@ -219,3 +219,76 @@ The branches are kept, as are their worktrees under `.claude/worktrees/`:
   - G4: 30.8 min.
 - **Integration:** about 35 min, from 01:48 to about 02:23. That covers four merges, each with its full suite (5.7,
   6.6, 7.1 and 8.1 min), the strobe rerun, the guide additions and this report.
+
+## Fix round (the code review's two findings)
+
+The code review (`code-review.md`, "Blocking findings") found two breaks of the Global Constraint "Rows 60 to 63 stay
+free (the runner's marker)". Both were fixed test-first in the main checkout, from f2d24ba, one commit per game. Only
+the four named files changed. No existing assert was removed or weakened, and no lever moved.
+
+### Freeze
+
+- **Fix** (`arcade/games/freeze.py`, `_draw_fall`): the rotated skeleton is lifted by as much as its lowest lit row
+  would pass row 59 (`BORDER_ROWS - 1`). The lowest lit row is a thick line's lower row (`STROKE` 2: one row under its
+  points) or the head disc's radius. So the out player lies down above rows 60 to 63, and the topple and fade still
+  show.
+- **Test added** (`tests/arcade/test_freeze.py`): `test_own_drawing_keeps_rows_60_to_63_dark[canonical, duo]`. It
+  drives each scenario through the game with the file's `make`/`drive` until `done()`. It asserts that a seat toppled,
+  and that rows 60 to 63 of the game's own frame are dark on every tick.
+  - Before the fix: 52 lit ticks in `canonical` from t 8.27 and in `duo` from t 8.13, as the review found.
+  - After the fix: none.
+- `test_an_out_figure_topples_and_fades` is unchanged and passes.
+
+### Flap
+
+- **Fix** (`arcade/games/flap.py`):
+  - **The hint.** `HINT_TEXT` moves from y 55, rows 55 to 61, to y 37, rows 37 to 43. The row is not a named
+    constant: the expression `round(h * 0.7) + GLYPH_H + 3` became `round(h * 0.7) - CELL_H`. That is one line pitch
+    over `READY_TEXT` (rows 45 to 51), with a blank row between, clear of the bird (rows 26 to 33 in `ready`) and the
+    gauge ticks. I chose y 37 over the review's y 53 because y 53's bottom glyph row would sit on the floor line, row
+    59. `GLYPH_H`, the expression's only user, is dropped.
+  - **The wings.** The wings-down block is drawn at `min(top + BIRD_H, FLOOR_Y - 1)`, so a bird on the floor keeps
+    its wings on rows 58 and 59.
+- **Test added** (`tests/arcade/test_flap.py`): `test_own_drawing_keeps_rows_60_to_63_dark[idle_body, nobody,
+  one_arm, floor_crash]`. `floor_crash` is one flap at 1.3 s, then both hands down; its new helper is `floor_crash()`.
+  Each case asserts that the hint showed, or for the crash that the bird crashed on the floor, and that rows 60 to 63
+  are dark on every tick.
+  - Before the fix: 1741, 841, 76 and 37 lit ticks. The floor crash ran from t 4.13, as the review found.
+  - After the fix: none.
+
+### Tests after both fixes
+
+- `tests/arcade/test_flap.py tests/arcade/test_freeze.py`: 80 passed, 40.85 s.
+- `tests/arcade/test_oracle.py -k "flap or freeze"`: 6 passed, 96.91 s.
+- `arcade.feel.report` on the 20 report seeds: `failures` is empty for both games.
+
+| Metric | Flap | Freeze | Budget |
+|---|---|---|---|
+| win_good | 1.0 | 1.0 | min 0.7 |
+| win_lazy | 0.6 | 0.4 | 0.1 to 0.7 |
+| win_none | 0.0 | 0.0 | max 0.05 |
+| response_ticks | 1.5 | 1.0 | max 2 |
+| response_px | 16 | 396 | min 12 |
+| fidelity | 0.9903 | 0.9999 | min 0.8 |
+| range | 0.8254 | 0.9213 | min 0.6 |
+| lit_fraction | 0.0564 | 0.0992 | 0.01 to 0.5 |
+| dim_fraction | 0.0 | 0.0274 | max 0.1 |
+| liveliness | 0.0014 | 0.0197 | min 0.001 |
+| flash_area_raw | 0.0 | 0.0186 | max 0.1 |
+| square_flashes | 0 | 5 | max 6 |
+| score_visible, score_legible | 1.0, 1.0 | 1.0, 1.0 | min 0.8, 0.9 |
+| round_seconds | 49.0 | 52.87 | 20 to 120 |
+| phases_reached | 1.0 | 1.0 | 1.0 |
+
+The win rates did not move. Freeze's `dim_fraction` rose from 0.0157 to 0.0274, because the lifted topple fades in
+view.
+
+- **Full suite** (the test command, at d81599e): 2092 collected, 2089 passed, 3 skipped (the base's three), no
+  failure, 484.37 s, under the 540 s cap. The load average was about 4.
+
+### Commits
+
+| sha | subject |
+|---|---|
+| 1acbe6e | fix(arcade): it19 review, Freeze's topple lies down above rows 60 to 63 |
+| d81599e | fix(arcade): it19 review, Flap's hint and floor-crash wings stay above rows 60 to 63 |
