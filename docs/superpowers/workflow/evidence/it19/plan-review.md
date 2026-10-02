@@ -229,3 +229,83 @@ stand.**
   - `probe_flap.py` and `probe_flap2.py`: Flap's play model, 200 seeds per variant (B3, B6), and the runner's exit
     `Hold` under repeated flaps (B7).
   - `probe_cost.py`: CPU per tick of the existing games' plays, and the suite and pool estimates.
+
+## Round 2
+Plan at d409540 (the diff from 7f71798 read in full, and the whole plan re-read). Probes: `probe_r2_copyme.py`,
+`probe_r2_flap.py` (with captures every tick, as `bots.py:141` makes them), a grid of Flap's levers, and a still
+body's `Cursor` v at three heights.
+
+Verdict: BLOCKED. B1 to B8 are closed. One new blocking finding, N1, is a one-line fix to the text of B3's fix; with
+that line the plan is approved, and nothing else needs a third look.
+
+### The eight findings
+- **B1, closed.** Lazy's noise of 0.01 gives 0 outs in round 1's probe. With reaction 10 the bot sees the red
+  11 ticks late (0.37 s at `TICK` 1/30) and its hand settles before red + `GRACE`. Its one mistake falls on half the
+  seeds (`GREEN_SECONDS` uniform (3, 6) against 4.5), and on the rest it dances as good does. So win_lazy is about
+  0.5 x win_good: on 20 seeds, P(15 or more) is about 2 % and P(1 or fewer) about 0. `LAZY_GREEN` is a lever.
+- **B2, closed.** win_lazy is the share of seeds whose round 3 draws `LADDER[2][0]`, about 1/3. On 20 seeds,
+  P(1 or fewer) is about 0.3 %. Lazy stands before each copy, so `FRESH_SHARE` holds. The template test needs only
+  `lazy < good` (`test_dodge.py:527`).
+- **B3, not closed as written: see N1.**
+- **B4, closed.** A still body's unglided `Cursor` v has a minimum of 0.952 at height 0.6, 0.937 at 0.45 and 0.964
+  at 0.8 (5 ids, 60 s, REAL_NOISE), against `CUT_V_MAX` 0.85. Since `CUT_V_MAX = V_BOTTOM`, the rule removes only
+  the clamped bottom row (57) from cutting, so the bots' reach to `GOAL` is unchanged: fruit spend their time at
+  rows 10 to 50. The new zone map lets either hand reach both edges.
+- **B5, closed.** From row 57 with gravity 30, `LAUNCH_VY` -53 peaks at row 10.2 and -42 at row 27.6 (about 0.9 px
+  either way by integrator), inside the band of 8 to 30.
+- **B6, closed by the tuning rule, but lazy's starting value is far off.** Model with the fixed numbers and a
+  capture every tick: good (6 ticks late, falling-only, level or under) survives 0.72 (200 seeds). Lazy at 9 late
+  and 5 px under survives 0.00, and 0.00 to 0.01 at 3 to 8 px. The named levers do reach the band. Starting values
+  for the implementer:
+
+  | `GAP_H` | `GAP_STEP` | Good (6 late, level) | Lazy (9 late, level) | Lazy (8 late, 2 px under) |
+  |---|---|---|---|---|
+  | (34, 30) | 6 | 0.94 | 0.31 | 0.13 |
+  | (36, 32) | 6 | 0.94 | 0.53 | 0.28 |
+
+  Lazy at 5 px under stays at 0.07 or less in every row of the grid. Suggested plan edit (not blocking): lazy
+  starts at "level with the gap, 8 ticks", and `GAP_H (34, 30)` with `GAP_STEP 6`.
+- **B7, closed.** `exit_gesture=False`, and the test flaps every 0.3 s for 5 s.
+- **B8, closed.** With the ladder poses built as the plan describes them (approximate offsets), every pose judges 2
+  or more at 60 degrees:
+
+  | Poses | Judged segments |
+  |---|---|
+  | arms_up, t_pose, y_pose, flex, star | 4 |
+  | disco, teapot | 3 (hand-on-hip forearm at 61) |
+  | right_up, left_up, airplane | 2 |
+
+  The hand-on-hip forearm sits on the line, but each pose still keeps 2 without it. A still body comes no closer
+  than 42.4 degrees to any judged target segment, 0 matched captures in 5 ids x 60 s, and stand's share is 0.
+
+### New blocking finding
+**N1. Flap's bots "sweep once in `ready`" can lose their one flap to `READY_SECONDS`, which is B3 again on every
+seed.**
+- `ready` holds "until the first flap ... least `READY_SECONDS`" (plan 146-147, `READY_SECONDS = 1.0`).
+- The bot sees `ready` from its first view (6 or 9 ticks late), sweeps at once, and the flap lands at about 0.4 to
+  0.6 s, before 1.0 s.
+- The text does not say what a flap before `READY_SECONDS` does. Under the plain reading (play starts on a flap
+  once `READY_SECONDS` have passed), that flap is ignored. The bot never sweeps again ("once"; `gap_xy` is not None),
+  the bird stays in `ready`, and the session ends on the inactive rule: win 0 for both bots.
+- In the model, sweeping again while `ready` is seen gives the rates above; a single sweep before 1.0 s gives 0.
+- Smallest fix, one line, either one:
+  - Plan 178-179: "both sweep in `ready`, one at a time, until they see `play`".
+  - Plan 147: "a flap before `READY_SECONDS` starts `play` when they pass".
+
+### New notes
+- **Copy Me's `active` must use the held body** (`KeypointHold`, as the drawing does). Still body, mean
+  judged-angle error, worst swing within 1 s:
+  - On the raw body it swings up to 83 degrees, because a dropped wrist changes which segments are averaged:
+    teapot has 1418 windows of 1 s over `ACTIVE_DEG` 25 and disco 1286, so "never `active`" fails.
+  - Through the hold, the worst swing is 21.2 degrees (disco and teapot), 0 windows over 25. The margin is thin.
+- **Star scores like y_pose.** Star's legs (about 13 degrees from stand) are never judged, so a star round scores
+  exactly as y_pose does.
+  - A player who holds y_pose from round 2 into a star round never drops under `FRESH_SHARE`, and the round's points
+    do not count.
+  - The good bot still wins (rounds 1 and 2).
+  - Either make star's feet apart enough for its legs to clear 60 degrees, or take star out of rung 3.
+- **Swat's falling fruit.** A fruit centred at row 58 or 59 on its way down lights row 60 or 61. Remove a falling
+  fruit once its centre passes `SPAWN_Y`, or clip the draw at row 59. The test (plan 234) catches it.
+- **Flap's end after a crash.** The plan does not say when `over` ends after a crash with no restart flap. If it
+  waits for a flap, every crashed bot play runs to the 30 s inactive rule, which adds suite time. Say "done after
+  `OVER_SECONDS` without a flap".

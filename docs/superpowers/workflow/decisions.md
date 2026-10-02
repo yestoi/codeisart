@@ -759,3 +759,94 @@ default: (1) Nothing of this run needs the Pi: the arcade's games, sources and l
 deadline: iteration 19's plan
 answer:
 status: defaulted (standing instruction)
+
+### Q104: Does Copy Me save the round winner's pose as a future target (the spec's pose relay)?
+asked: iteration 19's plan writer, 2026-10-01 (evidence/it19/plan-writer-report.md). Spec 8 row 1 has the round winner strike a pose that is saved to `data_dir`; a game never saves a file or reads the config (the game guide, section 2), so the relay needs a store that the runner owns, which is an engine change after `game-protocol-v1`
+default: cut from iteration 19. Copy Me ships with its fixed ladder of nine poses; the relay is a later iteration's, with its store
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q105: How many play Copy Me at once, and whose score is kept?
+asked: iteration 19's plan writer, 2026-10-01. Spec revision 4's note says Copy Me takes 1 or 2
+default: 1 or 2. Two copy the same target at once, each in their own figure and each scored; a best is stored for a solo game only (as Q23 has it for a duel)
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q106: What is Freeze for one player, and for how many is it?
+asked: iteration 19's plan writer, 2026-10-01. Spec 8 row 10 says "1 to many" and "last one standing"; `GameInfo.players` allows 1 or 2 (`arcade/game.py:89`, the frozen protocol)
+default: 1 or 2. A lone player survives six reds; a red scores only after a dance in the green before it, so standing still all game scores nothing (C41); an out ends a solo game. Two play to the last one standing or six reds
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q107: What does Freeze read, and how is its red shown?
+asked: iteration 19's plan writer, 2026-10-01. The spec row says "to whatever music is around" and "keypoint speed by body, or motion by region"; no game reads the microphone (Q99) and the motion grid is M5's, not built
+default: the body's keypoint travel alone (the wrists in the reach box and the body's place on the mat); no music, no motion grid. The lights are the game's own timer. Red is a 1 px border and the word FREEZE, at most 0.12 of the wall lit red, one change a light, never a full-field colour (the flash rule). Freeze declares `exit_gesture = False`: a player frozen with both hands up for a 3 s red would otherwise end the session
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q108: Does a one-armed flap count in Flap?
+asked: iteration 19's plan writer, 2026-10-01. Spec 8 row 7: "Both wrists sweeping from above to below the shoulders within 0.4 s is one flap"
+default: no, both wrists, as the spec says. A player with one arm cannot play Flap as built; the owner's to change
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q109: Does Flap show a wing gauge, and how does it restart?
+asked: iteration 19's plan writer, 2026-10-01. Every scored game must meet the fidelity and range budgets on one continuous control (`arcade/feel_budgets.toml`); a flap is a gesture with no axis
+default: a small marker at the left edge follows the hand's height and shows the two lines a flap crosses; it is the control the oracle measures and it teaches the gesture. After a crash a flap starts a new run, at most 3 runs a session; the best run is the score
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q110: What moves Swat's blade?
+asked: iteration 19's plan writer, 2026-10-01. Spec 8 row 8: "a hand's path between two ticks cuts them"; a hand's reach covers about a third of the 128 px wall
+default: the body's place on the mat plus the hand's reach: a player steps to reach the far side and swipes with the hand
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q111: How long is a round of Swat, and what do two players share?
+asked: iteration 19's plan writer, 2026-10-01. The spec's 60 s round is the costliest of the four in the suite (about 38 s; the first to be cut if the suite passes Q102's limit)
+default: 60 s, as the spec says. Two players share one score and store no best
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q112: May the test bots move both hands and strike a named pose?
+asked: iteration 19's plan writer, 2026-10-01. `bots.Move` (`arcade/bots.py:40`) is one body with one wrist's height: no bot could flap with both arms or copy a pose, so the oracle could not judge Flap or Copy Me
+default: yes: `Move` gains `pose` and `hand="both"`, in the orchestrator's shared file (task I0); no existing assert moves (the plan review built it in a scratch copy and probed it)
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q113: Which limbs does Copy Me judge?
+asked: iteration 19's plan writer, 2026-10-01; sharpened by the plan review (B8, evidence/it19/plan-review.md)
+default: only the limbs a target moves away from standing, and only those more than 60 degrees from standing: under the repository's real noise a still body's forearm wanders up to 19 degrees, so a limb 30 to 49 degrees from standing would be matched by standing still (the review's probe: about 33 points). Legs are judged only when seen, and no pose of today's ladder asks a leg for 60 degrees, so today the legs are never judged
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q114: Does Flap keep the both-hands-up exit, and how hard are its gaps?
+asked: the plan review of iteration 19, 2026-10-02 (B6, B7). A flap starts with both hands up, and flaps 0.6 s apart or faster hold the runner's 3 s exit: the session would end in the middle of a climb. In the review's model of the first draft's numbers no bot survived a run (0 of 200 seeds)
+default: Flap declares `exit_gesture = False` (the session ends when the player leaves or stops). A gap's centre lies within 6 px of the one before and the gaps are 34 px narrowing to 30 (the review's second round); the implementer tunes these inside the feel budgets (a good player wins at least 7 runs in 10, a lazy one between 1 and 7)
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q115: When does a hand cut in Swat?
+asked: the plan review of iteration 19, 2026-10-02 (B4). Under the repository's real noise the cursor swaps a still body's hands about 100 times a minute, and each swap moves the blade 24 px along the bottom row, where the fruit starts: a still body would cut fruit
+default: only a raised hand cuts: the hand's height in the reach box must be above the hip line (v under 0.85). A hanging hand never cuts and is not counted as playing
+deadline: iteration 19's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q116: May a plan pass 300 lines when its review adds to it?
+asked: the operator, 2026-10-02. The review's eight fixes took the 299-line plan to 315; Loop rule 1 says under 300
+default: no. The plan was cut back to 299 lines by reflowing and by dropping repeated reasons (they are in the review's report); no rule was dropped. The blank lines between its sections went too, so it reads denser than the earlier plans
+deadline: none
+answer:
+status: defaulted (standing instruction)

@@ -78,9 +78,9 @@ within tolerance turns green; at zero a flash, a pop and the round's best frame 
 - Poses (`arcade/poses.py`, same `_pose` helper, legs `_LEGS` unless named): `right_up`, `left_up` (one arm straight
   up, the other as `stand`), `y_pose` (arms up and out at 45 degrees), `flex` (upper arms horizontal, forearms up),
   `airplane` (one arm up-out 45, the other down-out 45), `disco` (right arm up-out 45, left hand on the hip),
-  `teapot` (left hand on the hip, right arm out with the forearm up), `star` (`y_pose` arms, feet apart 0.16 each).
-  `LADDER = (("arms_up", "t_pose", "right_up", "left_up"), ("y_pose", "flex", "airplane"), ("disco", "teapot",
-  "star"))`: round k draws `rng.choice(LADDER[k - 1])`.
+  `teapot` (left hand on the hip, right arm out with the forearm up). No `star`: unjudged legs make it `y_pose`.
+  `LADDER = (("arms_up", "t_pose", "right_up", "left_up"), ("y_pose", "flex", "airplane"), ("disco", "teapot"))`:
+  round k draws `rng.choice(LADDER[k - 1])`.
 - Scoring: segments `LIMBS` = the eight arm and leg segments of `SKELETON` (`sensed.py:22`). An angle is the
   segment's direction with x times `figure.FRAME_ASPECT`, measured from the torso axis (hip_mid to shoulder_mid;
   the frame's vertical without hips), so position, size and a lean do not matter. The target's angles come from its
@@ -93,7 +93,7 @@ within tolerance turns green; at zero a flash, a pop and the round's best frame 
   tick's held body is the frozen frame.
 - Constants: `ROUNDS = 3`, `READY_SECONDS = 1.5`, `SHOW_SECONDS = 1.5`, `GROW_SECONDS = 3.0`, `GROW_FROM = 0.3`,
   `SCORE_WINDOW = 1.0`, `RESULT_SECONDS = 2.0`, `FREEZE_SECONDS = 1.5`, `OVER_SECONDS = 3.0`, `LIMB_TOLERANCE_DEG =
-  30.0`, `JUDGE_MIN_DEG = 60.0`, `ACTIVE_DEG = 25.0`, `MATCH_SHARE = 0.75`, `FRESH_SHARE = 0.5`, `WIN_MATCHES = 2`,
+  30.0`, `JUDGE_MIN_DEG = 60.0`, `ACTIVE_DEG = 30.0`, `MATCH_SHARE = 0.75`, `FRESH_SHARE = 0.5`, `WIN_MATCHES = 2`,
   `FIGURE_H = 60`, `HINT_IDLE_SECONDS = 2.0`, `OUTLINE_COLOR = (0, 200, 255)`, `MATCH_COLOR = (0, 200, 0)`.
 - Drawn: each seat's figure via its own `KeypointHold(capture_grace(CAMERA_FPS))` and `draw_figure` in
   `PLAYER_COLORS[seat]`, rect `figure_rect(held, (w, FIGURE_H))` with the column backlash; judged segments within
@@ -105,7 +105,7 @@ within tolerance turns green; at zero a flash, a pop and the round's best frame 
   `stand`'s place). A round's points count only if player 1's share was under `FRESH_SHARE` at some tick of that
   round's `show` or `play` (the pose was struck in the round, not held from before). `score` is player 1's total
   (0 to 300). Solo only: `scores.record(score)` once at `over` when a round counted; a game that had a seat b
-  records nothing (Q23). `active`: player 1's mean judged-angle error changed by `ACTIVE_DEG` or more within 1 s.
+  records nothing (Q23). `active`: the held body's mean judged-angle error changed by `ACTIVE_DEG` or more in 1 s.
 - Seats: both copy the same target in their own rects; a second body takes seat b at the next `show`, a seat b gone
   past the grace leaves at the next. Hint: "STRIKE THE SHAPE" at 1x after `HINT_IDLE_SECONDS` not `active`.
 - debug_state: `phase, round, target, score, other` (seat b's total or None), `share, matches, judged, active, hint,
@@ -117,7 +117,7 @@ within tolerance turns green; at zero a flash, a pop and the round's best frame 
 - Bots: `good`: `reaction_ticks = 6`, `noise = 0.01`, `Move(x=0.5, pose=state["target"])` from `show`, `stand`
   before. `lazy`: `reaction_ticks = 14`, `noise = 0.03`; round 1 it copies, round 2 it stands (a miss), round 3 it
   copies only when the target is `LADDER[2][0]`, else stands: a bot's pose carries no noise, so its win hangs on the
-  rng's draw (about 1 seed in 3). `won(state)`: `phase == "over"` and `matches >= WIN_MATCHES`.
+  rng's draw (about 1 seed in 2). `won(state)`: `phase == "over"` and `matches >= WIN_MATCHES`.
 - Acceptance (`tests/arcade/test_copyme.py`):
   - `test_registered_and_declared`; `test_new_poses_keep_the_old_three` (17 offsets; the three unchanged; LADDER in).
   - `test_every_target_judges_two_limbs_and_stand_matches_none`: per `LADDER` pose, judged >= 2; stand's share 0.
@@ -142,10 +142,11 @@ within tolerance turns green; at zero a flash, a pop and the round's best frame 
 Rules: both wrists sweeping from above to below the shoulders within `FLAP_WINDOW` is one flap; the bird rises,
 gravity is gentle, gaps are wide; pass gaps; a crash holds and fades. The run survives `RUN_SECONDS` or ends on a crash.
 - `GameInfo(name="flap", title="FLAP", verb="FLAP", needs={"pose"}, layouts={"128x64"}, players=1,
-  exit_gesture=False, kind="score")` (fast flaps would hold the runner's 3 s exit; guide line 54), icon a bird with
-  raised wings. `PHASES = ("ready", "play", "over")`: `ready` holds the bird level at row `READY_Y` until the first
-  flap ("FLAP TO FLY" at 1x, least `READY_SECONDS`), the first pipe already standing at the right edge, so `gap_xy`
-  is the first gap from tick 1; `over` holds a crash's fade or "SAFE!". `CAPTION_KEYS = ("phase", "score", "runs")`.
+  exit_gesture=False, kind="score")` (guide line 54: play needs both hands up), icon a bird with raised wings.
+  `PHASES = ("ready", "play", "over")`: `ready` holds the bird level at row `READY_Y` until the first flap ("FLAP TO
+  FLY" at 1x; a flap before `READY_SECONDS` starts `play` when they pass), the first pipe standing at the right edge,
+  so `gap_xy` is the first gap from tick 1; `over` holds a crash's fade or "SAFE!" and is done after `OVER_SECONDS`
+  without a flap. `CAPTION_KEYS = ("phase", "score", "runs")`.
 - The flap: each wrist read as `body.reach(wrist)`'s v (`sensed.py:215`) when at `MIN_CONF` or more, its last value
   held for `capture_grace(CAMERA_FPS)`; a flap fires on the capture where both wrists are under-line (v over
   `V_BELOW`) and both were over-line (v under `V_ABOVE`) within the last `FLAP_WINDOW` by `camera_t`. One wrist alone
@@ -155,8 +156,8 @@ gravity is gentle, gaps are wide; pass gaps; a crash holds and fades. The run su
   lines a flap crosses. The bird's wings are drawn up when the gauge is over `V_ABOVE`.
 - Constants: `RUN_SECONDS = 45.0`, `READY_SECONDS = 1.0`, `READY_Y = 30`, `FLAP_WINDOW = 0.4`, `V_ABOVE = 0.40`,
   `V_BELOW = 0.62`, `BIRD_X = 28`, `BIRD_W = 5`, `BIRD_H = 4`, `GRAVITY = 24.0` px/s2, `FLAP_VY = -22.0` px/s (set,
-  not added), `MAX_FALL = 30.0` px/s, `PIPE_W = 6`, `GAP_H = (32, 28)` px (linear over the run), `PIPE_EVERY = 3.0`
-  s, `SCROLL = 20.0` px/s, `GAP_Y = (14, 44)` (gap centres, rng), `GAP_STEP = 8` px (a gap's centre lies within this
+  not added), `MAX_FALL = 30.0` px/s, `PIPE_W = 6`, `GAP_H = (34, 30)` px (linear over the run), `PIPE_EVERY = 3.0`
+  s, `SCROLL = 20.0` px/s, `GAP_Y = (14, 44)` (gap centres, rng), `GAP_STEP = 6` px (a gap's centre lies within this
   of the one before), `FLOOR_Y = 59` (touching it crashes; the top clamps), `CRASH_SECONDS = 1.2` (`fx.freeze(0.2)`,
   `fx.shake(2, 0.3)`, the bird red (255, 0, 0) fading to black), `MAX_RUNS = 3`, `OVER_SECONDS = 3.0`, `GAUGE_W = 8`,
   `V_TOP, V_BOTTOM = 0.15, 0.85`, `GAUGE_TOP, GAUGE_BOTTOM = 4, 56`, `HINT_IDLE_SECONDS = 2.0`, `CAMERA_FPS = 10`,
@@ -176,9 +177,9 @@ gravity is gentle, gaps are wide; pass gaps; a crash holds and fades. The run su
   crashes), `idle_body` (60 s), `nobody` (30 s), `one_arm` (one wrist flapping, 20 s: never flies).
 - `flap_feel.toml`: `[fidelity] input = "cursor_y"`, `xy = "wing_xy"`, `axis = 1`. No budget override.
 - Bots (`Move(hand="both", wrist_y=...)`, I0): a sweep is both wrists to 0.1, then to 0.95 over 0.25 s. Both sweep
-  once in `ready` and whenever `gap_xy` is None, and do nothing in `over`. `good`: `reaction_ticks = 5`, `noise =
-  0.02`; in `play` sweeps only while the bird falls (`bird_vy > 0`) and is level with `gap_xy`'s y or under it, one
-  sweep at a time. `lazy`: `reaction_ticks = 8`, `noise = 0.05`, only when 5 px under. `won(state)`: `survived`.
+  in `ready`, one at a time, until they see `play`, and whenever `gap_xy` is None; nothing in `over`. In `play` both
+  sweep only while the bird falls (`bird_vy > 0`) and is level with `gap_xy`'s y or under it, one sweep at a time.
+  `good`: `reaction_ticks = 5`, `noise = 0.02`. `lazy`: `reaction_ticks = 9`, `noise = 0.05`. `won(state)`: `survived`.
 - Acceptance (`tests/arcade/test_flap.py`):
   - `test_registered_and_declared`; `test_both_wrists_down_within_the_window_flap` (0.3 s flaps; 0.5 s does not);
   - `test_one_wrist_never_flaps` (`one_arm`); `test_a_flap_sets_the_bird_rising` (vy `FLAP_VY` on the tick, echo);
@@ -190,7 +191,7 @@ gravity is gentle, gaps are wide; pass gaps; a crash holds and fades. The run su
   - `test_a_flap_in_over_restarts_up_to_max_runs`; `test_surviving_the_run_wins_and_done_after_the_hold`;
   - `test_idle_body_scores_nothing`; `test_a_still_body_under_real_noise_never_flaps` (5 seeds); the template tests.
 ## G3: Swat (`swat`, spec 8 row 8, the effects showcase) (sonnet, worktree)
-Rules: 5 px fruit arc up and fall back; a hand's path between ticks cuts them; red bombs cost; 60 s; two cooperate.
+Rules: 5 px fruit arc up and fall (gone once the centre passes `SPAWN_Y` going down); a hand's path cuts; bombs cost.
 - `GameInfo(name="swat", title="SWAT", verb="SWAT", needs={"pose"}, layouts={"128x64"}, players=2, kind="score")`,
   icon a fruit cut by a slash. `PHASES = ("ready", "play", "over")`: `ready` `fx.banner` "3", "2", "1", "GO!" over
   `READY_SECONDS`; `over` holds the total. `CAPTION_KEYS = ("phase", "score", "t_left")`.
@@ -205,8 +206,7 @@ Rules: 5 px fruit arc up and fall back; a hand's path between ticks cuts them; r
   `GRAVITY = 30.0` px/s2 (apexes rows 10 to 28), `SPAWN_Y = 57` (a fruit lights rows 55 to 59 there), `BOMB_COST =
   3`, `GOAL = 25`, `CUT_MIN_PX = 3`, `CUT_V_MAX = 0.85`, `ARM_PX = 48`, `ZONE_LO, ZONE_HI = 0.15, 0.85`, `V_TOP,
   V_BOTTOM = 0.15, 0.85`, `BLADE_TOP, BLADE_BOTTOM = 2, 57`, `TRAIL = 4` ticks, `COMBO = 3`, `HINT_IDLE_SECONDS = 2.0`,
-  `CAMERA_FPS = 10`, `SCORE_SCALE = 2`, `FRUIT_COLORS = ((0, 200, 0), (255, 200, 0), (0, 200, 255), (255, 0, 255))`,
-  `BOMB_COLOR = (255, 0, 0)`.
+  `FRUIT_COLORS = ((0, 200, 0), (255, 200, 0), (0, 200, 255), (255, 0, 255))`, `BOMB_COLOR = (255, 0, 0)`.
 - Effects (every one keeps the rule alone; the game paces the rest): a cut: `fx.burst` in the fruit's colour (a
   dropped burst is fine) and `fx.pop("+1")`; `COMBO` cuts in one swipe: `fx.pop("COMBO")` and `fx.flash((255, 255,
   255), 0.15)` (checked; no burst on a flash's tick); a bomb: `fx.freeze(0.15)`, `fx.shake(3, 0.3)`, `fx.echo(seat,
