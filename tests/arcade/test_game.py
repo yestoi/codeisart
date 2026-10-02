@@ -168,7 +168,7 @@ def test_runner_passes_what_the_protocol_says(font5x7):
 
 
 def test_menu_order_lists_the_ten_spec_games():
-    assert MENU_ORDER == ("copyme", "pong", "paint", "quickdraw", "dodge", "tug", "flap", "swat", "strongman",
+    assert MENU_ORDER == ("copyme", "pong", "paint", "quickdraw", "dodge", "tug", "flap", "swat", "jump",
                           "freeze")
     assert len(set(MENU_ORDER)) == 10
 
@@ -223,7 +223,7 @@ def test_broken_module_is_logged_and_skipped(monkeypatch, caplog):
     missing_parent = ModuleNotFoundError("No module named 'arcade.games'", name="arcade.games")
     fake_modules(monkeypatch, {
         "copyme": RuntimeError("bad import"), "pong": SyntaxError("bad syntax"), "paint": missing_dep,
-        "strongman": missing_helper, "freeze": missing_parent,
+        "jump": missing_helper, "freeze": missing_parent,
         "quickdraw": module_with(game_class("dodge")),               # GAME named after another game
         "dodge": types.ModuleType("fake"),                           # no GAME
         "flap": module_with(game_class("flap")()),                   # GAME is an instance, not the class
@@ -233,7 +233,7 @@ def test_broken_module_is_logged_and_skipped(monkeypatch, caplog):
     with caplog.at_level(logging.ERROR, logger="arcade"):
         assert all_games() == [tug]
     skipped = sorted(r.getMessage().split()[1] for r in caplog.records)
-    assert skipped == ["copyme", "dodge", "flap", "freeze", "paint", "pong", "quickdraw", "strongman", "swat"]
+    assert skipped == ["copyme", "dodge", "flap", "freeze", "jump", "paint", "pong", "quickdraw", "swat"]
     assert all(r.name == "arcade" for r in caplog.records)
     tracebacks = [r for r in caplog.records if r.exc_info]
-    assert sorted(r.getMessage().split()[1] for r in tracebacks) == ["copyme", "freeze", "paint", "pong", "strongman"]
+    assert sorted(r.getMessage().split()[1] for r in tracebacks) == ["copyme", "freeze", "jump", "paint", "pong"]

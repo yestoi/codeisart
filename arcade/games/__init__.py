@@ -13,7 +13,7 @@ from arcade.game import GameInfo
 
 log = logging.getLogger("arcade")
 
-MENU_ORDER = ("copyme", "pong", "paint", "quickdraw", "dodge", "tug", "flap", "swat", "strongman", "freeze")
+MENU_ORDER = ("copyme", "pong", "paint", "quickdraw", "dodge", "tug", "flap", "swat", "jump", "freeze")
 
 
 def _load(name: str) -> type | None:
