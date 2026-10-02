@@ -16,8 +16,9 @@ No engine file but `arcade/sensed.py` (E0); no safety file (`arcade/flash.py`, `
   ones (`test_all_games.py -k <name>`, `test_oracle.py -k <name>`, `test_game.py`), never the whole suite.
 - Touch only your task's files. Test-first. No removed or weakened assert; no band in `arcade/feel_budgets.toml` or a
   `*_feel.toml` loosened; no `*_feel.toml` override without a game-made reason (guide 5). The only changed asserts are
-  the rename's three in `tests/arcade/test_game.py` (lines 171, 236, 239; Q99, the name only). An assert this plan
-  does not name that would have to change: stop and report.
+  the rename's three in `tests/arcade/test_game.py` (lines 171, 236, 239; Q99, the name only) and F1's colour value
+  in `tests/arcade/test_copyme.py:178` (`(0, 200, 255)` becomes `(255, 0, 255)`, `MATCH_COLOR` unchanged; Q117). An
+  assert this plan does not name that would have to change: stop and report.
 - 128x64 only (Q32, Q33, Q82): every game declares `layouts={"128x64"}`; no code, test or tuning for another size
   (the generic soak at 96x48 is the engine's and stays as it is). Rows 60 to 63 stay free (the runner's marker).
 - The frozen protocol is unchanged; `test_protocol_members_are_the_frozen_set` is not edited. `GameInfo.players` is 1
@@ -89,9 +90,9 @@ it18 (no `multiprocessing`). Not C: the estimate is under 420 s without it (the 
   - `start(reports, plays=PLAYS, workers=PLAY_WORKERS) -> Pool` (a pool of no worker when `fill` would start none;
     its join returns `set()` with `fill`'s core-count warning). `RUNNING: Pool | None = None`, the session's pool.
   - `WORKER_TIMEOUT_S = 180.0` (was 120): from the first worker's start; eight games' 480 plays take about 105 s alone
-    and about 120 s beside the soaks; 180 is 1.5 times that. A failed share is replayed in process (about 70 s) and
-    fails `test_the_pool_made_every_missing_play`: about 410 + 80 + 70 s, under 10 minutes; four hung shares were
-    over 10 minutes at 120 s as well.
+    and about 120 to 140 s beside the soaks. A failed share is replayed in process (about 100 s) and fails
+    `test_the_pool_made_every_missing_play`: about 410 + 60 + 100 s, under 10 minutes; four hung shares were over 10
+    minutes at 120 s as well. The gate and I1 record the pool's `elapsed`; over 150 s is flagged for it21's plan.
   - `BESIDE_THE_POOL = ("tests/arcade/test_actors.py", "tests/arcade/test_all_games.py")`; `beside_the_pool(nodeid:
     str, perf: bool) -> bool`: the node's file is in it and it is not marked `perf`.
   - `rows_for(items, report_plays) -> list` (the rows the selected tests read): an item that needs `pooled_plays`
@@ -109,14 +110,15 @@ it18 (no `multiprocessing`). Not C: the estimate is under 420 s without it (the 
 - `test_oracle.py`: `pooled_plays` returns `(RUNNING.before, RUNNING.join())` when the session started a pool (its
   rows are the selection's), else today's `(before, pooled.fill(REPORT_PLAYS))`. No assert changes.
 - Acceptance: every test in `test_oracle.py` passes unchanged; new there: `test_stop_kills_a_running_pool_and_leaves_
-  no_child` (`subprocess.Popen` patched to start `sys.executable -c "import time; time.sleep(60)"`: after `stop`,
-  `children_of_this_process() == 0`, the temporary directory gone, nothing stored);
-  `test_join_twice_waits_once` (a cannot-start pool: two joins return `set()`, one `RuntimeWarning`, the second's
-  `waited` 0); `test_the_pool_runs_beside_the_soaks_only` (soak and actors nodes True; a perf soak node, `test_bots`,
+  no_child` (the `Popen` that `pooled.start` calls patched to start `sys.executable -c "import time;
+  time.sleep(60)"`, `subprocess.run` left real: after `stop`, `children_of_this_process() == 0`, the temporary
+  directory gone, nothing stored); `test_join_twice_waits_once` (a cannot-start pool: two joins return `set()`, the
+  first join's warnings and none from the second, the second's `waited` 0);
+  `test_the_pool_runs_beside_the_soaks_only` (soak and actors nodes True; a perf soak node, `test_bots`,
   `test_headless`, `tests/test_show_shot.py` False); `test_the_rows_follow_the_selected_tests` (stand-in items:
-  `game_cls` Jump gives Jump's row, `pong_report` Pong's, the pool's test all rows).
+  `game_cls` Flap gives Flap's row, `pong_report` Pong's, the pool's test all rows).
 - The gate (one full run, `--durations=40`, saved as `evidence/it20/r-durations.txt`): passes with 3 skips; the
-  pool line printed; `--collect-only -q` starts no worker (`pgrep -P` of the pytest process empty). Expected about
+  pool line printed; a `--collect-only -q` run prints no `pooled:` line (no pool started). Expected about
   410 s at 505.09 s's load: the 89.9 s and 34.3 s leave the path, about 15 s of join wait and 10 s of slower soaks
   come in. R saves under 60 s against the same load's reading of BASE: R stays (it is not slower), the slice
   lands, the report says so, and C (the soaks in workers) is it21's first task. R fails a test: one fix round; still
@@ -134,7 +136,8 @@ Why: `Move` (`arcade/bots.py:40`) has no whole-body rise; `Person.jump` exists b
   no existing play's rng sequence changes. Docstring says so.
 - Acceptance (`tests/arcade/test_bots.py`): `test_move_lift_raises_the_whole_body` (every keypoint 0.1 higher in the
   camera frame with `Move(lift=0.1)` than with `Move()`, before `place`, within 1e-6);
-  `test_move_without_lift_is_todays_body` (`Move()` and `Move(lift=0.0)` give equal records). The rest unchanged.
+  `test_move_without_lift_is_todays_body` (`Move()` and `Move(lift=0.0)` give equal `bodies`, every keypoint,
+  `in_zone`, `zone_x`, `zone_y`, and the same rng draws; `Sensed` is `eq=False`). The rest unchanged.
 ## E0: Blob ids and velocities (one implementer, opus, main checkout)
 - `Blob` (`arcade/sensed.py:270`) gains, after `in_zone`, keyword-only (`_: dataclasses.KW_ONLY`): `id: int = -1`
   (-1 untracked), `vx: float = 0.0`, `vy: float = 0.0` (fw/s, the source's; C11, C17, Q8). `__post_init__` unchanged.
@@ -146,52 +149,67 @@ Why: `Move` (`arcade/bots.py:40`) has no whole-body rise; `Person.jump` exists b
   `test_blob_new_fields_are_keyword_only` (a sixth positional raises `TypeError`);
   `test_place_blob_keeps_id_and_velocity`.
 ## G5: Jump (`jump`, spec 8 row 9 as Q99 changed it) (sonnet, worktree)
-Rules: a high striker. Stand still ("GET SET"), then "JUMP!": the bar shoots up with your nose's rise; past the bell
-line the bell rings. Three attempts; the best is the night's. A stranger reads it from the bar and the bell.
+Rules: a high striker. Stand still ("GET SET"), then "JUMP!": for 5 s the bar shoots up with your nose's rise, and
+you may jump as often as you like; the best peak of the window stays as a line; past the bell line the bell rings.
+Three windows; the best is the night's. A stranger reads it from the bar and the bell.
 - `GameInfo(name="jump", title="JUMP", verb="JUMP", needs={"pose"}, layouts={"128x64"}, players=1,
   exit_gesture=False, kind="score")`, icon a striker column with a bell on top, 2 px strokes.
-  `PHASES = ("ready", "play", "result", "over")`: `ready` until player 1 is seen and still for `SETTLE_SECONDS` (the
-  baseline; "GET SET" at 1x); `play` "JUMP!" at 2x for at most `JUMP_WINDOW`; `result` the attempt's peak held;
-  `over` the best held. `CAPTION_KEYS = ("phase", "attempt", "peak_cm", "best_cm")`.
+  `PHASES = ("ready", "play", "result", "over")`, an attempt is `ready`, `play`, `result`, three times, then `over`:
+  `ready` (before EVERY attempt, a new baseline each time) until player 1 is seen and still for `SETTLE_SECONDS`
+  ("GET SET" at 1x); `play` "JUMP!" at 2x for the whole `JUMP_WINDOW` (it never ends early; the window's best peak
+  holds as a line and banks at the window's end); `result` the attempt's peak held `RESULT_SECONDS`; `over` the best
+  held. The good bot's round is about 3 x (1.5 + 5 + 2.5) + 3 = 30 s (`round_seconds` 20 to 120).
+  `CAPTION_KEYS = ("phase", "attempt", "peak_cm", "best_cm")`.
 - The measure: `torso` = hip_mid to shoulder_mid in camera y (keypoints at `MIN_CONF` or more); the baseline = the
-  medians of the nose's and the hip_mid's y over `ready`'s last `SETTLE_SECONDS` (at least 5 captures). `rise` =
+  medians of the nose's and the hip_mid's y over `ready`'s last `SETTLE_SECONDS` (at least 5 captures). Still: the
+  nose and the hip_mid each within `STILL = 0.1` torso of their medians over `SETTLE_SECONDS`. `rise` =
   (baseline nose y - nose y) / torso, per capture. A jump counts only while the hip_mid rose by at least `HIP_SHARE`
   of the nose's rise (a nod or a head tilt never counts) and `rise >= MIN_RISE`. `cm = round(rise * TORSO_CM)`.
-  The attempt's peak banks on landing (rise back under `MIN_RISE / 2`) or at the window's end.
   `measure_rise(body, base_nose_y, base_hip_y, torso) -> float | None`, a module-level pure function (None: not
-  counted).
+  counted). The docstring says: a body whose shoulders leave the zone's top is dropped by the runner, so the zone
+  caps the rise (about 47 cm at a body height of 0.6 of the frame, 33 cm at 0.7, 23 cm at 0.8).
 - Constants: `ATTEMPTS = 3`, `SETTLE_SECONDS = 1.5`, `JUMP_WINDOW = 5.0`, `RESULT_SECONDS = 2.5`,
-  `OVER_SECONDS = 3.0`, `MIN_RISE = 0.15` (torsos), `HIP_SHARE = 0.5`, `TORSO_CM = 50.0`,
-  `BELL_CM = (28.0, 40.0)` (the bell's height, drawn once per game by the rng), `BAR_TOP_CM = 60.0`,
-  `BAR_X, BAR_W = 6, 10`, `BAR_TOP, BAR_BOTTOM = 6, 57`, `FIGURE_H = 56`, `HINT_IDLE_SECONDS = 2.0`,
-  `CAMERA_FPS = 10`, `COLUMN_SLACK = 1`, `BAR_COLOR = (255, 160, 0)` (red share 0.61, under `flash.RED_SHARE`),
-  `BELL_COLOR = (255, 200, 0)`.
-- Drawn: the striker (a 1 px frame, `BAR_X..BAR_X + BAR_W`, rows `BAR_TOP..BAR_BOTTOM`), the bar filled from the
-  bottom to `cm / BAR_TOP_CM` live in `play`, its peak held as a 1 px line; the bell a 5x4 block on the bell line;
-  the player's figure at the right via `KeypointHold(capture_grace(CAMERA_FPS))`, `draw_figure` in
-  `PLAYER_COLORS[0]`, `figure_rect(held, (w, FIGURE_H))` with the column backlash; the number `"<cm>"` at 2x right of
-  the bar after the bar, from `result` on (the bar first, the number second). Rows 60 to 63 dark.
-- Effects: a bell: `fx.flash((255, 255, 255), 0.15)` (checked) and `fx.pop("DING!")`, once per attempt; a miss: the
-  number only. `over`: `scores.record(best_cm)` once, when an attempt counted; a new best: `fx.banner("NEW BEST")`.
+  `OVER_SECONDS = 3.0`, `MIN_RISE = 0.15` (torsos), `HIP_SHARE = 0.5`, `STILL = 0.1`, `ACTIVE_RISE = 0.25`,
+  `TORSO_CM = 50.0`, `BELL_CM = (28.0, 40.0)` (the bell's height, drawn once per game by the rng),
+  `BAR_TOP_CM = 60.0`, `BAR_X, BAR_W = 6, 10`, `BAR_TOP, BAR_BOTTOM = 6, 57`, `FIGURE_H = 56`,
+  `HINT_IDLE_SECONDS = 2.0`, `CAMERA_FPS = 10`, `COLUMN_SLACK = 1`, `BAR_COLOR = (255, 160, 0)` (red share 0.61,
+  under `flash.RED_SHARE`), `BELL_COLOR = (255, 200, 0)`, `FRAME_COLOR = (0, 200, 255)`.
+- Drawn, in this order: the player's figure on its own column across the wall via
+  `KeypointHold(capture_grace(CAMERA_FPS))`, `draw_figure` in `PLAYER_COLORS[0]`, `figure_rect(held, (w,
+  FIGURE_H))` with the column backlash (it may pass the striker; the striker is drawn over it); the striker (a 1 px
+  frame in `FRAME_COLOR`, `BAR_X..BAR_X + BAR_W`, rows `BAR_TOP..BAR_BOTTOM`), the bar filled from the bottom to
+  `cm / BAR_TOP_CM` live in `play`, the window's peak held as a 1 px line; the bell a 5x4 block on the bell line;
+  last the score, `best_cm` at 2x top right over its black box from the game's first tick (0 before an attempt
+  counts); in `result` the attempt's `"<cm>"` at 2x right of the bar. Rows 60 to 63 dark.
+- Effects: a bell: `fx.flash((255, 255, 255), 0.15)` (checked) and `fx.pop("DING!", x, y, BELL_COLOR)` at the bell,
+  once per attempt; a miss: the number only. `over`: `scores.record(best_cm)` once, when an attempt counted; a new
+  best: `fx.banner("NEW BEST")`.
 - Movement and scores (C41): a still body never reaches `MIN_RISE` with its hips (real noise moves a nose about 0.06
-  torsos), so it banks nothing and records nothing; a window without a jump banks 0. `active`: `rise` changed by 0.1
-  or more within 1 s, or a jump this tick. Hint "JUMP!" again at 1x after `HINT_IDLE_SECONDS` not `active` in `play`.
-- debug_state: `phase, attempt, rise, peak_cm, best_cm, bell_cm, rang, heights` (banked cm), `active, hint,
-  player_xy` (head disc centre, None when not drawn), `bar_xy` (the bar top's centre).
-- Scenarios: `canonical` (2 s empty, walk-up, raise; a walk across the mat 0.2 to 0.8 to 0.5 inside the measured
-  20 s; then still 2 s and `Person.jump(at, height=0.15, seconds=0.6)` once per attempt), `idle_body` (60 s),
-  `nobody` (30 s).
+  torsos), so it banks nothing and records nothing; a window without a jump banks 0. `active`: `rise` changed by
+  `ACTIVE_RISE` or more within 1 s, or a counted jump this tick (a still body under real noise is never `active`).
+  Hint "JUMP!" again at 1x after `HINT_IDLE_SECONDS` not `active` in `play`.
+- debug_state: `phase, attempt, score` (the number drawn: `best_cm`, an int, 0 before a counted attempt), `rise,
+  peak_cm, best_cm, bell_cm, rang, heights` (banked cm), `active, hint, player_xy` (head disc centre, None when not
+  drawn), `bar_xy` (the bar top's centre).
+- Scenarios: `canonical` (2 s empty, walk-up, raise; a walk across the mat in zone x, 0.15 to 0.85 then back to 0.5,
+  Copy Me's `SWEEP` (`copyme.py:539-540`), at most 0.1 zone a second (the flash rule's area), the far end inside the
+  measured 20 s: range about 0.69; then still and `Person.jump(at, height=0.15, seconds=0.6)` once in each window,
+  at body height 0.6), `idle_body` (60 s), `nobody` (30 s).
 - `jump_feel.toml`: `[fidelity] input = "zone_x"`, `xy = "player_xy"`, `axis = 0`. No budget override.
-- Bots (`Move(x=0.5, lift=...)`, I0): stand in `ready`; in `play`, one arc per attempt, `lift = peak * 4u(1 - u)`
-  over 0.6 s. `good`: `reaction_ticks = 4`, `noise = 0.01`, `peak` reaching `BELL_CM[1] + 4` cm (about 0.16; the
-  implementer measures `Person()`'s torso first). `lazy`: `reaction_ticks = 10`, `noise = 0.03`, `peak` reaching the
-  middle of `BELL_CM` (about 0.12): it wins when the rng's bell is low, about half the seeds. `won(state)`:
-  `phase == "over"` and `rang`. Levers: the bots' peaks, `BELL_CM`, `ATTEMPTS`. Not levers: `MIN_RISE`, `HIP_SHARE`.
+- Bots (`Move(x=0.5, lift=...)`, I0; the default body, height 0.6): stand in `ready`; in `play`, one arc per window,
+  `lift = peak * 4u(1 - u)` over 0.6 s. `good`: `reaction_ticks = 4`, `noise = 0.01`, `peak` reaching
+  `BELL_CM[1] + 4` cm (about 0.16 of the frame, the most that stays in the zone; the implementer measures
+  `Person()`'s torso first). `lazy`: `reaction_ticks = 10`, `noise = 0.03`, `peak` reaching the middle of `BELL_CM`
+  (about 0.12): it wins when the rng's bell is low, about half the seeds. `won(state)`: `phase == "over"` and
+  `rang`. Levers: the bots' peaks, `BELL_CM`. Not levers: `ATTEMPTS`, `MIN_RISE`, `HIP_SHARE`.
 - Acceptance (`tests/arcade/test_jump.py`, its own tests about 6 s beyond the template's plays):
   - `test_registered_and_declared`; `test_rise_is_nose_over_torso` (a body raised half a torso: rise 0.5, 25 cm);
-  - `test_rise_ignores_size_and_place` (heights 0.4 and 0.8, x 0.3 and 0.7: the same cm within 1);
+  - `test_rise_ignores_size_and_place` (`measure_rise` called directly, not through the runner: heights 0.4 and
+    0.8, x 0.3 and 0.7 give the same cm within 1);
   - `test_a_nod_never_counts` (the nose up 0.6 torsos, the hips still: nothing banked);
-  - `test_a_jump_banks_its_peak_on_landing`; `test_the_bar_follows_the_rise_live` (`bar_xy` rows track `rise`);
+  - `test_a_window_banks_its_best_peak_at_its_end` (two jumps in one window: the higher banks, `play` lasts the
+    whole window); `test_the_bar_follows_the_rise_live` (`bar_xy` rows track `rise`);
+  - `test_ready_takes_a_new_baseline_before_each_attempt`; `test_the_score_shows_from_the_first_tick` (`score` 0);
   - `test_no_jump_in_the_window_banks_zero`; `test_the_bell_rings_once_and_checks_the_flash` (held 0);
   - `test_three_attempts_then_over_and_done_after_the_hold`; `test_the_best_is_recorded_once`;
   - `test_exit_gesture_is_off` (both hands up 5 s: session on); `test_idle_body_scores_nothing`;
@@ -207,7 +225,8 @@ line the bell rings. Three attempts; the best is the night's. A stranger reads i
   `OUTLINE_COLOR` to each `juice.PLAYER_COLORS[seat]` and to `MATCH_COLOR` is at least `MIN_COLOR_DISTANCE`: 282,
   301, 413 today; and in a `duo` frame of `play` no outline pixel is drawn in seat b's colour);
   `test_copyme.py::test_own_drawing_keeps_rows_60_to_63_dark` and `test_swat.py::test_own_drawing_keeps_rows_60_to_
-  63_dark` (canonical and duo, as `test_flap.py:307`). The feel report for Copy Me meets every budget
+  63_dark` (canonical and duo, as `test_flap.py:307`). `test_copyme.py:178`'s pinned value becomes `(255, 0, 255)`
+  (the one named changed assert of F1; `MATCH_COLOR` stays). The feel report for Copy Me meets every budget
   (`flash_area_raw` was 0.0111, `square_flashes` 4 of 6). The operator reads the `duo` sheet again (I2).
 ## S1: blobs and motion from camera frames (M5's first lane) (opus, worktree)
 Core plan Task 15, body lines 4252 to 4396 (`arcade/sources/blobs.py`, `tests/arcade/test_blobs.py`), as its
@@ -223,7 +242,8 @@ synthetic frames: no camera, no model, so it runs in a worktree. Not wired into 
   finite is dropped before matching.
 - `motion_grid(prev_gray, gray, zone, size) -> np.ndarray`: 5x5 blur, divide by the frame median, threshold
   `MOTION_T = 0.25`, cell fill `CELL_FILL = 0.2`; over `SHAKE_SHARE = 0.35` of cells lit returns an empty grid and
-  counts a shake; crop to the zone at the wall's aspect, then downsample to `size`.
+  counts a shake; the frame is flipped left to right first (the zone is in mirrored camera space, as the keypoints
+  are), then cropped to the zone at the wall's aspect, then downsampled to `size`.
 - `FrameFeatures(size=(160, 120), calibration=Calibration())`: `update(frame_bgr, t) -> tuple[tuple[Blob, ...],
   np.ndarray]` (blobs placed, mirrored as `mirror_keypoints` does, the grid); `shakes: int`. The first frame: no
   motion.
@@ -238,7 +258,7 @@ synthetic frames: no camera, no model, so it runs in a worktree. Not wired into 
   patched to NaN: no blob), `test_a_blob_lost_and_found_far_away_gets_a_new_id`.
 ## S2: scenario files and replay sources (opus, worktree; cut first)
 Core plan Task 12, body lines 3524 to 3776 (`arcade/sources/scenario.py`, `arcade/sources/replay.py`,
-`tests/arcade/test_scenario.py`), as its amendment (line 588), C21 and Review Focus 4 (line 772) change it. No CLI
+`tests/arcade/test_scenario.py`), as its amendment (line 588), C21 and Review Focus 4 (line 773) change it. No CLI
 (`record`, `calibrate`, the source factory are iteration 21); raw replay through `FrameFeatures` and `BodyTracker`
 is iteration 21 (S2 does not import S1).
 - `.jsonl.gz` (`gzip.open` in text mode), the header record first: `{"kind": "header", "version": 1, "type":
@@ -247,9 +267,12 @@ is iteration 21 (S2 does not import S1).
   capture time, raw detections, a 160x120 grey frame as base64 bytes, a 16 kHz WAV with a `struct`-written RIFF
   header (no `wave` module in `arcade/`).
 - `encode(s) -> str`, `decode(line, calibration=None) -> Sensed` (C21: keywords; the empty `(0, 0)` grid when none;
-  `place()` on every body with the recording's calibration); `ScenarioWriter(path, header)`, `ScenarioReader(path)`
-  with `header` and `skipped: int` (a bad line is skipped with one warning, never raised); `ReplayStream`,
-  `ReplayCamera.latest() -> CameraResult | None`, `ReplayAudio.latest() -> Audio`, `open_replay(path)`.
+  `place()` on every body with the caller's calibration: the header holds none, so `decode(..., calibration)` and
+  `open_replay(path, calibration=None)` take it); `ScenarioWriter(path, header)`, `ScenarioReader(path)` with
+  `header` and `skipped: int` (a bad line is skipped with one warning, never raised); `ReplayStream`,
+  `ReplayCamera.latest() -> CameraResult | None` (the 4-tuple of `camera.py:23`), `ReplayAudio.latest() ->
+  tuple[float, Audio] | None` (the runner's shape, `runner.py:236`, stamped as `ScriptedCamera` stamps). The
+  draft's tests are adapted to these shapes and to the empty `(0, 0)` grid (not `None`).
 - Acceptance (`tests/arcade/test_scenario.py`): the draft's `test_round_trip`, `test_reader_skips_bad_lines`,
   `test_writer_and_open_replay`, `test_replay_of_empty_stream_yields_empty_sensed`; the amendment's
   `test_gz_round_trip_with_header`, `test_header_cues_readable`,
@@ -261,7 +284,11 @@ is iteration 21 (S2 does not import S1).
   implementers' `-k` runs pool 60 plays each, not 480. The deadline rises to 180 s (reason in R).
 - The rename changes three asserts of one test file, the names only (Q121). Jump's best is a height in cm (`TORSO_CM`
   scale) and its win is the bell (a rng height per game), so the lazy bot's win hangs on the rng as Copy Me's.
-- Owner questions Q121 to Q125 (the writer's report), each defaulted.
+- Owner questions Q121 to Q125 (the writer's report), each defaulted. Reviewed: evidence/it20/plan-review.md (B1 to
+  B4 and N1 to N12 are fixed in this text). Jump's window runs its whole 5 s and counts the best of any jumps in it.
+- A subset after each merge, the full suite after R and after the last merge: a departure from config.md rule 6
+  (the full suite after each merge), taken for time on the shared Mac (it19: 28 minutes of four serial full runs).
+  A break the last full run finds is bisected over the four merges with the failing test alone.
 - Cut order if time runs out: S2, then S1, then F1; R, the rename, I0, E0 and G5 are the slice's core. A cut task's
   worktree is kept.
 ## I1 (orchestrator, after the merges)
@@ -270,3 +297,4 @@ is iteration 21 (S2 does not import S1).
 ## I2 (the operator's, in verify)
 - `tools/arcade_evidence.py --iteration 20 --games jump,copyme`: `games.md` every budget "yes", no override. Sheets:
   Jump's invite, "GET SET", the bar rising, the bell, the number, the card; Copy Me's `duo` with the magenta outline.
+  For the owner's live play: a near or tall player's rise is capped by the zone's top, under the bell's 28 cm.
