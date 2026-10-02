@@ -1,0 +1,5 @@
+# Freeze's feel: the figure follows the hips across the mat (zone_x), and the head's wall x is the axis. No budget override.
+[fidelity]
+input = "zone_x"
+xy = "player_xy"
+axis = 0
