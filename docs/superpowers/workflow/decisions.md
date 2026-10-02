@@ -878,3 +878,38 @@ default: accepted: no ladder pose judges a leg, and the score stays readable. Th
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q121: May the rename of `strongman` to `jump` change three asserts in `tests/arcade/test_game.py`, not one?
+asked: iteration 20's plan writer, 2026-10-02. Q99 made Strongman into Jump; `MENU_ORDER` is asserted at line 171. `test_broken_module_is_logged_and_skipped` keys its fake modules by the `MENU_ORDER` names, so its fake at line 226 and the expected lists at lines 236 and 239 name `strongman` too
+default: the name changes in those places and nothing else changes; the free text `strongman_audio` (lines 221 to 222) and `tests/arcade/test_scores.py:158` stay
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q122: Does Jump show its height in centimetres?
+asked: iteration 20's plan writer, 2026-10-02. The spec's row 9 says the jump is measured "in metres"; a 2x `42` reads better on 128x64 than `0.42`. The height is the nose's rise over the torso, with the torso taken as 50 cm
+default: centimetres, from `TORSO_CM = 50`; the number is a show number, not a measurement
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q123: Is Jump's win the bell?
+asked: iteration 20's plan writer, 2026-10-02. The oracle needs a win; Jump measures a height. The plan draws a bell's height once a game (28 to 40 cm); a jump past it rings the bell; three attempts; the best height is the night's best either way
+default: the bell is the win; the best is recorded whether it rang or not
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q124: May the pool's deadline rise from 120 s to 180 s?
+asked: iteration 20's plan writer, 2026-10-02. The oracle's bot plays for eight games take about 105 s alone and about 120 s beside the soaks; it18 set 120 s for three games (Q97's 4 workers stand)
+default: 180 s; the suite prints the pool's time at its end so the next games' plans see how close it runs
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q125: Must the hips rise for a jump to count?
+asked: iteration 20's plan writer, 2026-10-02. A nod or a head tilt raises the nose without a jump, so the plan counts a jump only when the hips rise by at least half the nose's rise. A player whose hips the camera crops cannot score
+default: hips required; the owner may relax it to the shoulders after the first live play
+deadline: none
+answer:
+status: defaulted (standing instruction)
