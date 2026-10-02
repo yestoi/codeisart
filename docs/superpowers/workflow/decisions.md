@@ -913,3 +913,59 @@ default: hips required; the owner may relax it to the shoulders after the first 
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q126: Should Jump's hint also show in `ready`?
+asked: iteration 20's Jump implementer, 2026-10-02. The hint shows only in `play` (idle 2 s), so a player who stands idle is hinted about 3.5 s after the game starts, against the guide's "within three seconds"; "GET SET" is on the wall from the first tick
+default: the hint stays in `play` only; the first live play judges it
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q127: May Jump's figure pass under the striker, the score box and the centred texts?
+asked: iteration 20's Jump implementer, 2026-10-02. They are drawn over the figure, so `player_xy` can be a covered pixel while the player walks
+default: yes, as built; the first live play judges it
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q128: Does Jump's bell ring live or at the window's end?
+asked: iteration 20's Jump implementer, 2026-10-02. The plan banks the window's best peak at its end; the bell as built rings on the first counted capture at or over the bell's height, inside the window
+default: live, as built (the answer follows the jump at once); the best is still banked at the window's end
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q129: Is `MIN_AREA = 4` px right for blobs at 160x120?
+asked: iteration 20's blobs implementer, 2026-10-02. The draft's 4 px was set for 640x480 frames, which have 16 times the area; a 2 cm glow stick's core at 3 m is about 1 px wide at 160x120
+default: keep 4 until GATE A's recorded lamps, then refit it with C34
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q130: Should `FrameFeatures`'s default grid be the wall's (128, 64)?
+asked: iteration 20's blobs implementer, 2026-10-02. The plan's default is (160, 120); the runner resamples any grid, so both work
+default: keep the plan's; iteration 21's wiring passes the size and shrinks the Mac's 640x480 frames before `update`
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q131: Is `Blob.vy` in frame heights per second?
+asked: iteration 20's blobs implementer, 2026-10-02. E0's comment in `arcade/sensed.py` says frame widths per second for both; the tracker computes `vy` in the blob's own y, frame heights per second, as `Body.vy` is
+default: frame heights per second, as built; the comment in `sensed.py` is corrected when iteration 21 touches the file
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q132: Does replay keep the recording's captures?
+asked: iteration 20's scenario implementer, 2026-10-02. The plan said every record is stamped as a fresh capture; a 10 fps recording then replays as 30 captures a second. As built a record stores `camera_t` and `camera_fresh` and replay stamps a new capture only where the recording had one
+default: keep the recording's captures, as built; a scene of actors replays the same either way
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q133: Does a raw record carry its own WAV, and are blobs placed again on decode?
+asked: iteration 20's scenario implementer, 2026-10-02. A raw record holds one WAV per capture inside its line (not one WAV beside the file), and decode runs `place_blob` on every blob with the caller's calibration, as it places bodies
+default: both as built: a cut-off file loses only its tail, and `in_zone` follows the caller's calibration
+deadline: none
+answer:
+status: defaulted (standing instruction)
