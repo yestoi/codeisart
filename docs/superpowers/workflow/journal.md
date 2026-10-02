@@ -2095,3 +2095,8 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   raw replay and `stats`; what is left of it needs a camera and the owner (the first calibrate, the first
   recordings, C34's refit at GATE A). Iteration 22: the suite's room for two more games (the soaks in workers),
   C57, then M7b's Paint and Tug.
+- Re-scope after this entry (the owner, 2026-10-02, Q181; not an iteration, written by the owner's other session):
+  M8 comes before M7b; iteration 22 is M8 (state.md, roadmap.md, decisions.md Q181; the design is
+  docs/superpowers/specs/2026-10-02-arcade-on-the-wall-design.md section 4). The line above, "Iteration 22: ...
+  then M7b's Paint and Tug", no longer holds. The same session put the picamera2 capture, `capture`,
+  `run --game` and `arcade.pi.toml` on main.

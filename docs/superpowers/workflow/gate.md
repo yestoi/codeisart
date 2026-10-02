@@ -1,12 +1,16 @@
 # Gate: the owner stopped the loop after iteration 22's plan (2026-10-02 09:38)
 
+ANSWERED by the owner on 2026-10-02 (Q181, decisions.md): the loop goes on with M8, not with the written plan.
+state.md and roadmap.md say so. The owner deletes this file and says "start the workflow loop" in an
+`OPERATOR=1` session.
+
 Question: none from the loop. The owner wrote at 09:38 CDT: "Lets stop after the plan write. Do not do the review."
 (Q180, decisions.md). The loop has stopped with iteration 22's plan written and committed, not reviewed and not
 built. When does the operator go on, and from where?
 
 Default: none is taken; the loop waits for the owner. To go on: delete this file and say "start the workflow loop"
-in an `OPERATOR=1` session. The loop then enters iteration 22 at the plan review (one adversarial round, config.md,
-the run of Q101), then the orchestrator. It does not write the plan again.
+in an `OPERATOR=1` session. The loop then starts iteration 22 at orient with M8 (Q181); the written Paint and Tug plan is kept, not
+reviewed and not built.
 Deadline: none (nothing is in flight; no agent runs)
 
 ## Where the work stands
@@ -34,7 +38,7 @@ Deadline: none (nothing is in flight; no agent runs)
 ## What needs the owner
 | Item | What happens today | Operator's lean |
 |---|---|---|
-| The plan review | Not done, at the owner's word. The plan changes how the suite orders its tests (R) and adds two games | Do the one adversarial round before building: the last three plans each had blocking findings in review |
+| The plan review | Not done, at the owner's word. The plan changes how the suite orders its tests (R) and adds two games | Do the one adversarial round before building: the last three plans each had blocking findings in review. Superseded by Q181: that plan waits for M7b |
 | Memory on the Mac (8 GB) | The plan holds to two worktree tasks at once, one full suite run, `ARCADE_POOL_WORKERS=1` for implementers; R's check still runs a pool of 4 workers beside one implementer | Quit Docker Desktop and the browser before the loop starts again, or say that two at once is still too many |
 | Disk | 9.8 GB of the 30 September ghosting session's scratch under `/private/tmp/claude-502/`, 2.4 GB of merged worktrees under `.claude/worktrees/` | Say "delete the ghosting scratch"; the worktrees are the owner's to remove (the guard blocks the loop) |
 | Q161 to Q179 | Each defaulted (decisions.md): Paint's and Tug's rules, words and numbers, the pool's deadline of 270 s | Read Q163 to Q174 before the first play of Paint and Tug; none blocks the build |

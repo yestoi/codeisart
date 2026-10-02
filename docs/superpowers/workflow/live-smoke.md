@@ -19,7 +19,7 @@ Date and build (git sha) of this smoke: 2026-09-28, 2e016e5 (the Mac's webcam, t
 | Flap | 128x64 |  |  |  |  |  |
 | Swat | 128x64 |  |  |  |  |  |
 | Paint | 128x64 |  |  |  |  |  |
-| Strongman | 128x64 |  |  |  |  |  |
+| Jump | 128x64 |  |  |  |  |  |
 | Freeze | 128x64 |  |  |  |  |  |
 
 ## Pong by the body: the second smoke (it09, M4c)
