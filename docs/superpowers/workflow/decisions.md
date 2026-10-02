@@ -969,3 +969,17 @@ default: both as built: a cut-off file loses only its tail, and `in_zone` follow
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q134: Does Jump black out rows 60 to 63, or clip the figure to its rect?
+asked: iteration 20's fix round (the code review's B1), 2026-10-02. Under real noise a held ankle is drawn against the risen box and lit the marker rows. The fix blacks out rows 60 to 63 after the figure; a held keypoint can still draw in rows 56 to 59, under the figure's rect
+default: the blackout, as built; the shared cause (`draw_figure` with `KeypointHold`) is iteration 21's to look at
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q135: Does a new body id in Jump's window stop that window's measuring?
+asked: iteration 20's fix round (the code review's B2), 2026-10-02. A player who took over mid-window was measured against the earlier player's baseline and banked a height without a jump. The fix compares body ids, so a player the tracker loses and finds again under a new id also stops counting for the rest of that window
+default: yes, as built: the peak already reached stands, the next attempt takes a new baseline, and the round keeps its length
+deadline: none
+answer:
+status: defaulted (standing instruction)
