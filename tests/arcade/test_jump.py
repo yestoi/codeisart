@@ -20,13 +20,15 @@ from arcade.flash import flash_area
 from arcade.game import REQUIRED_SCENARIOS, reserved
 from arcade.games import MENU_ORDER, get_game
 from arcade.games.jump import (ACTIVE_RISE, ATTEMPTS, BAR_BOTTOM, BAR_TOP, BAR_TOP_CM, BAR_W, BAR_X, BELL_CM, BELL_H,
-                               BELL_W, FIGURE_H, GAME, HINT_IDLE_SECONDS, HIP_SHARE, JUMP_WINDOW, MIN_RISE,
-                               OVER_SECONDS, RESULT_SECONDS, SETTLE_SECONDS, STILL, TORSO_CM, Jump, _row, measure_rise)
+                               BELL_W, FIGURE_H, GAME, HINT_IDLE_SECONDS, HINT_TEXT, HIP_SHARE, JUMP_WINDOW,
+                               MIN_RISE, OVER_MISS, OVER_RANG, OVER_SECONDS, PLAY_TEXT, PROMPT_X0, PROMPT_Y,
+                               READY_TEXT, RESULT_SECONDS, SETTLE_SECONDS, STILL, TORSO_CM, Jump, _row, measure_rise)
 from arcade.headless import OPENING_NIGHT, run_headless
 from arcade.juice import Juice
 from arcade.scores import Scores
 from arcade.sensed import NOSE, Keypoint
 from arcade.sources.actors import REAL_NOISE, TICK, Person, degrade, scene
+from show.font import CELL_H
 from tests.arcade.helpers import make_cfg, played, run
 
 WALL = (128, 64)
@@ -127,7 +129,7 @@ def test_registered_and_declared():
     assert (ATTEMPTS, SETTLE_SECONDS, JUMP_WINDOW, RESULT_SECONDS, OVER_SECONDS) == (3, 1.5, 5.0, 2.5, 3.0)
     assert (MIN_RISE, HIP_SHARE, STILL, ACTIVE_RISE, TORSO_CM, BELL_CM, BAR_TOP_CM) == \
         (0.15, 0.5, 0.1, 0.25, 50.0, (28.0, 40.0), 60.0)
-    assert (BAR_X, BAR_W, BAR_TOP, BAR_BOTTOM, FIGURE_H, HINT_IDLE_SECONDS) == (6, 10, 6, 57, 56, 2.0)
+    assert (BAR_X, BAR_W, BAR_TOP, BAR_BOTTOM, FIGURE_H, HINT_IDLE_SECONDS) == (6, 10, 6, 57, 50, 2.0)
 
 
 def raised(torsos, x=0.5, height=0.6):
@@ -614,3 +616,79 @@ def test_feel_file_overrides_have_reasons():
     assert "budgets" not in data
     for metric, table in data.get("budgets", {}).get("128x64", {}).items():
         assert table.get("reason", "").strip(), metric
+
+
+# ----- C56: Jump's words out of the player's way -----
+
+def _band_text(game, font5x7, text, scales=(1,)):
+    canvas = Canvas(*WALL, font5x7)
+    game.draw(canvas)
+    return feel.find_text(canvas.frame, font5x7, text, scales=scales), canvas
+
+
+@pytest.mark.parametrize("zone_x", [0.15, 0.5, 0.85])
+@pytest.mark.parametrize("phase,word", [("ready", READY_TEXT), ("play", PLAY_TEXT)])
+def test_the_prompt_never_meets_the_figure_rect(font5x7, zone_x, phase, word):
+    game = make()
+    frames = scene(persons=[Person(cam_x(zone_x), id=1)], ticks=round(3.0 / TICK))
+    for _ in drive(game, frames, until=lambda g: g.phase == phase and g.t > 0.5):
+        pass
+    assert game.phase == phase
+    found, canvas = _band_text(game, font5x7, word)
+    assert found is not None, (phase, zone_x)
+    x, y, mask = found
+    assert PROMPT_Y - 1 >= FIGURE_H and 50 <= y and y + mask.shape[0] <= 60 and x >= PROMPT_X0, (x, y, mask.shape)
+    view = game._view()
+    assert view is not None and view[1][1] == 0 and view[1][1] + view[1][3] - 1 == FIGURE_H - 1 == 49
+    hx, hy = game.debug_state()["player_xy"]
+    assert canvas.frame[int(hy), int(hx)].any() and hy < 50
+
+
+def test_the_hint_replaces_the_prompt(font5x7):
+    game = make()
+    for _ in drive(game, Jump.SCENARIOS["idle_body"](), until=lambda g: g.debug_state()["hint"]):
+        pass
+    assert game.debug_state()["hint"] is True and game.phase == "play"
+    found, _ = _band_text(game, font5x7, HINT_TEXT)
+    assert found is not None and 50 <= found[1] and found[0] >= PROMPT_X0, found
+    assert _band_text(game, font5x7, PLAY_TEXT, scales=(1, 2))[0] is None
+    game = make()
+    p = Person(cam_x(0.5), id=1).jump(5.5, height=0.15)
+    seen = False
+    for _ in drive(game, scene(persons=[p], ticks=round(8.0 / TICK))):
+        if game.phase == "play" and game.debug_state()["hint"]:
+            seen = True
+        if seen and game.phase == "play" and not game.debug_state()["hint"]:
+            found, _ = _band_text(game, font5x7, PLAY_TEXT)
+            assert found is not None and _band_text(game, font5x7, HINT_TEXT)[0] is None
+            return
+    pytest.fail("the jump did not take the hint away")
+
+
+@pytest.mark.parametrize("bell", BELL_CM)
+def test_the_pop_is_clear_of_the_prompt(bell):
+    pops = []
+    game = make()
+    game.bell_cm = bell
+    orig = game.fx.pop
+    game.fx.pop = lambda text, x, y, *a: (pops.append((text, x, y)), orig(text, x, y, *a))[1]
+    for _ in drive(game, jumper([(2.5, 0.15)], ticks=round(6.0 / TICK))):
+        pass
+    assert len(pops) == 1 and pops[0][0] == "DING!", pops
+    _, x, y = pops[0]
+    assert (x, y) == (BAR_X + BAR_W + 16, _row(bell))
+    assert y + CELL_H <= 50, (bell, y)
+
+
+def test_over_shows_a_word(font5x7):
+    for jumps, word, rang in (([(2.5, 0.15)], OVER_RANG, True), ([], OVER_MISS, False)):
+        game = make()
+        game.bell_cm = BELL_CM[0]
+        p = Person(cam_x(0.5), id=1)
+        for at, height in jumps:
+            p.jump(at, height=height)
+        for _ in drive(game, scene(persons=[p], ticks=round(40 / TICK)), until=lambda g: g.phase == "over"):
+            pass
+        assert game.phase == "over" and game.debug_state()["rang"] is rang
+        found, _ = _band_text(game, font5x7, word)
+        assert found is not None and 50 <= found[1] and found[0] >= PROMPT_X0, (word, found)

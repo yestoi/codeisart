@@ -51,8 +51,11 @@ TORSO_CM = 50.0
 BELL_CM = (28.0, 40.0)          # the bell's height, drawn once per game by the rng
 BAR_TOP_CM = 60.0
 BAR_X, BAR_W = 6, 10
+PROMPT_X0 = BAR_X + BAR_W + 2
 BAR_TOP, BAR_BOTTOM = 6, 57
-FIGURE_H = 56
+FIGURE_H = 50                   # rows 0 to 49; rows 50 to 59 are the prompt band's (C56)
+PROMPT_Y = 51
+PROMPT_BAND = (50, 10)          # first row, rows
 FREE_Y = 60                     # rows 60 to 63 stay free (the runner's marker)
 HINT_IDLE_SECONDS = 2.0
 CAMERA_FPS = 10
@@ -71,6 +74,9 @@ BELL_W, BELL_H = 5, 4
 INNER_H = BAR_BOTTOM - BAR_TOP - 1          # the bar's rows, from BAR_BOTTOM - 1 up
 READY_TEXT = "GET SET"
 PLAY_TEXT = "JUMP!"
+HINT_TEXT = "RING THE BELL!"
+OVER_RANG = "BELL RUNG!"
+OVER_MISS = "NICE TRY!"
 FLASH = (255, 255, 255)
 
 ICON = icon_from_rows([
@@ -294,27 +300,28 @@ class Jump(Game):
         canvas.fill_rect(0, FREE_Y, self.w, self.h - FREE_Y, BLACK)   # a held keypoint may fall below the figure's rect
         self._draw_striker(canvas)
         if self.phase == "ready":
-            self._centred(canvas, READY_TEXT, 28, TEXT_COLOR)
+            self._prompt(canvas, READY_TEXT)
         elif self.phase == "play":
-            self._centred(canvas, PLAY_TEXT, 20, TEXT_COLOR, SCORE_SCALE)
-            if self._hint:
-                self._centred(canvas, PLAY_TEXT, 40, TEXT_COLOR)
+            self._prompt(canvas, HINT_TEXT if self._hint else PLAY_TEXT)
         elif self.phase == "result":
             text = str(self.peak_cm)
             x = BAR_X + BAR_W + 4
             width = canvas.text_width(text, SCORE_SCALE) - SCORE_SCALE
             canvas.fill_rect(x - 1, 23, width + 2, CELL_H * SCORE_SCALE + 2, BLACK)
             canvas.text(x, 24, text, TEXT_COLOR, SCORE_SCALE)
+        elif self.phase == "over":
+            self._prompt(canvas, OVER_RANG if self.rang else OVER_MISS)
         text = str(self.best_cm)
         x0 = self.w - canvas.text_width(text, SCORE_SCALE)
         canvas.fill_rect(x0 - 1, 0, self.w - x0 + 1, CELL_H * SCORE_SCALE + 2, BLACK)
         canvas.text(x0, 1, text, SCORE_COLOR, SCORE_SCALE)
 
-    def _centred(self, canvas: Canvas, text: str, y: int, color, scale: int = 1) -> None:
-        width = canvas.text_width(text, scale) - scale
-        x = (self.w - width) // 2
-        canvas.fill_rect(x - 1, y - 1, width + 2, CELL_H * scale + 2, BLACK)
-        canvas.text(x, y, text, color, scale)
+    def _prompt(self, canvas: Canvas, text: str) -> None:
+        """The prompt band: rows 50 to 59, columns PROMPT_X0 to the right edge, over a black box, the text centred."""
+        row0, rows = PROMPT_BAND
+        canvas.fill_rect(PROMPT_X0, row0, self.w - PROMPT_X0, rows, BLACK)
+        width = canvas.text_width(text, 1) - 1
+        canvas.text(PROMPT_X0 + (self.w - PROMPT_X0 - width) // 2, PROMPT_Y, text, TEXT_COLOR)
 
     def _draw_striker(self, canvas: Canvas) -> None:
         inner_x, inner_w = BAR_X + 1, BAR_W - 2
