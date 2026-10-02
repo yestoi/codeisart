@@ -10,9 +10,10 @@ A raw file (the owner's re-tuning recordings) holds one RawRecord per camera cap
 model's detections, a 160x120 grey frame (base64) and the capture's sound as a 16 kHz WAV (base64), its RIFF header
 packed with struct.
 
-A bad line is skipped with one warning and counted in ScenarioReader.skipped, and a file cut off mid-write ends
-with one warning: the reader never raises into the runner (Review Focus 4). A file without a header is refused
-when it is opened.
+A bad line (whatever it raises, deep nesting included, or a number that is not finite in any float field) is
+skipped with one warning and counted in ScenarioReader.skipped, and a file cut off mid-write ends with one warning:
+the reader never raises into the runner (Review Focus 4). A file without a header that parses is refused with
+ValueError when it is opened.
 """
 from __future__ import annotations
 
@@ -40,8 +41,6 @@ VERSION = 1
 TYPES = ("sensed", "raw")
 PACKED_BYTES = MOTION_GRID[0] * MOTION_GRID[1] // 8
 AUDIO_FLAGS = ("clap", "onset", "beat")
-# what a malformed line raises in decode: JSON, a missing key, a wrong type or count, an overflow
-BAD_LINE = (ValueError, KeyError, TypeError, IndexError, AttributeError, ArithmeticError)
 
 
 # ----- the header -----
@@ -110,11 +109,11 @@ def _keypoints_obj(kps) -> list:
 
 
 def _keypoints(obj) -> tuple[Keypoint, ...]:
-    return tuple(Keypoint(float(x), float(y), float(c)) for x, y, c in obj)
+    return tuple(Keypoint(_finite(x), _finite(y), _finite(c)) for x, y, c in obj)
 
 
 def _box(obj) -> tuple[float, float, float, float]:
-    x0, y0, x1, y1 = (float(v) for v in obj)
+    x0, y0, x1, y1 = (_finite(v) for v in obj)
     return (x0, y0, x1, y1)
 
 
@@ -158,15 +157,16 @@ def encode(s: Sensed) -> str:
 
 
 def _body(b: dict) -> Body:
-    return Body(int(b["id"]), _box(b["box"]), _keypoints(b["keypoints"]), vx=float(b.get("vx", 0.0)),
-                vy=float(b.get("vy", 0.0)), scale=float(b.get("scale", 0.0)), seen_ago=float(b.get("seen_ago", 0.0)),
-                measured=_bool(b.get("measured", True)), torso_per_width=float(b.get("torso_per_width", 0.0)))
+    return Body(int(b["id"]), _box(b["box"]), _keypoints(b["keypoints"]), vx=_finite(b.get("vx", 0.0)),
+                vy=_finite(b.get("vy", 0.0)), scale=_finite(b.get("scale", 0.0)),
+                seen_ago=_finite(b.get("seen_ago", 0.0)), measured=_bool(b.get("measured", True)),
+                torso_per_width=_finite(b.get("torso_per_width", 0.0)))
 
 
 def _blob(b: dict) -> Blob:
     red, green, blue = (int(c) for c in b["color"])
-    return Blob(float(b["x"]), float(b["y"]), float(b["size"]), (red, green, blue), id=int(b.get("id", -1)),
-                vx=float(b.get("vx", 0.0)), vy=float(b.get("vy", 0.0)))
+    return Blob(_finite(b["x"]), _finite(b["y"]), _finite(b["size"]), (red, green, blue), id=int(b.get("id", -1)),
+                vx=_finite(b.get("vx", 0.0)), vy=_finite(b.get("vy", 0.0)))
 
 
 def _audio(a: dict) -> Audio:
@@ -177,14 +177,15 @@ def _audio(a: dict) -> Audio:
         if f.name in a:
             v = a[f.name]
             kw[f.name] = (_bool(v) if f.name in AUDIO_FLAGS
-                          else None if f.name == "bpm" and v is None else float(v))
+                          else None if f.name == "bpm" and v is None else _finite(v))
     return Audio(**kw)
 
 
 def decode(line: str, calibration: Calibration | None = None) -> Sensed:
     """The Sensed of one line, every body and blob placed against calibration (the default one when None): pass
     the calibration the recording was made with (C21). A record without camera_t or camera_fresh (one written by
-    hand) is a fresh capture at its t. A malformed line raises one of BAD_LINE."""
+    hand) is a fresh capture at its t. A malformed line raises: bad JSON (RecursionError when nested too deep), a
+    missing key, a wrong type or count, or a number that is not finite (NaN, Infinity, 1e999) in any float field."""
     obj = json.loads(line)
     if not isinstance(obj, dict):
         raise TypeError(f"a record is a JSON object, got {type(obj).__name__}")
@@ -319,8 +320,8 @@ class ScenarioReader:
             raise ValueError(f"{self.path}: not a gzip scenario file ({e})") from e
         try:
             self.header = check_header(json.loads(first))
-        except ValueError as e:
-            raise ValueError(f"{self.path}: no header: {e}") from e
+        except Exception as e:                             # any header that will not parse, deep nesting included
+            raise ValueError(f"{self.path}: no header: {type(e).__name__}: {e}") from e
 
     @property
     def cues(self) -> tuple[tuple[float, str], ...]:
@@ -341,7 +342,7 @@ class ScenarioReader:
                         continue
                     try:
                         record = self._parse(line)
-                    except BAD_LINE as e:
+                    except Exception as e:                     # whatever one line raises spoils that line only
                         self.skipped += 1
                         log.warning("%s:%d skipped: %s: %s", self.path, lineno, type(e).__name__, e)
                         continue
