@@ -295,6 +295,33 @@ def test_a_crash_holds_and_fades(font5x7):
     assert flash_area(runner.raw_frames) < 0.1
 
 
+def floor_crash():
+    """One flap at 1.3 s, then both hands down: the bird falls onto the floor before the first pipe arrives."""
+    p = Person(cam_x(0.5), id=1)
+    arm(p, "left", 1.3)
+    arm(p, "right", 1.3)
+    return scene(persons=[p], ticks=round(8 / TICK))
+
+
+@pytest.mark.parametrize("name", ["idle_body", "nobody", "one_arm", "floor_crash"])
+def test_own_drawing_keeps_rows_60_to_63_dark(font5x7, name):
+    """The runner's marker and echoes own rows 60 to 63: the hint and a floor crash's wings stay above them."""
+    game = make(i=2)
+    canvas = Canvas(*WALL, font5x7)
+    lit, hinted, floored = [], False, False
+    frames = floor_crash() if name == "floor_crash" else Flap.SCENARIOS[name]()
+    for _ in drive(game, frames):
+        canvas.clear()
+        game.draw(canvas)
+        state = game.debug_state()
+        hinted = hinted or state["hint"]
+        floored = floored or (state["crashed"] and state["bird_xy"][1] + BIRD_H / 2 >= FLOOR_Y)
+        if canvas.frame[60:].any():
+            lit.append(round(game.t, 2))
+    assert floored if name == "floor_crash" else hinted, (name, game.debug_state())
+    assert not lit, f"{name}: rows 60 to 63 lit on {len(lit)} ticks, from t {lit[:3]}"
+
+
 def test_a_flap_in_over_restarts_up_to_max_runs():
     game, frames = playing()
     assert game.debug_state()["runs"] == 1

@@ -70,7 +70,6 @@ TICK_COLOR = (255, 255, 255)
 READY_TEXT = "FLAP TO FLY"
 HINT_TEXT = "ARMS UP THEN DOWN"
 AGAIN_TEXT = "FLAP AGAIN"
-GLYPH_H = 7
 
 ICON = icon_from_rows([
     "................",
@@ -344,9 +343,9 @@ class Flap(Game):
         elif self.phase == "over" and self.runs < MAX_RUNS and self.phase_t >= CRASH_SECONDS:
             width = canvas.text_width(AGAIN_TEXT) - 1
             canvas.text((w - width) // 2, round(self.h * 0.7), AGAIN_TEXT, TEXT_COLOR)
-        if self._hint and self.phase != "over":
+        if self._hint and self.phase != "over":                       # a line over READY_TEXT: rows 37 to 43
             width = canvas.text_width(HINT_TEXT) - 1
-            canvas.text((w - width) // 2, round(self.h * 0.7) + GLYPH_H + 3, HINT_TEXT, TEXT_COLOR)
+            canvas.text((w - width) // 2, round(self.h * 0.7) - CELL_H, HINT_TEXT, TEXT_COLOR)
         text = str(self._shown_score())
         x0 = w - canvas.text_width(text, SCORE_SCALE)
         canvas.fill_rect(x0 - 1, 0, w - x0 + 1, CELL_H * SCORE_SCALE + 2, (0, 0, 0))
@@ -367,8 +366,8 @@ class Flap(Game):
         canvas.fill_rect(left, top, BIRD_W, BIRD_H, color)
         if self.gauge_v < V_ABOVE:
             canvas.fill_rect(left, top - 2, 2, 2, color)                  # wings up
-        else:
-            canvas.fill_rect(left, top + BIRD_H, 2, 2, color)             # wings down
+        else:                                                           # wings down, never under FLOOR_Y
+            canvas.fill_rect(left, min(top + BIRD_H, FLOOR_Y - 1), 2, 2, color)
 
     def _draw_gauge(self, canvas: Canvas) -> None:
         for v in (V_ABOVE, V_BELOW):
