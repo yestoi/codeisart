@@ -1042,7 +1042,7 @@ status: defaulted (standing instruction)
 
 ### Q144: How does calibrate derive the zone and the minimum height?
 asked: iteration 21's plan writer, 2026-10-02. From three stands (far left, far right, front)
-default: the zone is the stands' shoulder anchors, min to max, widened by 0.05; `min_height` is 0.8 of the smallest stand height
+default: the zone's x is the stands' shoulder anchors, min to max, widened by 0.05; its y is never thinner than the default's 0.2 to 0.8 (the plan review's B2: a zone made from standing anchors drops a jumping body, so Jump's bell could not ring after a calibrate); `min_height` is 0.8 of the smallest stand height
 deadline: none
 answer:
 status: defaulted (standing instruction)
