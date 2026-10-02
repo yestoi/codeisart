@@ -1962,3 +1962,136 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   live), Q135 (a new id stops the window).
 - Status: done. Jump is on main: M7a's seven pose games are built, none yet played on a camera. C55 is closed. M5's
   first lane is on main. Iteration 21 starts with C56 and M5's second lane (the camera wiring).
+
+## Iteration 21 — 2026-10-02
+- Verdict (the operator's reading of feel.json, then the sheets, written 08:33 before any other tool call; evidence at
+  2fb3a04, whose code is d2f1b63's): **Jump's layout passes and C56 is closed; one small fix is carried (C57: the
+  hint leads the second and third windows). The REC screen and the calibrate screen read.** feel.json: no failure
+  (win_good 1.0, win_lazy 0.45, win_none 0.0, range 0.685, round 30.0 s, square_flashes 4.0, flash_area_raw 0.0037,
+  lit_fraction 0.099, score_visible 0.978, score_legible 1.0, fidelity 0.9991, response_px 216): the same game as
+  iteration 20's, a little less lit.
+  - Jump, the canonical LED sheet (20 frames, 0 to 28.5 s, the player walking from the middle to the mat's left end,
+    to its right end and back): the lobby's amber "JUMP", the mirror figure, the raised hand with the green launch
+    icon; in the game the cyan striker at the left with the yellow bell mark, the figure 50 rows tall, and every word
+    in one amber line under the figure's feet: "JUMP!" (6.0 to 9.0 s), "RING THE BELL!" (10.5 s), "GET SET"
+    (13.5 s, 22.5 s). No word touches the figure in any frame, at the left end (9.0 s), the right end (15.0 s,
+    16.5 s) or the middle. The white score at 2x sits at the top right from the first tick ("0", then "42"); the
+    white peak line shows on the bar after a jump; the result's amber "42" at 2x stands right of the bar. The
+    player sees their own jump now: that was C56's point.
+  - Jump at viewing distance (the distance sheet): the 1x words in the band read ("JUMP!", "GET SET", "RING THE
+    BELL!"), as do the "42"s and the bar's line.
+  - Jump, the bell and `over` (the operator's sheets of the same code, rendered 08:04 at a2dc2b8 into the scratchpad,
+    every 40 ticks without the lobby): "DING!" pops beside the bar at the bell's height on a dimmed frame, well
+    clear of the band's "JUMP!"; `over` shows "BELL RUNG!" in the band under the engine's white "NEW BEST" banner.
+    `idle_body`: "GET SET", then "RING THE BELL!" for the window, an amber "0" in `result`; never two words at once.
+  - What is not right yet (C57, carried; no budget fails): (a) in the second and the third window the band shows
+    "RING THE BELL!" from the window's first frame (15.0 s, 24.0 s) and "JUMP!" only after the player has jumped
+    (16.5 s, 25.5 s): the idle clock runs through `result` and `ready`, so the hint is already due when the window
+    opens. The first window is right ("JUMP!" at 6.0 s, the hint at 10.5 s). The player still knows what to do, but
+    the command comes after the act. (b) At the mat's left end the result's "42" is drawn over the figure's arm and
+    legs (12.0 s here; the legs at 9.3 s on the scratchpad sheet): the number reads, the figure is cut. C56's fix
+    list did not name this; it is noted with C57 for the plan writer.
+  - The GIF read with the Read tool gives one frame only; the sheets carry the reading (as in iteration 20).
+  - Record, the LED sheet (`record-led.png`, door-point, every 18 ticks, 12 s): a white "3", "2", "1" at 2x in the
+    middle of a black wall; then a red "REC" at the top left with the white seconds beside it ("0S" to "8S") on
+    every frame; the cue in white across the middle over its black box ("STAND IN THE MIDDLE", "POINT AT DOOR 1",
+    "HOLD", "HAND DOWN"); the performer's amber figure behind the words, walking in from the left edge, the right
+    hand up while the cue says so; the bottom rows dark. A performer can follow it without a word from anyone.
+  - Calibrate, the LED sheet (`calibrate-led.png`, every 45 ticks, 28.5 s): the step's words in white at the top
+    ("AIM: HANDS UP", "STAND FAR LEFT", "STAND FAR RIGHT", "STAND AT THE FRONT", "STAND STILL", "CLEAR THE FRAME 10"
+    counting to 1, "SAVED"); the body as green keypoint dots; the zone so far as a yellow outline (a thin box after
+    the first stand, the whole zone after the third); the lamp as a magenta dot that stays where it is while a
+    second light wanders through the clear step. It reads as an operator's tool. The camera frame's own edge is not
+    drawn (Q157), so the dots float on black: noted, not carried.
+- Checked after the verdict:
+  - The suite was NOT run again in verify (a loop decision, below). What stands: the orchestrator's full run at
+    4895b1f, 07:50 to 07:58: 2326 collected, 2323 passed, 3 skipped in 454.57 s, under Q102's 540 s; `pooled: 480
+    plays, 4 workers, 135.6 s, the join waited 11.0 s` (under the 150 s flag); no timing failure
+    (evidence/it21/final-durations.txt). The one code commit after it, d2f1b63, puts `arcade.sources`' stdlib
+    imports in one block: the orchestrator ran the seven import-sensitive files (131 passed), the code reviewer ran
+    the iteration's 12 files at d2f1b63 (333 passed) and `--collect-only` (2326).
+  - `arcade doctor` at 2fb3a04: camera ok (device 0, 1280x720), mic ok (540 samples), pose ok (the landmarker ran in
+    17 ms).
+  - Freshness: `git diff d2f1b63..HEAD` outside `docs/` is empty; Jump's sheets are stamped `2fb3a04`. The record
+    and calibrate sheets are stamped `2fb3a04+dirty`: the evidence tool's text files were untracked beside them
+    when they were made, no code differed.
+  - C57(a)'s cause, read in the code: `arcade/games/jump.py`'s `_update_hint` sets `self._idle = 0.0 if
+    self._active else self._idle + dt` on every tick and nothing resets it when a window opens, so after `result`
+    and `ready` the 2.0 s of `HINT_IDLE_SECONDS` are already past at the window's first tick.
+- Plan: docs/superpowers/plans/2026-10-02-it21-m5-wiring-record-calibrate.md (299 lines at 42f2d40), one plan writer
+  (opus, 06:08 to 06:24; Q136 to Q147 defaulted), one adversarial reviewer (opus). Round 1 BLOCKED on B1 to B7, each
+  checked against the code and fixed in the plan by the operator. Round 2 BLOCKED on one finding, R2-B1, with three
+  notes: the operator applied the reviewer's own fix text and the notes and started the orchestrator at 06:55
+  (evidence/it21/plan-review.md; the loop decision below).
+- Shipped: 42f2d40..d2f1b63, 25 files outside `docs/`, 2658 insertions, 139 deletions. Eight tasks, nothing cut, no
+  merge reverted.
+  - G6, C56: Jump's figure is 50 rows tall and every word stands in one band at rows 50 to 59, right of the
+    striker: "GET SET", "JUMP!" or the hint "RING THE BELL!" (never both), "BELL RUNG!" or "NICE TRY!" in `over`;
+    "DING!" pops beside the bar. One named assert changed (`FIGURE_H` 56 to 50).
+  - E1, C35: a camera source declares `provides`; the runner claims only what the camera provides and drops the
+    rest; `CAMERA_INPUTS` moved to `arcade/sensed.py`; `Runner.loop(..., until=)`.
+  - W, the wiring: `MediaPipeCamera` runs `FrameFeatures` on a 160x120 copy of each due capture (0.44 ms an update
+    where 640x480 took 3.7 ms), with the calibration's static mask and the mirror; its `tap` gets one raw record a
+    capture.
+  - R, `record`: spec 9.5's twelve scripts with their cues, the consent refusal, the REC screen as the runner's
+    lobby, `--raw`; `tests/arcade/test_privacy.py` holds spec 6.5's rule over every file under `arcade/`.
+  - C, `calibrate`: aim, three stands, the baseline, the clear step with the static lights, the file written only
+    after it loads back.
+  - RP: the scenario reader refuses a box outside [0, 1], a keypoint outside [-1, 2], a conf outside [0, 1] and any
+    other float over 1e3 (iteration 20's note 7); the header carries `inputs` and `mirror`; a raw file replays
+    through `FrameFeatures` and `BodyTracker` (pose and motion).
+  - S, `stats`: a read-only table of the sessions file.
+  - I1, the glue: `python -m arcade calibrate | record | stats`, `run --replay PATH`, `run --require LIST`,
+    `make_sources(..., replay=)`, the walk-up script provides pose only.
+- Review: APPROVED after 1 round (evidence/it21/code-review.md; a fresh opus reviewer, 42f2d40..HEAD, 08:03 to
+  08:29). No blocking finding. 19 mutants, 16 caught; the three survivors are harmless (the report says why). The
+  privacy rule was read against spec 6.5; the changed and removed asserts are the plan's named ones. The
+  orchestrator's deviations are accepted (`ScriptedCamera.provides` as a class attribute, `run --require` returns
+  the doctor's code, `record --script` is required, the doctor no longer calls `logging.basicConfig`, calibrate
+  draws blob dots and says "NOT SAVED").
+- Deploy: none (never deployed by the loop; nothing under `deploy/` touched; nothing pushed; nothing sent to the
+  card).
+- The Pi 5: not run. The plan has no Pi step (Q103). No ssh call was made in this iteration.
+- Verify: 6 of 7 of the checklist as written, item 2 on the orchestrator's run. 1 freshness: only `docs/` changes
+  after the code head d2f1b63. 2 the suite: green at 4895b1f in the orchestrator's run, not run again (below). 3
+  skips: 3, as before. 4 collected: 2326 (2236 before). 5 doctor passes. 6 evidence/it21/ with README.md, the
+  decision on its first line, the images described in words (Q98). 7 the operator read feel.json, then the sheets,
+  and wrote the verdict above before any other tool call.
+- Tests: 2326 collected, 2323 passed, 3 skipped at 4895b1f, 454.57 s (457.24 s and 2236 collected before the
+  slice): 90 more tests for no more time.
+- Minutes: about 149, from 06:07 to 08:36 CDT, against the 90 minutes of an engine iteration: plan 16; the
+  plan's two review rounds with the fixes 30; implement 68 (the serial lane 6, two batches of worktree tasks, the
+  glue, one full run of 8); code review 26, with the operator's early sheets beside it; verify and the report
+  7, about 10 of them on the owner's memory report. The plan's second review round cost about 15 minutes.
+- Loop decisions and deviations:
+  - The plan review's round 2 ended BLOCKED on R2-B1, wording that the reviewer's own round 1 had asked for. The
+    run's rule is one review round with one confirmation; the finding came with its fix text. The operator applied
+    that text and the three notes, asked for no third round and did not gate.
+  - Verify did not run the full suite. At 08:30 the owner wrote that the laptop was out of memory. The Mac has
+    8 GB; the swap read 8.2 of 9.2 GB used and the disk 98 % full; beside this loop ran Docker's machine (about
+    6 GB), Firefox (about 7 GB) and three other sessions. The full suite is five Python processes for about eight
+    minutes. The orchestrator's run was 30 minutes old at the same code but one import-order commit, which two
+    subsets cover. The operator told the owner so.
+  - From iteration 22 on, at most two agents run at once (an orchestrator's worktree tasks two at a time, not
+    four), until the owner says memory is fine again. The operator deleted its own scratch copies of old trees
+    (0.4 GB). It did not touch the 9.8 GB scratch of the 30 September ghosting session or the 2.4 GB of kept
+    worktrees: those wait for the owner's word.
+  - The record and calibrate sheets carry a `+dirty` stamp (above); they were not made again.
+  - Times written into state.md ahead of the clock once more in the plan phase (corrected in fd7de35): every time
+    now comes from `datetime.now()` inside the script that writes it.
+- Carried forward: C57 (Jump's hint leads the second and third windows: the idle clock is not reset when a window
+  opens).
+- Noted, not carried (the roadmap's notes hold the detail): the result's number over the figure at the mat's left
+  end (with C57, for the plan writer); the code review's five notes (calibrate can save an empty static mask when
+  the camera dies early in the clear step; the bell's flash lights rows 60 to 63 through `fx.render`; the privacy
+  rule misses a bare `save` imported from numpy; a camera that dies during a recording leaves "REC" counting; "FAR
+  LEFT / RIGHT" against the spec's far corners); calibrate takes a stand at an earlier stand's place (Q155); the
+  camera frame's edge is not drawn in calibrate (Q157); the reader does not range-check a blob's colour (Q158, for
+  Paint's plan); `MIN_AREA` 4 after the shrink waits for GATE A's lamps (Q149, C34).
+- Owner questions: Q136 to Q160, each defaulted. For the owner's first `calibrate` and `record` at a camera: Q152
+  (the cue texts), Q153 (^C in a recording), Q154 (the "SAVED" card), Q156 (one lost capture restarts a stand),
+  Q160 (`run --require` only probes).
+- Status: done. C56 is closed and C35 is built. M5 is on main up to the camera: the wiring, `record`, `calibrate`,
+  raw replay and `stats`; what is left of it needs a camera and the owner (the first calibrate, the first
+  recordings, C34's refit at GATE A). Iteration 22: the suite's room for two more games (the soaks in workers),
+  C57, then M7b's Paint and Tug.
