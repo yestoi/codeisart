@@ -12,8 +12,9 @@ from arcade.bots import (BODY_HEIGHT, BODY_RANGE_SECONDS, MAX_PLAY_SECONDS, Move
                          win_rate)
 from arcade.config import ArcadeConfig
 from arcade.game import KINDS, Game, GameInfo
-from arcade.sensed import RIGHT_WRIST
+from arcade.sensed import LEFT_HIP, RIGHT_HIP, RIGHT_WRIST
 from arcade.input import DEPTH_SPAN, Depth
+from arcade.poses import POSES
 from arcade.sources.actors import TICK, Person
 from tests.arcade.helpers import CROSS_ICON, SpyGame, spy, spy_info
 
@@ -144,9 +145,9 @@ def test_reaction_delay_is_honoured(font5x7):
             assert state == ({} if i <= k else {"updates": i - k}), f"reaction {k}, tick {i}"
 
 
-def probe(noise, move, seed, font):
+def probe(noise, move, seed, font, game=Probe):
     bot = Recorder(noise=noise, move=move)
-    play(Probe, bot, seed, won=never, font=font)
+    play(game, bot, seed, won=never, font=font)
     return [s for s, _ in bot.seen[1:]]
 
 
@@ -306,3 +307,41 @@ def test_near_moves_at_a_bodys_pace(font5x7):
             left = max(i for i, n in enumerate(near) if n <= 1e-9)
             there = next(i for i, n in enumerate(near) if n >= 1.0 - 1e-9)
             assert (there - left) * TICK >= BODY_RANGE_SECONDS - 1e-9, f"seed {seed}: {there - left} ticks"
+
+
+class Hands(SpyGame):
+    """Reports both wrists' reach v, the player's keypoints and their hip centre."""
+
+    info = spy_info("hands")
+    finish_after = 30
+
+    def update(self, sensed, dt):
+        super().update(sensed, dt)
+        self.player = sensed.player
+
+    def debug_state(self):
+        p = getattr(self, "player", None)
+        if p is None:
+            return {"updates": self.updates}
+        lh, rh = p.keypoints[LEFT_HIP], p.keypoints[RIGHT_HIP]
+        return {"updates": self.updates, "left_v": p.reach(p.left_wrist)[1], "right_v": p.reach(p.right_wrist)[1],
+                "keypoints": [(k.x, k.y) for k in p.keypoints], "hip": ((lh.x + rh.x) / 2, (lh.y + rh.y) / 2)}
+
+
+def test_move_both_hands_moves_both_wrists(font5x7):
+    for v in (0.1, 0.5, 0.9):
+        states = probe(0.0, Move(hand="both", wrist_y=v), 0, font5x7, game=Hands)
+        for s in states:
+            assert s["left_v"] == pytest.approx(v, abs=0.02) and s["right_v"] == pytest.approx(v, abs=0.02), f"{v}: {s}"
+    one = probe(0.0, Move(hand="right", wrist_y=0.1), 0, font5x7, game=Hands)[-1]
+    assert one["right_v"] == pytest.approx(0.1, abs=0.02) and one["left_v"] > 0.5        # one hand: the other hangs
+
+
+def test_move_pose_holds_the_named_pose(font5x7):
+    h = Person().h                                                      # near None: Person's own height
+    for s in probe(0.0, Move(pose="t_pose"), 0, font5x7, game=Hands):
+        (cx, cy), points = s["hip"], s["keypoints"]
+        for i, ((x, y), (dx, dy)) in enumerate(zip(points, POSES["t_pose"])):
+            assert (x, y) == (pytest.approx(cx + dx * h, abs=1e-6), pytest.approx(cy + dy * h, abs=1e-6)), f"kp {i}"
+    with pytest.raises(ValueError, match="unknown pose"):
+        play(Hands, Recorder(move=Move(pose="no_such_pose")), seed=0, won=never, font=font5x7)

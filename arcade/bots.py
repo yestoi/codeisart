@@ -39,13 +39,16 @@ ROOT = Path(__file__).resolve().parents[1]
 @dataclass(frozen=True)
 class Move:
     """A bot's actor spec for one tick, one body (id 1): hips at zone x (0 the zone's left edge, 1 its right);
-    the hand's wrist at reach-box v wrist_y (0 top, 1 hip height), or down with None; near, the Depth value
-    (arcade/input.py) the body stands at: 0 far, 1 near, 0.5 its start. None: the start size (Person's)."""
+    the hand's wrist at reach-box v wrist_y (0 top, 1 hip height), or down with None; hand "left", "right" or
+    "both" (both wrists at wrist_y, one noise draw); near, the Depth value (arcade/input.py) the body stands at:
+    0 far, 1 near, 0.5 its start. None: the start size (Person's). pose, a name in arcade.poses.POSES the body
+    holds on the tick (wrist_y, when set, then moves the hand's wrists), or None for stand."""
 
     x: float = 0.5
     hand: str = "right"
     wrist_y: float | None = None
     near: float | None = None
+    pose: str | None = None
 
 
 class Bot(Protocol):
@@ -125,8 +128,9 @@ def _sensed(i: int, move: Move | None, before: float | None, cal: Calibration) -
     """Tick i's record, shaped as actors._frames makes it, and the body's camera x (None without a body).
 
     The Move becomes a Person(x, id=1) with its hips at zone x, moved there from its x on the tick before (so
-    vx is the tick's step) and its wrist held at wrist_y, placed with cal. With near (already paced by play) the
-    body is BODY_HEIGHT * Depth.ratio(near) tall, else Person's own height."""
+    vx is the tick's step), holding the Move's pose and its wrist (both with hand "both") at wrist_y, placed with
+    cal. An unknown pose raises ValueError. With near (already paced by play) the body is BODY_HEIGHT *
+    Depth.ratio(near) tall, else Person's own height."""
     t = i * TICK
     bodies, cx = (), None
     if move is not None:
@@ -134,8 +138,11 @@ def _sensed(i: int, move: Move | None, before: float | None, cal: Calibration) -
         cx = min(x1, max(x0, x0 + move.x * (x1 - x0)))
         size = {} if move.near is None else {"height": BODY_HEIGHT * Depth.ratio(move.near)}
         person = Person(cx if before is None else before, id=1, **size).walk(cx, TICK / 2, at=t - TICK)
+        if move.pose is not None:
+            person.pose(move.pose, at=t - TICK, seconds=2 * TICK)
         if move.wrist_y is not None:
-            person.wrist(move.hand, move.wrist_y, move.wrist_y, 2 * TICK, at=t - TICK)
+            for hand in ("left", "right") if move.hand == "both" else (move.hand,):
+                person.wrist(hand, move.wrist_y, move.wrist_y, 2 * TICK, at=t - TICK)
         bodies = (place(person.body_at(t, 1), cal),)
     w, h = MOTION_GRID
     return Sensed(t, camera_t=t, camera_fresh=True, camera_seq=i + 1, bodies=bodies, blobs=(),
