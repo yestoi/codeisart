@@ -8,6 +8,10 @@ fixed in the game's own files or sent to the owner, never loosened here."""
 import dataclasses
 import json
 import shutil
+import sys
+import time
+import types
+import warnings
 
 import pytest
 
@@ -59,8 +63,12 @@ def shared_plays():
 
 @pytest.fixture(scope="module")
 def pooled_plays(shared_plays) -> tuple[set[pooled.Key], set[pooled.Key]]:
-    """(the report keys already in PLAYS, the keys pooled.fill stored): every report play PLAYS does not hold yet,
-    made by worker processes once a module, before the first report. The workers are gone when it returns."""
+    """(the report keys already in PLAYS, the keys the pool stored): every report play PLAYS does not hold yet,
+    made by worker processes before the first report. The session's pool (tests/conftest.py starts it when
+    collection ends, for the selection's rows) when there is one, else pooled.fill once a module. The workers are
+    gone when it returns."""
+    if pooled.RUNNING is not None:
+        return pooled.RUNNING.before, pooled.RUNNING.join()
     before = report_keys() & PLAYS.keys()
     return before, pooled.fill(REPORT_PLAYS)
 
@@ -185,3 +193,78 @@ def test_fill_warns_and_stores_nothing_when_its_workers_fail(failure):
     assert stored == set()
     assert store == {}
     assert children_of_this_process() == 0
+
+
+def test_stop_kills_a_running_pool_and_leaves_no_child():
+    from tools.show_soak import children_of_this_process
+
+    real = pooled.subprocess.Popen
+
+    def sleeper(args, **kwargs):                       # a worker that would outlive the session
+        return real([sys.executable, "-c", "import time; time.sleep(60)"], **kwargs)
+
+    store: dict = {}
+    with pytest.MonkeyPatch.context() as mp:           # scoped to the start: children_of_this_process runs pgrep
+        mp.setattr(pooled.subprocess, "Popen", sleeper)
+        pool = pooled.start([(Pong, LAYOUT, SEEDS[:1])], plays=store, workers=2)
+    assert children_of_this_process() == 2
+    pool.stop()
+    assert children_of_this_process() == 0
+    assert not pool.tmp.exists()
+    assert store == {}
+    assert pool.join() == set() and store == {}        # a stopped pool stores nothing later either
+
+
+def test_join_twice_waits_once():
+    store: dict = {}
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(pooled.subprocess, "Popen", _cannot_start)
+        pool = pooled.start([(Pong, LAYOUT, SEEDS[:1])], plays=store, workers=2)
+    with pytest.warns(RuntimeWarning) as first:
+        assert pool.join() == set()
+    assert len([w for w in first if issubclass(w.category, RuntimeWarning)]) == 2   # one per worker
+    waited = pool.waited
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")                 # the second join warns nothing
+        t0 = time.monotonic()
+        assert pool.join() == set()
+        second = time.monotonic() - t0
+    assert second < 0.1, f"the second join waited {second:.3f} s"
+    assert pool.waited == waited                       # the first join's wait, kept for the summary line
+    assert store == {} and not pool.tmp.exists()
+
+
+def test_the_pool_runs_beside_the_soaks_only():
+    soak = "tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-128x64]"
+    assert pooled.beside_the_pool(soak, perf=False)
+    assert pooled.beside_the_pool("tests/arcade/test_actors.py::test_make_keypoints_is_a_standing_figure", perf=False)
+    assert not pooled.beside_the_pool(
+        "tests/arcade/test_all_games.py::test_every_game_fits_the_tick_budget[pong-128x64]", perf=True)
+    for nodeid in ("tests/arcade/test_bots.py::test_move_near_sizes_the_body",
+                   "tests/arcade/test_headless.py::test_tick_budget_with_the_governors_share[strobe-128x64]",
+                   "tests/test_show_shot.py::test_strobe_session_is_held"):
+        assert not pooled.beside_the_pool(nodeid, perf=False), nodeid
+
+
+class _Item:
+    """A stand-in for a selected pytest item: its fixture names and its parameters."""
+
+    def __init__(self, *fixturenames, **params):
+        self.fixturenames = ["shared_plays", *fixturenames]
+        if params:
+            self.callspec = types.SimpleNamespace(params=params)
+
+
+def test_the_rows_follow_the_selected_tests():
+    from arcade.games.flap import Flap
+
+    flap = next(row for row in REPORT_PLAYS if row[0] is Flap)
+    pong = next(row for row in REPORT_PLAYS if row[0] is Pong)
+    game_test = _Item("game_report", "pooled_plays", "game_cls", game_cls=Flap)
+    pong_test = _Item("pong_report", "pooled_plays")
+    pool_test = _Item("pooled_plays")
+    assert pooled.rows_for([game_test], REPORT_PLAYS) == [flap]
+    assert pooled.rows_for([pong_test], REPORT_PLAYS) == [pong]
+    assert pooled.rows_for([pool_test], REPORT_PLAYS) == REPORT_PLAYS
+    assert pooled.rows_for([_Item(), _Item("font5x7")], REPORT_PLAYS) == []
+    assert pooled.rows_for([game_test, pong_test, game_test], REPORT_PLAYS) == [pong, flap]   # REPORT_PLAYS' order
