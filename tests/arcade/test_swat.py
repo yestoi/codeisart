@@ -566,3 +566,18 @@ def test_feel_file_overrides_have_reasons():
     assert "budgets" not in data                                   # the plan: no budget override
     for metric, table in data.get("budgets", {}).get("128x64", {}).items():
         assert table.get("reason", "").strip(), metric
+
+
+@pytest.mark.parametrize("name", ["canonical", "duo"])
+def test_own_drawing_keeps_rows_60_to_63_dark(font5x7, name):
+    """The runner's marker and echoes own rows 60 to 63: no phase of Swat's own drawing lights them."""
+    game = make(i=2)
+    canvas = Canvas(*WALL, font5x7)
+    lit = []
+    for _ in drive(game, Swat.SCENARIOS[name]()):
+        canvas.clear()
+        game.draw(canvas)
+        if canvas.frame[60:].any():
+            lit.append(round(game.t, 2))
+    assert game.t > READY_SECONDS
+    assert not lit, f"{name}: rows 60 to 63 lit on {len(lit)} ticks, from t {lit[:3]}"

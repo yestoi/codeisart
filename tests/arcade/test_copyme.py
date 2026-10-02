@@ -1,4 +1,4 @@
-"""Copy Me (spec 8 row 1, the hero): a target pose grows over the player's figure as a cyan outline; each judged limb
+"""Copy Me (spec 8 row 1, the hero): a target pose grows over the player's figure as a magenta outline; each judged limb
 within tolerance turns green; three rounds, easy to silly."""
 import dataclasses
 import math
@@ -175,7 +175,7 @@ def test_registered_and_declared():
     assert (RESULT_SECONDS, FREEZE_SECONDS, OVER_SECONDS) == (2.0, 1.5, 3.0)
     assert (LIMB_TOLERANCE_DEG, JUDGE_MIN_DEG, ACTIVE_DEG, MATCH_SHARE, FRESH_SHARE) == (30.0, 60.0, 30.0, 0.75, 0.5)
     assert (WIN_MATCHES, FIGURE_H, HINT_IDLE_SECONDS) == (2, 60, 2.0)
-    assert (OUTLINE_COLOR, MATCH_COLOR) == ((0, 200, 255), (0, 200, 0))
+    assert (OUTLINE_COLOR, MATCH_COLOR) == ((255, 0, 255), (0, 200, 0))
     icon = info.icon
     assert icon.any() and not icon.all()
 
@@ -623,3 +623,36 @@ def test_feel_file_overrides_have_reasons():
     data = tomllib.loads((Path(__file__).resolve().parents[2] / "arcade/games/copyme_feel.toml").read_text())
     assert data["fidelity"] == {"input": "zone_x", "xy": "player_xy", "axis": 0}
     assert "budgets" not in data                                   # the plan: no budget override
+
+
+# ----- C55: the outline on player 2, and the wall's marker rows -----
+
+MIN_COLOR_DISTANCE = 150.0
+
+
+def test_the_outline_differs_from_every_figure_colour(font5x7):
+    """The outline reads on both seats: far (RGB Euclidean) from each seat's colour and from MATCH_COLOR, and in a duo
+    frame of play no outline pixel is drawn in seat b's colour."""
+    outline = np.array(OUTLINE_COLOR, float)
+    for other in (*PLAYER_COLORS[:2], MATCH_COLOR):
+        assert float(np.linalg.norm(outline - np.array(other, float))) >= MIN_COLOR_DISTANCE, (OUTLINE_COLOR, other)
+    game = make()
+    advance(game, Copyme.SCENARIOS["duo"](), "play")
+    frame = drawn(game, font5x7)
+    assert count(frame, OUTLINE_COLOR) > 0 and count(frame, PLAYER_COLORS[1]) > 0
+    assert OUTLINE_COLOR != PLAYER_COLORS[1]
+
+
+@pytest.mark.parametrize("name", ["canonical", "duo"])
+def test_own_drawing_keeps_rows_60_to_63_dark(font5x7, name):
+    """The runner's marker and echoes own rows 60 to 63: no phase of Copy Me's own drawing lights them."""
+    game = make(i=2)
+    canvas = Canvas(*WALL, font5x7)
+    lit = []
+    for _ in drive(game, Copyme.SCENARIOS[name]()):
+        canvas.clear()
+        game.draw(canvas)
+        if canvas.frame[60:].any():
+            lit.append(round(game.t, 2))
+    assert game.debug_state()["round"] >= 1
+    assert not lit, f"{name}: rows 60 to 63 lit on {len(lit)} ticks, from t {lit[:3]}"
