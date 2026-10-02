@@ -1,5 +1,5 @@
 """Replay sources (spec 6.1, 6.2): a sensed scenario file played back as the camera and the microphone, one record
-per runner tick."""
+per runner tick; a raw one as the camera, each capture through the feature extraction and the tracker again."""
 from __future__ import annotations
 
 import math
@@ -7,10 +7,12 @@ import time
 from pathlib import Path
 from typing import Callable, Iterable, Iterator
 
+import numpy as np
+
 from arcade.calibration import Calibration
-from arcade.sensed import Audio, Sensed
-from arcade.sources.camera import CameraResult
-from arcade.sources.scenario import ScenarioReader
+from arcade.sensed import CAMERA_INPUTS, MOTION_GRID, Audio, Sensed
+from arcade.sources.camera import BodyTracker, CameraResult
+from arcade.sources.scenario import RawRecord, ScenarioReader
 
 
 class ReplayStream:
@@ -58,10 +60,12 @@ class ReplayCamera:
     """The camera of a replay: latest() advances the shared stream one record (the runner calls it once a tick,
     before the audio's) and gives the newest capture as camera.py's CameraResult, its motion on the file's 128x64
     grid (the runner resamples it to the wall) or the empty grid; None before the recording's first capture.
-    available until the stream has finished; the held last capture then goes stale in the runner."""
+    available until the stream has finished; the held last capture then goes stale in the runner. provides is the
+    camera inputs the recording holds (C35; open_replay gives the header's), every one by default."""
 
-    def __init__(self, stream: ReplayStream):
+    def __init__(self, stream: ReplayStream, provides: frozenset[str] = CAMERA_INPUTS):
         self.stream = stream
+        self.provides = frozenset(provides) & CAMERA_INPUTS
 
     @property
     def available(self) -> bool:
@@ -97,14 +101,86 @@ class ReplayAudio:
         self.stream.close()
 
 
+RAW_PROVIDES = frozenset({"pose", "motion"})   # a grey frame has no saturated halo, so no light is found (Q140)
+DUE_SLACK = 1e-9                               # s: + 0.1 s on the clock can read 0.0999...; the capture is due
+
+
+class RawReplayCamera:
+    """The camera of a raw recording (spec 6.3, the owner's re-tuning files): each capture runs again through
+    FrameFeatures on the wall's motion grid (its grey frame as BGR, mirrored as the header says, true by default)
+    and BodyTracker (its detections, already mirrored, at its t), both against calibration, as the source ran them.
+
+    Paced by capture time: latest() runs, in order, every capture whose t less the first's (t0) is at most the time
+    since this camera opened (+ DUE_SLACK), and gives the newest one's (opened + t - t0, bodies, blobs, motion);
+    None before the first. available until the captures end: the call that runs the last is still available, the
+    next finds none left (as ReplayCamera); the last result is then held. provides is RAW_PROVIDES."""
+
+    provides = RAW_PROVIDES
+
+    def __init__(self, reader: ScenarioReader, calibration: Calibration | None = None,
+                 clock: Callable[[], float] = time.monotonic):
+        from arcade.sources.blobs import FrameFeatures   # here: blobs imports cv2, and importing us must not
+
+        self.reader, self.clock = reader, clock
+        self.features = FrameFeatures(MOTION_GRID, calibration, mirror=reader.header.get("mirror", True))
+        self.tracker = BodyTracker(calibration)
+        self.finished = False
+        self._result: CameraResult | None = None
+        self._it: Iterator[RawRecord] = iter(reader)
+        self._next: RawRecord | None = self._read()
+        self.t0 = self._next.t if self._next is not None else 0.0
+        self.opened = float(clock())
+
+    @property
+    def available(self) -> bool:
+        return not self.finished
+
+    def _read(self) -> RawRecord | None:
+        return next(self._it, None)
+
+    def _run(self, r: RawRecord) -> CameraResult:
+        blobs, motion = self.features.update(np.repeat(r.frame[:, :, None], 3, axis=2), r.t)
+        return self.opened + (r.t - self.t0), self.tracker.update(r.detections, r.t), blobs, motion
+
+    def latest(self) -> CameraResult | None:
+        if not self.finished:
+            since = self.clock() - self.opened + DUE_SLACK
+            ran = False
+            while self._next is not None and self._next.t - self.t0 <= since:
+                self._result, ran = self._run(self._next), True
+                self._next = self._read()
+            if self._next is None and not ran:
+                self.finished = True
+        return self._result
+
+    def close(self) -> None:
+        close = getattr(self._it, "close", None)
+        if close is not None:
+            close()
+
+
+class NoAudio:
+    """The microphone of a raw replay: none (a raw file's sound is not replayed, Q99)."""
+
+    available = False
+
+    def latest(self) -> None:
+        return None
+
+    def close(self) -> None:
+        pass
+
+
 def open_replay(path: Path | str, calibration: Calibration | None = None,
-                clock: Callable[[], float] = time.monotonic) -> tuple[ReplayCamera, ReplayAudio]:
-    """The camera and microphone of a sensed scenario file, sharing one stream on clock. calibration is the one
-    the recording was made with (the header holds none, C21): every body and blob is placed against it, the
-    default one when None. A file without a header raises ValueError here, and so does a raw file."""
+                clock: Callable[[], float] = time.monotonic
+                ) -> tuple[ReplayCamera, ReplayAudio] | tuple[RawReplayCamera, NoAudio]:
+    """The camera and microphone of a scenario file. A sensed file: a ReplayCamera and a ReplayAudio sharing one
+    stream on clock, the camera providing the header's camera inputs (every one without them). A raw file: a
+    RawReplayCamera on clock and NoAudio. calibration is the one the recording was made with (the header holds
+    none, C21): every body and blob is placed against it, the default one when None. A file without a header
+    raises ValueError here."""
     reader = ScenarioReader(path, calibration)
-    if reader.header["type"] != "sensed":
-        raise ValueError(f"{path}: a raw recording replays through the feature extraction and the tracker, "
-                         "which are not built yet")
+    if reader.header["type"] == "raw":
+        return RawReplayCamera(reader, calibration, clock), NoAudio()
     stream = ReplayStream(reader, clock)
-    return ReplayCamera(stream), ReplayAudio(stream)
+    return ReplayCamera(stream, reader.inputs), ReplayAudio(stream)

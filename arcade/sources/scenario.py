@@ -10,10 +10,13 @@ A raw file (the owner's re-tuning recordings) holds one RawRecord per camera cap
 model's detections, a 160x120 grey frame (base64) and the capture's sound as a 16 kHz WAV (base64), its RIFF header
 packed with struct.
 
-A bad line (whatever it raises, deep nesting included, or a number that is not finite in any float field) is
-skipped with one warning and counted in ScenarioReader.skipped, and a file cut off mid-write ends with one warning:
-the reader never raises into the runner (Review Focus 4). A file without a header that parses is refused with
-ValueError when it is opened.
+A bad line (whatever it raises, deep nesting included, a number that is not finite in any float field, or one out
+of its range: a box value outside BOX_RANGE, a keypoint x or y outside KEYPOINT_RANGE or its conf outside 0..1, any
+other float of a body, blob or audio over MAX_ABS in size; t and camera_t need only be finite) is skipped with one
+warning and counted in ScenarioReader.skipped, and a file cut off mid-write ends with one warning: the reader never
+raises into the runner (Review Focus 4). A file without a header that parses is refused with ValueError when it is
+opened. The header may name the inputs the recording holds (C35; every camera input when it does not) and, in a raw
+file, whether the source mirrored.
 """
 from __future__ import annotations
 
@@ -28,12 +31,13 @@ import zlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
+from typing import Iterable, Iterator
 
 import numpy as np
 
 from arcade.calibration import Calibration
-from arcade.sensed import MOTION_GRID, Audio, Blob, Body, Keypoint, Sensed, _resample, place, place_blob
+from arcade.sensed import (AUDIO_INPUTS, CAMERA_INPUTS, MOTION_GRID, Audio, Blob, Body, Keypoint, Sensed, _resample,
+                           place, place_blob)
 
 log = logging.getLogger("arcade")
 
@@ -41,19 +45,28 @@ VERSION = 1
 TYPES = ("sensed", "raw")
 PACKED_BYTES = MOTION_GRID[0] * MOTION_GRID[1] // 8
 AUDIO_FLAGS = ("clap", "onset", "beat")
+INPUTS = CAMERA_INPUTS | AUDIO_INPUTS     # the names a header's inputs may hold
+BOX_RANGE = (0.0, 1.0)            # both sources clamp a box to the frame (pose_mediapipe.box_of, actors.body_box)
+KEYPOINT_RANGE = (-1.0, 2.0)      # a raw keypoint is the model's landmark, before Body clamps it: a frame past an edge
+CONF_RANGE = (0.0, 1.0)
+MAX_ABS = 1e3                     # any other float of a body, blob or audio (t and camera_t: finite only)
 
 
 # ----- the header -----
 
 def make_header(type: str = "sensed", *, fps: float = 30, script: str | None = None,
-                cues=(), created: str | None = None, git: str | None = None) -> dict:
+                cues=(), created: str | None = None, git: str | None = None,
+                inputs: Iterable[str] | None = None) -> dict:
     """A version 1 header. cues are (t, text) pairs, the script's ground truth for cue assertions; created defaults
-    to now in UTC; git is the caller's (this module never reads the checkout)."""
+    to now in UTC; git is the caller's (this module never reads the checkout); inputs, when given, the names the
+    recording holds (C35), a sorted list under the key inputs (no key without them)."""
     if created is None:
         created = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    return check_header({"kind": "header", "version": VERSION, "type": type, "fps": fps, "grid": list(MOTION_GRID),
-                         "script": script, "cues": [[float(t), str(text)] for t, text in cues],
-                         "created": created, "git": git})
+    header = {"kind": "header", "version": VERSION, "type": type, "fps": fps, "grid": list(MOTION_GRID),
+              "script": script, "cues": [[float(t), str(text)] for t, text in cues], "created": created, "git": git}
+    if inputs is not None:
+        header["inputs"] = sorted(inputs)
+    return check_header(header)
 
 
 def _number(v) -> bool:
@@ -80,6 +93,11 @@ def check_header(obj) -> dict:
     if not isinstance(cues, list) or not all(isinstance(c, list) and len(c) == 2 and _number(c[0])
                                              and isinstance(c[1], str) for c in cues):
         problems.append(f"cues {cues!r} (a list of [t, text])")
+    if "inputs" in obj and not (isinstance(obj["inputs"], list)
+                                and all(isinstance(n, str) and n in INPUTS for n in obj["inputs"])):
+        problems.append(f"inputs {obj['inputs']!r:.200} (a list of names from {sorted(INPUTS)})")
+    if "mirror" in obj and not isinstance(obj["mirror"], bool):
+        problems.append(f"mirror {obj['mirror']!r:.80} (true or false)")
     if problems:
         raise ValueError("bad header: " + "; ".join(problems))
     return obj
@@ -98,6 +116,15 @@ def _finite(v) -> float:
     return f
 
 
+def _within(v, bounds: tuple[float, float] = (-MAX_ABS, MAX_ABS), what: str = "a value") -> float:
+    """v as a finite float in bounds (both ends included), else ValueError."""
+    f = _finite(v)
+    lo, hi = bounds
+    if not lo <= f <= hi:
+        raise ValueError(f"{what} {f!r:.6} is outside [{lo}, {hi}]")
+    return f
+
+
 def _bool(v) -> bool:
     if not isinstance(v, (bool, np.bool_)):
         raise TypeError(f"not true or false: {v!r}")
@@ -109,11 +136,12 @@ def _keypoints_obj(kps) -> list:
 
 
 def _keypoints(obj) -> tuple[Keypoint, ...]:
-    return tuple(Keypoint(_finite(x), _finite(y), _finite(c)) for x, y, c in obj)
+    return tuple(Keypoint(_within(x, KEYPOINT_RANGE, "keypoint x"), _within(y, KEYPOINT_RANGE, "keypoint y"),
+                          _within(c, CONF_RANGE, "keypoint conf")) for x, y, c in obj)
 
 
 def _box(obj) -> tuple[float, float, float, float]:
-    x0, y0, x1, y1 = (_finite(v) for v in obj)
+    x0, y0, x1, y1 = (_within(v, BOX_RANGE, "box value") for v in obj)
     return (x0, y0, x1, y1)
 
 
@@ -157,16 +185,16 @@ def encode(s: Sensed) -> str:
 
 
 def _body(b: dict) -> Body:
-    return Body(int(b["id"]), _box(b["box"]), _keypoints(b["keypoints"]), vx=_finite(b.get("vx", 0.0)),
-                vy=_finite(b.get("vy", 0.0)), scale=_finite(b.get("scale", 0.0)),
-                seen_ago=_finite(b.get("seen_ago", 0.0)), measured=_bool(b.get("measured", True)),
-                torso_per_width=_finite(b.get("torso_per_width", 0.0)))
+    return Body(int(b["id"]), _box(b["box"]), _keypoints(b["keypoints"]), vx=_within(b.get("vx", 0.0)),
+                vy=_within(b.get("vy", 0.0)), scale=_within(b.get("scale", 0.0)),
+                seen_ago=_within(b.get("seen_ago", 0.0)), measured=_bool(b.get("measured", True)),
+                torso_per_width=_within(b.get("torso_per_width", 0.0)))
 
 
 def _blob(b: dict) -> Blob:
     red, green, blue = (int(c) for c in b["color"])
-    return Blob(_finite(b["x"]), _finite(b["y"]), _finite(b["size"]), (red, green, blue), id=int(b.get("id", -1)),
-                vx=_finite(b.get("vx", 0.0)), vy=_finite(b.get("vy", 0.0)))
+    return Blob(_within(b["x"]), _within(b["y"]), _within(b["size"]), (red, green, blue), id=int(b.get("id", -1)),
+                vx=_within(b.get("vx", 0.0)), vy=_within(b.get("vy", 0.0)))
 
 
 def _audio(a: dict) -> Audio:
@@ -177,7 +205,7 @@ def _audio(a: dict) -> Audio:
         if f.name in a:
             v = a[f.name]
             kw[f.name] = (_bool(v) if f.name in AUDIO_FLAGS
-                          else None if f.name == "bpm" and v is None else _finite(v))
+                          else None if f.name == "bpm" and v is None else _within(v))
     return Audio(**kw)
 
 
@@ -185,7 +213,8 @@ def decode(line: str, calibration: Calibration | None = None) -> Sensed:
     """The Sensed of one line, every body and blob placed against calibration (the default one when None): pass
     the calibration the recording was made with (C21). A record without camera_t or camera_fresh (one written by
     hand) is a fresh capture at its t. A malformed line raises: bad JSON (RecursionError when nested too deep), a
-    missing key, a wrong type or count, or a number that is not finite (NaN, Infinity, 1e999) in any float field."""
+    missing key, a wrong type or count, a number that is not finite (NaN, Infinity, 1e999) in any float field, or
+    one out of its range (BOX_RANGE, KEYPOINT_RANGE, CONF_RANGE, MAX_ABS; the module's docstring)."""
     obj = json.loads(line)
     if not isinstance(obj, dict):
         raise TypeError(f"a record is a JSON object, got {type(obj).__name__}")
@@ -326,6 +355,12 @@ class ScenarioReader:
     @property
     def cues(self) -> tuple[tuple[float, str], ...]:
         return tuple((float(t), text) for t, text in self.header["cues"])
+
+    @property
+    def inputs(self) -> frozenset[str]:
+        """The inputs the recording holds: its header's, or every camera input for a header without them (C35)."""
+        names = self.header.get("inputs")
+        return CAMERA_INPUTS if names is None else frozenset(names)
 
     def _parse(self, line: str) -> Sensed | RawRecord:
         return decode(line, self.calibration) if self.header["type"] == "sensed" else decode_raw(line)
