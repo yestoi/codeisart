@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-pi = ["gpiozero>=2.0,<3", "lgpio"]
+pi = ["gpiozero>=2.0,<3", "lgpio", "mediapipe>=1.0,<2"]   # mediapipe: the arcade's pose on the Pi (1.0.1 runs there)
 mac = ["mediapipe>=1.0,!=1.0.1,<2"]   # 1.0.1 aborts opening a PoseLandmarker on macOS arm64
 dev = ["pytest>=8,<10"]
 

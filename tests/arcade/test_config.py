@@ -130,7 +130,7 @@ def test_gamma_1_and_2_2_are_taken(tmp_path):
 
 def test_the_shipped_arcade_configs_are_in_the_gamma_bound():
     root = Path(__file__).resolve().parents[2]
-    for name in ("arcade.toml", "arcade.mac.toml"):
+    for name in ("arcade.toml", "arcade.mac.toml", "arcade.pi.toml"):
         assert 1.0 <= load_config(root / name).gamma <= 2.2, name
 
 
@@ -142,3 +142,10 @@ def test_capture_defaults_to_opencv_and_takes_picamera2(tmp_path):
 def test_capture_rejects_another_value(tmp_path):
     with pytest.raises(ValueError, match="capture"):
         load_config(write(tmp_path, 'capture = "webcam"'))
+
+
+def test_the_pi_config_drives_the_card_through_picamera2():
+    cfg = load_config(Path(__file__).resolve().parents[2] / "arcade.pi.toml")
+    assert (cfg.backend, cfg.iface, cfg.capture, cfg.camera, cfg.camera_fps) == \
+        ("colorlight", "eth0", "picamera2", "mediapipe", 10)
+    assert cfg.size == (128, 64) and cfg.allow_record is False

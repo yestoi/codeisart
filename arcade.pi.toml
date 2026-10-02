@@ -1,0 +1,5 @@
+# The Pi 5 at the wall: the Colorlight card on eth0 and the AI Camera read as a plain camera through picamera2
+# (the pose runs in MediaPipe on the Pi: 10 captures a second hold there). Every other key is its default.
+# Start it as docs/runbooks/arcade-on-the-pi.md says.
+backend = "colorlight"
+capture = "picamera2"
