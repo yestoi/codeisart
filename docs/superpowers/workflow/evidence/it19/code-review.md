@@ -165,3 +165,124 @@ No deviation breaks a rule: no assert or band moved, no `*_feel.toml` override w
 | B6 | Closed by tuning: Flap good 1.0, lazy 0.6 |
 | B7 | Closed: `exit_gesture=False` (`flap.py:118`) |
 | B8 | Closed: `test_copyme.py:480` runs every `LADDER` pose and a whole game under `REAL_NOISE` |
+
+## Round 2
+
+Scope: the two fix commits, nothing else.
+
+- 1acbe6e touches `arcade/games/freeze.py` and `tests/arcade/test_freeze.py`.
+- d81599e touches `arcade/games/flap.py` and `tests/arcade/test_flap.py`.
+- HEAD is d81599e.
+
+The round 1 probes were run again on main. The parent, f2d24ba, was extracted with `git archive` into a scratch
+directory outside the repository and run with `python -P`, so that the old code, not main's, was imported.
+
+### Verdict: APPROVED
+
+Both blocking findings are fixed. The new tests fail on the old code. No assert was removed or changed. Neither fix
+opens anything new.
+
+### 1. Freeze
+
+The fix, at `freeze.py:427-456`:
+
+- `_draw_fall` lifts the rotated points by however far the lowest lit row would pass row 59.
+- For a non-steep line, that lowest row is the second row of the 2 px stroke. For the head, it is the nose plus the
+  disc's radius.
+- The calculation matches `_thick_line` (`STROKE` 2, offsets 0 and +1) and `Canvas._disc` (rows cy - r to cy + r).
+
+Rows 60 to 63 in the game's own frames, on main:
+
+| Run | Ticks lit |
+|---|---|
+| `canonical`, straight through the game | 0 (round 1: 52) |
+| `duo`, straight through the game | 0 (round 1: 52) |
+| `canonical`, `idle_body`, `nobody` and `duo` through `run_headless` | 0 each |
+| Good bot, 4 seeds | 0 each |
+| Lazy bot, 8 seeds | 0 each |
+
+On the lazy bot's 8 seeds, 5 slip, each drawing the topple on 91 ticks, and 3 win with 6, the same 3 of 8 as before.
+
+The topple still shows, and more of it does. These are the pixels the topple adds to the game's own composited frame,
+with the word's black box and the scores drawn over it:
+
+| Scenario | Main: mean (min) | Parent: mean (min) | Fall ticks | Ticks with nothing visible |
+|---|---|---|---|---|
+| `canonical` | 297 (260) | 220 (126) | 60 | 0 |
+| `duo` | 204 (136) | 137 (48) | 60 | 0 |
+
+On main, the topple lights rows 0 to 59 only.
+
+### 2. Flap
+
+The fixes:
+
+- The hint is drawn at y = round(64 * 0.7) - `CELL_H` = 37, so it covers rows 37 to 43.
+- `READY_TEXT` stays on rows 45 to 51, with row 44 left blank between them.
+- The wings-down block is drawn no lower than `FLOOR_Y - 1` = 58.
+- The bird's body cannot reach row 60: `MAX_FALL` 30 px/s is 1 px a tick, so `bird_y` stays under 58 at a floor
+  crash, and the body's top stays at row 56 or above.
+- The removed `GLYPH_H` was not imported anywhere; Dodge, Pong and Copy Me keep their own.
+
+Rows 60 to 63 in the game's own frames, on main:
+
+| Run | Ticks lit |
+|---|---|
+| `canonical`, `idle_body`, `nobody` and `one_arm` through `run_headless` | 0 each (round 1: 990 on `idle_body`, 180 on `nobody`, 76 on `one_arm`) |
+| Good bot, 4 seeds | 0 each |
+| Lazy bot, 4 seeds | 0 each |
+| Floor crash (one flap at 1.3 s, then both hands down), 6 seeds | 0 each, crash at `bird_y` 57.53 (round 1: 37 ticks) |
+
+The hint against everything else, straight through the game, with i = 2:
+
+| Scenario | Hint ticks, main | Something else lit inside the hint's box, main | The same, parent (rows 55 to 61) |
+|---|---|---|---|
+| `idle_body` | 1741 | 0 | 1741 (the floor) |
+| `nobody` | 841 | 0 | 841 |
+| `one_arm` | 76 | 0 | 76 |
+| `canonical` | 76 | 0 | 76 |
+
+On main the hint covers rows 37 to 43, in `ready` only. It no longer sits on `READY_TEXT` or anything else.
+
+### 3. The new tests fail on the old code, and no assert is touched
+
+On the parent's code with main's two test files, `-k keeps_rows_60_to_63` gives 6 failed:
+
+| Test | Lit ticks on the parent |
+|---|---|
+| Freeze `canonical` | 52, from 8.27 s |
+| Freeze `duo` | 52, from 8.13 s |
+| Flap `idle_body` | 1741 |
+| Flap `nobody` | 841 |
+| Flap `one_arm` | 76 |
+| Flap `floor_crash` | 37, from 4.13 s |
+
+The Freeze test also asserts that a topple happened, so it cannot pass vacuously. The Flap test asserts that the hint
+showed, or for the floor crash that the bird reached the floor.
+
+Other test checks:
+
+- `git diff f2d24ba..d81599e -- tests/`: 43 lines added and 0 removed. No assert was removed or changed.
+- Collected: 2092 (2086 + the 6 new tests).
+- `tests/arcade/test_freeze.py` and `tests/arcade/test_flap.py` on main: 80 passed in 41.00 s.
+
+### 4. Nothing new opened
+
+The flash rule through `run_headless`, seed 5, on main (parent in brackets):
+
+| Run | `flash_area` | Held ticks | `square_flashes` |
+|---|---|---|---|
+| Freeze `canonical` | 0.0238 (0.0269) | 0 | 5 of 6 (5) |
+| Freeze `duo` | 0.0045 (0.0042) | 0 | 2 of 6 (2) |
+| Flap `canonical` | 0.0 | 0 | 1 of 6 (1) |
+| Flap `idle_body` | 0.0 | 0 | 1 of 6 (1) |
+| Flap `one_arm` | 0.0 | 0 | 0 of 6 (0) |
+
+The win rates cannot have moved. Both fixes change only drawing (`_draw_fall`, the hint's y, the wings' y), and no
+`debug_state` key, game rule or bot reads any of it. The lazy probe's 3 wins in 8 matches the 0.4 the oracle measured
+before the fix. I did not run the oracle or the suite, because the orchestrator was running both.
+
+### Noted, not carried
+
+- On the floor, the wings-down block now sits on rows 58 and 59, inside the bird's own body (rows 56 to 59). The wings
+  merge into the body for the crash fade.
