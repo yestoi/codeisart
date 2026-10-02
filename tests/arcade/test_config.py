@@ -147,7 +147,7 @@ def test_capture_rejects_another_value(tmp_path):
 def test_the_pi_config_drives_the_card_through_picamera2():
     cfg = load_config(Path(__file__).resolve().parents[2] / "arcade.pi.toml")
     assert (cfg.backend, cfg.iface, cfg.capture, cfg.camera, cfg.camera_fps) == \
-        ("colorlight", "eth0", "picamera2", "mediapipe", 10)
+        ("colorlight", "eth0", "picamera2", "mediapipe", 15)   # 15: the Pi's steady pose rate, 2026-10-02
     assert cfg.size == (128, 64) and cfg.allow_record is False
 
 
