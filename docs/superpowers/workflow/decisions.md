@@ -850,3 +850,31 @@ default: no. The plan was cut back to 299 lines by reflowing and by dropping rep
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q117: What colour is Copy Me's target outline when player 2's figure is blue?
+asked: iteration 19's Copy Me implementer and the operator's reading of the duo sheet, 2026-10-02. The spec says a cyan outline; the plan set `OUTLINE_COLOR = (0, 200, 255)`; player 2's figure is `(0, 160, 255)`. On the duo sheet the outline cannot be told from seat b's own figure: player 2 does not see the shape grow
+default: the outline becomes magenta `(255, 0, 255)` for both seats (unlike the amber and blue figures, the green of a matched limb and the white text). Not changed in iteration 19: carried as C55 for iteration 20's plan; a note for the next spec revision
+deadline: iteration 20's plan
+answer:
+status: defaulted (standing instruction)
+
+### Q118: Is it fine that a figure crossing the mat at walking pace makes the governor hold frames?
+asked: iteration 19's Copy Me and Freeze implementers, 2026-10-02 (evidence/it19/G1-report.md, the table under deviation 1; G4-report.md, deviation 2). A 60 px figure in 2 px lines that moves at 0.2 of the mat a second or faster passes the flash rule's area: the governor holds frames (5 to 28 held ticks in the probes). The wall stays inside the rule; the figure stutters while the player walks or steps fast. Both games are played on the spot, and their recorded plays walk slowly
+default: accepted as it is. The governor and its rule are not touched. The owner looks at it in the live smoke; if it reads badly, a thinner or shorter figure is a later task
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q119: Is Swat's goal of 30 right for people?
+asked: iteration 19's Swat implementer, 2026-10-02. With the plan's numbers both test bots won every seed, so the goal went from 25 to 30, the fruit come slower (`SPAWN_EVERY` 1.4 s falling to 0.8 s, about 56 fruit a round) and one in five is a bomb. The bots only fix the order good, lazy, nobody; a person cuts far fewer than a bot
+default: 30 stays until the owner's live smoke of Swat; the goal only decides the end's celebration, the score is kept either way
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q120: May Copy Me's words and scores cover parts of the figure?
+asked: iteration 19's Copy Me implementer and the operator's reading of the sheets, 2026-10-02. The pose's name, the hint, MISS and MATCH! sit on rows 41 to 58, over the figure's lower legs; a 2x score of three digits covers the head of a player who stands under it (both seats on the duo sheet)
+default: accepted: no ladder pose judges a leg, and the score stays readable. The owner's to change after the live smoke
+deadline: none
+answer:
+status: defaulted (standing instruction)
