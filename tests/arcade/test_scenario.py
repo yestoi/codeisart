@@ -14,7 +14,8 @@ from arcade.calibration import Calibration
 from arcade.headless import NullLobby
 from arcade.runner import Runner
 from arcade.sensed import CAMERA_INPUTS, MOTION_GRID, Audio, Blob, Body, Keypoint, Sensed
-from arcade.sources.actors import TICK, Person, claps, degrade, motion_rect, moving_blob, scene
+from arcade.sources import replay as replay_mod
+from arcade.sources.actors import TICK, Person, body_box, claps, degrade, make_keypoints, motion_rect, moving_blob, scene
 from arcade.sources.replay import ReplayAudio, ReplayCamera, ReplayStream, open_replay
 from arcade.sources import scenario as scenario_mod
 from arcade.sources.scenario import (RawRecord, ScenarioReader, ScenarioWriter, check_header, decode, decode_raw, encode,
@@ -210,13 +211,103 @@ def test_raw_record_round_trip(tmp_path):
         w.write(r)                                         # a sensed file takes Sensed records only
 
 
-def test_raw_file_is_not_replayed_yet(tmp_path):
-    """Raw replay runs FrameFeatures and BodyTracker (iteration 21): until then open_replay refuses a raw file."""
-    p = tmp_path / "raw.jsonl.gz"
-    with ScenarioWriter(p, make_header("raw", fps=10)) as w:
-        w.write(raw_sample())
-    with pytest.raises(ValueError, match="raw"):
-        open_replay(p)
+# ----- raw replay (it21 RP): each capture through FrameFeatures and BodyTracker, paced by its capture time -----
+
+RAW_T0 = 50.0                                              # the first capture's t: a monotonic clock's, not 0
+
+
+def raw_captures(n: int = 3) -> list[RawRecord]:
+    """n raw captures 0.1 s apart: a standing body's detections (mirrored, as the source taps them) and an 8x8
+    white block on a grey frame moving 16 px right a capture in the left half of the camera's (unflipped) frame."""
+    kps = make_keypoints(0.5, 0.55, 0.6)
+    out = []
+    for i in range(n):
+        frame = np.full((120, 160), 60, np.uint8)
+        frame[56:64, 40 + 16 * i:48 + 16 * i] = 255
+        out.append(RawRecord(RAW_T0 + i / 10, detections=((body_box(kps), kps),), frame=frame))
+    return out
+
+
+def raw_file(path, captures=None, mirror: bool | None = None):
+    header = make_header("raw", fps=10, inputs=["motion", "pose"])
+    if mirror is not None:
+        header["mirror"] = mirror
+    return record(path, raw_captures() if captures is None else captures, header)
+
+
+def play(cam, clock, n: int, step: float = 0.1) -> list:
+    """latest() n times, step apart on clock."""
+    seen = []
+    for _ in range(n):
+        seen.append(cam.latest())
+        clock.sleep(step)
+    return seen
+
+
+def test_raw_file_replays_through_features_and_tracker(tmp_path, font5x7):
+    p = raw_file(tmp_path / "raw.jsonl.gz")
+    clock = FakeClock()
+    cam, aud = open_replay(p, clock=clock)
+    assert isinstance(cam, replay_mod.RawReplayCamera) and isinstance(aud, replay_mod.NoAudio)
+    assert cam.provides == frozenset({"pose", "motion"}) and cam.features.mirror is True   # the header's default
+    assert (aud.latest(), aud.available) == (None, False)                                  # no sound replayed (Q99)
+    seen = play(cam, clock, 3)
+    assert [t for t, *_ in seen] == pytest.approx([100.0, 100.1, 100.2])
+    assert [[b.id for b in bodies] for _, bodies, _, _ in seen] == [[1], [1], [1]]          # one tracked person
+    assert all(blobs == () for _, _, blobs, _ in seen)        # a grey frame has no saturated halo: no light (Q140)
+    motions = [m for *_, m in seen]
+    assert all(m.shape == (64, 128) for m in motions)
+    assert not motions[0].any() and motions[1].any() and motions[2].any()   # lit from the second capture
+    assert np.nonzero(motions[1])[1].mean() > 64              # the camera's left half, mirrored to the wall's right
+    off, _ = open_replay(raw_file(tmp_path / "off.jsonl.gz", mirror=False), clock=(off_clock := FakeClock()))
+    assert off.features.mirror is False
+    assert np.nonzero(play(off, off_clock, 2)[1][3])[1].mean() < 64        # mirror false: the camera's x kept
+    cal = Calibration(zone=(0.0, 0.1, 0.5, 0.9), min_height=0.3)
+    placed = open_replay(p, cal, clock=FakeClock())[0].latest()[1][0]
+    assert placed.zone_x == pytest.approx(1.0) and placed.in_zone       # the recording's calibration places it
+    clock = FakeClock()
+    s = wall_runner(font5x7, clock).sense(*open_replay(p, clock=clock))
+    assert s.camera_fresh and [b.id for b in s.bodies] == [1] and s.blobs == () and s.audio == Audio()
+
+
+def test_raw_replay_paces_by_capture_time(tmp_path):
+    """A capture is due when its t less the first's is at most the time since open_replay: the first at once, the
+    second from +0.1 s (the + 1e-9 takes the float's 0.0999...); a late call runs every due capture in turn."""
+    p = raw_file(tmp_path / "pace.jsonl.gz")
+    clock = FakeClock()
+    cam, _ = open_replay(p, clock=clock)
+    assert cam.latest()[0] == 100.0
+    clock.sleep(0.05)
+    assert cam.latest()[0] == 100.0                           # +0.05 s: still the first capture
+    clock.sleep(0.05)
+    second = cam.latest()
+    assert second[0] == pytest.approx(100.1) and second[0] <= clock.now + 1e-9   # +0.1 s: the second
+    clock.sleep(0.09)
+    assert cam.latest()[0] == second[0]                       # +0.19 s: not yet the third
+    late_clock = FakeClock()
+    late, _ = open_replay(p, clock=late_clock)
+    late_clock.sleep(0.25)
+    t, bodies, _, motion = late.latest()
+    assert t == pytest.approx(100.2) and [b.id for b in bodies] == [1]
+    assert motion.any()                                       # the second ran before the third: motion between them
+
+
+def test_raw_replay_ends_unavailable(tmp_path):
+    """available until the records end, as ReplayCamera: the call that runs the last capture is still available,
+    the next finds none left; the last capture is then held (stale in the runner)."""
+    clock = FakeClock()
+    cam, _ = open_replay(raw_file(tmp_path / "end.jsonl.gz"), clock=clock)
+    assert cam.available
+    states = []
+    for _ in range(5):
+        got = cam.latest()
+        states.append((got[0], cam.available))
+        clock.sleep(0.1)
+    assert [a for _, a in states] == [True, True, True, False, False]
+    assert states[2][0] == states[3][0] == states[4][0] == pytest.approx(100.2)
+    cam.close()
+    empty, _ = open_replay(raw_file(tmp_path / "empty.jsonl.gz", captures=[]), clock=FakeClock())
+    assert (empty.latest(), empty.available) == (None, False)   # no capture: None, and done
 
 
 def test_writer_and_open_replay(tmp_path):
