@@ -389,3 +389,31 @@ def test_real_landmarker_runs_on_a_blank_frame():
         assert lmk.detect(np.full((480, 640, 3), 96, np.uint8), 2) == []
     finally:
         lmk.close()
+
+
+def test_the_camera_opens_the_capture_the_config_names(monkeypatch):
+    seen = []
+    monkeypatch.setattr(pm, "open_capture", lambda index, kind="opencv": seen.append((index, kind)) or FakeCapture())
+    cfg = ArcadeConfig(camera_index=1, capture="picamera2")
+    cam = MediaPipeCamera(cfg, cfg.size, landmarker=FakeLandmarker(), start=False)
+    assert seen == [(1, "picamera2")]
+    cam.close()
+
+
+def test_open_capture_picamera2_builds_the_picamera2_capture(monkeypatch):
+    import arcade.sources.capture_picamera2 as cp
+
+    built = []
+    monkeypatch.setattr(cp, "Picamera2Capture", lambda size, index: built.append((size, index)) or "capture")
+    assert pm.open_capture(2, "picamera2") == "capture" and built == [(pm.CAPTURE_SIZE, 2)]
+
+
+def test_without_picamera2_the_camera_is_unavailable_and_says_so(monkeypatch, caplog):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "picamera2", None)        # import picamera2 raises ImportError
+    cfg = ArcadeConfig(capture="picamera2")
+    cam = MediaPipeCamera(cfg, cfg.size, landmarker=FakeLandmarker())
+    assert cam.available is False and cam.latest() is None
+    assert "mediapipe camera unavailable" in caplog.text and "picamera2" in caplog.text
+    cam.close()

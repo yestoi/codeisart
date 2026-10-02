@@ -79,3 +79,45 @@ def test_within_raises_what_the_function_raised(capsys):
 def test_probe_pose_without_model_is_unavailable(tmp_path):
     ok, detail = probe_pose(1.0, tmp_path / "missing.task")
     assert not ok and "model missing" in detail
+
+
+class FrameCapture:
+    def __init__(self, frame):
+        self.frame, self.released = frame, False
+
+    def read(self):
+        return self.frame is not None, self.frame
+
+    def release(self):
+        self.released = True
+
+
+def test_probe_picamera2_reads_one_frame_and_releases(monkeypatch):
+    import numpy as np
+
+    import arcade.sources.capture_picamera2 as cp
+    from arcade.main import probe_picamera2
+
+    caps = []
+    monkeypatch.setattr(cp, "Picamera2Capture",
+                        lambda size, index: caps.append(FrameCapture(np.full((480, 640, 3), 9, np.uint8))) or caps[-1])
+    assert probe_picamera2(1.0, 0) == (True, "picamera2 0: 640x480")
+    assert caps[0].released
+
+
+def test_doctor_reports_a_missing_picamera2_as_unavailable(monkeypatch, capsys):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "picamera2", None)        # import picamera2 raises ImportError
+    assert main(["doctor", "--require", "camera", "--capture", "picamera2", "--timeout", "1"]) == 1
+    out = capsys.readouterr().out
+    assert "camera  UNAVAILABLE" in out and "picamera2" in out
+
+
+def test_make_probes_picks_the_camera_probe_by_capture(monkeypatch):
+    import arcade.main
+
+    monkeypatch.setattr(arcade.main, "probe_camera", lambda timeout, index=0: (True, "opencv"))
+    monkeypatch.setattr(arcade.main, "probe_picamera2", lambda timeout, index=0: (True, "picamera2"))
+    assert arcade.main.make_probes()["camera"](1.0) == (True, "opencv")
+    assert arcade.main.make_probes(capture="picamera2")["camera"](1.0) == (True, "picamera2")

@@ -14,7 +14,7 @@ from typing import Callable, TextIO
 
 from arcade.attract.lobby import Lobby
 from arcade.calibration import load_calibration
-from arcade.config import ArcadeConfig, load_config
+from arcade.config import CAPTURES, ArcadeConfig, load_config
 from arcade.games import all_games
 from arcade.preview import PreviewDisplay
 from arcade.runner import Runner
@@ -31,12 +31,10 @@ Probe = Callable[[float], tuple[bool, str]]
 log = logging.getLogger(__name__)
 
 
-def probe_camera(timeout: float, index: int = 0) -> tuple[bool, str]:
-    """Runs on the calling thread, unlike probe_pose: macOS asks for camera access only from the
-    main thread. The deadline is checked between reads, so one blocking read can overrun it."""
-    import cv2  # inside the probe, so importing arcade.main never loads OpenCV
-
-    cap, frames, deadline = cv2.VideoCapture(index), 0, time.monotonic() + timeout
+def _first_frame(cap, timeout: float, label: str, hint: str) -> tuple[bool, str]:
+    """(True, the size) at cap's first frame that is not all black within timeout, else (False, why); releases
+    cap. The deadline is checked between reads, so one blocking read can overrun it."""
+    frames, deadline = 0, time.monotonic() + timeout
     try:
         while time.monotonic() < deadline:
             ok, frame = cap.read()
@@ -45,11 +43,28 @@ def probe_camera(timeout: float, index: int = 0) -> tuple[bool, str]:
                 continue
             frames += 1
             if frame.any():
-                return True, f"device {index}: {frame.shape[1]}x{frame.shape[0]}"
+                return True, f"{label}: {frame.shape[1]}x{frame.shape[0]}"
         why = f"{frames} frames, all black" if frames else f"no frames in {timeout:.0f} s"
-        return False, f"device {index}: {why} (macOS: grant this terminal camera access)"
+        return False, f"{label}: {why} ({hint})"
     finally:
         cap.release()
+
+
+def probe_camera(timeout: float, index: int = 0) -> tuple[bool, str]:
+    """Runs on the calling thread, unlike probe_pose: macOS asks for camera access only from the main thread."""
+    import cv2  # inside the probe, so importing arcade.main never loads OpenCV
+
+    return _first_frame(cv2.VideoCapture(index), timeout, f"device {index}",
+                        "macOS: grant this terminal camera access")
+
+
+def probe_picamera2(timeout: float, index: int = 0) -> tuple[bool, str]:
+    """The Pi's ribbon camera through picamera2 (capture "picamera2"), opened as the arcade opens it."""
+    from arcade.sources import capture_picamera2
+    from arcade.sources.pose_mediapipe import CAPTURE_SIZE
+
+    return _first_frame(capture_picamera2.Picamera2Capture(CAPTURE_SIZE, index), timeout, f"picamera2 {index}",
+                        "is the ribbon seated: rpicam-hello --list-cameras")
 
 
 def probe_mic(timeout: float, device: str = "") -> tuple[bool, str]:
@@ -133,9 +148,11 @@ def doctor(require: list[str], probes: dict[str, Probe], timeout: float = TIMEOU
     return 1 if failed else 0
 
 
-def make_probes(camera_index: int = 0, audio_device: str = "", model: Path = MODEL_PATH) -> dict[str, Probe]:
-    """The doctor's probes by name. The probe functions are looked up when a probe runs."""
-    return {"camera": lambda t: probe_camera(t, camera_index),
+def make_probes(camera_index: int = 0, audio_device: str = "", model: Path = MODEL_PATH,
+                capture: str = "opencv") -> dict[str, Probe]:
+    """The doctor's probes by name; the camera's is the one capture names. The probe functions are looked up when
+    a probe runs."""
+    return {"camera": lambda t: (probe_picamera2 if capture == "picamera2" else probe_camera)(t, camera_index),
             "mic": lambda t: probe_mic(t, audio_device),
             "pose": lambda t: probe_pose(t, Path(model))}
 
@@ -160,7 +177,8 @@ def run(args) -> int:
     cfg = load_config(args.config)
     log.info("wall %s, backend %s", cfg.layout, cfg.backend)
     if _names(args.require):
-        code = doctor(_names(args.require), make_probes(cfg.camera_index, cfg.audio_device), TIMEOUT)
+        code = doctor(_names(args.require), make_probes(cfg.camera_index, cfg.audio_device, capture=cfg.capture),
+                      TIMEOUT)
         if code:
             return code
     data_dir = Path(cfg.data_dir)
@@ -205,6 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--require", default="camera,mic,pose", help="comma list of camera, mic, pose")
     d.add_argument("--timeout", type=float, default=TIMEOUT)
     d.add_argument("--camera-index", type=int, default=0)
+    d.add_argument("--capture", choices=CAPTURES, default="opencv", help="picamera2: the Pi's ribbon cameras")
     d.add_argument("--audio-device", default="")
     d.add_argument("--model", default=str(MODEL_PATH))
     c = sub.add_parser("calibrate", help="find the play zone with one person; writes data_dir/calibration.json")
@@ -229,8 +248,8 @@ def main(argv: list[str] | None = None) -> int:
         argv.insert(0, "run")                     # run is the default command
     args = build_parser().parse_args(argv)
     if args.command == "doctor":
-        return doctor(_names(args.require), make_probes(args.camera_index, args.audio_device, Path(args.model)),
-                      args.timeout)
+        return doctor(_names(args.require),
+                      make_probes(args.camera_index, args.audio_device, Path(args.model), args.capture), args.timeout)
     logging.basicConfig(level=logging.DEBUG if getattr(args, "verbose", False) else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if args.command == "record":

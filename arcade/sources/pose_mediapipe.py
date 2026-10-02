@@ -108,9 +108,14 @@ class Landmarker:
         self._landmarker.close()
 
 
-def open_capture(index: int):
-    """cv2.VideoCapture(index) at CAPTURE_SIZE; RuntimeError if it does not open. Call it on the main thread: macOS
-    asks for camera access only from there."""
+def open_capture(index: int, kind: str = "opencv"):
+    """The capture cfg.capture names, at CAPTURE_SIZE: cv2.VideoCapture(index) ("opencv"; RuntimeError if it does
+    not open) or capture_picamera2.Picamera2Capture ("picamera2", the Pi's ribbon cameras). Call it on the main
+    thread: macOS asks for camera access only from there."""
+    if kind == "picamera2":
+        from arcade.sources import capture_picamera2   # here: looked up at the call, and it imports picamera2
+
+        return capture_picamera2.Picamera2Capture(CAPTURE_SIZE, index)
     import cv2
 
     cap = cv2.VideoCapture(index)
@@ -140,8 +145,8 @@ class MediaPipeCamera(ThreadedCamera):
 
     size is the wall size, the motion grid's; calibration is the body tracker's and the features'; model_path None
     is the doctor's arcade.main.MODEL_PATH. capture (read() -> (ok, bgr), release()) and landmarker (detect(rgb,
-    ts_ms), close()) are injectable; without them the model is checked first, then MediaPipe and the camera open
-    here, on the calling (main) thread. A failure logs once and leaves the camera unavailable (latest() None);
+    ts_ms), close()) are injectable; without them the model is checked first, then MediaPipe and the camera (the
+    capture cfg.capture names) open here, on the calling (main) thread. A failure logs once and leaves the camera unavailable (latest() None);
     there is no 30 s retry yet.
 
     tap (record --raw's, set and cleared by the recording from its thread): when set, each due capture also calls
@@ -172,7 +177,7 @@ class MediaPipeCamera(ThreadedCamera):
                     raise FileNotFoundError(f"pose model missing at {model_path}")
                 self._landmarker = Landmarker(Path(model_path))
             if self._cap is None:
-                self._cap = open_capture(cfg.camera_index)
+                self._cap = open_capture(cfg.camera_index, cfg.capture)
         except Exception as e:
             log.warning("mediapipe camera unavailable: %s", e)
             return
