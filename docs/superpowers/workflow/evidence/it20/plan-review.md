@@ -164,3 +164,60 @@ hold as written, apart from the notes.
   is 5.0.0. Checked the core plan's Task 12 (3524-3776, amendment 588) and Task 15 (4252-4396, amendment 620-630)
   against `camera.py:23` and `runner.py:236`.
 - Not run: the full suite (by the brief).
+
+## Round 2
+Checked against the plan at 069a713 (299 lines), using `git diff b685e63..069a713` and the code. Added one probe, P4.
+
+### Verdict: APPROVED
+
+- **B1: closed.** Plan lines 19-21 (Global) and 228 (F1's acceptance) name `test_copyme.py:178`'s value
+  `(255, 0, 255)` as F1's one changed assert and keep `MATCH_COLOR`. The two places agree.
+- **B2: closed.**
+  - Line 191 adds `score` (`best_cm`, an int, 0 before a counted attempt) to debug_state.
+  - Line 182 draws it last, at 2x, top right, over its black box, from the game's first tick. Line 36 agrees.
+  - `feel._score` (feel.py:228-244) counts every tick while the game is current. `find_text` takes a clean match with
+    a 1 px dark gutter, which the black box gives.
+  - The figure crossing below the box and the white bell flash (about 0.15 s, at most once a window) cost only a few
+    ticks. `score_visible` stays near 1.0, and `score_legible` is the same 2x glyph over black that every other score
+    game passes with.
+  - `test_the_score_shows_from_the_first_tick` (line 212) pins this.
+- **B3: closed.**
+  - Line 159: `play` runs the whole `JUMP_WINDOW` and never ends early.
+  - Lines 157-160: `ready` comes before every attempt and takes a new baseline.
+  - Line 161: the good bot's round is 3 x (1.5 + 5 + 2.5) + 3 = 30 s, inside 20 to 120. This holds because the bots
+    have no y noise and are still from their first tick.
+  - Line 204: `ATTEMPTS` is no longer a lever.
+  - The session stays open: the runner's inactivity reads `debug_state()["active"]` (runner.py:478-479), and a
+    counted jump sets it at least every 9 s.
+- **B4: closed.**
+  - Lines 194-196: the canonical walks zone x 0.15 to 0.85 to 0.5 at 0.1 zone a second or slower. P3 measured
+    range 0.693.
+  - The far end comes about 15 s into the canonical: launch at about 4.5 s, then 3.5 s to 0.15 and 7 s to 0.85. That
+    is inside the measured 20 s.
+  - Line 177: the figure is on its own column across the wall, under the striker. Nothing now confines it.
+- **New blocking findings: none.** A 5 s window with a fresh baseline three times meets `round_seconds`,
+  `phases_reached` and the win bands as before. The lazy bot still wins about half the seeds by the rng's bell.
+  `score` 0 meets both score budgets. Nothing I found contradicts another part of the plan.
+
+### Round 2 notes
+- **R2-N1, which axis "still" uses (line 164).** Say "in camera y". If an implementer also checks x:
+  - The lazy bot's x noise (0.03 zone SD, a fresh draw each tick) is 0.10 torso SD (P4). It is almost never within
+    0.1 torso for 45 captures, so it stays in `ready`, never reaches `over`, and `win_lazy` falls to 0, under 0.1.
+  - Suggested wording: "Still: the nose's and the hip_mid's camera y each within `STILL = 0.1` torso of their medians
+    over `SETTLE_SECONDS` (x is free: a sway or a walk is still)."
+- **R2-N2, the canonical's jump times (line 196).**
+  - With "still" in y, a walk counts as still: a walking `Person` keeps its nose and hip y exactly (P4, spread 0.0).
+    So the first `ready` ends 1.5 s after launch, and windows 1 and 2 open during the sweep, at about launch + 1.5 to
+    6.5 s and + 10.5 to 15.5 s.
+  - "Then still and `Person.jump` ... once in each window" can then only place the third window's jump after the walk.
+    No test or budget depends on this, but the scenario's author has to pick the times.
+  - Suggested wording: "a jump in each window at the times the game opens them (launch + 1.5 s + 9 s x k, read from a
+    headless run of the canonical), during the sweep where they fall".
+  - If those jumps ring, two bell flashes fall inside the measured 20 s. Read `square_flashes` (at most 6) in the
+    report.
+- **R2-N3, drawing order (line 182).** "Last the score" is followed by the result's `"<cm>"`. Say the result's number
+  is drawn before the score, so the score stays last as line 36 says.
+
+### Round 2 probe
+- P4 (`p4_walk_still.py`): `Person(0.3).walk(0.7, 4.0)` keeps nose y 0.28 and hip y 0.55 on every tick. The bots'
+  x noise in torsos is 0.10 (lazy) and 0.033 (good), at torso 0.18 and a zone 0.6 of the frame wide.

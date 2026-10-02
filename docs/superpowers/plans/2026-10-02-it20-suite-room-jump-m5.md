@@ -162,7 +162,7 @@ Three windows; the best is the night's. A stranger reads it from the bar and the
   `CAPTION_KEYS = ("phase", "attempt", "peak_cm", "best_cm")`.
 - The measure: `torso` = hip_mid to shoulder_mid in camera y (keypoints at `MIN_CONF` or more); the baseline = the
   medians of the nose's and the hip_mid's y over `ready`'s last `SETTLE_SECONDS` (at least 5 captures). Still: the
-  nose and the hip_mid each within `STILL = 0.1` torso of their medians over `SETTLE_SECONDS`. `rise` =
+  nose's and the hip_mid's camera y each within `STILL = 0.1` torso of their medians (x is free). `rise` =
   (baseline nose y - nose y) / torso, per capture. A jump counts only while the hip_mid rose by at least `HIP_SHARE`
   of the nose's rise (a nod or a head tilt never counts) and `rise >= MIN_RISE`. `cm = round(rise * TORSO_CM)`.
   `measure_rise(body, base_nose_y, base_hip_y, torso) -> float | None`, a module-level pure function (None: not
@@ -179,8 +179,8 @@ Three windows; the best is the night's. A stranger reads it from the bar and the
   FIGURE_H))` with the column backlash (it may pass the striker; the striker is drawn over it); the striker (a 1 px
   frame in `FRAME_COLOR`, `BAR_X..BAR_X + BAR_W`, rows `BAR_TOP..BAR_BOTTOM`), the bar filled from the bottom to
   `cm / BAR_TOP_CM` live in `play`, the window's peak held as a 1 px line; the bell a 5x4 block on the bell line;
-  last the score, `best_cm` at 2x top right over its black box from the game's first tick (0 before an attempt
-  counts); in `result` the attempt's `"<cm>"` at 2x right of the bar. Rows 60 to 63 dark.
+  in `result` the attempt's `"<cm>"` at 2x right of the bar; last the score, `best_cm` at 2x top right over its
+  black box from the game's first tick (0 before an attempt counts). Rows 60 to 63 dark.
 - Effects: a bell: `fx.flash((255, 255, 255), 0.15)` (checked) and `fx.pop("DING!", x, y, BELL_COLOR)` at the bell,
   once per attempt; a miss: the number only. `over`: `scores.record(best_cm)` once, when an attempt counted; a new
   best: `fx.banner("NEW BEST")`.
@@ -193,8 +193,8 @@ Three windows; the best is the night's. A stranger reads it from the bar and the
   drawn), `bar_xy` (the bar top's centre).
 - Scenarios: `canonical` (2 s empty, walk-up, raise; a walk across the mat in zone x, 0.15 to 0.85 then back to 0.5,
   Copy Me's `SWEEP` (`copyme.py:539-540`), at most 0.1 zone a second (the flash rule's area), the far end inside the
-  measured 20 s: range about 0.69; then still and `Person.jump(at, height=0.15, seconds=0.6)` once in each window,
-  at body height 0.6), `idle_body` (60 s), `nobody` (30 s).
+  measured 20 s: range about 0.69; a `Person.jump(at, height=0.15, seconds=0.6)` in each window at the time the
+  game opens it (launch + 1.5 s + 9 s x k; a walk is still), body height 0.6), `idle_body` (60 s), `nobody`.
 - `jump_feel.toml`: `[fidelity] input = "zone_x"`, `xy = "player_xy"`, `axis = 0`. No budget override.
 - Bots (`Move(x=0.5, lift=...)`, I0; the default body, height 0.6): stand in `ready`; in `play`, one arc per window,
   `lift = peak * 4u(1 - u)` over 0.6 s. `good`: `reaction_ticks = 4`, `noise = 0.01`, `peak` reaching
@@ -285,7 +285,7 @@ is iteration 21 (S2 does not import S1).
 - The rename changes three asserts of one test file, the names only (Q121). Jump's best is a height in cm (`TORSO_CM`
   scale) and its win is the bell (a rng height per game), so the lazy bot's win hangs on the rng as Copy Me's.
 - Owner questions Q121 to Q125 (the writer's report), each defaulted. Reviewed: evidence/it20/plan-review.md (B1 to
-  B4 and N1 to N12 are fixed in this text). Jump's window runs its whole 5 s and counts the best of any jumps in it.
+  B4, N1 to N12 and round 2's three notes are in this text).
 - A subset after each merge and the full suite after R and the last merge depart from config.md rule 6, for time
   (it19: 28 minutes of four serial full runs); a break the last run finds is bisected with the failing test alone.
 - Cut order if time runs out: S2, then S1, then F1; R, the rename, I0, E0 and G5 are the slice's core. A cut task's
