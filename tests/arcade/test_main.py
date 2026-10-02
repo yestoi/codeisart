@@ -208,3 +208,27 @@ def test_run_seconds_exits_zero_under_dummy_sdl(tmp_path):
                           "--script", "walkup"], cwd=ROOT, env=env, capture_output=True, text=True, timeout=120)
     assert got.returncode == 0, got.stdout + got.stderr
     assert "Traceback" not in got.stderr, got.stderr
+
+
+def test_run_game_offers_only_that_game_and_refuses_an_unknown_one(tmp_path, monkeypatch, capsys):
+    built, opened = [], []
+
+    class SpyRunner:
+        def __init__(self, cfg, display, font, lobby, games, **kw):
+            built.append((lobby, games))
+
+        def loop(self, camera, audio, max_ticks=None):
+            pass
+
+    real_make_sources = arcade.main.make_sources
+    monkeypatch.setattr(arcade.main, "make_sources", lambda *a, **kw: opened.append(a) or real_make_sources(*a, **kw))
+    monkeypatch.setattr(arcade.main, "Runner", SpyRunner)
+    config = str(_toml(tmp_path))
+    assert main(["run", "--config", config, "--script", "walkup", "--seconds", "0", "--game", "pong"]) == 0
+    lobby, games = built[0]
+    assert [g.info.name for g in games] == ["pong"] and list(lobby.games) == ["pong"]
+
+    assert main(["run", "--config", config, "--script", "walkup", "--seconds", "0", "--game", "tetris"]) == 2
+    assert len(built) == 1 and len(opened) == 1               # refused before a source or a runner
+    out = capsys.readouterr().out
+    assert "unknown game 'tetris'" in out and "copyme, pong" in out

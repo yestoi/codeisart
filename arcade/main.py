@@ -173,9 +173,17 @@ def build_display(cfg: ArcadeConfig) -> Display:
 
 def run(args) -> int:
     """The arcade: the small lobby and every game, until --seconds pass, the window closes or ^C. --require runs the
-    doctor on those sources first and stops with its code when one fails (Q145); --replay plays a scenario file."""
+    doctor on those sources first and stops with its code when one fails (Q145); --replay plays a scenario file.
+    --game offers that one game only: a raised hand starts it."""
     cfg = load_config(args.config)
     log.info("wall %s, backend %s", cfg.layout, cfg.backend)
+    games = all_games()
+    if args.game is not None:
+        names = [game.info.name for game in games]
+        if args.game not in names:
+            print(f"run: unknown game {args.game!r}; known: {', '.join(names)}")   # CLI output, as the doctor's
+            return 2
+        games = [game for game in games if game.info.name == args.game]
     if _names(args.require):
         code = doctor(_names(args.require), make_probes(cfg.camera_index, cfg.audio_device, capture=cfg.capture),
                       TIMEOUT)
@@ -189,7 +197,6 @@ def run(args) -> int:
         font = Font.load(Path(cfg.font_path))
         display = build_display(cfg)
         try:
-            games = all_games()
             runner = Runner(cfg, display, font, Lobby(games, cfg), games, scores=Scores(data_dir / "scores.json"),
                             sessions=SessionLog(data_dir / "sessions.jsonl"), calibration=calibration,
                             local_clock=datetime.now, lux=None)
@@ -218,6 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
     played.add_argument("--script", choices=sorted(SCRIPTS), help="play a scripted camera instead of cfg.camera")
     played.add_argument("--replay", metavar="PATH", help="play a scenario file instead of cfg.camera")
     r.add_argument("--require", default="", help="comma list of camera, mic, pose: the doctor checks them first")
+    r.add_argument("--game", metavar="NAME", help="offer only this game: a raised hand starts it")
     r.add_argument("-v", "--verbose", action="store_true")
     d = sub.add_parser("doctor", help="exit 1 if a required source is unavailable after the timeout")
     d.add_argument("--require", default="camera,mic,pose", help="comma list of camera, mic, pose")
