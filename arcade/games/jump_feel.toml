@@ -1,0 +1,6 @@
+# Jump's feel: the figure follows the player's place across the wall; the head's x is the axis (raw zone_x, a column
+# backlash of COLUMN_SLACK, no Glide). No budget override.
+[fidelity]
+input = "zone_x"
+xy = "player_xy"
+axis = 0
