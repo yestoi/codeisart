@@ -1,0 +1,6 @@
+# Copy Me's feel: each figure stands on its body's column across the mat (zone_x, the lobby's mirror), and the wall's
+# x of player 1's head is the axis. No budget override.
+[fidelity]
+input = "zone_x"
+xy = "player_xy"
+axis = 0
