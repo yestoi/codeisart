@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from arcade.canvas import Canvas
-from arcade.figure import FRAME_ASPECT, STROKE, KeypointHold, draw_figure, figure_rect, to_wall
+from arcade.figure import FRAME_ASPECT, STROKE, FigureGlide, KeypointHold, draw_figure, figure_rect, to_wall
 from arcade.juice import PLAYER_COLORS
 from arcade.sensed import (LEFT_ANKLE, LEFT_ELBOW, LEFT_KNEE, LEFT_WRIST, MIN_CONF, RIGHT_ANKLE, RIGHT_ELBOW,
                            RIGHT_KNEE, RIGHT_WRIST, Body, Keypoint)
@@ -153,3 +153,78 @@ def test_hold_clears_on_a_new_body_id():
     assert hold.update(dropped(seen, {LEFT_ELBOW}), 0.2) == dropped(seen, {LEFT_ELBOW})   # None cleared it
     with pytest.raises(ValueError):
         KeypointHold(-1.0)
+
+
+# ----- FigureGlide: the figure moves every tick, not only at the pose rate -----
+
+def _glide(period=1 / 15):
+    return FigureGlide(), period
+
+
+def test_figure_glide_gives_the_first_body_as_it_is():
+    glide, _ = _glide()
+    body = standing(cx=0.3)
+    assert glide.update(body, 0.0, 0.0) is body
+
+
+def test_figure_glide_moves_halfway_mid_period():
+    # Two captures a period apart; a tick halfway to the next capture is halfway between them.
+    glide, period = _glide()
+    a, b = standing(cx=0.3, zone_x=0.3), standing(cx=0.5, zone_x=0.5)
+    glide.update(a, 0.0, 0.0)
+    glide.update(b, period, period)
+    mid = glide.update(b, 1.5 * period, period)
+    assert mid.nose.x == pytest.approx((a.nose.x + b.nose.x) / 2)
+    assert mid.zone_x == pytest.approx(0.4)
+    assert mid.box[0] == pytest.approx((a.box[0] + b.box[0]) / 2)
+    assert mid.id == b.id and mid.nose.conf == b.nose.conf
+
+
+def test_figure_glide_arrives_as_the_next_capture_is_due_and_never_overshoots():
+    glide, period = _glide()
+    a, b = standing(cx=0.3), standing(cx=0.5)
+    glide.update(a, 0.0, 0.0)
+    glide.update(b, period, period)
+    assert glide.update(b, 2 * period, period).nose.x == pytest.approx(b.nose.x)
+    assert glide.update(b, 3 * period, period).nose.x == pytest.approx(b.nose.x)
+
+
+def test_figure_glide_moves_from_where_it_was_drawn():
+    # A capture arriving mid-move starts the next move from the drawn place, so the figure never jumps back.
+    glide, period = _glide()
+    a, b, c = standing(cx=0.3), standing(cx=0.5), standing(cx=0.7)
+    glide.update(a, 0.0, 0.0)
+    glide.update(b, period, period)
+    drawn = glide.update(b, 1.5 * period, period)
+    glide.update(c, 1.5 * period, 1.5 * period)
+    assert glide.update(c, 1.5 * period, 1.5 * period).nose.x == pytest.approx(drawn.nose.x)
+
+
+def test_figure_glide_leaves_a_low_keypoint_as_the_newest_gives_it():
+    glide, period = _glide()
+    a = standing(cx=0.3)
+    kps = list(standing(cx=0.5).keypoints)
+    kps[LEFT_WRIST] = Keypoint(0.9, 0.9, MIN_CONF / 2)
+    b = dataclasses.replace(a, keypoints=tuple(kps))
+    glide.update(a, 0.0, 0.0)
+    glide.update(b, period, period)
+    assert glide.update(b, 1.5 * period, period).keypoints[LEFT_WRIST] == kps[LEFT_WRIST]
+
+
+def test_figure_glide_resets_on_a_new_id_or_none():
+    glide, period = _glide()
+    glide.update(standing(cx=0.3), 0.0, 0.0)
+    other = dataclasses.replace(standing(cx=0.7), id=2)
+    assert glide.update(other, period, period) is other
+    assert glide.update(None, 2 * period, 2 * period) is None
+    back = standing(cx=0.3)
+    assert glide.update(back, 3 * period, 3 * period) is back
+
+
+def test_figure_glide_snaps_when_the_capture_time_stands_still():
+    # A record without capture times (camera_t never moves) has no period to move over: the body is shown as it is.
+    glide, period = _glide()
+    a, b = standing(cx=0.3), standing(cx=0.5)
+    glide.update(a, 0.0, 0.0)
+    assert glide.update(b, period, 0.0) is b
+    assert glide.update(b, 1.5 * period, 0.0) is b

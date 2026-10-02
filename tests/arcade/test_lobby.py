@@ -433,3 +433,26 @@ def test_a_column_jitter_does_not_step_the_figure():
     moved = figure_x(60.0, 1.0)
     assert moved - still.pop() == 60 - 51 - COLUMN_SLACK                             # it follows a real move
     assert figure_x(59.4, 1.1) == moved
+
+
+def test_mirror_figure_moves_between_captures(font5x7):
+    # The Pi's pose rate is 15 a second and the wall draws 30: the figure glides from capture to capture
+    # (figure.FigureGlide) instead of stepping with them.
+    size = (128, 64)
+    lobby = Lobby([spy("pong")], make_cfg(size))
+    lobby.reset(size, None)
+
+    def tick(t, camera_t, cx):
+        kps = make_keypoints(cx, 0.55, 0.6)
+        body = Body(1, body_box(kps), kps, zone_x=cx)
+        lobby.update(Sensed(t, camera_t=camera_t, bodies=(body,), player=body, present=True), TICK)
+        assert lobby.mode == "mirror"
+        return lobby.debug_state()["figure_xy"][0]
+
+    period = 1 / 15
+    left = tick(0.0, 0.0, 0.3)
+    assert tick(period, period, 0.7) == left                 # the new capture starts the move from the old place
+    mid = tick(1.5 * period, period, 0.7)
+    right = tick(2 * period, period, 0.7)
+    assert left < mid < right, (left, mid, right)
+    assert right - left > 30                                  # 0.3 to 0.7 of a 128-wide wall

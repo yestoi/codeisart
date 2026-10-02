@@ -11,7 +11,7 @@ import math
 from typing import Callable
 
 from arcade.canvas import Canvas, Color
-from arcade.input import EPSILON
+from arcade.input import EPSILON, GLIDE_PERIOD
 from arcade.sensed import MIN_CONF, NOSE, SKELETON, Body, Keypoint
 
 FRAME_ASPECT = 4 / 3     # the camera frame's width over its height: both camera streams are 4:3
@@ -89,6 +89,57 @@ class KeypointHold:
                 kps[i] = self._seen[i][0]
         held = tuple(kps)
         return body if held == body.keypoints else dataclasses.replace(body, keypoints=held)
+
+
+def _lerp(a: float, b: float, s: float) -> float:
+    return a + (b - a) * s
+
+
+class FigureGlide:
+    """One figure's body given on every tick, moved linearly from where it was last drawn to the newest capture
+    over one measured capture period, as input.Glide moves a control. A figure drawn straight from the captures
+    steps at the pose rate (15 a second on the Pi, 2026-10-02: "choppy"); this one moves on every tick, one
+    capture period late at most.
+
+    update(body, t, camera_t): a capture newer than the last (camera_t later) starts a move from the last output
+    to body; every tick gives the move's share at t, arriving as the next capture is due (the period is the
+    measured gap between captures, clamped to input.GLIDE_PERIOD). x, y, the box and zone_x move; conf and
+    every other field are the newest body's. A keypoint under MIN_CONF in the newest body is given as it is.
+    A new id or None resets: the next body is output as it is, and so is a body that changes while camera_t
+    stands still (a record without capture times has no period to move over). One per figure, as KeypointHold."""
+
+    def __init__(self):
+        self._id: int | None = None
+        self._from: Body | None = None        # the output when the newest capture arrived
+        self._to: Body | None = None          # the newest capture
+        self._start = self._capture = 0.0
+        self._period = GLIDE_PERIOD[1]
+        self._out: Body | None = None
+
+    def update(self, body: Body | None, t: float, camera_t: float) -> Body | None:
+        if body is None or body.id != self._id:
+            self._id = None if body is None else body.id
+            self._from = self._to = self._out = body
+            self._start = self._capture = camera_t
+            self._period = GLIDE_PERIOD[1]
+            return body
+        if camera_t > self._capture:
+            lo, hi = GLIDE_PERIOD
+            self._period = min(hi, max(lo, camera_t - self._capture))
+            self._from, self._to, self._start, self._capture = self._out, body, t, camera_t
+        elif body is not self._to and body != self._to:     # changed with no capture time: nothing to move over
+            self._from = self._to = self._out = body
+            return body
+        share = min(1.0, max(0.0, (t - self._start) / self._period))
+        self._out = self._to if share >= 1.0 or self._from is self._to else self._blend(share)
+        return self._out
+
+    def _blend(self, s: float) -> Body:
+        a, b = self._from, self._to
+        kps = tuple(k if k.conf < MIN_CONF or p.conf < MIN_CONF else Keypoint(_lerp(p.x, k.x, s), _lerp(p.y, k.y, s), k.conf)
+                    for p, k in zip(a.keypoints, b.keypoints))
+        box = tuple(_lerp(p, q, s) for p, q in zip(a.box, b.box))
+        return dataclasses.replace(b, keypoints=kps, box=box, zone_x=_lerp(a.zone_x, b.zone_x, s))
 
 
 def draw_figure(canvas: Canvas, body: Body, rect: Rect, color: Color, stroke: int = STROKE) -> None:

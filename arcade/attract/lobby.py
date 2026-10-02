@@ -30,7 +30,7 @@ from typing import Sequence
 
 from arcade.canvas import Canvas
 from arcade.config import ArcadeConfig
-from arcade.figure import KeypointHold, draw_figure, figure_rect, to_wall
+from arcade.figure import FigureGlide, KeypointHold, draw_figure, figure_rect, to_wall
 from arcade.game import INPUTS, ICON_SIZE, icon_from_rows
 from arcade.games import MENU_ORDER
 from arcade.input import EPSILON, Edge, Hold, capture_grace
@@ -133,6 +133,7 @@ class Lobby:
         self._card, self._card_start = result, None
         self._slots = [None, None]
         self._keypoints = [KeypointHold(self.grace), KeypointHold(self.grace)]
+        self._glides = [FigureGlide(), FigureGlide()]
         self._hold.reset()
         self._side = None
 
@@ -154,6 +155,7 @@ class Lobby:
         self.request = None
         self._slots: list[tuple[Body, float, int] | None] = [None, None]   # (body, last seen, rect x): player, player2
         self._keypoints = [KeypointHold(self.grace), KeypointHold(self.grace)]   # C37: one per figure
+        self._glides = [FigureGlide(), FigureGlide()]                             # moves between captures
         self._hold = Hold(PICTOGRAM_SECONDS, grace=self.grace)
         self._edge = Edge(self.grace)
         self._player_id: int | None = None
@@ -174,7 +176,7 @@ class Lobby:
             elif t - self._card_start >= CARD_SECONDS - EPSILON:
                 self._card, self._card_start, card_ended = None, None, True
         for i, body in enumerate((player, sensed.player2)):
-            held = self._keypoints[i].update(body, t)
+            held = self._glides[i].update(self._keypoints[i].update(body, t), t, sensed.camera_t)
             if held is not None:
                 x, slot = figure_rect(held, self.size)[0], self._slots[i]
                 if slot is not None and slot[0].id == held.id:              # the same person: x with backlash
