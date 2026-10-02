@@ -11,7 +11,8 @@ Steps (phase), each with its words at 1x at row 1 over a black box, every confid
 2. far_left, far_right, near: each ends when one body (the largest) has stood still STILL_SECONDS, its anchor within
    STILL_FW of its median over the window; the stand keeps the median anchor and the median height.
 3. baseline, "STAND STILL": still BASELINE_SECONDS; baseline_scale is the median scale.
-4. clear, "CLEAR THE FRAME <n>": CLEAR_SECONDS with no body (a body restarts it). static_mask is the lights seen in at
+4. clear, "CLEAR THE FRAME <n>": CLEAR_SECONDS with no body of min_height or more (such a body restarts it; a
+   shorter one is a far person in a crowd, as at the event wall, and is let be). static_mask is the lights seen in at
    least STATIC_SHARE of its captures, radius STATIC_RADIUS; audio_floor_db the last floor_db heard while the
    microphone is available, else the default.
 5. saved, "SAVED", END_SECONDS, then done(). The zone: x from the stands' anchors, min to max, widened by MARGIN; y
@@ -254,7 +255,7 @@ class Calibrator:
     def _clear(self, sensed: Sensed, t: float) -> None:
         if self._mic_ok:
             self._floor = sensed.audio.floor_db
-        if sensed.bodies:
+        if any(b.height >= self._min_height() for b in sensed.bodies):   # a far body in a crowd is no player
             self._clear_since, self._lights = t, _Lights()
             return
         if sensed.camera_fresh:
@@ -262,9 +263,13 @@ class Calibrator:
         if t - self._clear_since >= CLEAR_SECONDS - EPSILON:
             self._save()
 
+    def _min_height(self) -> float:
+        """The min_height this calibration saves: MIN_HEIGHT_SHARE of the shortest stand's height."""
+        return MIN_HEIGHT_SHARE * min(s[2] for s in self.stands)
+
     def _save(self) -> None:
         cal = Calibration(zone=zone_of([s[:2] for s in self.stands]),
-                          min_height=MIN_HEIGHT_SHARE * min(s[2] for s in self.stands),
+                          min_height=self._min_height(),
                           baseline_scale=self.baseline_scale, static_mask=self._lights.static(),
                           audio_floor_db=DEFAULT.audio_floor_db if self._floor is None else self._floor,
                           calibrated=True)

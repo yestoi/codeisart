@@ -254,3 +254,24 @@ def test_a_zone_that_would_not_load_fails(tmp_path, font5x7, monkeypatch):
     assert cal.phase == "failed" and cal.result is None and "zone" in cal.failed
     assert not (tmp_path / FILENAME).exists()
     assert find_text(run.runner.raw_frames[-1], font5x7, "NOT SAVED", scales=(1,)) is not None
+
+
+def test_a_far_body_does_not_hold_the_clear(tmp_path, font5x7):
+    # The event wall (2026-10-02) looks at a crowd: people walk behind the play spot through the whole clear, at
+    # heights no player has. A body shorter than the min_height the calibration will save (MIN_HEIGHT_SHARE of the
+    # shortest stand) is not a player and does not restart the clear.
+    far_h = MIN_HEIGHT_SHARE * FAR_H - 0.05
+    crowd = Person(0.6, height=far_h, id=2)                                 # there from start to end
+    run = _run(tmp_path, font5x7, scene(persons=[operator(), crowd], blobs=[lamp], ticks=round(26.0 / TICK)))
+    trace = run.runner.trace
+    assert run.cal.failed is None, run.cal.failed
+    saved = next(s["t"] for s in trace if s["phase"] == "saved")
+    assert saved - LEAVES == pytest.approx(CLEAR_SECONDS, abs=0.5)         # CLEAR_SECONDS from the operator leaving
+    assert load_calibration(run.data_dir).calibrated
+
+
+def test_a_player_sized_body_still_holds_the_clear(tmp_path, font5x7):
+    tall = Person(0.6, height=FAR_H, id=2).arrive(VISITOR[0]).leave(VISITOR[1])
+    run = _run(tmp_path, font5x7, scene(persons=[operator(), tall], blobs=[lamp], ticks=round(28.5 / TICK)))
+    saved = next(s["t"] for s in run.runner.trace if s["phase"] == "saved")
+    assert saved - VISITOR[1] == pytest.approx(CLEAR_SECONDS, abs=2 * TICK)
