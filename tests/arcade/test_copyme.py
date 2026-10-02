@@ -4,6 +4,7 @@ import dataclasses
 import math
 import random
 import statistics
+import sys
 import tomllib
 import zlib
 from pathlib import Path
@@ -630,17 +631,38 @@ def test_feel_file_overrides_have_reasons():
 MIN_COLOR_DISTANCE = 150.0
 
 
-def test_the_outline_differs_from_every_figure_colour(font5x7):
+def test_the_outline_differs_from_every_figure_colour(font5x7, monkeypatch):
     """The outline reads on both seats: far (RGB Euclidean) from each seat's colour and from MATCH_COLOR, and in a duo
-    frame of play no outline pixel is drawn in seat b's colour."""
+    frame of play no outline pixel is drawn in seat b's colour. Each outline stroke (a line or circle draw_view draws
+    itself, after its figure) is drawn again alone on a blank canvas, so its own pixels are read, under either seat."""
     outline = np.array(OUTLINE_COLOR, float)
     for other in (*PLAYER_COLORS[:2], MATCH_COLOR):
         assert float(np.linalg.norm(outline - np.array(other, float))) >= MIN_COLOR_DISTANCE, (OUTLINE_COLOR, other)
     game = make()
     advance(game, Copyme.SCENARIOS["duo"](), "play")
-    frame = drawn(game, font5x7)
+    strokes: list[tuple[tuple, np.ndarray]] = []                     # (the seat's figure colour, the stroke alone)
+
+    def spied(real):
+        def stroke(canvas, *args):
+            caller = sys._getframe(1)
+            if caller.f_code.co_name == "draw_view" and Path(caller.f_code.co_filename).name == "copyme.py":
+                alone = Canvas(*WALL, font5x7)
+                real(alone, *args)
+                strokes.append((tuple(caller.f_locals["color"]), alone.frame))
+            return real(canvas, *args)
+        return stroke
+
+    with monkeypatch.context() as m:
+        m.setattr(Canvas, "line", spied(Canvas.line))
+        m.setattr(Canvas, "circle", spied(Canvas.circle))
+        frame = drawn(game, font5x7)
     assert count(frame, OUTLINE_COLOR) > 0 and count(frame, PLAYER_COLORS[1]) > 0
     assert OUTLINE_COLOR != PLAYER_COLORS[1]
+    assert {seat for seat, _ in strokes} == set(PLAYER_COLORS[:2]), {seat for seat, _ in strokes}
+    seat_b = {seat: sum(count(alone, PLAYER_COLORS[1]) for s, alone in strokes if s == seat) for seat, _ in strokes}
+    lit = {seat: sum(int(alone.any(axis=2).sum()) for s, alone in strokes if s == seat) for seat, _ in strokes}
+    assert all(lit.values()), lit                                           # each seat's outline lights pixels
+    assert not any(seat_b.values()), f"outline pixels in seat b's colour {PLAYER_COLORS[1]}, by seat: {seat_b}"
 
 
 @pytest.mark.parametrize("name", ["canonical", "duo"])
