@@ -1,0 +1,79 @@
+04:57:20
+ 4:57  up 76 days, 12:48, 9 users, load averages: 8.62 8.18 6.87
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 19%]
+........................................................................ [ 23%]
+....................................................................
+strobe 128x32: tick mean 0.353 ms, p95 0.385 ms, governor 0.189 ms (54% of the tick), held 200 ticks
+.
+strobe 64x64: tick mean 0.379 ms, p95 0.410 ms, governor 0.204 ms (54% of the tick), held 200 ticks
+.
+strobe 128x64: tick mean 0.544 ms, p95 0.587 ms, governor 0.355 ms (65% of the tick), held 200 ticks
+.
+static 128x32: tick mean 0.348 ms, p95 0.367 ms, governor 0.170 ms (49% of the tick), held 0 ticks
+. [ 26%]
+
+static 64x64: tick mean 0.352 ms, p95 0.362 ms, governor 0.181 ms (51% of the tick), held 0 ticks
+.
+static 128x64: tick mean 0.496 ms, p95 0.506 ms, governor 0.306 ms (62% of the tick), held 0 ticks
+....................................................................... [ 29%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 39%]
+........................................................................ [ 42%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 65%]
+.........................................s.............................. [ 69%]
+............................s........................................... [ 72%]
+........................................................................ [ 75%]
+........................................................................ [ 78%]
+........................................................................ [ 82%]
+..........................................................s............. [ 85%]
+........................................................................ [ 88%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+............................                                             [100%]
+pooled: 480 plays, 4 workers, 130.2 s, the join waited 9.4 s
+============================= slowest 25 durations =============================
+10.08s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[freeze-128x64]
+9.96s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-128x64]
+9.42s setup    tests/arcade/test_all_games.py::test_every_game_fits_the_tick_budget[copyme-128x64]
+8.86s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-96x48]
+7.65s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[copyme-128x64]
+7.34s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-128x64]
+7.31s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[jump-128x64]
+7.24s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[copyme-96x48]
+7.13s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[jump-96x48]
+6.90s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[swat-128x64]
+6.77s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[flap-128x64]
+6.29s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[dodge-128x64]
+6.15s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[freeze-96x48]
+6.09s call     tests/test_show_shot_governed.py::test_governed_entry_session_runs_the_entry_through_the_governor
+6.01s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-96x48]
+5.58s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[flap-96x48]
+5.20s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[dodge-96x48]
+5.08s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[swat-96x48]
+4.48s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+3.82s call     tests/test_curated_entries.py::test_entry_plays_through[sloane]
+3.78s call     tests/arcade/test_first_playable.py::test_first_playable_keeps_the_flash_rule
+3.64s call     tests/test_curated_entries.py::test_entry_plays_through[endoh1]
+3.64s call     tests/test_show_shot.py::test_strobe_session_is_held
+3.53s call     tests/test_entries.py::test_sample_entry_band_leaves_no_trail
+3.42s call     tests/arcade/test_oracle.py::test_evidence_package_for_pong
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_colorlight_child.py:142: the descriptor is reopened through /proc, which this system has not; the path is used
+SKIPPED [1] tests/test_colorlight_slot.py:105: the descriptor is reopened through /proc, which this system has not
+SKIPPED [1] tests/test_sandbox.py:153: needs a working unshare -rn (Linux with unprivileged user namespaces); macOS has no unshare
+2185 passed, 3 skipped in 440.51s (0:07:20)
+ 5:04  up 76 days, 12:55, 9 users, load averages: 4.01 5.60 6.22
+05:04:41

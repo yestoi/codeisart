@@ -123,12 +123,16 @@ def won(state: dict) -> bool: ...        # from the last debug_state(): the huma
 
 A bot has `reaction_ticks`, `noise`, and `__call__(state, t) -> Move | None`. It sees `debug_state()` that many
 ticks late (`{}` before), so keep everything it needs in `debug_state`. `Move(x=0.5, hand="right",
-wrist_y=None, near=None, pose=None)`: `x` is in **zone coordinates**, 0 to 1 across the play zone (not wall pixels); `wrist_y` is the
+wrist_y=None, near=None, pose=None, lift=0.0)`: `x` is in **zone coordinates**, 0 to 1 across the play zone (not wall pixels); `wrist_y` is the
 wrist in the reach box, 0 top to 1 hip height, None for hand down; None instead of a Move is nobody in view.
 `hand="both"` moves both wrists to `wrist_y` with one noise draw (a two-arm gesture: Flap's bot flaps with it).
 `pose="<name>"` holds `arcade.poses.POSES[name]` on the tick (an unknown name raises `ValueError`; Copy Me's bot
 copies the target with it); a `wrist_y` then moves the hand's wrists over the pose. A pose takes no noise (only `x`,
 `wrist_y` and `near` do), so a pose bot's wins hang on the game's rng, not on the bot's.
+`lift=<share>` raises the whole body (the hips and every keypoint) by that share of the frame height on the tick, as
+`Person.jump` does; it takes no noise either, and a play without it draws as before. A jump is an arc over a few
+ticks, `lift = peak * 4u(1 - u)` for u from 0 to 1 over 0.6 s (Jump's bots). At the default body (height 0.6) a lift
+over about 0.16 takes the shoulders past the zone's top, and the runner drops the player.
 `arcade.bots.Nobody` is the no-input bot. `play(game_cls, bot, seed, layout)` adds the reaction delay and
 seeded noise (clamped to 0..1) and stops on `done()`, or when the session ends otherwise (a game whose
 `done()` never fires ends at the leave or inactive rule, or at `MAX_PLAY_SECONDS` = 180).
@@ -167,6 +171,15 @@ marker that follows the hand's height (`Cursor`, then a `Glide`), with short tic
 cross, and point `[fidelity]` at it (`input = "cursor_y"`, `xy` the marker's `_xy`, `axis = 1`). It is the measured
 control and it teaches the gesture; the canonical sweeps the hand slowly over the gauge's span inside the first 20 s.
 Flap is the worked example (`wing_xy`, its ticks at `V_ABOVE` and `V_BELOW`).
+
+A measured body motion (a jump's height) needs a baseline, taken again before every attempt: a still `ready`, then
+the medians of the nose's and the hip_mid's camera y over its last `SETTLE_SECONDS` (at least 5 captures; still is
+each within 0.1 torso of its median in y, x free, so a walk is still). Measure in torsos (hip_mid to shoulder_mid),
+so the body's size and place cancel, and count a rise only when the hips rose too, by at least half the nose's rise
+(a nod or a head tilt never counts), and past a floor over real noise (0.15 torsos; a still nose jitters about 0.06).
+The zone's top caps the rise: about 47 cm at a body height of 0.6, 23 cm at 0.8. Jump is the worked example
+(`measure_rise`, `HIP_SHARE`, `MIN_RISE`); its `[fidelity]` follows the figure's `zone_x`, since the walk across the
+mat is the measured control.
 
 An override needs a non-empty `reason` or `budgets()` raises `ValueError` naming the metric. An override is for
 something the game does on purpose (Pong's dashed net is dim), never to make a failing number pass: fix the game
