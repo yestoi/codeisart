@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import time
-from typing import Callable
-
 from pathlib import Path
+from typing import Callable
 
 from arcade.calibration import Calibration, load_calibration
 from arcade.config import ArcadeConfig
