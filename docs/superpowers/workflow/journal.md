@@ -1848,3 +1848,117 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   (the walking figure's stutter), Q119 (Swat's `GOAL` 30 for people), Q120 (Copy Me's words over the legs).
 - Status: done. Copy Me, Flap, Swat and Freeze are on main; M7a has Jump left. Iteration 20 starts with the
   suite's room.
+
+## Iteration 20 — 2026-10-02
+- Verdict (the operator's reading of feel.json, then the sheets, written 05:56 before any other tool call; evidence at
+  14dd073, whose code is 6e8adf1's): **Jump passes with one carried layout fix (C56); Copy Me's outline passes (C55
+  closed).** feel.json: no failure in either game (Jump: win_good 1.0, win_lazy 0.45, win_none 0.0, range 0.685,
+  round 30.0 s, square_flashes 4.0, flash_area_raw 0.0024, score_visible 0.978, score_legible 1.0; Copy Me: win_lazy
+  0.4, range 0.70, square_flashes 4.0, flash_area_raw 0.011).
+  - Jump, the canonical LED sheet and the close sheet of the second attempt (every 5 ticks, 0 to 18.5 s): the lobby's
+    amber "JUMP", the mirror figure, the raised hand with the green launch icon; in the game the cyan striker frame at
+    the left with the yellow bell mark, "GET SET" in `ready`, the big amber "JUMP!" for the whole window, the white
+    score at the top right at 2x from the first tick ("0", then "42"), the white peak line on the bar after a jump,
+    the result's big amber "42" beside the bar, three attempts, then `over` (the figure, the bar with its line, the
+    score, no word). The bell: the bar fills amber to the bell mark, one full-frame light grey flash (one frame at
+    6.83 s and at 15.83 s), then a dimmed frame with "DING!" for about 0.3 s. The story reads without a word of
+    explanation: get set, jump, the number.
+  - Jump at viewing distance (the distance sheet): "JUMP!", "GET SET", the "42"s and the bar's line all read.
+  - Jump, `idle_body`: a stander sees "GET SET", then "JUMP!" with the hint, then an amber "0" beside the bar; nothing
+    is banked. The only light in the bottom rows of any frame is the runner's own short marker under the figure.
+  - What is wrong with Jump's picture (C56, none fails a budget): (a) "GET SET" and "JUMP!" are drawn over the
+    figure's torso for the whole window when the player stands in the middle, so the player sees the word, a head and
+    two legs, not their own jump; (b) the idle hint is a second, small "JUMP!" under the big one: it says nothing new
+    and doubles the clutter; (c) "DING!" pops at x 32 onto the big "JUMP!" and the two words run together; (d) at the
+    zone's left end the figure covers the striker and the result's number (9.0 to 10.5 s); (e) `over` has no word.
+  - The GIF read with the Read tool gives one frame only (the lobby's figure with the launch icon); the sheets carry
+    the reading.
+  - Copy Me, the canonical LED sheet: the game as in iteration 19, the target's outline now magenta on the amber
+    figure, clear in `show`, `play` and `result`; one full-frame flash at the first match (10.5 s), as before.
+  - Copy Me, the `duo` sheet (rendered at 14dd073 into the scratchpad, every 50 ticks): the magenta outline stands
+    out on seat b's blue figure as clearly as on seat a's amber one, in `show`, `play` and `result` (1.67 s, 3.33 s,
+    10.0 s, 16.67 s). C55 is closed by eye as well as by its test.
+- Checked after the verdict:
+  - The suite at 14dd073 (the code is 6e8adf1's), run once beside the re-review: 2236 collected, 2233 passed, 3
+    skipped in 457.24 s, under Q102's 540 s; `pooled: 480 plays, 4 workers, 136.4 s, the join waited 13.9 s` (under
+    the 150 s flag, deadline 180 s); no timing failure; saved as evidence/it20/verify-suite.txt.
+  - `arcade doctor`: camera ok, mic ok, pose ok (the Mac).
+  - Freshness: `git diff 6e8adf1..HEAD` outside `docs/` is empty; the sheets are stamped `14dd073`.
+  - The re-review: APPROVED at 06:05 (below).
+  - Jump's timeline file lists `ready`, `play` and `result` but skips two of the changes (no `result` at 11.03 s, no
+    `ready` at 22.53 s); the sheets show both. Noted below for the tool's next task.
+- Plan: docs/superpowers/plans/2026-10-02-it20-suite-room-jump-m5.md (299 lines at 24e2aee), one plan writer (opus,
+  03:22 to 03:34; Q121 to Q125 defaulted), one adversarial reviewer (opus): round 1 BLOCKED on four findings, all in
+  Jump and F1 (an unnamed changed assert at `test_copyme.py:178`; no `score` key; a 14 to 17 s round under the 20 s
+  floor; a canonical range of 0.598), fixed in the plan by the operator; round 2 APPROVED at 04:04 with three notes
+  taken (evidence/it20/plan-review.md).
+- Shipped: 24e2aee..6e8adf1, 22 files outside `docs/`, 2860 insertions, 83 deletions.
+  - R, the suite's room: the oracle's pool starts when collection ends, plays beside the soaks and is joined before
+    the first test that is not beside it; its rows follow the selected tests; the deadline is 180 s (Q124). 505.09 s
+    before, 402.71 s after (about 102 s saved), no seed, assert or band changed.
+  - Jump, M7a's last game (`arcade/games/jump.py`, Q99): a high striker; three 5 s windows, each after a new
+    baseline; the nose's rise over the torso in centimetres with the hips required (Q122, Q125); a bell at 28 to
+    40 cm drawn per game (Q123); `strongman` became `jump` in `MENU_ORDER` (Q121); bots through the new `Move.lift`.
+  - C55: Copy Me's outline is magenta `(255, 0, 255)` (Q117), with a test that reads the outline's own pixels;
+    rows 60 to 63 tests for Copy Me and Swat.
+  - E0: `Blob` gains keyword-only `id`, `vx`, `vy` (C11).
+  - M5's first lane, not wired into a camera source: `arcade/sources/blobs.py` (`find_blobs` with the halo rule,
+    `BlobTracker`, `StaticMask`, `motion_grid` with the shake gate, `FrameFeatures`; C11, C17; 0.4 ms an update at
+    160x120 against 3 ms) and `arcade/sources/scenario.py` with `replay.py` (`.jsonl.gz` with a header, sensed and
+    raw records, `open_replay`; a bad, cut-off or hostile line is skipped, never raised; C21).
+  - The guide gained `Move(lift=...)` and a measured jump's baseline and hip check.
+- Review: APPROVED after 2 rounds (evidence/it20/code-review.md; a fresh opus reviewer, 24e2aee..HEAD). Round 1
+  (05:12 to 05:32) BLOCKED on five findings, each with a probe: B1 Jump's figure lit rows 60 to 63 in a jump under
+  real noise (22 of 40 body ids: a held ankle drawn against the risen box); B2 a player who took over mid-window
+  was measured against the earlier player's baseline and banked 37 cm and the bell without a jump; B3 a deeply
+  nested scenario line raised RecursionError out of the reader, and a non-finite box passed and crashed the game;
+  B4 F1's colour test passed on the fault it names; B5 Jump dropped `fx.flash`'s return. The orchestrator fixed all
+  five test-first (05:33 to 05:52; f2197ed, 1bb54c0, 001d4d9, merge 32980ed, report 6e8adf1; 48 new tests; Jump's
+  feel unchanged at full precision). Round 2 (05:55 to 06:05) APPROVED: every probe rerun and closed; no assert
+  removed or changed by the fixes. Four asserts changed in the whole range, all named by the plan.
+- Deploy: none (never deployed by the loop; nothing under `deploy/` touched; nothing pushed; nothing sent to the
+  card).
+- The Pi 5: not run. The plan has no Pi step (Q103). No ssh call was made in this iteration.
+- Verify: 7 of 7 of the checklist. 1 freshness: the sheets are stamped `14dd073`, HEAD when they were made, and only
+  `docs/` changes after the code head 6e8adf1. 2 the suite is green. 3 skips: 3, as before. 4 collected: 2236 (2092
+  before). 5 doctor passes. 6 evidence/it20/ with README.md, the decision on its first line, the images described
+  in words (Q98). 7 the operator read feel.json, then the sheets, and wrote the verdict above before any other tool
+  call.
+- Tests: 2236 collected, 2233 passed, 3 skipped at 6e8adf1's code, 457.24 s (verify), 440.51 s after the last merge
+  (2188 collected), 402.71 s at the gate after R (2096 collected), 505.09 s before the slice (2092 collected).
+- Minutes: about 175, from 03:12 to 06:07 CDT, against the two hours of a games iteration: orient 10 (with a timed
+  full run); plan 12; the plan's two review rounds with the fixes 30; implement 63 (the serial lane 16, the four
+  parallel tasks 23, bound by the blobs task, integration 22 with three subsets and one full run); code review
+  round 1 20; the fix round 19; the re-review 10, with the evidence, the sheets, the suite and doctor run beside
+  it; the report 5. The two blocked reviews cost about 50 of the 55 minutes over.
+- Loop decisions and deviations:
+  - The plan departs from rule 6's full suite after every merge: a subset after each merge, the full suite after R
+    and after the last merge (recorded in the plan; it saved about 20 minutes). A subset names
+    `tests/arcade/test_all_games.py` first, or the join waits for the whole pool (the orchestrator's finding).
+  - The operator ran the evidence tool, the suite and doctor beside the one re-review, at the fixed code. Had the
+    re-review blocked, the loop would have gated and the readings would have been dropped.
+  - The operator's choices in the fix round (Q134, Q135): B1 is fixed in Jump's own drawing, rows 60 to 63 blacked
+    out after the figure, and the shared cause is left for iteration 21; B2 stops a window's measuring when
+    another body id holds the slot, so the round keeps its length.
+  - The implementers' deviations are accepted and each is a defaulted question: Jump's bell rings live (Q128), the
+    hint shows in `play` only (Q126), blobs scan 32 lights before the cap of 8 and take their colour from the
+    halo's hue, replay keeps the recording's captures (Q132), a raw record carries its own WAV (Q133).
+  - The orchestrator used `cd` three times against the rule, each time into the directory the shell was already
+    in; nothing changed. Its clock ran about 5 minutes ahead of `date`; the times here are `date`'s.
+  - Jump's layout faults were seen in an early look during the review and are not part of the fix round: they go
+    through iteration 21's plan as C56 (the rule for a fix found in verify).
+- Carried forward: C56 (Jump's layout: the words over the figure, the hint that repeats the prompt, "DING!" on
+  "JUMP!", no word in `over`).
+- Noted, not carried (the roadmap's notes for iteration 21 hold the detail): the shared cause of B1 (`draw_figure`
+  maps a held keypoint against the current box; Copy Me at `FIGURE_H = 60` and the lobby are exposed on the real
+  source); a scenario box of 1e308 is finite, passes the reader and crashes a game's draw (the runner's guard
+  catches it; nothing we record makes one); a near or tall player cannot ring Jump's bell (the zone's top caps the
+  rise: about 47 cm at body height 0.6, 33 cm at 0.7, 23 cm at 0.8); the idle hint shows at once in windows 2 and
+  3; `Blob.vy` is in frame heights per second and `sensed.py` should say so (Q131); `MIN_AREA = 4` waits for GATE
+  A's lamps (Q129); the pool's 136 s of 180 s with Paint and Tug still to add 120 plays, so the soaks in workers
+  are iteration 21's option; the evidence tool's timeline skipped two of Jump's phase changes.
+- Owner questions: Q121 to Q135, each defaulted. For the first live play of Jump: Q122 (centimetres), Q123 (the
+  bell as the win), Q125 (hips required), Q126 (the hint), Q127 (the figure under the striker), Q128 (the bell rings
+  live), Q135 (a new id stops the window).
+- Status: done. Jump is on main: M7a's seven pose games are built, none yet played on a camera. C55 is closed. M5's
+  first lane is on main. Iteration 21 starts with C56 and M5's second lane (the camera wiring).

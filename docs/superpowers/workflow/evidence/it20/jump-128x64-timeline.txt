@@ -1,0 +1,10 @@
+0.03 lobby/attract
+2.03 lobby/mirror
+4.53 jump
+4.57 jump/ready
+6.03 jump/play
+13.53 jump/ready
+15.03 jump/play
+20.03 jump/result
+24.03 jump/play
+29.03 jump/result

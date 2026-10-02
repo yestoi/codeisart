@@ -233,3 +233,146 @@ docstring. No other assert is removed, changed or weakened.
   - `HIP_Y - 0.0` leaves every existing bot play unchanged (`test_move_without_lift_is_todays_body`).
   - S1's non-finite centroids are dropped before matching.
   - S2's D1 stamping matches its test.
+
+## Round 2
+
+The re-review of 56ba6c9..6e8adf1 (f2197ed B3, 1bb54c0 B1 B2 B5, 001d4d9 B4, merge 32980ed, report 6e8adf1),
+judged against the operator's choices:
+
+- B1: rows 60 to 63 are blacked out in Jump's own drawing.
+- B2: a different body id in `play` stops that window's measuring.
+- B3: any exception on a line skips that line, and every float field must be finite.
+
+I reran my round-1 probes on main at 6e8adf1. Nothing in the repo was changed except this section.
+
+### Verdict: APPROVED
+
+All five findings are closed, and each probe that showed a fault now shows it gone. The fixes broke nothing I could
+find. No assert under `tests/` was removed or changed. The collected count rose by 48, and no skip was added.
+
+### The five findings
+
+**B1: closed.** `arcade/games/jump.py:294` fills rows `FREE_Y` (60) to 63 with black right after `draw_figure`.
+That fill comes before the striker, the texts and the score, and none of those reaches row 60:
+
+- the striker spans rows 6 to 57;
+- the texts span rows 19 to 48;
+- the score spans rows 0 to 17.
+
+The runner draws its marker and overlays after the game's `draw` (`runner.py:489-491`). `probe_rows.py` (ids 1 to
+40, three jumps of 0.15 each, `degrade(**REAL_NOISE)`):
+```
+canonical, clean: ticks with rows 60-63 lit = 0; first []
+canonical, degrade(REAL_NOISE): ticks with rows 60-63 lit = 0; first []
+a jumper, degrade(REAL_NOISE): ticks with rows 60-63 lit = 0; first []
+idle body, degrade(REAL_NOISE): ticks with rows 60-63 lit = 0; first []
+--- jumpers (3 jumps of 0.15 at the window's opening + offset), degrade(REAL_NOISE), body ids 1..40
+runs with rows 60-63 lit: 0 of 40
+```
+(It was 22 of 40.) `probe_rows_detail.py` (id 10) now prints nothing: the probe finds no tick to describe.
+
+**B2: closed.** The baseline now carries its body id (`jump.py:215`). `_measure` (`:221-224`) drops the baseline
+when a different id is held, after which `rise` and `cm` read 0 and the capture does not count. A player lost
+outright still goes through the `held is None` branch (`:174`) and never reaches `_measure`. `probe_swap.py`
+(through the runner, seed 12345):
+```
+swap, clean: heights [0, 0, 0], best_cm 0, rang False, bell_cm 29.46, recorded best None, phase over
+swap, degrade(REAL_NOISE): heights [0, 0, 0], best_cm 0, rang False, bell_cm 29.46, recorded best None, phase over
+B alone, clean: heights [0, 0, 0], best_cm 0, rang False, bell_cm 29.46, recorded best None, phase over
+```
+The new `probe_swap2.py` checks the operator's choice in full. A jumps 0.08 and leaves at 3.5 s. B (height 0.72)
+takes the place and jumps 0.07 in windows 2 and 3. B jumps less than A because a 0.15 jump takes this tall body out
+of the zone. A's peak stands, and the newcomer's own baselines measure B as they measure B alone:
+```
+A jumps, swap, B jumps in w2 w3, clean: heights [22, 11, 11], best_cm 22, recorded best 22.0, phase over
+the same, degrade(REAL_NOISE): heights [23, 11, 11], best_cm 23, recorded best 23.0, phase over
+B alone jumping at the same times, clean: heights [0, 11, 11], best_cm 11, recorded best 11.0, phase over
+```
+(`probe_phases.py` gave the windows: play 1.47 to 6.47, 10.47 to 15.47 and 19.47 to 24.47 s, so the round keeps
+its length.)
+
+**B3: closed.**
+
+- `ScenarioReader.__iter__` catches any `Exception` from one line (`scenario.py:345`).
+- Every float field of a body, a keypoint, a blob and the audio goes through `_finite` (`:112-195`). The raw
+  record's detections do too, because they share `_box` and `_keypoints`.
+- A header that fails to parse is the documented `ValueError` (`:323-324`).
+- A line that is not valid UTF-8 decodes with `errors="replace"` (`:203-207`), so it spoils only its own line.
+
+`probe_scenario.py`:
+```
+(1) ScenarioReader over: good, a nested line, good, good
+  no raise; records [0.0, 0.0333, 0.0667], skipped 1
+(1b) the same file through open_replay: ReplayCamera.latest() once a tick, as the runner calls it
+  tick 0: latest() gave capture_t 0.0, finished False
+  tick 1: latest() gave capture_t 1.0, finished False
+  tick 2: latest() gave capture_t 2.0, finished False
+  tick 3: latest() gave capture_t 2.0, finished True
+  tick 4: latest() gave capture_t 2.0, finished True
+(2) a line whose body box is [0, 0, Infinity, Infinity] (keypoints of a standing body)
+  the line holds: "box": [0, 0, Infinity, Infinity], "keyp
+  read: 0 record(s), skipped 1; the line never reaches a game
+```
+(The probe's step (2) assumed the record got through, so I gave it a branch for a skipped line. Its inputs are
+unchanged.) `probe_scenario_runner.py`:
+```
+read 360 lines, skipped 90; runner: crashes {}, hidden [], game now jump
+```
+The finite but huge box below is a note, not this finding.
+
+**B4: closed.** The test now reads the outline's own pixels. It spies `Canvas.line` and `Canvas.circle` only when
+the caller is copyme's `draw_view`, which draws the outline with exactly those two (`copyme.py:278-280`). Each
+stroke is redrawn alone on a blank canvas. `probe_outline_mutant2.py` installs the round-1 mutant, then calls the
+new test with a `MonkeyPatch`:
+```
+mutant, the first duo frame of play: 43 outline strokes drawn in seat b's colour (0, 160, 255)
+test_the_outline_differs_from_every_figure_colour: FAILS on the mutant: outline pixels in seat b's colour (0, 160, 255), by seat: {(255, 120, 0): 0, (0, 160, 255): 69}
+mutant 2 (seat a's outline in seat b's colour): the test FAILS: outline pixels in seat b's colour (0, 160, 255), by seat: {(255, 120, 0): 69, (0, 160, 255): 0}
+```
+On the real code the test passes (in the run below).
+
+**B5: closed.** `jump.py:234-235`: `if not self.fx.flash(FLASH, 0.15): self.fx.burst(...)` puts a burst at the
+bell's centre. The burst call matches `Juice.burst(x, y, color, n)`. `probe_flash_return.py`:
+```
+copyme.py:415 self.fx.flash(FLASH_COLOR, FLASH_SECONDS): return used
+jump.py:234 self.fx.flash(FLASH, 0.15): return used
+quickdraw.py:268 self.fx.flash(DRAW_COLOR, 0.15): return used
+swat.py:233 self.fx.flash((255, 255, 255), 0.15): return used
+```
+
+### Asserts (`git diff 56ba6c9..6e8adf1 -- tests/`)
+
+No `assert` line was removed or changed; the diff only adds asserts.
+
+- `test_the_outline_differs_from_every_figure_colour` keeps its first half and its two old asserts, and gains
+  four.
+- `test_the_bell_rings_once_and_checks_the_flash` keeps its granted case unchanged, and gains the refused case.
+- The diff adds no `skip`, `xfail` or `importorskip`.
+
+### Collected and skipped
+
+- `pytest --collect-only -q | tail -1`: `2236 tests collected in 0.65s`. Round 1 was 2188, so this is +48:
+  - `test_jump.py` +15: 4 swap tests and 11 degraded-jumper ids.
+  - `test_scenario.py` +33: 7 single tests and 26 float-field paths.
+- My run of `tests/arcade/test_jump.py`, `tests/arcade/test_scenario.py` and
+  `tests/arcade/test_copyme.py::test_the_outline_differs_from_every_figure_colour` (`-rs`) gave
+  `104 passed in 22.02s`, 0 skipped.
+- I did not run the full suite; the operator is running it.
+
+### Notes (not carried)
+
+- **A finite but huge box still crashes Jump.** A box whose `x1` is `1e308`, with every float finite as the fix
+  requires, passes the reader. The body is in the zone, and Jump's draw raises in `arcade/figure.py:27`
+  (`OverflowError: cannot convert float infinity to integer`, from `to_wall`'s `x - bx` term). The runner's crash
+  guard catches it, so nothing raises into the runner.
+  - `probe_finite_huge.py` (3 s of such lines, then good ones, through the runner):
+    `x1 1e308: read 360 lines, skipped 0; runner: crashes {'jump': 1}, hidden [], game now lobby`.
+  - The boxes ±1e308 on x, on y or on all four do not crash (`crashes {}`).
+  - No camera or writer of ours produces such a box. The cause is in the shared figure code, which is iteration
+    21's. A range check in the reader (a box within, say, -1 to 2) would close it.
+  - This crash predates the fixes: `figure.py` is untouched, and the reader accepted 1e308 before.
+- The fix report's two owner questions are the operator's choices as written:
+  - Q-fix-a: a held keypoint can still draw in rows 56 to 59.
+  - Q-fix-b: the tracker re-identifying the same person inside a window stops that window.
+- `Juice.burst`'s return in the refused-flash branch is not checked. The plan's rule names `fx.flash` only, and
+  Copy Me does the same.

@@ -1,0 +1,10 @@
+0.03 lobby/attract
+3.53 lobby/invite
+4.57 copyme/ready
+6.03 copyme/show
+10.53 copyme/result
+14.03 copyme/play
+19.03 copyme/show
+20.53 copyme/play
+25.53 copyme/over
+28.57 lobby/card
