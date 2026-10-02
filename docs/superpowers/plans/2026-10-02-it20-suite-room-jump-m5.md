@@ -286,9 +286,8 @@ is iteration 21 (S2 does not import S1).
   scale) and its win is the bell (a rng height per game), so the lazy bot's win hangs on the rng as Copy Me's.
 - Owner questions Q121 to Q125 (the writer's report), each defaulted. Reviewed: evidence/it20/plan-review.md (B1 to
   B4 and N1 to N12 are fixed in this text). Jump's window runs its whole 5 s and counts the best of any jumps in it.
-- A subset after each merge, the full suite after R and after the last merge: a departure from config.md rule 6
-  (the full suite after each merge), taken for time on the shared Mac (it19: 28 minutes of four serial full runs).
-  A break the last full run finds is bisected over the four merges with the failing test alone.
+- A subset after each merge and the full suite after R and the last merge depart from config.md rule 6, for time
+  (it19: 28 minutes of four serial full runs); a break the last run finds is bisected with the failing test alone.
 - Cut order if time runs out: S2, then S1, then F1; R, the rename, I0, E0 and G5 are the slice's core. A cut task's
   worktree is kept.
 ## I1 (orchestrator, after the merges)
