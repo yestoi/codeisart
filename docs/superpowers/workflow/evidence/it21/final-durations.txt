@@ -1,0 +1,78 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 18%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+..........
+strobe 128x32: tick mean 0.373 ms, p95 0.406 ms, governor 0.207 ms (55% of the tick), held 200 ticks
+.
+strobe 64x64: tick mean 0.391 ms, p95 0.423 ms, governor 0.217 ms (56% of the tick), held 200 ticks
+.
+strobe 128x64: tick mean 0.602 ms, p95 0.665 ms, governor 0.411 ms (68% of the tick), held 200 ticks
+.
+static 128x32: tick mean 0.341 ms, p95 0.355 ms, governor 0.168 ms (49% of the tick), held 0 ticks
+.
+static 64x64: tick mean 0.430 ms, p95 0.564 ms, governor 0.219 ms (51% of the tick), held 0 ticks
+.
+static 128x64: tick mean 0.513 ms, p95 0.542 ms, governor 0.317 ms (62% of the tick), held 0 ticks
+......................................................... [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 34%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 58%]
+........................................................................ [ 61%]
+........................................................................ [ 65%]
+........................................................................ [ 68%]
+...................................s.................................... [ 71%]
+......................s................................................. [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+....................................................s................... [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 99%]
+......................                                                   [100%]
+pooled: 480 plays, 4 workers, 135.6 s, the join waited 11.0 s
+============================= slowest 25 durations =============================
+11.00s setup    tests/arcade/test_all_games.py::test_every_game_fits_the_tick_budget[copyme-128x64]
+10.27s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[freeze-128x64]
+9.98s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-128x64]
+9.29s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[pong-96x48]
+8.57s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[jump-128x64]
+8.36s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[copyme-128x64]
+7.85s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-128x64]
+7.77s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[copyme-96x48]
+7.46s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[swat-128x64]
+6.69s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[flap-128x64]
+6.55s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[quickdraw-96x48]
+6.46s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[jump-96x48]
+6.31s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[freeze-96x48]
+6.23s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[dodge-128x64]
+6.07s call     tests/test_show_shot_governed.py::test_governed_entry_session_runs_the_entry_through_the_governor
+5.23s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[flap-96x48]
+5.13s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[dodge-96x48]
+5.00s call     tests/arcade/test_all_games.py::test_every_game_soaks_without_error[swat-96x48]
+4.55s call     tests/test_show_shot.py::test_entry_mode_plays_the_sample_entry_through_the_pipeline
+3.72s call     tests/test_curated_entries.py::test_entry_plays_through[sloane]
+3.64s call     tests/arcade/test_first_playable.py::test_first_playable_keeps_the_flash_rule
+3.61s call     tests/test_show_shot.py::test_strobe_session_is_held
+3.58s call     tests/test_entries.py::test_sample_entry_band_leaves_no_trail
+3.55s call     tests/test_curated_entries.py::test_entry_plays_through[endoh1]
+3.50s call     tests/test_curated_entries.py::test_entry_plays_through[imc]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_colorlight_child.py:142: the descriptor is reopened through /proc, which this system has not; the path is used
+SKIPPED [1] tests/test_colorlight_slot.py:105: the descriptor is reopened through /proc, which this system has not
+SKIPPED [1] tests/test_sandbox.py:153: needs a working unshare -rn (Linux with unprivileged user namespaces); macOS has no unshare
+2323 passed, 3 skipped in 454.57s (0:07:34)
+exit 0
