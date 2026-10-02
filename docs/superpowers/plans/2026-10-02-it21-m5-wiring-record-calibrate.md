@@ -4,7 +4,7 @@ BASE: HEAD after E1 is committed (the orchestrator gives the sha). Thin plan. No
 "Spec" = `docs/superpowers/specs/2026-09-26-wall-arcade-design.md`, not edited. "Core plan" =
 `docs/superpowers/plans/2026-09-26-wall-arcade-core.md`: a draft to test, not text to paste; its amendments (Tasks
 12, 15, 16, 18: lines 588 to 700) and today's code win over its bodies. In `docs/superpowers/workflow/evidence/it21/`:
-`plan-writer-report.md` (Q136 to Q147, defaulted) and `plan-review.md` (B1 to B7, notes 1 to 4: fixed in this text).
+`plan-writer-report.md` (Q136 to Q147, defaulted) and `plan-review.md` (B1 to B7, R2-B1, the notes: fixed in this text).
 ## Global Constraints
 - Test command, from the checkout's (or worktree's) root: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
   /Users/trey/dev/codeisart/.venv/bin/python -m pytest -q -rs`. Baseline at 3a3fe02's tree: 2236 collected, 2233
@@ -162,9 +162,10 @@ passes the limiter and the governor like any lobby's; the scene writes the Sense
   sleep=time.sleep) -> int` (records written): header `make_header("raw" if raw else "sensed", fps=cfg.camera_fps
   if raw else cfg.fps, script=script.name, cues=script.cues, git=<short sha or None>)` plus `header["inputs"]`
   (sorted: the camera's `provides`, default every camera input, less `"motion"` unless `with_motion`; raw:
-  `["motion", "pose"]` and `header["mirror"] = cfg.mirror`). `Runner(cfg, display, font, scene, [], strict=True)`
-  (not strict, a raising scene becomes the title card, `runner.py:404`, and `until` never fires), `loop(camera,
-  audio, until=scene.done)`; in a `finally`: the tap `None`, `camera.close()` (joins the thread), the writer closed.
+  `["motion", "pose"]` and `header["mirror"] = cfg.mirror`). `Runner(cfg, display, font, scene, [], clock=clock,
+  sleep=sleep, strict=True)` (not strict, a raising scene becomes the title card, `runner.py:404`, and `until` never
+  fires), `loop(camera, audio, until=scene.done)`; in a `finally`: the tap `None`, `camera.close()` (joins the
+  thread), the writer closed. Raw: the count comes from a counting wrapper around `writer.write` given to the tap.
 - `main(args) -> int`: `args.config`, `args.script` (a `RECORD_SCRIPTS` name), `args.i_have_consent`, `args.raw`,
   `args.with_motion`, `args.out` (default `data_dir/recordings/<script>-<UTC yyyymmddThhmmss>.jsonl.gz`); a refusal
   prints the reason and returns 2 before any source or display opens; else `make_sources` (main thread),
@@ -215,11 +216,13 @@ largest body's raw anchor (`Body.anchor`, camera space: bodies are placed agains
   inside, `Runner(cfg, display, font, cal, [], calibration=Calibration(), strict=True)` (as R), `loop(..., until=
   cal.done)`; 0 when saved, 1 when failed; sources and display closed in a `finally`.
 - Acceptance (`tests/arcade/test_calibrate.py`, actors through `run_headless(..., lobby=calibrator)`): the
-  amendment's `test_calibrate_with_actors_writes_zone` (a person who raises both hands, stands at x 0.3 far, 0.7
-  far, 0.5 near, stands still, leaves; a still lamp blob: the zone's x holds the three anchors within `MARGIN`, its
-  y spans at least 0.2 to 0.8, `min_height` 0.8 of the far height, `baseline_scale` within 0.01, one static light,
-  `calibrated` true); `test_a_jump_stays_in_the_calibrated_zone` (that zone; a 0.15 jump at each stand's height:
-  `in_zone` on every tick); `test_main_turns_hide_still_off` (a stand-in camera with `features`);
+  amendment's `test_calibrate_with_actors_writes_zone` (a person who raises both hands, stands at x 0.3 and 0.7 far
+  (height 0.5) and 0.5 near (height 0.6), stands still, leaves; a still lamp blob: the zone's x holds the three
+  anchors within `MARGIN`, its y spans at least 0.2 to 0.8, `min_height` 0.8 of the far height, `baseline_scale`
+  within 0.01, one static light, `calibrated` true); `test_a_jump_stays_in_the_calibrated_zone` (that zone; a 0.15
+  jump at heights 0.5 and 0.6: `in_zone` on every tick; above about 0.66 a 0.15 jump leaves even the default zone,
+  `jump.py:15-16`); `test_main_turns_hide_still_off` (a stand-in camera with `features`; `Runner.loop` stubbed, or
+  it waits out `STEP_TIMEOUT` in real time);
   `test_nobody_comes_writes_no_file` (empty 61 s of `aim`: `failed`, no file); `test_a_body_restarts_the_clear`;
   `test_a_walking_body_does_not_stand` (no stand while the anchor moves 0.05 fw a second);
   `test_every_step_keeps_rows_60_to_63_dark_and_the_flash_rule`; `test_a_zone_that_would_not_load_fails`. Module

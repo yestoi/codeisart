@@ -183,3 +183,70 @@ go too (2 lines): they repeat I2's owner line (298-299).
 - G6's real `flash_area` and `square_flashes` after the change (not simulated; the band is static 1x text, so I
   expect no change).
 - No test file was run; every claim above comes from reading the code at HEAD or from the probes named.
+
+## Round 2
+
+Plan at 8b934f4 (296 lines, none over 118 characters). I read it in full and checked the diff from d166402 against
+the code at HEAD. New probe: `zone_r2_probe.py` in the same scratchpad folder.
+
+### Verdict: BLOCKED
+
+B1 to B7 and notes 1 to 4 are fixed as asked, and the fixes add no contradiction (below). One blocker remains, and it
+comes from my own round-1 wording for B2's test: the new acceptance test cannot pass for a natural choice of heights.
+
+### R2-B1. `test_a_jump_stays_in_the_calibrated_zone` fails when the near stand is taller than about 0.66
+- Where: plan lines 218-222 (the zone comes from "stands at x 0.3 far, 0.7 far, 0.5 near", with heights left to the
+  implementer; "`min_height` 0.8 of the far height" implies the near stand is taller), and
+  `test_a_jump_stays_in_the_calibrated_zone` ("a 0.15 jump at each stand's height: `in_zone` on every tick").
+- What is wrong: the fixed formula gives y0 = 0.2 for any standing stands, so it is the default zone's top. That top
+  drops a 0.15 jump of a tall body: `jump.py:15-16` already says the default zone caps the rise at 33 cm at height
+  0.7 and 23 cm at 0.8, and a 0.15 jump at height 0.7 is 0.15 / 0.21 x 50 = 36 cm.
+- Evidence (`zone_r2_probe.py`, the plan's formula, hips at 0.55): far 0.5, near 0.6 gives zone (0.25, 0.2, 0.75,
+  0.8), with jump minimum anchor y 0.250 and 0.220 and 0 ticks out. Far 0.5 or 0.6 with near 0.7 gives the same zone,
+  but the near jump's anchor reaches 0.190: 5 ticks out. With near 0.8 it reaches 0.160: 9 ticks out. An
+  implementer who picks a near stand of 0.7 (a natural "front") gets a failing acceptance test in a worktree. The
+  easy way out, widening the formula, would be a deviation.
+- Smallest fix (lines 218-219, about +1 line): "stands at x 0.3 and 0.7 far (height 0.5) and 0.5 near (height 0.6)",
+  and in the jump test "(above about 0.66 a 0.15 jump leaves even the default zone: `jump.py:15-16`)". The zone code
+  does not change.
+
+### Checked in round 2 and found right
+- B1: `test_blobs.py:89` is named as a changed setup in W and in Global Constraints; `FrameFeatures(work=(200, 150))`
+  leaves the 200 px frames unshrunk, so :99-100 hold as they are.
+- B3: `hide_still` is read per `update` as an attribute. C sets it through `getattr` after `make_sources`, so C does
+  not import W, and W merges before C. The runner hands the lobby every blob, not only in-zone ones
+  (`runner.py:456-468`; the `_blocked` strip happens only after an exit, `:320`, `:382`), so `clear` sees a lamp
+  anywhere in the frame.
+- B4 and `strict=True`: `strict` is read only in `_crashed` (`runner.py:391`, games, of which there are none here) and
+  `_lobby_call` (`:409`). `_push` and `_source` guard their own errors either way, and the lobby is blocked only
+  after an exit (`:382`), which these scenes never trigger. So `strict=True` changes nothing but a scene's raise,
+  which now ends `loop`. `close()` is safe to call twice: `ThreadedCamera.close` keeps a `_released` flag
+  (`camera.py:342-344`), and `ScriptedCamera` and `NoSource` have `close`.
+- B5 against W's `tap`: W reads `tap` on every due capture, the scene sets it on the first "rec" tick and clears it on
+  the last, and the `finally` clears it again before `close()` and the writer's close. Raw replay's t0 is the first
+  capture after rec starts, so the cue base is off by less than one capture. Detections are mirrored when
+  `cfg.mirror` is set (`pose_mediapipe.py:175-176`), the header's new `mirror` records it, and RP's `FrameFeatures`
+  reads it. Frame, detections and replay agree.
+- B6: the draw order (figures, rows 60 to 63 black, text over boxes) and the renamed test, which draws the scene on a
+  clear canvas as `test_jump.py:462` does.
+- B7: `refusal` needs no open source; `cfg.camera == "mediapipe"` is the only source with a `tap`.
+- Notes 1 to 4: "left" with `scores.REASONS`; `tofile` added (`np.save` is still caught as an attribute `.save`); the
+  header's `mirror`, accepted by `check_header` absent or a bool; `+ 1e-9` in the pacing.
+- The trimming dropped nothing a task needs. Gone: the it15 note's wording (both tests are still named), the explicit
+  list of files not edited (line 17's "Touch only your task's files" covers them), "Worktrees kept", the owner's
+  `door-point` example, "a written box is rounded to 4 digits", and "Task 18's `record(camera, audio, path, ...)` is
+  superseded" (the plan's own `record` signature is explicit).
+
+### Notes (round 2, not blocking)
+1. R line 165: `Runner(cfg, display, font, scene, [], strict=True)` leaves out `clock=clock, sleep=sleep`, which
+   `record(...)` takes for that purpose (`runner.py:282-283`). Copied as written, the tests' `FakeClock` never reaches
+   the runner: the loop sleeps in real time, and `ScriptedCamera`'s stamps go stale against the real clock. The tests
+   would show it, but add the two keywords.
+2. C's `test_main_turns_hide_still_off` drives `main`, whose loop runs on the real clock. Unstubbed, an empty stand-in
+   camera waits out `STEP_TIMEOUT`: 62 s, which would take the planned 470 s to about 530 s of the 540. The test should stub
+   `Runner.loop` (or `build_display` and the loop) and check only the attribute.
+3. In raw mode `record` returns "records written", but the scene writes nothing and `tap = writer.write` counts
+   nothing. A counting wrapper (`written` += 1) keeps the return value true.
+4. If `ThreadedCamera.close` times out (2 s), a capture in flight could still call the old tap after the writer
+   closes. The `finally` clears the tap first, so only a capture already inside the call can do it. A `ValueError` on
+   the camera thread is the worst case. Accept it.
