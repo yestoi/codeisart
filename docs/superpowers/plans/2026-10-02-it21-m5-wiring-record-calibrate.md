@@ -4,7 +4,7 @@ BASE: HEAD after E1 is committed (the orchestrator gives the sha). Thin plan. No
 "Spec" = `docs/superpowers/specs/2026-09-26-wall-arcade-design.md`, not edited. "Core plan" =
 `docs/superpowers/plans/2026-09-26-wall-arcade-core.md`: a draft to test, not text to paste; its amendments (Tasks
 12, 15, 16, 18: lines 588 to 700) and today's code win over its bodies. In `docs/superpowers/workflow/evidence/it21/`:
-`plan-writer-report.md` (Q136 to Q147, defaulted) and `plan-review.md` (B1 to B7, R2-B1, the notes: fixed in this text).
+`plan-writer-report.md` (Q136 to Q147, defaulted) and `plan-review.md` (B1 to B7, R2-B1, the notes: fixed here).
 ## Global Constraints
 - Test command, from the checkout's (or worktree's) root: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
   /Users/trey/dev/codeisart/.venv/bin/python -m pytest -q -rs`. Baseline at 3a3fe02's tree: 2236 collected, 2233
