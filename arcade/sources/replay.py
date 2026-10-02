@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Iterator
 
 from arcade.calibration import Calibration
-from arcade.sensed import Audio, Sensed
+from arcade.sensed import CAMERA_INPUTS, Audio, Sensed
 from arcade.sources.camera import CameraResult
 from arcade.sources.scenario import ScenarioReader
 
@@ -58,10 +58,12 @@ class ReplayCamera:
     """The camera of a replay: latest() advances the shared stream one record (the runner calls it once a tick,
     before the audio's) and gives the newest capture as camera.py's CameraResult, its motion on the file's 128x64
     grid (the runner resamples it to the wall) or the empty grid; None before the recording's first capture.
-    available until the stream has finished; the held last capture then goes stale in the runner."""
+    available until the stream has finished; the held last capture then goes stale in the runner. provides is the
+    camera inputs the recording holds (C35; open_replay gives the header's), every one by default."""
 
-    def __init__(self, stream: ReplayStream):
+    def __init__(self, stream: ReplayStream, provides: frozenset[str] = CAMERA_INPUTS):
         self.stream = stream
+        self.provides = frozenset(provides) & CAMERA_INPUTS
 
     @property
     def available(self) -> bool:
@@ -107,4 +109,4 @@ def open_replay(path: Path | str, calibration: Calibration | None = None,
         raise ValueError(f"{path}: a raw recording replays through the feature extraction and the tracker, "
                          "which are not built yet")
     stream = ReplayStream(reader, clock)
-    return ReplayCamera(stream), ReplayAudio(stream)
+    return ReplayCamera(stream, reader.inputs), ReplayAudio(stream)

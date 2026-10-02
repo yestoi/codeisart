@@ -13,11 +13,12 @@ import pytest
 from arcade.calibration import Calibration
 from arcade.headless import NullLobby
 from arcade.runner import Runner
-from arcade.sensed import MOTION_GRID, Audio, Blob, Body, Keypoint, Sensed
+from arcade.sensed import CAMERA_INPUTS, MOTION_GRID, Audio, Blob, Body, Keypoint, Sensed
 from arcade.sources.actors import TICK, Person, claps, degrade, motion_rect, moving_blob, scene
 from arcade.sources.replay import ReplayAudio, ReplayCamera, ReplayStream, open_replay
-from arcade.sources.scenario import (RawRecord, ScenarioReader, ScenarioWriter, decode, decode_raw, encode, encode_raw,
-                                     make_header, wav_samples)
+from arcade.sources import scenario as scenario_mod
+from arcade.sources.scenario import (RawRecord, ScenarioReader, ScenarioWriter, check_header, decode, decode_raw, encode,
+                                     encode_raw, make_header, wav_samples)
 from show.display.fake import FakeDisplay
 from tests.arcade.helpers import FakeClock, make_cfg, run
 
@@ -419,3 +420,115 @@ def test_every_float_field_refuses_a_non_finite_number(tmp_path, caplog, path):
     write_lines(p, [json.dumps(make_header())] + [with_token(good, path, tok) for tok in NON_FINITE] + [good])
     got, skipped, warned = read_all(p, caplog)
     assert [s.t for s in got] == [decode(good).t] and skipped == len(NON_FINITE) == warned
+
+
+# ----- values out of range (it21 RP, it20's note 7): a finite number far out of its range makes a bad line too -----
+
+def lines_with(line, cases):
+    """line with the value at each (path, token) of cases written as the bare token, one line a case."""
+    return [with_token(line, path, token) for path, token in cases]
+
+
+def test_a_box_out_of_range_is_skipped(tmp_path, caplog):
+    """Both sources clamp a box to 0..1 (pose_mediapipe.box_of, actors.body_box): 1e308 would reach figure.py."""
+    good = encode(sample())
+    box = [("bodies", 0, "box", i) for i in range(4)]
+    bad = lines_with(good, [(path, tok) for path in box for tok in ("1e308", "-0.5", "1.5")])
+    edge = lines_with(good, [(path, tok) for path in box for tok in ("0.0", "1.0")])
+    p = tmp_path / "box.jsonl.gz"
+    write_lines(p, [json.dumps(make_header())] + bad + edge + [good])
+    got, skipped, warned = read_all(p, caplog)
+    assert skipped == len(bad) == 12 == warned
+    assert len(got) == len(edge) + 1 and all(len(s.bodies) == 1 for s in got)   # the good lines kept
+    assert scenario_mod.BOX_RANGE == (0.0, 1.0)
+
+
+def test_a_keypoint_far_out_of_range_is_skipped(tmp_path, caplog):
+    """A keypoint more than a frame past either edge, or a confidence outside 0..1, is a bad line; a little past
+    the edge is the model's landmark before Body clamps it, and passes."""
+    good = encode(sample())
+    bad = lines_with(good, [(KP + (i,), tok) for i in (0, 1) for tok in ("1e308", "-1.5", "2.5")]
+                     + [(KP + (2,), tok) for tok in ("1.5", "-0.5", "1e308")])
+    near = lines_with(good, [(KP + (i,), tok) for i in (0, 1) for tok in ("-0.2", "1.2", "-1.0", "2.0")]
+                      + [(KP + (2,), tok) for tok in ("0.0", "1.0")])
+    p = tmp_path / "kp.jsonl.gz"
+    write_lines(p, [json.dumps(make_header())] + bad + near + [good])
+    got, skipped, warned = read_all(p, caplog)
+    assert skipped == len(bad) == 9 == warned
+    assert len(got) == len(near) + 1 and all(len(s.bodies) == 1 for s in got)
+    assert scenario_mod.KEYPOINT_RANGE == (-1.0, 2.0)
+
+
+OTHER_FLOATS = ([("bodies", 0, k) for k in ("vx", "vy", "scale", "seen_ago", "torso_per_width")]
+                + [("blobs", 0, k) for k in ("x", "y", "size", "vx", "vy")]
+                + [("audio", k) for k in ("level", "level_smooth", "peak", "voice_db", "floor_db", "voice", "bpm")])
+
+
+def test_a_float_over_max_abs_is_skipped(tmp_path, caplog):
+    """Every other float of a body, blob or audio over MAX_ABS in size makes a bad line; MAX_ABS itself passes.
+    t and camera_t are only finite: a raw capture's t is the runner's monotonic clock."""
+    good = encode(sample())
+    bad = lines_with(good, [(path, tok) for path in OTHER_FLOATS for tok in ("1e308", "1001", "-1001")])
+    edge = lines_with(good, [(path, tok) for path in OTHER_FLOATS for tok in ("1000", "-1000")])
+    far_t = lines_with(good, [(("t",), "1e6"), (("camera_t",), "1e6")])
+    p = tmp_path / "abs.jsonl.gz"
+    write_lines(p, [json.dumps(make_header())] + bad + edge + far_t + [good])
+    got, skipped, warned = read_all(p, caplog)
+    assert scenario_mod.MAX_ABS == 1e3 and skipped == len(bad) == 3 * len(OTHER_FLOATS) == warned
+    assert len(got) == len(edge) + len(far_t) + 1
+    assert [s.t for s in got[-3:]] == [1e6, decode(good).t, decode(good).t] and got[-2].camera_t == 1e6
+
+
+def test_a_raw_detection_out_of_range_is_skipped(tmp_path, caplog):
+    """A raw record's detections hold the same ranges: the box 0..1, keypoints -1..2 (unclamped), conf 0..1."""
+    good = encode_raw(raw_sample())
+    det = ("detections", 0)
+    bad = lines_with(good, [(det + ("box", i), tok) for i in range(4) for tok in ("1e308", "-0.5", "1.5")]
+                     + [(det + ("keypoints", 5, i), tok) for i in (0, 1) for tok in ("1e308", "-1.5", "2.5")]
+                     + [(det + ("keypoints", 5, 2), "1.5")])
+    near = lines_with(good, [(det + ("keypoints", 5, 0), "-0.2"), (det + ("keypoints", 5, 1), "1.2")])
+    p = tmp_path / "raw-range.jsonl.gz"
+    write_lines(p, [json.dumps(make_header("raw", fps=10))] + bad + near + [good])
+    got, skipped, warned = read_all(p, caplog)
+    assert skipped == len(bad) == 19 == warned and len(got) == 3
+    assert got[0].detections[0][1][5].x == -0.2 and got[1].detections[0][1][5].y == 1.2   # held as the model gave
+
+
+# ----- the header's inputs (C35) and mirror -----
+
+def test_header_inputs_round_trip_and_set_replay_provides(tmp_path, font5x7):
+    header = make_header(inputs={"pose", "motion"})
+    assert header["inputs"] == ["motion", "pose"]                      # sorted, a JSON list
+    p = record(tmp_path / "in.jsonl.gz", [sample()], header)
+    reader = ScenarioReader(p)
+    assert reader.header["inputs"] == ["motion", "pose"] and reader.inputs == frozenset({"motion", "pose"})
+    cam, _ = open_replay(p, clock=FakeClock())
+    assert cam.provides == frozenset({"motion", "pose"})
+    with_audio = record(tmp_path / "audio.jsonl.gz", [sample()], make_header(inputs=["audio", "pose"]))
+    assert ScenarioReader(with_audio).inputs == frozenset({"audio", "pose"})
+    clock = FakeClock()
+    cam, aud = open_replay(with_audio, clock=clock)
+    assert cam.provides == frozenset({"pose"})                         # the camera's share of the inputs
+    s = wall_runner(font5x7, clock).sense(cam, aud)
+    assert len(s.bodies) == 1 and s.blobs == () and not s.motion.any()   # the recording held both: not provided
+    raw = make_header("raw", fps=10, inputs=["motion", "pose"])
+    raw["mirror"] = False
+    p = tmp_path / "raw.jsonl.gz"
+    with ScenarioWriter(p, raw):
+        pass
+    assert ScenarioReader(p).header["mirror"] is False
+    for key, value in (("inputs", ["video"]), ("inputs", "pose"), ("inputs", None), ("inputs", [1]),
+                       ("mirror", "yes"), ("mirror", 1), ("mirror", None)):
+        with pytest.raises(ValueError, match=key):
+            check_header({**make_header(), key: value})
+    with pytest.raises(ValueError, match="inputs"):
+        make_header(inputs=["pose", "video"])
+
+
+def test_a_header_without_inputs_provides_every_camera_input(tmp_path):
+    header = make_header()
+    assert "inputs" not in header and "mirror" not in header
+    p = record(tmp_path / "plain.jsonl.gz", [sample()], header)
+    assert ScenarioReader(p).inputs == CAMERA_INPUTS
+    assert open_replay(p, clock=FakeClock())[0].provides == CAMERA_INPUTS
+    assert ReplayCamera(ReplayStream(iter([]), FakeClock())).provides == CAMERA_INPUTS   # a stream without a reader
