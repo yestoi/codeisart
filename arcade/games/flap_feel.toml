@@ -1,0 +1,6 @@
+# Flap's feel: the wing gauge follows the hand's height (Cursor, then Glide); the marker's row is the axis.
+# No budget override.
+[fidelity]
+input = "cursor_y"
+xy = "wing_xy"
+axis = 1
