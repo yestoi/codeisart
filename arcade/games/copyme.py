@@ -1,4 +1,4 @@
-"""Copy Me (spec 8 row 1, the hero): a target pose grows over the player's figure as a cyan outline; each judged limb
+"""Copy Me (spec 8 row 1, the hero): a target pose grows over the player's figure as a magenta outline; each judged limb
 within tolerance turns green; at zero a flash, a pop and the round's best frame held. Three rounds, easy to silly.
 
 Each seat's figure is its body's held keypoints (KeypointHold, C37) drawn in its player's colour in a square of
@@ -65,7 +65,7 @@ FRESH_SHARE = 0.5
 WIN_MATCHES = 2
 FIGURE_H = 60                   # rows 0 to 59: 60 to 63 stay free (the runner's marker)
 HINT_IDLE_SECONDS = 2.0
-OUTLINE_COLOR = (0, 200, 255)
+OUTLINE_COLOR = (255, 0, 255)
 MATCH_COLOR = (0, 200, 0)
 MISS_COLOR = (255, 120, 0)
 TEXT_COLOR = (255, 255, 255)
