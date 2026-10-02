@@ -24,6 +24,7 @@ MATCH_DIST = 0.1       # frame widths: a blob this near a blob of the previous c
 STATIC_SECONDS = 5.0   # a blob still this long is scenery, masked until it moves
 STATIC_MOVE = 0.01     # frame widths: moving less than this from where it stopped is still
 FRAME_ASPECT = 4 / 3   # the camera's width over its height (both streams are 4:3) until a frame gives its own
+WORK_SIZE = (160, 120)  # (width, height): FrameFeatures shrinks a wider frame to this first (the Mac's 640x480; Q130)
 
 MOTION_T = 0.25        # a pixel moved: the two median-normalised frames differ by more than this
 CELL_FILL = 0.2        # a cell is lit when more than this share of its pixels moved
@@ -88,17 +89,19 @@ def _light_color(frame_bgr: np.ndarray, bright: np.ndarray, labels: np.ndarray, 
 
 
 def motion_grid(prev_gray: np.ndarray, gray: np.ndarray, zone: tuple[float, float, float, float],
-                size: tuple[int, int]) -> np.ndarray:
+                size: tuple[int, int], *, mirror: bool = True) -> np.ndarray:
     """The cells that moved between two grey frames, bool (height, width) for size (width, height) (spec 5).
 
     Each frame is blurred 5x5 and divided by its own median, so an exposure step moves nothing; a pixel moves
-    when the two differ by more than MOTION_T. The frame is flipped left to right (the zone is in the mirrored
-    space the keypoints use), cropped to the zone at the wall's aspect (_crop), and downsampled to size; a cell
-    is lit when more than CELL_FILL of it moved. More than SHAKE_SHARE of the cells lit is the camera moving,
-    not people: the grid is then empty, shape (0, 0), and the caller counts a shake.
+    when the two differ by more than MOTION_T. With mirror the frame is flipped left to right (the zone is in the
+    mirrored space the keypoints use; without it, the camera's space they keep), cropped to the zone at the
+    wall's aspect (_crop), and downsampled to size; a cell is lit when more than CELL_FILL of it moved. More than
+    SHAKE_SHARE of the cells lit is the camera moving, not people: the grid is then empty, shape (0, 0), and the
+    caller counts a shake.
     """
     moving = cv2.absdiff(_normalised(prev_gray), _normalised(gray)) > MOTION_T
-    moving = moving[:, ::-1]
+    if mirror:
+        moving = moving[:, ::-1]
     r0, r1, c0, c1 = _crop(moving.shape, zone)
     fill = cv2.resize(moving[r0:r1, c0:c1].astype(np.float32), size, interpolation=cv2.INTER_AREA)
     lit = fill > CELL_FILL
@@ -199,36 +202,64 @@ class StaticMask:
         return tuple(shown)
 
 
+def shrink(frame: np.ndarray, work: tuple[int, int] = WORK_SIZE) -> np.ndarray:
+    """frame resized to work (width, height) with cv2.INTER_AREA when it is wider than work[0]; else frame itself."""
+    if frame.shape[1] <= work[0]:
+        return frame
+    return cv2.resize(frame, work, interpolation=cv2.INTER_AREA)
+
+
 class FrameFeatures:
-    """Blobs and the motion grid of each camera frame (spec 6.1), for the camera sources (wired in iteration 21).
+    """Blobs and the motion grid of each camera frame (spec 6.1), for the camera sources (pose_mediapipe; raw
+    replay).
 
-    update(frame_bgr, t) takes a BGR frame of any size (spec 6.1: the low-resolution stream, about 160 by 120) and
-    its capture time, and returns (blobs, motion): the light sources mirrored as mirror_keypoints mirrors keypoints
-    (x becomes 1 - x), tracked (BlobTracker), the still ones masked (StaticMask), largest first, at most MAX_BLOBS,
-    each placed against the calibration zone (place_blob sets in_zone); and the motion grid for size (width,
-    height): all False on the first frame (and after a change of frame size), empty (0, 0) on a shake, which
-    shakes counts."""
+    update(frame_bgr, t) takes a BGR frame of any size and its capture time. A frame wider than work[0] is first
+    shrunk to work (shrink: the Mac's 640x480 becomes 160x120, spec 6.1's low-resolution stream; find_blobs costs
+    about 10 ms at 640x480, 0.4 ms at 160x120; Q130); gray is then that working frame in grey, unflipped. It
+    returns (blobs, motion): the light sources, with mirror flipped as mirror_keypoints flips keypoints (x becomes
+    1 - x; without it the camera's x, as the keypoints keep it), those within a calibration.static_mask light's
+    radius (frame widths) dropped, tracked (BlobTracker), the still ones masked (StaticMask) while hide_still,
+    largest first, at most MAX_BLOBS, each placed against the calibration zone (place_blob sets in_zone); and the
+    motion grid for size (width, height), flipped with mirror: all False on the first frame (and after a change of
+    frame size), empty (0, 0) on a shake, which shakes counts.
 
-    def __init__(self, size: tuple[int, int] = (160, 120), calibration: Calibration | None = None):
+    hide_still is an attribute: calibrate turns it off on a running camera, because StaticMask hides a still lamp
+    after STATIC_SECONDS, before the calibration's clear step can record it."""
+
+    def __init__(self, size: tuple[int, int] = (160, 120), calibration: Calibration | None = None, *,
+                 mirror: bool = True, work: tuple[int, int] = WORK_SIZE, hide_still: bool = True):
         self.size = size
         self.calibration = calibration or Calibration()
+        self.mirror = mirror
+        self.work = work
+        self.hide_still = hide_still
         self.shakes = 0
         self.tracker = BlobTracker()
         self.mask = StaticMask()
-        self._prev: np.ndarray | None = None
+        self.gray: np.ndarray | None = None        # the last working frame in grey, unflipped (record --raw's)
 
     def update(self, frame_bgr: np.ndarray, t: float) -> tuple[tuple[Blob, ...], np.ndarray]:
+        frame_bgr = shrink(frame_bgr, self.work)
         h, w = frame_bgr.shape[:2]
+        aspect = w / h
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
-        if self._prev is None or self._prev.shape != gray.shape:
+        if self.gray is None or self.gray.shape != gray.shape:
             motion = np.zeros((self.size[1], self.size[0]), bool)
         else:
-            motion = motion_grid(self._prev, gray, self.calibration.zone, self.size)
+            motion = motion_grid(self.gray, gray, self.calibration.zone, self.size, mirror=self.mirror)
             if motion.size == 0:
                 self.shakes += 1
-        self._prev = gray
-        self.tracker.aspect = self.mask.aspect = w / h
+        self.gray = gray
+        self.tracker.aspect = self.mask.aspect = aspect
         found = find_blobs(frame_bgr, max_blobs=SCAN_BLOBS)    # MAX_BLOBS after the mask: lamps do not crowd out
-        mirrored = tuple(dataclasses.replace(b, x=1.0 - b.x) for b in found)
-        shown = self.mask.update(self.tracker.update(mirrored, t), t)[:MAX_BLOBS]
+        if self.mirror:
+            found = tuple(dataclasses.replace(b, x=1.0 - b.x) for b in found)
+        found = tuple(b for b in found if not self._static(b, aspect))
+        tracked = self.tracker.update(found, t)
+        shown = (self.mask.update(tracked, t) if self.hide_still else tracked)[:MAX_BLOBS]
         return tuple(place_blob(b, self.calibration) for b in shown), motion
+
+    def _static(self, blob: Blob, aspect: float) -> bool:
+        """blob lies within the radius of a light the calibration recorded (static_mask: x, y and a radius in
+        frame widths, in the zone's space), so it is scenery, dropped before the tracker (S1's open item 3)."""
+        return any(_fw(blob.x - x, blob.y - y, aspect) <= r for x, y, r in self.calibration.static_mask)

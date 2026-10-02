@@ -1,13 +1,15 @@
 """Blobs and motion from camera frames (core Task 15 as amended, spec 5 and 6.1, C11, C17): synthetic frames only."""
 import time
+import zlib
 
 import cv2
 import numpy as np
 import pytest
 
+import arcade.sources.blobs as blobs_module
 from arcade.calibration import Calibration
 from arcade.sensed import Blob
-from arcade.sources.blobs import (HALO_PX, MATCH_DIST, MAX_AREA, BlobTracker, FrameFeatures, find_blobs,
+from arcade.sources.blobs import (HALO_PX, MATCH_DIST, MAX_AREA, WORK_SIZE, BlobTracker, FrameFeatures, find_blobs,
                                   motion_grid)
 
 W, H = 160, 120              # the low-resolution stream (spec 6.1)
@@ -24,6 +26,16 @@ def light(frame, center, core=2, halo=RED, core_color=WHITE):
     core by more than the 3 px halo."""
     cv2.circle(frame, center, core + HALO_PX + 1, halo, -1)
     cv2.circle(frame, center, core, core_color, -1)
+    return frame
+
+
+def light_640(frame, center, core=2, halo=RED):
+    """light() as the Mac's 640x480 capture sees it: center and core in 160x120 pixels, drawn four times larger
+    around the 640x480 pixel that covers the same place (4 x + 1.5, rounded up)."""
+    x, y = center
+    big = (4 * x + 2, 4 * y + 2)
+    cv2.circle(frame, big, 4 * (core + HALO_PX + 1), halo, -1)
+    cv2.circle(frame, big, 4 * core, WHITE, -1)
     return frame
 
 
@@ -86,7 +98,7 @@ def test_a_non_finite_centroid_is_dropped(monkeypatch):
 
 def test_blob_ids_persist_and_velocities_follow():
     # 200 px wide, so 0.02 fw is 4 whole pixels. The disc moves left in the camera, so right on the mirrored wall.
-    ff = FrameFeatures()
+    ff = FrameFeatures(work=(200, 150))
     dt = 0.1
     seen = []
     for k in range(5):
@@ -205,6 +217,74 @@ def test_frame_features_first_frame_has_no_motion():
     assert len(blobs) == 1 and motion.any() and not motion[:, 8:].any() and ff.shakes == 0
 
 
+# ----- the camera sources' wiring (iteration 21, M5) -----
+
+def test_a_640x480_frame_is_shrunk_first(monkeypatch):
+    assert WORK_SIZE == (160, 120)
+    (small,), _ = FrameFeatures().update(light(dark_frame(), (120, 30)), 0.0)
+    real, seen = blobs_module.find_blobs, []
+
+    def spy(frame, *args, **kwargs):
+        seen.append(frame.shape)
+        return real(frame, *args, **kwargs)
+
+    monkeypatch.setattr(blobs_module, "find_blobs", spy)
+    blobs, motion = FrameFeatures().update(light_640(dark_frame(640, 480), (120, 30)), 0.0)
+    assert seen == [(120, 160, 3)]           # find_blobs costs 10 ms at 640x480, 0.4 ms at 160x120 (Q130)
+    assert len(blobs) == 1
+    assert blobs[0].x == pytest.approx(small.x, abs=1 / 160) and blobs[0].y == pytest.approx(small.y, abs=1 / 160)
+    assert motion.shape == (120, 160) and not motion.any()
+
+
+def test_mirror_off_keeps_camera_x_for_blobs_and_motion():
+    f = light(dark_frame(), (120, 30))       # camera x 0.75
+    g = f.copy()
+    g[60:120, 90:120] = 120                  # someone steps in right of the camera's centre (camera columns 90..120)
+    on, off = FrameFeatures((16, 12)), FrameFeatures((16, 12), mirror=False)
+    (b_on,), _ = on.update(f, 0.0)
+    (b_off,), _ = off.update(f, 0.0)
+    assert b_on.x == pytest.approx(1 - 120.5 / W, abs=0.01)
+    assert b_off.x == pytest.approx(120.5 / W, abs=0.01) and b_off.y == b_on.y
+    _, m_on = on.update(g, 0.1)
+    _, m_off = off.update(g, 0.1)
+    assert m_on.any() and not m_on[:, 8:].any()      # mirrored: the wall's left
+    assert m_off.any() and not m_off[:, :8].any()    # not mirrored: the camera's right stays right
+    a = np.full((H, W), 100, np.uint8)
+    c = a.copy()
+    c[40:50, 40:50] = 150                    # as test_motion_zone_crop_maps_to_wall_cell: unflipped, the first cell
+    zone = (0.25, 0.25, 0.75, 0.75)
+    assert np.argwhere(motion_grid(a, c, zone, (8, 4), mirror=False)).tolist() == [[0, 0]]
+    assert np.argwhere(motion_grid(a, c, zone, (8, 4))).tolist() == [[0, 7]]
+
+
+def test_a_blob_in_the_static_mask_is_dropped():
+    f = dark_frame()
+    light(f, (120, 30))                      # a lamp the calibration saw: mirrored x 0.25, y 0.25
+    light(f, (40, 90))                       # a light someone carries: mirrored x 0.75, y 0.75
+    lamp, carried = sorted(FrameFeatures().update(f, 0.0)[0], key=lambda b: b.x)
+    # The radius is in frame widths (_fw): 0.048 frame heights below the lamp is 0.036 fw, within a 0.04 radius;
+    # 0.06 heights is 0.045 fw, outside it.
+    for dy in (0.0, 0.048):
+        cal = Calibration(static_mask=((lamp.x, lamp.y + dy, 0.04),))
+        (blob,) = FrameFeatures(calibration=cal).update(f, 0.0)[0]
+        assert blob.x == carried.x and blob.id == 1, dy   # dropped before the tracker: the lamp took no id
+    cal = Calibration(static_mask=((lamp.x, lamp.y + 0.06, 0.04),))
+    assert sorted(b.x for b in FrameFeatures(calibration=cal).update(f, 0.0)[0]) == [lamp.x, carried.x]
+
+
+def test_hide_still_off_keeps_a_still_lamp():
+    # StaticMask hides a still lamp after 5 s; calibrate's clear step (10 s) must see it to record it, so it turns
+    # hide_still off on the running camera's features.
+    keyword, attribute, default = FrameFeatures(hide_still=False), FrameFeatures(), FrameFeatures()
+    assert default.hide_still is True
+    attribute.hide_still = False
+    f = light(dark_frame(), (80, 60))
+    for i in range(121):                     # still for 12 s at 10 fps
+        t = i / 10
+        assert len(keyword.update(f, t)[0]) == 1 and len(attribute.update(f, t)[0]) == 1, t
+        assert len(default.update(f, t)[0]) == (1 if i < 50 else 0), t
+
+
 # ----- cost -----
 
 @pytest.mark.perf
@@ -231,4 +311,31 @@ def test_features_under_3ms_at_160x120():
     assert len(blobs) == 6 and motion.shape == (120, 160) and motion.any() and ff.shakes == 0
     mean = sum(spent) / len(spent)
     print(f"FrameFeatures.update at 160x120: mean {mean * 1e3:.3f} ms, max {max(spent) * 1e3:.3f} ms")
+    assert mean < 0.003
+
+
+@pytest.mark.perf
+def test_features_under_3ms_at_640x480_input():
+    # The Mac's capture (pose_mediapipe.CAPTURE_SIZE): the same scene drawn at 640x480, shrunk to WORK_SIZE first.
+    # Cores of 2 to 4 px at 160x120: a 1 px core (4 px at 640) is under MIN_AREA once shrunk (S1's Q1).
+    rng = np.random.default_rng(zlib.crc32(b"features at 640x480"))
+    base = cv2.blur(rng.integers(20, 180, (480, 640, 3), dtype=np.uint8), (5, 5))
+    frames = []
+    for i in range(10):
+        f = base.copy()
+        f[120:440, 80 + 24 * i:240 + 24 * i] = 150
+        for k in range(6):
+            light_640(f, (12 + 26 * k, 14 + i), core=2 + k % 3, halo=((0, 0, 200), (0, 180, 0), (200, 60, 0))[k % 3])
+        frames.append(f)
+    order = list(range(10)) + list(range(8, 0, -1))   # back and forth, 6 px a capture at 160x120: never a shake
+    ff = FrameFeatures()
+    ff.update(frames[0], 0.0)
+    spent = []
+    for n in range(1, 51):
+        start = time.thread_time()
+        blobs, motion = ff.update(frames[order[n % len(order)]], n / 10)
+        spent.append(time.thread_time() - start)
+    assert len(blobs) == 6 and motion.shape == (120, 160) and motion.any() and ff.shakes == 0
+    mean = sum(spent) / len(spent)
+    print(f"FrameFeatures.update at 640x480 input: mean {mean * 1e3:.3f} ms, max {max(spent) * 1e3:.3f} ms")
     assert mean < 0.003

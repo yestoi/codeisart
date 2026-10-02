@@ -2,19 +2,23 @@
 import threading
 from types import SimpleNamespace
 
+import cv2
 import numpy as np
 import pytest
 
 from arcade.config import ArcadeConfig
 from arcade.main import MODEL_PATH
-from arcade.runner import _camera_result
+from arcade.runner import _camera_result, _provides
 from arcade.calibration import Calibration
 from arcade.poses import POSES
-from arcade.sensed import (LEFT_HIP, LEFT_SHOULDER, LEFT_WRIST, MIN_CONF, NOSE, RIGHT_ANKLE, RIGHT_HIP,
-                           RIGHT_SHOULDER, RIGHT_WRIST, Keypoint)
+from arcade.sensed import (CAMERA_INPUTS, LEFT_HIP, LEFT_SHOULDER, LEFT_WRIST, MIN_CONF, NOSE, RIGHT_ANKLE,
+                           RIGHT_HIP, RIGHT_SHOULDER, RIGHT_WRIST, Keypoint)
 from arcade.sources.actors import make_keypoints
+from arcade.sources.blobs import WORK_SIZE, FrameFeatures
+from arcade.sources.mirror import mirror_keypoints
 import arcade.sources.pose_mediapipe as pm
 from arcade.sources.pose_mediapipe import MP_TO_COCO, MediaPipeCamera, box_of, landmarks_to_keypoints
+from arcade.sources.scenario import FRAME_SHAPE, RawRecord, encode_raw
 
 
 def fake_landmarks():
@@ -40,9 +44,9 @@ def person_landmarks(right_hand_up=False):
 
 
 class FakeCapture:
-    def __init__(self, clock=None, dt=0.0, frames=None):
+    def __init__(self, clock=None, dt=0.0, frames=None, make=None):
         self.clock, self.dt, self.reads, self.released = clock, dt, 0, False
-        self.frames = frames
+        self.frames, self.make = frames, make
 
     def read(self):
         self.reads += 1
@@ -50,6 +54,8 @@ class FakeCapture:
             self.clock.t += self.dt
         if self.frames is not None and self.reads > self.frames:
             return False, None
+        if self.make is not None:
+            return True, self.make(self.reads)
         frame = np.zeros((48, 64, 3), np.uint8)
         frame[..., 0] = 200                               # OpenCV's BGR: blue
         return True, frame
@@ -79,12 +85,22 @@ class FakeClock:
         return self.t
 
 
-def camera(people=(), clock=None, dt=0.1, mirror=True, fps=10, frames=None, **kw):
+def camera(people=(), clock=None, dt=0.1, mirror=True, fps=10, frames=None, make=None, **kw):
     clock = clock or FakeClock()
     cfg = ArcadeConfig(camera_fps=fps, mirror=mirror, camera="mediapipe")
-    cap, lmk = FakeCapture(clock, dt, frames), FakeLandmarker(people)
+    cap, lmk = FakeCapture(clock, dt, frames, make), FakeLandmarker(people)
     cam = MediaPipeCamera(cfg, cfg.size, clock=clock, capture=cap, landmarker=lmk, start=False, **kw)
     return cam, cap, lmk, clock
+
+
+def moving_light(reads):
+    """The Mac's 640x480 BGR capture of a dark room and a red light that moves 8 px left in the camera a read (2 px
+    in the 160x120 working frame: right on the mirrored wall)."""
+    frame = np.full((480, 640, 3), 30, np.uint8)
+    center = (400 - 8 * reads, 240)
+    cv2.circle(frame, center, 24, (0, 0, 200), -1)
+    cv2.circle(frame, center, 8, (255, 255, 255), -1)
+    return frame
 
 
 def test_landmark_mapping():
@@ -146,7 +162,7 @@ def test_latest_has_no_blobs_and_no_motion():
     cam, *_ = camera([person_landmarks()])
     cam.poll()
     capture_t, bodies, blobs, motion = cam.latest()
-    assert len(bodies) == 1 and blobs == () and motion is None
+    assert len(bodies) == 1 and blobs == () and motion.shape == (64, 128) and not motion.any()
 
 
 def test_inference_paced_to_camera_fps():
@@ -295,6 +311,70 @@ def test_step_gives_one_body_for_a_doubled_pose():
         assert len(bodies) == 1
         ids.add(bodies[0].id)
     assert len(ids) == 1
+
+
+# ----- blobs and motion (M5's wiring, iteration 21) -----
+
+def test_step_returns_blobs_and_motion():
+    cam, *_ = camera([person_landmarks()], make=moving_light)     # 0.1 s a read at 10 fps: every capture is due
+    _, _, first, motion = cam.step()
+    assert len(first) == 1 and motion.shape == (64, 128) and not motion.any()
+    _, bodies, (blob,), motion = cam.step()
+    assert len(bodies) == 1
+    assert blob.id == first[0].id == 1 and blob.vx > 0.0          # moving right on the mirrored wall
+    assert blob.x < 0.5 and blob.color[0] > 200                   # camera x 0.6, mirrored as the keypoints
+    assert motion.shape == (64, 128) and motion.any() and motion.mean() < 0.1
+
+
+def test_features_use_the_wall_grid_and_the_sources_calibration():
+    cal = Calibration(zone=(0.1, 0.2, 0.9, 0.8))
+    cam, *_ = camera(calibration=cal)
+    f = cam.features
+    assert isinstance(f, FrameFeatures) and f.size == cam.size == (128, 64) and f.work == WORK_SIZE
+    assert f.calibration is cal and cam.tracker.calibration is cal
+    assert f.mirror is True and f.hide_still is True
+    off, *_ = camera(mirror=False)
+    assert off.features.mirror is False and off.features.calibration == Calibration()
+
+
+def test_mediapipe_provides_every_camera_input():
+    cam, *_ = camera()
+    assert MediaPipeCamera.provides == CAMERA_INPUTS
+    assert _provides(cam) == CAMERA_INPUTS                         # the runner's reading (C35)
+
+
+def test_tap_gets_one_raw_record_per_due_capture():
+    one = person_landmarks(right_hand_up=True)
+    two = [SimpleNamespace(x=lm.x + 0.01, y=lm.y, visibility=lm.visibility) for lm in one]   # the model's double
+    cam, cap, lmk, _ = camera([one, two], dt=1 / 30, fps=10, make=moving_light)   # one read in three is due
+    assert cam.tap is None
+    got = []
+    cam.tap = lambda record: got.append((cap.reads, record))
+    due = []
+    for _ in range(12):
+        before = len(got)
+        result = cam.step()
+        assert len(got) - before == (result is not None)         # none on a skipped frame
+        if result is not None:
+            due.append(result)
+    assert 3 <= len(due) < 12 and len(got) == len(due) == len(lmk.calls)
+    raw = mirror_keypoints(landmarks_to_keypoints(one))
+    for (reads, record), (capture_t, *_) in zip(got, due):
+        assert isinstance(record, RawRecord) and record.t == capture_t and record.samples.size == 0
+        assert record.detections == ((box_of(raw), raw),)          # merged, mirrored, before the tracker
+        shrunk = cv2.resize(moving_light(reads), WORK_SIZE, interpolation=cv2.INTER_AREA)
+        assert record.frame.shape == FRAME_SHAPE and record.frame.dtype == np.uint8
+        assert np.array_equal(record.frame, cv2.cvtColor(shrunk, cv2.COLOR_BGR2GRAY))   # grey and unflipped
+        encode_raw(record)                                         # record --raw's writer takes it
+    cam.tap = None
+    steps = [cam.step() for _ in range(6)]
+    assert any(r is not None for r in steps) and len(got) == len(due)   # none without a tap
+    small, *_ = camera()                                           # the fake's 64x48 frame: still FRAME_SHAPE
+    records = []
+    small.tap = records.append
+    small.step()
+    assert len(records) == 1 and records[0].frame.shape == FRAME_SHAPE
+    encode_raw(records[0])
 
 
 def test_real_landmarker_runs_on_a_blank_frame():
