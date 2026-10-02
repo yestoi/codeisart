@@ -132,3 +132,13 @@ def test_the_shipped_arcade_configs_are_in_the_gamma_bound():
     root = Path(__file__).resolve().parents[2]
     for name in ("arcade.toml", "arcade.mac.toml"):
         assert 1.0 <= load_config(root / name).gamma <= 2.2, name
+
+
+def test_capture_defaults_to_opencv_and_takes_picamera2(tmp_path):
+    assert ArcadeConfig().capture == "opencv"
+    assert load_config(write(tmp_path, 'capture = "picamera2"')).capture == "picamera2"
+
+
+def test_capture_rejects_another_value(tmp_path):
+    with pytest.raises(ValueError, match="capture"):
+        load_config(write(tmp_path, 'capture = "webcam"'))

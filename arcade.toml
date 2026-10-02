@@ -10,6 +10,7 @@ ddp_port = 4048
 camera = "mediapipe"     # mediapipe | imx500 | replay | none
 camera_index = 0
 camera_fps = 10
+capture = "opencv"       # opencv | picamera2 (the Pi's ribbon cameras): the mediapipe camera's frames
 audio = "sounddevice"    # sounddevice | replay | none
 audio_device = ""        # input device matched by name; empty means default
 scenario = ""            # scenario file for the replay sources

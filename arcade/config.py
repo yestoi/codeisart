@@ -10,6 +10,7 @@ from pathlib import Path
 
 BACKENDS = ("sdl", "fake", "colorlight", "ddp")
 CAMERAS = ("mediapipe", "imx500", "replay", "none")
+CAPTURES = ("opencv", "picamera2")   # where the mediapipe camera's frames come from
 AUDIOS = ("sounddevice", "replay", "none")
 LOOKS = ("plain", "led", "distance")
 DISTANCE_MIN_SCALE = 4   # below this the distance look's eye blur rounds away (look.distance_sigma)
@@ -28,6 +29,7 @@ class ArcadeConfig:
     camera: str = "mediapipe"
     camera_index: int = 0
     camera_fps: int = 10
+    capture: str = "opencv"
     audio: str = "sounddevice"
     audio_device: str = ""
     scenario: str = ""
@@ -89,7 +91,8 @@ def load_config(path: Path | str) -> ArcadeConfig:
     if unknown:
         raise ValueError(f"unknown config keys: {unknown}")
     cfg = ArcadeConfig(**{k: _coerce(k, v, getattr(defaults, k)) for k, v in raw.items()})
-    for name, allowed in (("backend", BACKENDS), ("camera", CAMERAS), ("audio", AUDIOS), ("look", LOOKS)):
+    for name, allowed in (("backend", BACKENDS), ("camera", CAMERAS), ("capture", CAPTURES), ("audio", AUDIOS),
+                          ("look", LOOKS)):
         if getattr(cfg, name) not in allowed:
             raise ValueError(f"{name} must be one of {allowed}, got {getattr(cfg, name)!r}")
     for name in ("night_start", "night_end"):
