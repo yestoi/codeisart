@@ -1158,3 +1158,143 @@ default: probes only, as planned
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q161: How many worker processes does the suite's pool use once the soaks are pool jobs?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: 4, as Q97, with `ARCADE_POOL_WORKERS=1` for implementers (no worker process). The main process and 4 workers is today's count; the soaks only move between them (the memory rule)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q162: What is the pool's deadline once the soaks and two more games are in it?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: `WORKER_TIMEOUT_S` 180 to 270 s, the pool's elapsed flagged over 230 s. The pool grows to about 206 s; a hung worker is killed after 4.5 minutes, not 3
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q163: What does Paint need from the sources?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: `needs = {"pose", "blobs"}` (the spec says "blobs, wrist"): the wrist fallback needs a body
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q164: When does a wrist paint?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: when no light is seen and the cursor's v is under 0.8 (`PEN_V`), across the zone x plus half an arm span (`ARM_SPAN = 0.5`): a resting arm lifts the brush
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q165: How do Paint's strokes fade?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: linearly to 56 % (`FADE_FLOOR`) over 20 s, then off in one step: the spec's 20 s, kept above the dim floor of 140
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q166: How wide is Paint's brush?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: 2 or 3 px, drawn once per game by the rng
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q167: How many players does Paint seat, and does both hands up end it?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: `players = 2`, `exit_gesture = False` (the spec says "any"): two seats have colours, and both hands up is a painting pose
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q168: How does Paint treat a light's colour and a light that loses its id?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: the colour is clamped and saturated (white under saturation 0.25); an untracked light paints dots only; a new id within 12 px of a stroke lost under 0.3 s ago continues it
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q169: When is Paint won, and how does it end?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: at the gallery with at least 20 % of the paper painted (the bots need a measurable win); the gallery is a 1 px white frame for 5 s after 60 s of painting
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q170: How does Tug's knot move?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: the pull is the left half's lit share minus the right's, dead under 0.02; the knot moves 0.25 x pull a second
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q171: Where is Tug's goal, and what happens at the cap?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: the goal is drawn per game from 0.6 to 1.0; at the 60 s cap a lean of 0.1 or more wins, else a draw
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q172: What words and colours does Tug show?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: "WAVE!", "LEFT WINS", "RIGHT WINS", "DRAW" at 2x; the halves in `PLAYER_COLORS` (amber left, blue right)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q173: How long may Tug run with nobody the pose model can see?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: `abandon_seconds = 70`, `exit_gesture = False`, `players = 1`: motion is no presence evidence, so a 67 s round must outlast a room the pose model cannot see (a 3 s margin)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q174: How long does Tug's echo hold a moving cell?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: 0.5 s: a cell turns on and off at most once per half second, under the flash rule by construction
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q175: Where does Jump's result number go when the figure would cover it?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: right of the figure's rect, its x fixed on `result`'s first tick (with C57, only if no feel band moves)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q176: Are a blob's `zone_x` and `zone_y` part of its equality?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: no (`compare=False`): they follow from x, y and the calibration; scenario round trips stay as they are
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q177: May the suite run the safe test files first, while the pool's workers play?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: yes: a stable partition after `-k` and `-m`, with a guard test that those files start no process and read no clock; it is what buys the time
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q178: What kind of game are Paint and Tug?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: both `kind = "toy"` with no score drawn: toy budgets have no fidelity, win or score bands, and the bots are still ranked
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q179: Jump's bell flash lights rows 60 to 63 for 0.15 s (`fx.flash` over the whole frame, `arcade/juice.py:234-237`), and Jump's rows test draws without `fx.render`: is that changed now?
+asked: iteration 22's plan writer (evidence/it22/plan-writer-report.md), 2026-10-02
+default: not in iteration 22 (an engine file outside the slice; Copy Me, Quick Draw and Swat flash the same way); a later engine task can confine the flash to rows 0 to h - 5
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q180: Does the loop go on after iteration 22's plan is written?
+asked: not asked by the loop; the owner wrote it into the operator's session on 2026-10-02 at 09:38 CDT, while iteration 22's plan writer was finishing (about an hour after his report that the Mac was out of memory)
+default: none taken; the owner said it
+deadline: none
+answer: "Lets stop after the plan write. Do not do the review." The loop commits iteration 22's plan and the writer's report, spawns no plan reviewer and no orchestrator, writes gate.md and stops. The plan is NOT reviewed: when the owner starts the loop again, the adversarial plan review (config.md, the run of Q101) comes before the orchestrator
+status: answered (owner, 2026-10-02)
