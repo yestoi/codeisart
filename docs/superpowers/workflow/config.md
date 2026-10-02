@@ -50,6 +50,19 @@ not read this file by themselves.
    Where the core plan already has a body for a task, the iteration plan names its lines and lists what
    the amendments and the roadmap's notes change. It does not copy the body, and the implementer treats the
    core plan's code as a draft to test, not as text to paste.
+   **The writer's context** (added 2026-10-02, after iteration 22). It22's writer took 64 minutes: it read
+   480,000 characters of whole files in five minutes, its context was compacted three times, and after each
+   compaction it read the same files again (the diagnosis is
+   `~/.superpowers/diagnosing-superpowers/3d4c1cbf-546d-4e23-a6ab-f6f8456f0239/report.md`). A writer starts at
+   about 40,000 tokens, every character a tool returns adds about half a token, a plan costs it 60,000 to
+   80,000 tokens of its own writing and thinking, and the context is compacted near 268,000. So:
+   - the operator's brief is the Plan writer prompt under "Prompts", filled in. It names line ranges and
+     symbols, not whole files, and it carries the numbers and line numbers the operator already has;
+   - the writer reads at most 200,000 characters in all, keeps what it finds in a notes file, and writes the
+     plan section by section while it reads, so that a compaction leaves nothing it must read twice;
+   - a slice whose brief cannot name its reading inside 150,000 characters is too big for one plan: the
+     operator cuts the slice (rule 10) and the tail goes to the next iteration;
+   - the 30 minutes are enforced by rule 7's stop, not by a message.
 2. **Implementers write the code.** Each implementer works test-first (superpowers:test-driven-development)
    from the plan's interfaces and acceptance tests, runs the test command, and commits. Use `model: opus` for
    engine, safety, lobby and source tasks, `model: sonnet` for games and tools. The plan writer is one agent,
@@ -98,6 +111,12 @@ not read this file by themselves.
    files). If it is working, rewrite `state.md` with the time of the check and start another wake-up. If it
    is gone, set `in_flight` to none and redo its work from the files. No agent runs a single command that
    takes over 10 minutes: no mutation runs, no long soaks.
+   A message does not stop a run (added 2026-10-02): SendMessage reaches a working agent only when its turn
+   ends. It22's two "write the plan now" messages, sent at minutes 28 and 41, were delivered at minute 63,
+   after the writer's final message. To stop an agent that is over its time, call TaskStop with its name,
+   then go on from its files. For a plan writer, at the first check past 30 minutes: if the plan file holds
+   every task's section, give it one more wake-up to finish its checks; if not, TaskStop it, commit the
+   plan as it stands with the notes file's open points listed under "Not checked", and move on (rule 1).
 8. **Owner questions never block.** Write the block in `decisions.md`, take the default at once, mark it
    `defaulted`, and list it at the next check-in. The loop writes `gate.md` only for: a destructive or
    irreversible action, a change to the roadmap's scope or end goal, or the iteration cap. A step that only
@@ -129,6 +148,66 @@ not read this file by themselves.
 
 ## Prompts
 These replace the skill's Orchestrator Prompt and Reviewer Prompt. Fill the angle brackets.
+The plan writer's brief is the Plan writer prompt, filled in (the skill has none; added 2026-10-02, rule 1).
+
+Plan writer (step 2, `model: opus`):
+```
+You are the plan writer for iteration <N> of the wall arcade (repository /Users/trey/dev/codeisart, branch
+main, HEAD <sha>). You write three files: the plan <plan-path>, your notes
+docs/superpowers/workflow/evidence/it<N>/plan-notes.md and your report
+docs/superpowers/workflow/evidence/it<N>/plan-writer-report.md (make the folder). You write no code, commit
+nothing, do not run the full suite, never use `cd`, never touch the Pi, never fetch, never push.
+
+## Your context is the scarce thing
+Your context is compacted near 268,000 tokens. A compaction costs two minutes and most of what you read,
+and every character a tool returns costs about half a token. You have 30 minutes and 200,000 characters of
+reading in all. Run `date` now and write the time at the top of the notes file.
+- Before you read a file, run `wc -lc` on it. Never Read a whole file over 150 lines: get its outline with
+  `graft skeleton <file>` or `grep -n`, then Read the ranges you need with offset and limit, at most 150
+  lines a call. To find where something is, use `graft ask "<what>" --source` or `graft grep "<literal>"`.
+- roadmap.md, journal.md, decisions.md, config.md and the spec are never read whole: `grep -n` for the
+  items this brief names, then `sed -n 'A,Bp' <file> | cut -c1-600`.
+- The form of a plan is lines 1 to 60 of <the last plan's path> and one task section of the kind you are
+  writing. Read no other earlier plan.
+- After each file or area, append to the notes file what you found, as facts with file:line (signatures,
+  constants, test names, the asserts the slice changes, numbers), and the characters read so far. The notes
+  are your memory: a decision goes into them the moment you take it.
+- By minute 10, Write the plan's skeleton: the header, the decisions so far, the task list with each
+  task's files, model and lane. Then fill one task section at a time with Edit, each as soon as its files
+  are read. Do not hold the plan in your head until the end.
+- If you see a summary of an earlier conversation, you were compacted: read your notes file and your plan
+  file, and nothing else a second time. A source the notes cover is not read again.
+- At minute 20 (`date`), stop reading. Finish the sections from the notes, run the checks below and write
+  the report. What you could not check goes into the report under "Not checked", for the reviewer.
+- Messages from the operator do not reach you while you work. Nobody will remind you of the time.
+
+## The slice
+<the parts in order; for each: the requirement and where it is stated (file and line range), the files it
+owns, and the facts the operator already has (numbers, line numbers, names)>
+
+## Read
+<one line each: a file with a line range or a symbol, and why. The operator sums the ranges with `wc -c`
+and keeps the list under 150,000 characters; the rest of the budget is for what the writer finds it needs>
+
+## The plan's rules
+<what a plan holds and its limits (rule 1: under 300 lines, no line over 118 characters, no bodies); the
+lanes and the shared files (rule 6); the batches and the memory rule in force; the model of each task
+(rule 2); for a game, the per-game checklist; every changed or removed assert named with file:line; the
+cut order; the safety files that must not change (rule 4)>
+
+## Checks before you finish (one command each, output cut)
+- `wc -l` is under 300 and no line is over 118 characters;
+- every test name the plan says exists is found by one grep loop over the names;
+- every file:line the plan cites is printed with `sed -n` and says what the plan says;
+- no file is under two tasks.
+
+## Owner questions
+Questions never block. Each is numbered from Q<n> in the report, with the default you took and one line of
+why. Do not edit decisions.md.
+
+Your final message: the plan's path and line count, the tasks in one line each, the questions' numbers, the
+characters you read and the minutes you took.
+```
 
 Orchestrator (step 3, `model: opus`):
 ```
