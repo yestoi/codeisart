@@ -5,9 +5,10 @@ from arcade.calibration import Calibration
 from arcade.games import all_games
 from arcade.headless import NullLobby
 from arcade.runner import Runner
-from arcade.sources import SCRIPTS, NoSource, make_sources
+from arcade.sensed import CAMERA_INPUTS
+from arcade.sources import SCRIPTS, NoSource, ScenarioWriter, make_header, make_sources
 from arcade.sources.actors import Person, scene
-from arcade.sources.scripted import ScriptedCamera
+from arcade.sources.scripted import SCRIPT_INPUTS, ScriptedCamera
 from show.display.fake import FakeDisplay
 from tests.arcade.helpers import FakeClock, make_cfg
 
@@ -26,6 +27,59 @@ def test_make_sources_none_and_scripted():
     assert capture_t == clock.now and blobs == ()
     with pytest.raises(ValueError, match="walkup"):
         make_sources(make_cfg((128, 32)), (128, 32), clock, script="nosuch")
+
+
+def _stand_file(path, ticks=3):
+    with ScenarioWriter(path, make_header("sensed", fps=30)) as writer:
+        for sensed in scene(persons=[Person(0.5, id=3)], ticks=ticks):
+            writer.write(sensed)
+    return path
+
+
+def test_make_sources_replay_from_the_flag_and_the_config(tmp_path, monkeypatch):
+    import arcade.sources
+    from arcade.calibration import save_calibration
+    from arcade.sources.replay import ReplayAudio, ReplayCamera
+
+    path, clock, cal = _stand_file(tmp_path / "stand.jsonl.gz"), FakeClock(), Calibration(zone=(0.1, 0.1, 0.9, 0.9))
+    cam, aud = make_sources(make_cfg((128, 64)), (128, 64), clock, replay=path, calibration=cal)
+    assert isinstance(cam, ReplayCamera) and isinstance(aud, ReplayAudio)
+    capture_t, bodies, blobs, motion = cam.latest()
+    assert capture_t == clock.now and [b.id for b in bodies] == [3]
+
+    seen = []
+    monkeypatch.setattr(arcade.sources, "open_replay", lambda *a: seen.append(a) or ("camera", "audio"))
+    assert make_sources(make_cfg((128, 64)), (128, 64), clock, replay=path, calibration=cal) == ("camera", "audio")
+    assert seen[-1] == (path, cal, clock)
+    # the config: camera "replay" plays cfg.scenario, placed against the saved calibration; a script still wins
+    saved = Calibration(zone=(0.2, 0.2, 0.8, 0.8), calibrated=True)
+    save_calibration(tmp_path, saved)
+    cfg = make_cfg((128, 64), camera="replay", scenario=str(path), data_dir=tmp_path)
+    assert make_sources(cfg, (128, 64), clock) == ("camera", "audio")
+    assert seen[-1] == (str(path), saved, clock)
+    assert isinstance(make_sources(cfg, (128, 64), clock, script="walkup")[0], ScriptedCamera) and len(seen) == 2
+    with pytest.raises(ValueError, match="scenario"):
+        make_sources(make_cfg((128, 64), camera="replay"), (128, 64), clock)
+    with pytest.raises(ValueError, match="script"):
+        make_sources(make_cfg((128, 64)), (128, 64), clock, script="walkup", replay=path)
+    assert len(seen) == 2
+
+
+class StatusLobby(NullLobby):
+    def set_status(self, camera_ok, mic_ok, inputs, calibrated):
+        self.status = (camera_ok, mic_ok, inputs, calibrated)
+
+
+def test_walkup_provides_pose_only(font5x7):
+    # walkup holds no light: its camera claims pose alone, so the lobby offers no blob game on it (C35)
+    clock = FakeClock()
+    cam, aud = make_sources(make_cfg((128, 64)), (128, 64), clock, script="walkup")
+    assert SCRIPT_INPUTS == {"walkup": frozenset({"pose"})} and cam.provides == frozenset({"pose"})
+    assert ScriptedCamera(iter(()), clock).provides == CAMERA_INPUTS     # a scripted camera claims every input
+    lobby = StatusLobby()
+    runner = Runner(make_cfg((128, 64)), FakeDisplay(), font5x7, lobby, [], clock=clock, sleep=clock.sleep)
+    runner.sense(cam, aud)
+    assert lobby.status[:3] == (True, False, {"pose"})
 
 
 def test_make_sources_mediapipe_gets_the_config_clock_and_calibration(monkeypatch):

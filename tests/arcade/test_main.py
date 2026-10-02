@@ -5,6 +5,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 import arcade.main
 from arcade.attract.lobby import Lobby
 from arcade.calibration import Calibration
@@ -110,6 +112,93 @@ def test_run_opens_a_128x64_wall_by_default(monkeypatch, caplog):
     assert sizes == [(128, 64)]
     started = [r.getMessage() for r in caplog.records if r.name == "arcade.main" and r.levelno == logging.INFO]
     assert started == ["wall 128x64, backend sdl"], started
+
+
+def test_main_dispatches_the_new_commands(tmp_path, monkeypatch):
+    # calibrate, record and stats live in their own modules, imported only when their command runs.
+    import arcade.calibrate
+    import arcade.sources.record
+    import arcade.stats
+
+    seen = []
+    for module in (arcade.calibrate, arcade.sources.record, arcade.stats):
+        monkeypatch.setattr(module, "main", lambda args, name=module.__name__: seen.append((name, args)) or 0)
+    config, out, sessions = str(_toml(tmp_path)), str(tmp_path / "door.jsonl.gz"), str(tmp_path / "s.jsonl")
+    assert main(["calibrate", "--config", config]) == 0
+    assert main(["record", "--config", config, "--script", "door-point", "--i-have-consent", "--raw",
+                 "--with-motion", "--out", out]) == 0
+    assert main(["stats", "--config", config, "--sessions", sessions]) == 0
+    assert [name for name, _ in seen] == ["arcade.calibrate", "arcade.sources.record", "arcade.stats"]
+    cal, rec, stats = (args for _, args in seen)
+    assert (cal.command, cal.config) == ("calibrate", config)
+    assert (rec.command, rec.config, rec.script, rec.i_have_consent, rec.raw, rec.with_motion, rec.out) == (
+        "record", config, "door-point", True, True, True, out)
+    assert (stats.command, stats.config, stats.sessions) == ("stats", config, sessions)
+
+    seen.clear()
+    assert main(["record", "--script", "empty-room"]) == 0 and main(["stats"]) == 0
+    rec, stats = (args for _, args in seen)
+    assert (rec.config, rec.i_have_consent, rec.raw, rec.with_motion, rec.out) == ("arcade.toml", False, False,
+                                                                                   False, None)
+    assert (stats.config, stats.sessions) == ("arcade.toml", None)
+    with pytest.raises(SystemExit):
+        main(["record", "--script", "no-such-script", "--i-have-consent"])
+
+
+def _actors_file(path: Path, inputs=None) -> Path:
+    from arcade.sources.actors import Person, scene
+    from arcade.sources.scenario import ScenarioWriter, make_header
+
+    with ScenarioWriter(path, make_header("sensed", fps=30, inputs=inputs)) as writer:
+        for sensed in scene(persons=[Person(0.5, id=4)], ticks=30):
+            writer.write(sensed)
+    return path
+
+
+def test_run_replay_plays_a_scenario_file(tmp_path, monkeypatch):
+    from arcade.runner import Runner
+    from arcade.sources.replay import ReplayCamera
+
+    path = _actors_file(tmp_path / "stand.jsonl.gz", inputs={"pose"})
+    looped, real_loop = [], Runner.loop
+
+    def spy_loop(self, camera, audio, max_ticks=None, until=None):
+        looped.append((camera, max_ticks))
+        return real_loop(self, camera, audio, max_ticks=max_ticks, until=until)
+
+    monkeypatch.setattr(Runner, "loop", spy_loop)
+    config = str(_toml(tmp_path))
+    assert main(["run", "--config", config, "--replay", str(path), "--seconds", "0.2"]) == 0
+    (camera, max_ticks), = looped
+    assert isinstance(camera, ReplayCamera) and camera.provides == frozenset({"pose"}) and max_ticks == 6
+    with pytest.raises(SystemExit):                        # a script and a replay are exclusive
+        main(["run", "--config", config, "--replay", str(path), "--script", "walkup"])
+
+
+def test_run_require_exits_nonzero_without_camera(tmp_path, monkeypatch, capsys):
+    built, opened = [], []
+
+    class SpyRunner:
+        def __init__(self, *args, **kw):
+            built.append(kw)
+
+        def loop(self, camera, audio, max_ticks=None):
+            pass
+
+    real_make_sources = arcade.main.make_sources
+    monkeypatch.setattr(arcade.main, "make_sources", lambda *a, **kw: opened.append(a) or real_make_sources(*a, **kw))
+    monkeypatch.setattr(arcade.main, "Runner", SpyRunner)
+    monkeypatch.setattr(arcade.main, "probe_camera", lambda timeout, index=0: (False, f"device {index}: no frames"))
+    config = str(_toml(tmp_path))
+    assert main(["run", "--config", config, "--script", "walkup", "--require", "camera"]) == 1
+    assert built == [] and opened == []                   # the doctor runs first: no source opened, no runner
+    assert "camera  UNAVAILABLE  device 0: no frames" in capsys.readouterr().out
+
+    monkeypatch.setattr(arcade.main, "probe_camera", lambda timeout, index=0: (True, f"device {index}: 640x480"))
+    assert main(["run", "--config", config, "--script", "walkup", "--require", "camera", "--seconds", "0"]) == 0
+    assert len(built) == 1 and len(opened) == 1
+    assert main(["run", "--config", config, "--script", "walkup", "--seconds", "0"]) == 0   # no --require: no doctor
+    assert len(built) == 2
 
 
 def test_run_seconds_exits_zero_under_dummy_sdl(tmp_path):

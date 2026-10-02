@@ -1,4 +1,5 @@
-"""Arcade command line: `run` (the default) and `doctor`. M5 adds calibrate, record and stats."""
+"""Arcade command line: `run` (the default), `doctor`, `calibrate`, `record` and `stats` (the last three in their
+own modules, imported only when their command runs)."""
 from __future__ import annotations
 
 import argparse
@@ -23,7 +24,7 @@ from show.display import Display, make_display
 from show.display.colorlight import stats_line
 from show.font import Font
 
-COMMANDS = ("run", "doctor")
+COMMANDS = ("run", "doctor", "calibrate", "record", "stats")
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "pose_landmarker_lite.task"
 TIMEOUT = 5.0
 Probe = Callable[[float], tuple[bool, str]]
@@ -132,6 +133,17 @@ def doctor(require: list[str], probes: dict[str, Probe], timeout: float = TIMEOU
     return 1 if failed else 0
 
 
+def make_probes(camera_index: int = 0, audio_device: str = "", model: Path = MODEL_PATH) -> dict[str, Probe]:
+    """The doctor's probes by name. The probe functions are looked up when a probe runs."""
+    return {"camera": lambda t: probe_camera(t, camera_index),
+            "mic": lambda t: probe_mic(t, audio_device),
+            "pose": lambda t: probe_pose(t, Path(model))}
+
+
+def _names(text: str) -> list[str]:
+    return [n.strip() for n in text.split(",") if n.strip()]
+
+
 def build_display(cfg: ArcadeConfig) -> Display:
     """sdl: a window of the wall at sdl_scale, rendered in cfg.look by PreviewDisplay (the SDL display itself at
     scale 1, since the preview has already scaled). Any other backend: show.display.make_display."""
@@ -143,12 +155,18 @@ def build_display(cfg: ArcadeConfig) -> Display:
 
 
 def run(args) -> int:
-    """The arcade: the small lobby and every game, until --seconds pass, the window closes or ^C."""
+    """The arcade: the small lobby and every game, until --seconds pass, the window closes or ^C. --require runs the
+    doctor on those sources first and stops with its code when one fails (Q145); --replay plays a scenario file."""
     cfg = load_config(args.config)
     log.info("wall %s, backend %s", cfg.layout, cfg.backend)
+    if _names(args.require):
+        code = doctor(_names(args.require), make_probes(cfg.camera_index, cfg.audio_device), TIMEOUT)
+        if code:
+            return code
     data_dir = Path(cfg.data_dir)
     calibration = load_calibration(data_dir)
-    camera, audio = make_sources(cfg, cfg.size, script=args.script, calibration=calibration)   # main thread
+    camera, audio = make_sources(cfg, cfg.size, script=args.script, calibration=calibration,   # main thread
+                                 replay=args.replay)
     try:
         font = Font.load(Path(cfg.font_path))
         display = build_display(cfg)
@@ -178,7 +196,10 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("run", help="run the arcade (the default command)")
     r.add_argument("--config", default="arcade.toml", help="the flat config; a missing file means the defaults")
     r.add_argument("--seconds", type=float, help="stop after this many seconds of ticks (seconds * fps)")
-    r.add_argument("--script", choices=sorted(SCRIPTS), help="play a scripted camera instead of cfg.camera")
+    played = r.add_mutually_exclusive_group()
+    played.add_argument("--script", choices=sorted(SCRIPTS), help="play a scripted camera instead of cfg.camera")
+    played.add_argument("--replay", metavar="PATH", help="play a scenario file instead of cfg.camera")
+    r.add_argument("--require", default="", help="comma list of camera, mic, pose: the doctor checks them first")
     r.add_argument("-v", "--verbose", action="store_true")
     d = sub.add_parser("doctor", help="exit 1 if a required source is unavailable after the timeout")
     d.add_argument("--require", default="camera,mic,pose", help="comma list of camera, mic, pose")
@@ -186,6 +207,19 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--camera-index", type=int, default=0)
     d.add_argument("--audio-device", default="")
     d.add_argument("--model", default=str(MODEL_PATH))
+    c = sub.add_parser("calibrate", help="find the play zone with one person; writes data_dir/calibration.json")
+    c.add_argument("--config", default="arcade.toml")
+    from arcade.sources.record import RECORD_SCRIPTS   # here: only the parser needs the names
+    rec = sub.add_parser("record", help="record a scenario file of one script (spec 9.5), with consent")
+    rec.add_argument("--config", default="arcade.toml")
+    rec.add_argument("--script", required=True, choices=sorted(RECORD_SCRIPTS))
+    rec.add_argument("--i-have-consent", action="store_true", help="everyone in view agreed to be recorded")
+    rec.add_argument("--raw", action="store_true", help="grey frames and detections (the mediapipe camera only)")
+    rec.add_argument("--with-motion", action="store_true", help="keep the motion grid in a sensed file")
+    rec.add_argument("--out", help="the file; default data_dir/recordings/<script>-<UTC time>.jsonl.gz")
+    s = sub.add_parser("stats", help="sessions per game, their median length and how they ended")
+    s.add_argument("--config", default="arcade.toml")
+    s.add_argument("--sessions", help="the sessions log; default data_dir/sessions.jsonl")
     return p
 
 
@@ -194,14 +228,21 @@ def main(argv: list[str] | None = None) -> int:
     if not argv or (argv[0] not in COMMANDS and argv[0] not in ("-h", "--help")):
         argv.insert(0, "run")                     # run is the default command
     args = build_parser().parse_args(argv)
-    if args.command == "run":
-        logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-                            format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-        return run(args)
-    probes = {"camera": lambda t: probe_camera(t, args.camera_index),
-              "mic": lambda t: probe_mic(t, args.audio_device),
-              "pose": lambda t: probe_pose(t, Path(args.model))}
-    return doctor([n.strip() for n in args.require.split(",") if n.strip()], probes, args.timeout)
+    if args.command == "doctor":
+        return doctor(_names(args.require), make_probes(args.camera_index, args.audio_device, Path(args.model)),
+                      args.timeout)
+    logging.basicConfig(level=logging.DEBUG if getattr(args, "verbose", False) else logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    if args.command == "record":
+        from arcade.sources.record import main as record_main
+        return record_main(args)
+    if args.command == "calibrate":
+        from arcade.calibrate import main as calibrate_main
+        return calibrate_main(args)
+    if args.command == "stats":
+        from arcade.stats import main as stats_main
+        return stats_main(args)
+    return run(args)
 
 
 if __name__ == "__main__":
