@@ -1,0 +1,6 @@
+# Swat's feel: the blade's height follows the wrist's height in the reach box (cursor_y), and the wall's y is the axis.
+# No budget override.
+[fidelity]
+input = "cursor_y"
+xy = "blade_xy"
+axis = 1
