@@ -983,3 +983,87 @@ default: yes, as built: the peak already reached stands, the next attempt takes 
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q136: Do Jump's words go in a band under a shorter figure?
+asked: iteration 21's plan writer, 2026-10-02. C56: the words covered the figure. Beside the figure they do not fit ("GET SET" is 41 px, the free columns at the zone's middle are 19 and 36). The plan puts them at 1x in rows 50 to 59 and shortens the figure from 56 to 50 rows; the big 2x "JUMP!" goes
+default: the band under a 50-row figure
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q137: What do Jump's hint and its last screen say?
+asked: iteration 21's plan writer, 2026-10-02. The hint repeated the prompt and `over` had no word
+default: the hint "RING THE BELL!" replaces "JUMP!" after 2 s idle; `over` says "BELL RUNG!" or "NICE TRY!"
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q138: What does a camera source without `provides` claim?
+asked: iteration 21's plan writer, 2026-10-02. C35: a source says which of pose, blobs and motion it gives, and the lobby offers a game only when its needs are met
+default: a source that says nothing claims all three (today's behaviour); the walk-up script claims pose only, so it offers no blob game
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q139: What bounds does the scenario reader hold a record to?
+asked: iteration 21's plan writer, 2026-10-02. A finite but absurd box (1e308) passed the reader and crashed a game's draw
+default: box values in 0 to 1, keypoint x and y in -1 to 2, confidence in 0 to 1, every other number at most 1e3 in size; a record outside them is a skipped line
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q140: Do raw recordings keep grey frames?
+asked: iteration 21's plan writer, 2026-10-02. Spec 6.3's raw frame is 160x120 grey, so a raw replay gives pose and motion but no blobs; refitting the lamp rule (C34) from raw files would need colour frames, three times the size and a privacy call
+default: grey; C34 is refitted on sensed recordings of `torch-paint` and `empty-room`
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q141: Does the REC screen show the bodies' figures?
+asked: iteration 21's plan writer, 2026-10-02. While recording the wall shows REC, the seconds and the cue
+default: yes, the figures under the cue, so the performer sees what is recorded
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q142: Who writes the twelve recording scripts' cue lists?
+asked: iteration 21's plan writer, 2026-10-02. Spec 9.5 describes twelve scripts; no cue list exists in the repository
+default: the loop writes them from the spec's descriptions; the owner reads them at GATE A before recording
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q143: How does calibrate step and when does it give up?
+asked: iteration 21's plan writer, 2026-10-02. Spec 6.6 as a sequence on the wall
+default: aim ends on both hands up for 2 s; each stand ends after 2 s still; every step times out at 60 s; a timeout writes no file and exits 1
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q144: How does calibrate derive the zone and the minimum height?
+asked: iteration 21's plan writer, 2026-10-02. From three stands (far left, far right, front)
+default: the zone is the stands' shoulder anchors, min to max, widened by 0.05; `min_height` is 0.8 of the smallest stand height
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q145: What does `run --require` check?
+asked: iteration 21's plan writer, 2026-10-02. The amendment says `run --require camera,mic,pose` refuses to start after five seconds
+default: it runs the doctor's probes before the run and exits 1 when one fails; it does not watch the live sources
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q146: Does `record --raw` record sound?
+asked: iteration 21's plan writer, 2026-10-02. No audio source is built (Q99)
+default: no: the pose source's grey frames and detections only
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q147: Where do recordings go?
+asked: iteration 21's plan writer, 2026-10-02. `record` needs a default path
+default: `data_dir/recordings/<script>-<UTC stamp>.jsonl.gz` (`data/` is not in git); `--out` overrides
+deadline: none
+answer:
+status: defaulted (standing instruction)
