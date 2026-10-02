@@ -3,3 +3,4 @@
 # Start it as docs/runbooks/arcade-on-the-pi.md says.
 backend = "colorlight"
 capture = "picamera2"
+gamma = 1.0           # the card applies gamma: wall_pattern.py gamma's checker matched the RIGHT patch (2026-10-02)

@@ -382,3 +382,13 @@ line: 718 frames, 0 late, worst sync 3 us, sync to sync sd 0 us, 0 rows off thei
 0 restarts, real-time yes. So the card keeps its picture without packets, and the wall's quiet hold after a
 failed push (Q66) does not darken the wall. The receiver parameters are those saved on 2026-09-29/30; a later
 "Save to Receivers" in LEDVision asks for this check again.
+
+### 2026-10-02, about 17:40: the gamma check at the event wall, from the Pi 5 (main 1689e7c)
+
+`tools/wall_pattern.py gamma --backend colorlight --iface eth0 --width 128 --height 64` under the Pi's lock in the
+arcade's unit form, brightness 0.1, four runs (20, 20, 45, 45 s) while the owner found the right distance; every
+sender line clean (1202 or 2699 frames, 0 late, 0 slips, 0 send errors, real-time yes). The owner, from about
+3 m: the fine checker matched the **right** patch (186), not the left (128). So the card applies a gamma curve of
+its own to the bytes it is sent, and `arcade.pi.toml` gains `gamma = 1.0` (the limiter and the governor then model
+the wall's light as (byte/255)^2.2, `arcade/look.py:68`). `arcade.toml` (the Mac's SDL window) keeps 2.2. The
+grey-steps count on the bottom row was not read.
