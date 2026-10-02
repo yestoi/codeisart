@@ -14,12 +14,12 @@ from arcade.calibration import Calibration
 from arcade.headless import NullLobby
 from arcade.runner import Runner
 from arcade.sensed import MOTION_GRID, Audio, Blob, Body, Keypoint, Sensed
-from arcade.sources.actors import Person, claps, degrade, motion_rect, moving_blob, scene
+from arcade.sources.actors import TICK, Person, claps, degrade, motion_rect, moving_blob, scene
 from arcade.sources.replay import ReplayAudio, ReplayCamera, ReplayStream, open_replay
 from arcade.sources.scenario import (RawRecord, ScenarioReader, ScenarioWriter, decode, decode_raw, encode, encode_raw,
                                      make_header, wav_samples)
 from show.display.fake import FakeDisplay
-from tests.arcade.helpers import FakeClock, make_cfg
+from tests.arcade.helpers import FakeClock, make_cfg, run
 
 
 def sample():
@@ -283,3 +283,139 @@ def test_replay_holds_a_capture_as_the_recording_did(tmp_path, font5x7):
         if f.camera_seq:                                   # runner.t stays 0 here: camera_t is minus the age
             assert -s.camera_t == pytest.approx(f.t - f.camera_t, abs=1e-3)
     assert sum(f.camera_fresh for f in frames) == 9 and seen[-1].audio == frames[-1].audio
+
+
+# ----- hostile lines (it20 B3): a line that will not decode is skipped, and a non-finite number makes a bad line -----
+
+NESTED = "[" * 200000 + "]" * 200000                       # json.loads raises RecursionError on it (about 400 KB)
+NON_FINITE = ("NaN", "Infinity", "-Infinity", "1e999")      # json.loads reads each as a float; 1e999 is inf
+KP = ("bodies", 0, "keypoints", 5)
+FLOAT_FIELDS = ([("bodies", 0, "box", i) for i in range(4)] + [KP + (i,) for i in range(3)]
+                + [("bodies", 0, k) for k in ("vx", "vy", "scale", "seen_ago", "torso_per_width")]
+                + [("blobs", 0, k) for k in ("x", "y", "size", "vx", "vy")]
+                + [("audio", k) for k in ("level", "level_smooth", "peak", "voice_db", "floor_db", "voice", "bpm")]
+                + [("t",), ("camera_t",)])
+
+
+def good_lines():
+    """The reviewer's probe's good lines: a standing body at 0.5, three ticks."""
+    return [encode(s) for s in scene(persons=[Person(0.5, id=1)], ticks=3)]
+
+
+def with_token(line, path, token):
+    """line with the value at path (keys and indexes into its JSON) written as the bare token, NaN or 1e999."""
+    obj = json.loads(line)
+    *outer, last = path
+    target = obj
+    for k in outer:
+        target = target[k]
+    target[last] = "@@"
+    return json.dumps(obj).replace('"@@"', token)
+
+
+def read_all(path, caplog):
+    r = ScenarioReader(path)
+    with caplog.at_level(logging.WARNING, logger="arcade"):
+        got = list(r)
+    return got, r.skipped, len(warnings_in(caplog))
+
+
+def test_a_deeply_nested_line_is_skipped(tmp_path, caplog):
+    good = good_lines()
+    p = tmp_path / "nested.jsonl.gz"
+    write_lines(p, [json.dumps(make_header()), good[0], NESTED, good[1], good[2]])
+    got, skipped, warned = read_all(p, caplog)
+    assert [s.t for s in got] == [decode(line).t for line in good]   # the lines after it are read too
+    assert skipped == 1 and warned == 1
+
+
+def test_replay_reads_past_a_deeply_nested_line(tmp_path):
+    """latest() once a tick, as the runner calls it: no exception, every good record a capture in turn, then the
+    stream finishes and holds the last one."""
+    good = good_lines()
+    ts = [decode(line).t for line in good]
+    p = tmp_path / "nested.jsonl.gz"
+    write_lines(p, [json.dumps(make_header()), good[0], NESTED, good[1], good[2]])
+    clock = FakeClock()
+    cam, _ = open_replay(p, clock=clock)
+    seen = []
+    for _ in range(4):
+        capture_t, bodies, _, _ = cam.latest()
+        seen.append((cam.stream.current.t, capture_t == clock.now, len(bodies), cam.stream.finished))
+        clock.sleep(1 / 30)
+    cam.close()
+    assert seen == [(t, True, 1, False) for t in ts] + [(ts[-1], False, 1, True)]
+
+
+def test_a_header_that_cannot_be_parsed_is_refused(tmp_path):
+    p = tmp_path / "nested-header.jsonl.gz"
+    write_lines(p, [NESTED, encode(Sensed(0.0))])
+    with pytest.raises(ValueError, match="header"):
+        ScenarioReader(p)
+    with pytest.raises(ValueError, match="header"):
+        open_replay(p)
+
+
+def infinity_box(line):
+    """The probe's line: a standing body's keypoints in the box [0, 0, Infinity, Infinity]."""
+    obj = json.loads(line)
+    obj["bodies"][0]["box"] = [0, 0, float("inf"), float("inf")]
+    return json.dumps(obj)
+
+
+def test_a_non_finite_box_is_skipped(tmp_path, caplog):
+    line = infinity_box(good_lines()[2])
+    assert '"box": [0, 0, Infinity, Infinity]' in line
+    p = tmp_path / "infbox.jsonl.gz"
+    write_lines(p, [json.dumps(make_header()), line])
+    got, skipped, warned = read_all(p, caplog)
+    assert got == [] and skipped == 1 and warned == 1
+    assert open_replay(p, clock=FakeClock())[0].latest()[1] == ()   # the empty stream's record: no body reaches a game
+
+
+def test_a_non_finite_box_never_reaches_a_game(tmp_path, font5x7):
+    """The probe's run: a standing player whose box is Infinity for 3 s, then good lines, replayed into Jump.
+    Today's reader let the box through, the body became the player and Jump's draw raised in the runner's tick."""
+    from arcade.games.jump import Jump
+
+    zone = Calibration().zone
+    lines, bad = [], 0
+    for s in scene(persons=[Person(zone[0] + 0.5 * (zone[2] - zone[0]), id=1)], ticks=round(4 / TICK)):
+        line = encode(s)
+        if s.bodies and s.t < 3.0:
+            line, bad = infinity_box(line), bad + 1
+        lines.append(line)
+    p = tmp_path / "infbox-run.jsonl.gz"
+    write_lines(p, [json.dumps(make_header())] + lines)
+    reader = ScenarioReader(p)
+    _, _, runner = run(Jump, iter(reader), (128, 64), font5x7, seed=1, strict=False)
+    st = runner.state()
+    assert st["crashes"] == {} and st["hidden"] == [] and st["game"] == "jump"
+    assert bad > 60 and reader.skipped == bad
+
+
+def test_a_non_finite_blob_value_is_skipped(tmp_path, caplog):
+    good = encode(sample())
+    p = tmp_path / "blob.jsonl.gz"
+    write_lines(p, [json.dumps(make_header()), with_token(good, ("blobs", 0, "size"), "Infinity"), good])
+    got, skipped, warned = read_all(p, caplog)
+    assert [len(s.blobs) for s in got] == [1] and skipped == 1 and warned == 1
+
+
+def test_a_non_finite_audio_value_is_skipped(tmp_path, caplog):
+    good = encode(sample())
+    p = tmp_path / "audio.jsonl.gz"
+    write_lines(p, [json.dumps(make_header()), with_token(good, ("audio", "level"), "NaN"), good])
+    got, skipped, warned = read_all(p, caplog)
+    assert [s.audio for s in got] == [decode(good).audio] and skipped == 1 and warned == 1
+
+
+@pytest.mark.parametrize("path", FLOAT_FIELDS, ids=lambda path: ".".join(map(str, path)))
+def test_every_float_field_refuses_a_non_finite_number(tmp_path, caplog, path):
+    """Each of NaN, Infinity, -Infinity and 1e999 in the field makes its line a skipped one; the good line after
+    them is read."""
+    good = encode(sample())
+    p = tmp_path / "field.jsonl.gz"
+    write_lines(p, [json.dumps(make_header())] + [with_token(good, path, tok) for tok in NON_FINITE] + [good])
+    got, skipped, warned = read_all(p, caplog)
+    assert [s.t for s in got] == [decode(good).t] and skipped == len(NON_FINITE) == warned
