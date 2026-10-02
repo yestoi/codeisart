@@ -19,9 +19,9 @@ from arcade.canvas import Canvas
 from arcade.flash import flash_area
 from arcade.game import REQUIRED_SCENARIOS, reserved
 from arcade.games import MENU_ORDER, get_game
-from arcade.games.jump import (ACTIVE_RISE, ATTEMPTS, BAR_BOTTOM, BAR_TOP, BAR_TOP_CM, BAR_W, BAR_X, BELL_CM,
-                               FIGURE_H, GAME, HINT_IDLE_SECONDS, HIP_SHARE, JUMP_WINDOW, MIN_RISE, OVER_SECONDS,
-                               RESULT_SECONDS, SETTLE_SECONDS, STILL, TORSO_CM, Jump, measure_rise)
+from arcade.games.jump import (ACTIVE_RISE, ATTEMPTS, BAR_BOTTOM, BAR_TOP, BAR_TOP_CM, BAR_W, BAR_X, BELL_CM, BELL_H,
+                               BELL_W, FIGURE_H, GAME, HINT_IDLE_SECONDS, HIP_SHARE, JUMP_WINDOW, MIN_RISE,
+                               OVER_SECONDS, RESULT_SECONDS, SETTLE_SECONDS, STILL, TORSO_CM, Jump, _row, measure_rise)
 from arcade.headless import OPENING_NIGHT, run_headless
 from arcade.juice import Juice
 from arcade.scores import Scores
@@ -279,6 +279,27 @@ def test_the_bell_rings_once_and_checks_the_flash(font5x7):
     assert max(s.get("flash_held_ticks", 0) for s in runner.trace) == 0
     assert runner.trace[-1]["rang"] is True
 
+    # The governor refuses the flash: the bell becomes a burst on the bell, as Copy Me's refused flash does.
+    refused_pops, bursts = [], []
+
+    class Refused(Jump):
+        def reset(self, size, rng, fx):
+            super().reset(size, rng, fx)
+            orig_pop, orig_burst = fx.pop, fx.burst
+            fx.pop = lambda text, *a: (refused_pops.append(text), orig_pop(text, *a))[1]
+            fx.flash = lambda *a, **k: False
+            fx.burst = lambda x, y, *a, **k: (bursts.append((x, y)), orig_burst(x, y, *a, **k))[1]
+    Refused.info = Jump.info
+    p = Person(cam_x(0.5), id=1).jump(2.5, height=0.15).jump(4.0, height=0.15)
+    _, runner = run_headless(cfg, font5x7, Refused, scene(persons=[p], ticks=round(9.0 / TICK)),
+                             seed=seed("128x64", 3), trace=True)
+    bell_row = _row(runner.trace[-1]["bell_cm"])
+    assert refused_pops == ["DING!"] and runner.trace[-1]["rang"] is True, refused_pops
+    assert len(bursts) == 1, bursts
+    x, y = bursts[0]
+    assert BAR_X + (BAR_W - BELL_W) // 2 <= x < BAR_X + (BAR_W + BELL_W) // 2 + 1, (x, bursts)
+    assert bell_row - BELL_H < y <= bell_row, (y, bell_row)
+
 
 def test_a_miss_rings_nothing():
     pops = []
@@ -322,6 +343,45 @@ def test_the_best_is_recorded_once():
     assert state["heights"][0] < state["heights"][1] and state["heights"][2] == 0, state
     assert calls == [state["best_cm"]] and game.scores.best() == state["best_cm"] > 0, (calls, state)
     assert state["score"] == state["best_cm"]
+
+
+def swap(leave_at=2.2, jumps=()):
+    """A stands (jumping at each (at, height) of jumps), the window opens on A's baseline, A steps out at leave_at and
+    B, a taller person a step further back (height 0.72, hips 0.08 higher), steps into the same place and stands."""
+    a = Person(cam_x(0.5), id=1)
+    for at, height in jumps:
+        a.jump(at, height=height)
+    b = Person(cam_x(0.5), 0.47, height=0.72, id=2).arrive(leave_at)
+    return scene(persons=[a.leave(leave_at), b], ticks=round(31 / TICK))
+
+
+@pytest.mark.parametrize("noise", [False, True], ids=["clean", "real_noise"])
+def test_a_newcomer_in_the_window_is_not_measured_against_the_last_baseline(font5x7, noise):
+    """The review's B2: B, taking the slot from A inside a window, was measured against A's baseline and banked a
+    height without jumping. Measuring stops for the rest of that window; B's own windows follow."""
+    frames = degrade(swap(), **REAL_NOISE) if noise else swap()
+    _, game, _ = run(Jump, frames, WALL, font5x7, seed=12345)
+    state = game.debug_state()
+    assert state["phase"] == "over" and state["attempt"] == ATTEMPTS, state
+    assert state["heights"] == [0, 0, 0] and state["best_cm"] == 0 and state["rang"] is False, state
+    assert game.scores.best() is None
+
+
+@pytest.mark.parametrize("noise", [False, True], ids=["clean", "real_noise"])
+def test_a_jump_before_the_swap_still_counts(font5x7, noise):
+    """A jumps (under the bell, under B's false rise) in the window and then steps out for B: A's peak stands and is
+    banked as when A stays."""
+    jumps = [(2.0, 0.08)]
+
+    def heights(frames):
+        frames = degrade(frames, **REAL_NOISE) if noise else frames
+        _, game, _ = run(Jump, frames, WALL, font5x7, seed=12345)
+        return game.debug_state()["heights"], game.scores.best()
+
+    stays, best = heights(jumper(jumps, ticks=round(31 / TICK)))
+    swapped, swapped_best = heights(swap(leave_at=3.5, jumps=jumps))
+    assert stays[0] > 0 and stays == [stays[0], 0, 0], stays
+    assert swapped == stays and swapped_best == best == stays[0], (swapped, stays, swapped_best, best)
 
 
 def test_exit_gesture_is_off(font5x7):
@@ -409,6 +469,22 @@ def test_own_drawing_keeps_rows_60_to_63_dark(font5x7, name):
         if canvas.frame[60:].any():
             lit.append(round(game.t, 2))
     assert not lit, f"{name}: rows 60 to 63 lit on {len(lit)} ticks, from t {lit[:3]}"
+
+
+@pytest.mark.parametrize("body_id", [3, 8, 10, 12, 15, 24, 30, 34, 36, 37, 40])
+def test_a_degraded_jumper_keeps_rows_60_to_63_dark(font5x7, body_id):
+    """Under degrade(**REAL_NOISE) a jumping body's ankle held through a dropout is drawn against the risen box; these
+    ids lit rows 60 to 63 in their first window (the review's B1). Nothing Jump draws may light them, in any phase."""
+    game = make(i=2)
+    p = Person(cam_x(0.5), id=body_id).jump(2.5 + 0.033 * body_id, height=0.15)
+    canvas = Canvas(*WALL, font5x7)
+    lit = []
+    for _ in drive(game, degrade(scene(persons=[p], ticks=round(5.0 / TICK)), **REAL_NOISE)):
+        canvas.clear()
+        game.draw(canvas)
+        if canvas.frame[60:].any():
+            lit.append((round(game.t, 2), game.phase))
+    assert not lit, f"id {body_id}: rows 60 to 63 lit on {len(lit)} ticks, from {lit[:3]}"
 
 
 def test_the_striker_the_bell_and_the_result_are_drawn(font5x7):

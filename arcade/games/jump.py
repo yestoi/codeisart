@@ -9,7 +9,8 @@ span (x is free: a sway or a walk is still), and the medians are the baseline, n
 rise = (baseline nose y - nose y) / torso per capture, and a capture counts only while the hip_mid rose by at least
 HIP_SHARE of the nose's rise (a nod or a head tilt never counts) and rise >= MIN_RISE; cm = round(rise * TORSO_CM).
 A still body never reaches MIN_RISE with its hips (real noise moves a nose about 0.06 torsos), so it banks 0 and
-records nothing.
+records nothing. A baseline is one body's: once another body id holds the slot in a window, nothing counts for the rest
+of it (the bar reads 0, the peak already reached stands); the next ready takes the newcomer's baseline.
 
 The zone caps the rise: a body whose shoulders leave the zone's top is dropped by the runner, so the zone caps the
 rise (about 47 cm at a body height of 0.6 of the frame, 33 cm at 0.7, 23 cm at 0.8).
@@ -52,6 +53,7 @@ BAR_TOP_CM = 60.0
 BAR_X, BAR_W = 6, 10
 BAR_TOP, BAR_BOTTOM = 6, 57
 FIGURE_H = 56
+FREE_Y = 60                     # rows 60 to 63 stay free (the runner's marker)
 HINT_IDLE_SECONDS = 2.0
 CAMERA_FPS = 10
 COLUMN_SLACK = 1                # px a figure's column may jitter without moving it (the lobby's)
@@ -152,7 +154,7 @@ class Jump(Game):
             self._samples: deque[tuple[float, float, float, float]] = deque()   # camera_t, nose y, hip y, torso
             self.peak_cm = 0
             self._rang_now = False
-            self._base: tuple[float, float, float] | None = None
+            self._base: tuple[int, float, float, float] | None = None       # body id, nose y, hip y, torso
         self.rise = 0.0
         self.cm = 0
         self._recent: deque[tuple[float, float]] = deque()
@@ -210,12 +212,17 @@ class Jump(Game):
         torso_med = statistics.median(s[3] for s in self._samples)
         limit = STILL * torso_med
         if all(abs(n - nose_med) <= limit and abs(h - hip_med) <= limit for n, h in zip(noses, hips)):
-            self._base = (nose_med, hip_med, torso_med)
+            self._base = (held.id, nose_med, hip_med, torso_med)
             self._begin("play")
 
     def _measure(self, held: Body) -> bool:
-        """One capture of the window: the live rise, the peak, the bell. True when the capture counted."""
-        base_nose, base_hip, torso = self._base
+        """One capture of the window: the live rise, the peak, the bell. True when the capture counted. Once another
+        body than the baseline's is held, the baseline is dropped and nothing counts until the next ready."""
+        if self._base is None or held.id != self._base[0]:
+            self._base = None
+            self.rise, self.cm = 0.0, 0
+            return False
+        _, base_nose, base_hip, torso = self._base
         rise = measure_rise(held, base_nose, base_hip, torso)
         self.rise = 0.0 if rise is None else rise
         self.cm = 0 if rise is None else round(rise * TORSO_CM)
@@ -224,7 +231,8 @@ class Jump(Game):
         self.peak_cm = max(self.peak_cm, self.cm)
         if not self._rang_now and self.cm >= self.bell_cm:
             self._rang_now = self.rang = True
-            self.fx.flash(FLASH, 0.15)                                  # the governor may refuse: nothing else hangs on it
+            if not self.fx.flash(FLASH, 0.15):                          # refused by the governor: a burst at the bell
+                self.fx.burst(BAR_X + BAR_W // 2, _row(self.bell_cm) - BELL_H // 2, BELL_COLOR)
             self.fx.pop("DING!", BAR_X + BAR_W + 16, _row(self.bell_cm), BELL_COLOR)
         return True
 
@@ -283,6 +291,7 @@ class Jump(Game):
         view = self._view()
         if view is not None:
             draw_figure(canvas, view[0], view[1], PLAYER_COLOR)
+        canvas.fill_rect(0, FREE_Y, self.w, self.h - FREE_Y, BLACK)   # a held keypoint may fall below the figure's rect
         self._draw_striker(canvas)
         if self.phase == "ready":
             self._centred(canvas, READY_TEXT, 28, TEXT_COLOR)
