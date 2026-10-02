@@ -1067,3 +1067,94 @@ default: `data_dir/recordings/<script>-<UTC stamp>.jsonl.gz` (`data/` is not in 
 deadline: none
 answer:
 status: defaulted (standing instruction)
+
+### Q148: Should a camera whose `provides` property raises AttributeError fail?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. E1: `getattr(camera, "provides", CAMERA_INPUTS)` reads such a property as absent, so that camera claims every input; any other exception fails the camera
+default: accepted as built; no source has such a property
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q149: Is the smallest light still right after the shrink to 160x120?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. W: a core needs `MIN_AREA` 4 px at 160x120, about 64 px at 640x480, so a light core under 9 px across at 640x480 is no longer seen on the Mac's camera either
+default: keep 4; refit at GATE A with the recorded lights (with C34)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q150: What about a camera that is not 4:3?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. W: a 1280x720 frame is shrunk to 160x120; positions stay right in frame units, but frame-width distances count y 1.33 times too much and a raw frame is squashed
+default: the plan's reading (both cameras give 4:3); look again if the Pi's camera stream is not 4:3 (GATE B)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q151: Should a sensed recording's `inputs` list audio once a microphone source exists?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. R: today it is the camera's names only; no game reads audio (Q99)
+default: camera names only until an audio source is built
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q152: Are the twelve recording scripts' cue texts right?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. R: they are in `RECORD_SCRIPTS` (`arcade/sources/record.py`), each at most 21 characters (tested); Q142 leaves them to the owner
+default: as written; the owner reads them at GATE A before recording
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q153: Should ^C during a recording print the path and return 1?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. R: today the partial file is closed properly and the command exits with the traceback
+default: as built
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q154: Should a recording end on a "SAVED" card?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. R: the last frame shows the figures only (no REC, no cue)
+default: as built; the terminal prints the path
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q155: Should calibrate refuse a stand at the place of an earlier stand?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. C: a person still at the far left 2 s after "STAND FAR RIGHT" shows records the same place, and the zone is too narrow, silently (the outline on the wall shows it); a guard is about four lines
+default: not built in iteration 21 (not in the plan); noted for the next task in `arcade/calibrate.py`
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q156: Should a one-capture dropout restart a stand's window in calibrate?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. C: it does today; with a real tracker this is rare while a person stands still
+default: as built; look again at the first calibrate on a camera
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q157: Should calibrate draw the camera frame's edge?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. C: while aiming the wall shows dots on black with no frame line round `VIEW`
+default: not built; the operator reads the calibrate sheet in verify and carries it if the screen does not read
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q158: Should the scenario reader range-check a blob's colour?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. RP: a colour of 1e308 decodes to a huge int; the range check is for floats only; a game that puts a blob's colour into a uint8 frame would raise on it
+default: not built in iteration 21; noted for M7b's plan (Paint is the first game to read blobs)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q159: Is a raw record with a finite `t` far in the future acceptable?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. RP: it is never due, so the replay holds its last capture until the runner calls it stale
+default: accepted (finite-only was the plan's rule for `t`)
+deadline: none
+answer:
+status: defaulted (standing instruction)
+
+### Q160: Should `run --require` also watch the live sources after they open?
+asked: iteration 21's implementers (evidence/it21/orchestrator-report.md), 2026-10-02. I1: it runs the doctor's probes before any source opens and returns the doctor's code (Q145)
+default: probes only, as planned
+deadline: none
+answer:
+status: defaulted (standing instruction)
