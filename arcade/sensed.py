@@ -276,6 +276,10 @@ class Blob:
     size: float
     color: tuple[int, int, int]
     in_zone: bool = True
+    _: dataclasses.KW_ONLY
+    id: int = -1                  # the tracker's id, -1 untracked (C11, C17)
+    vx: float = 0.0               # frame widths per second, the source's
+    vy: float = 0.0
 
     def __post_init__(self):
         for name in ("x", "y"):

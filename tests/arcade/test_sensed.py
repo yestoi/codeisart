@@ -273,6 +273,31 @@ def test_blob_coordinates_are_clamped():
     assert Blob(0.25, 0.75, 0.02, (255, 0, 0)) == Blob(0.25, 0.75, 0.02, (255, 0, 0), True)   # in range: kept
 
 
+def test_blob_ids_and_velocities_default_untracked_and_still():
+    # E0 (C11, C17): a source that tracks nothing gives id -1 and a still blob; a tracker sets them by keyword.
+    b = Blob(0.4, 0.6, 0.03, (255, 0, 0))
+    assert (b.id, b.vx, b.vy) == (-1, 0.0, 0.0)
+    t = Blob(0.4, 0.6, 0.03, (255, 0, 0), id=3, vx=0.25, vy=-0.5)
+    assert (t.id, t.vx, t.vy) == (3, 0.25, -0.5)
+    assert t != b and dataclasses.replace(t, id=-1, vx=0.0, vy=0.0) == b
+
+
+def test_blob_new_fields_are_keyword_only():
+    # C21: Blob(x, y, size, color, in_zone, 3) would silently bind 3 to id; a sixth positional must raise.
+    with pytest.raises(TypeError):
+        Blob(0.4, 0.6, 0.03, (255, 0, 0), True, 3)
+    assert [f.name for f in dataclasses.fields(Blob) if not f.kw_only] == ["x", "y", "size", "color", "in_zone"]
+    assert [f.name for f in dataclasses.fields(Blob) if f.kw_only] == ["id", "vx", "vy"]
+
+
+def test_place_blob_keeps_id_and_velocity():
+    tracked = Blob(0.5, 0.5, 0.03, (255, 255, 255), id=7, vx=0.1, vy=-0.2)
+    placed = place_blob(tracked, Calibration())
+    assert placed.in_zone and (placed.id, placed.vx, placed.vy) == (7, 0.1, -0.2)
+    outside = place_blob(dataclasses.replace(tracked, x=0.05, y=0.1), Calibration())
+    assert not outside.in_zone and (outside.id, outside.vx, outside.vy) == (7, 0.1, -0.2)
+
+
 def test_raise_line_needs_a_torso_over_the_floor():
     # C22: side-on at the bar the shoulders overlap (0.03 apart) and the counter hides the hips. The torso from
     # the shoulder width is 0.0375, under 0.1 of the 0.8 box, and a line from it would sit a hair (0.011) above
