@@ -33,7 +33,7 @@ from arcade.input import EPSILON, Hold, capture_grace
 from arcade.juice import Juice
 from arcade.look import is_real
 from arcade.scores import Scores, SessionLog, _finite
-from arcade.sensed import Audio, Blob, Body, Sensed
+from arcade.sensed import AUDIO_INPUTS, CAMERA_INPUTS, Audio, Blob, Body, Sensed
 from show.display import Display
 from show.font import CELL_H, Font
 
@@ -51,8 +51,6 @@ SWITCH_SECONDS = 1.0         # ... for this long takes the lock
 REACQUIRE_DISTANCE = 0.25    # zone units: a new body this near the lost player's last place keeps the slot
 BLOB_SPEED = 0.05            # frame widths a second: a slower in-zone light is a lamp, not a person (spec 7.2)
 LOG_EVERY = 60.0             # seconds between two log lines about one failing thing
-CAMERA_INPUTS = frozenset({"pose", "blobs", "motion"})
-AUDIO_INPUTS = frozenset({"audio"})
 LOBBY = "lobby"
 RING = (160, 160, 160)       # the exit ring
 
@@ -231,6 +229,16 @@ def _camera_result(got, now: float) -> tuple[float, tuple[Body, ...], tuple[Blob
                                     and motion.dtype.kind in "biuf"))):
         raise TypeError(f"camera latest() gave a malformed result: {got!r:.200}")
     return float(capture_t), bodies, blobs, motion
+
+
+def _provides(camera) -> frozenset[str]:
+    """The camera inputs camera provides (C35): its provides, a set or frozenset of names, cut to CAMERA_INPUTS;
+    CAMERA_INPUTS when it has none. A provides that is not a set of strings raises, and sense() treats the source
+    as failed, as it does one whose provides raises."""
+    provides = getattr(camera, "provides", CAMERA_INPUTS)
+    if not (isinstance(provides, (set, frozenset)) and all(isinstance(name, str) for name in provides)):
+        raise TypeError(f"camera provides is not a set of names: {provides!r:.200}")
+    return frozenset(provides) & CAMERA_INPUTS
 
 
 def _audio_result(got, now: float) -> tuple[float, Audio] | None:
@@ -563,16 +571,21 @@ class Runner:
 
     # ----- sources and the loop -----
 
-    def _source(self, name: str, source, check: Callable[[Any], Any]) -> tuple[Any, bool]:
+    def _source(self, name: str, source, check: Callable[[Any], Any],
+                provides: bool = False) -> tuple[Any, bool, frozenset[str]]:
+        """(latest() through check, available, the camera inputs it provides): the last read in the same try, for
+        a camera (provides True; C35), else empty. A source whose latest() or provides raises or fails its check
+        gives (None, False, empty), logged once per run of failures."""
         try:
             got, ok = check(source.latest()), bool(getattr(source, "available", True))
+            inputs = _provides(source) if provides else frozenset()
         except Exception:
             if not self._source_failed.get(name):
                 self.log.exception("%s source failed", name)
             self._source_failed[name] = True
-            return None, False
+            return None, False, frozenset()
         self._source_failed[name] = False
-        return got, ok
+        return got, ok, inputs
 
     def sense(self, camera, audio) -> Sensed:
         """A Sensed from the sources' latest() results (spec 5, 6): camera (capture_t, bodies, blobs, motion) or
@@ -580,14 +593,21 @@ class Runner:
         CAMERA_STALE or AUDIO_STALE is empty and its source unavailable (spec 10), as is a source whose latest()
         raises, gives another shape, or stamps a time that is not finite or is over CLOCK_SLACK ahead (logged once
         per run of failures). t and camera_t are on the runner's t before this tick's
-        dt; tick() moves both to the tick's t. Tells the lobby the status."""
+        dt; tick() moves both to the tick's t. The camera gives only the inputs it provides (C35, _provides): no
+        bodies without "pose", no blobs without "blobs", no grid without "motion", whatever latest() holds; a
+        provides that raises or is not a set of names fails the camera. Tells the lobby the status: the inputs are
+        the camera's provides while it is available, plus AUDIO_INPUTS while the microphone is."""
         now = self.clock()
-        got, camera_ok = self._source("camera", camera, lambda got: _camera_result(got, now))
+        got, camera_ok, provides = self._source("camera", camera, lambda got: _camera_result(got, now),
+                                                provides=True)
         bodies, blobs, motion, camera_t, fresh = (), (), None, 0.0, False
         if got is not None:
             capture_t, *rest = got
             if now - capture_t <= CAMERA_STALE:
                 bodies, blobs, motion = rest
+                bodies = bodies if "pose" in provides else ()
+                blobs = blobs if "blobs" in provides else ()
+                motion = motion if "motion" in provides else None
                 camera_t = self.t - (now - capture_t)
                 fresh = capture_t != self._camera_capture
                 if fresh:
@@ -596,20 +616,22 @@ class Runner:
                 camera_ok = False
         else:
             camera_ok = False
-        heard, mic_ok = self._source("audio", audio, lambda got: _audio_result(got, now))
+        heard, mic_ok, _ = self._source("audio", audio, lambda got: _audio_result(got, now))
         sound = Audio()
         if heard is not None and now - heard[0] <= AUDIO_STALE:
             sound = heard[1]
         else:
             mic_ok = False
-        inputs = (CAMERA_INPUTS if camera_ok else frozenset()) | (AUDIO_INPUTS if mic_ok else frozenset())
+        inputs = (provides if camera_ok else frozenset()) | (AUDIO_INPUTS if mic_ok else frozenset())
         self._lobby_call(lambda: self.lobby.set_status(camera_ok, mic_ok, set(inputs), self.calibration.calibrated))
         return Sensed(self.t, camera_t=camera_t, camera_fresh=fresh, camera_seq=self._camera_seq,
                       bodies=tuple(bodies), blobs=tuple(blobs), motion=motion, audio=sound).with_motion(self.cfg.size)
 
-    def loop(self, camera, audio, max_ticks: int | None = None) -> None:
+    def loop(self, camera, audio, max_ticks: int | None = None, until: Callable[[], bool] | None = None) -> None:
         """Tick at cfg.fps. A late tick runs at once and the schedule restarts from it: no burst of catch-up
-        ticks (it04 forwarded: the governor's window leaves one frame of margin for one late tick)."""
+        ticks (it04 forwarded: the governor's window leaves one frame of margin for one late tick). Stops after
+        max_ticks ticks, or after the first tick on which until() is True (record and calibrate pass their scene's
+        done), whichever comes first."""
         period = 1.0 / self.cfg.fps
         last = self.clock()
         deadline = last + period
@@ -619,6 +641,8 @@ class Runner:
             dt, last = now - last, now
             self.tick(self.sense(camera, audio), dt)
             ticks += 1
+            if until is not None and until():
+                break
             delay = deadline - self.clock()
             if delay > 0:
                 self.sleep(delay)

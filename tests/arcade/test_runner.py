@@ -711,6 +711,84 @@ def test_sense_builds_keyword_sensed(font5x7):
     assert lobby.status == (True, True, {"pose", "blobs", "motion", "audio"}, False)
 
 
+WALL = (128, 64)                                                      # the wall in hand (Q82): the C35 tests' size
+
+
+class Seeing(Camera):
+    """A Camera that declares provides (C35)."""
+
+    def __init__(self, result=None, available=True, provides=None):
+        super().__init__(result, available)
+        self.provides = provides
+
+
+class RaisingProvides(Camera):
+    """A Camera whose provides raises when read."""
+
+    @property
+    def provides(self):
+        raise OSError("provides gone")
+
+
+def test_sense_claims_only_what_the_camera_provides(font5x7):
+    # C35: a camera claims only the inputs it provides, so the lobby offers only the games those inputs serve; what
+    # it does not provide never reaches the lobby or a game, whatever its latest() holds. A camera without "motion"
+    # gives no grid: Sensed holds it as the empty grid, which with_motion makes all False at the wall's size.
+    clock = FakeClock()
+    runner, _, lobby = make_runner(font5x7, clock=clock, cfg=make_cfg(WALL))
+    body, blob = next(stand(ticks=1)).bodies[0], LAMP(0.0)
+    got = (clock.now, (body,), (blob,), np.ones((64, 128), bool))
+    s = runner.sense(Seeing(got, provides={"pose"}), Camera(None))
+    assert lobby.status[:3] == (True, False, {"pose"})
+    assert s.bodies == (body,) and s.blobs == () and s.motion.shape == (64, 128) and not s.motion.any()
+    s = runner.sense(Seeing(got, provides=frozenset({"pose", "blobs"})), Camera(None))
+    assert lobby.status[:3] == (True, False, {"pose", "blobs"})
+    assert s.bodies == (body,) and s.blobs == (blob,) and not s.motion.any()
+    s = runner.sense(Seeing(got, provides={"motion", "audio", "sonar"}), Camera((clock.now, Audio())))
+    assert lobby.status[:3] == (True, True, {"motion", "audio"})        # a camera never claims the microphone
+    assert s.bodies == () and s.blobs == () and s.motion.shape == (64, 128) and s.motion.all()
+    s = runner.sense(Seeing(got, provides=set()), Camera(None))
+    assert lobby.status[:3] == (True, False, set()) and s.bodies == () and s.blobs == () and not s.motion.any()
+
+
+def test_a_camera_without_provides_claims_every_camera_input(font5x7):
+    # The fake Camera has no provides: every camera input, as before C35. The names live in arcade.sensed and the
+    # runner's are the same objects.
+    import arcade.runner
+    import arcade.sensed
+
+    assert arcade.runner.CAMERA_INPUTS is arcade.sensed.CAMERA_INPUTS == frozenset({"pose", "blobs", "motion"})
+    assert arcade.runner.AUDIO_INPUTS is arcade.sensed.AUDIO_INPUTS == frozenset({"audio"})
+    clock = FakeClock()
+    runner, _, lobby = make_runner(font5x7, clock=clock, cfg=make_cfg(WALL))
+    body, blob = next(stand(ticks=1)).bodies[0], LAMP(0.0)
+    camera = Camera((clock.now, (body,), (blob,), np.ones((64, 128), bool)))
+    assert not hasattr(camera, "provides")
+    s = runner.sense(camera, Camera(None))
+    assert lobby.status[:3] == (True, False, {"pose", "blobs", "motion"})
+    assert s.bodies == (body,) and s.blobs == (blob,) and s.motion.all()
+
+
+def test_a_raising_provides_fails_the_camera(font5x7, caplog):
+    # A provides that raises, or is not a set of strings, fails the camera as a raising latest() does: unavailable,
+    # nothing from it, logged once per run of failures; a good one next time recovers it.
+    clock = FakeClock()
+    runner, _, lobby = make_runner(font5x7, clock=clock, cfg=make_cfg(WALL), calibration=Calibration(calibrated=True))
+    body = next(stand(ticks=1)).bodies[0]
+    got = (clock.now, (body,), (), None)
+    with caplog.at_level(logging.ERROR, logger="arcade"):
+        for _ in range(3):
+            s = runner.sense(RaisingProvides(got), Camera(None))
+            assert s.bodies == () and lobby.status == (False, False, set(), True)
+        for bad in (["pose"], ("pose",), "pose", {1}, None, {"pose": True}):
+            s = runner.sense(Seeing(got, provides=bad), Camera(None))
+            assert s.bodies == () and lobby.status == (False, False, set(), True), f"{bad!r}"
+    messages = [r.getMessage() for r in caplog.records]
+    assert messages.count("camera source failed") == 1 and "provides gone" in caplog.text
+    s = runner.sense(Seeing(got, provides={"pose"}), Camera(None))
+    assert s.bodies == (body,) and lobby.status == (True, False, {"pose"}, True)
+
+
 def test_games_see_the_runners_clock(font5x7):
     # Sensed.t is the runner's t for the tick, and camera_t moves with it, so a game sees one clock live and
     # headless, wherever a scenario starts.
@@ -863,6 +941,23 @@ def test_loop_runs_max_ticks_with_fake_clock(font5x7):
     runner, display, _ = make_runner(font5x7, clock=clock, sleep=clock.sleep)
     runner.loop(Camera((clock.now, (), (), None)), Camera((clock.now, Audio())), max_ticks=10)
     assert display.count == 10 and clock.now == pytest.approx(100.0 + 10 / runner.cfg.fps, abs=0.05)
+
+
+def test_loop_stops_when_until_is_true(font5x7):
+    # record and calibrate stop the loop on their scene's done(): it ends after the first tick on which until() is
+    # True, and max_ticks still bounds it.
+    clock = FakeClock()
+    camera, audio = Camera((clock.now, (), (), None)), Camera((clock.now, Audio()))
+    wall = lambda: make_runner(font5x7, clock=clock, sleep=clock.sleep, cfg=make_cfg(WALL))
+    runner, display, _ = wall()
+    runner.loop(camera, audio, until=lambda: display.count >= 3)
+    assert display.count == 3
+    runner, display, _ = wall()
+    runner.loop(camera, audio, max_ticks=2, until=lambda: display.count >= 3)
+    assert display.count == 2
+    runner, display, _ = wall()
+    runner.loop(camera, audio, until=lambda: True)
+    assert display.count == 1                                           # asked after the tick, never before
 
 
 def test_dt_is_clamped(font5x7):

@@ -33,6 +33,8 @@ TORSO_PER_SHOULDER_WIDTH = 1.25  # torso length estimated from shoulder width wh
 NOSE_TO_HIP_PER_TORSO = 1.5      # scale estimated from the torso when the nose is not seen
 TORSO_FLOOR = 0.1                # a torso shorter than this share of the box height is not measured (C22)
 MOTION_GRID = (128, 64)          # (width, height) of the fixed grid scenario files and actors store motion on
+CAMERA_INPUTS = frozenset({"pose", "blobs", "motion"})   # what a camera may provide (C35: its provides, else all)
+AUDIO_INPUTS = frozenset({"audio"})
 
 
 @dataclass(frozen=True)
@@ -279,7 +281,7 @@ class Blob:
     _: dataclasses.KW_ONLY
     id: int = -1                  # the tracker's id, -1 untracked (C11, C17)
     vx: float = 0.0               # frame widths per second, the source's
-    vy: float = 0.0
+    vy: float = 0.0               # frame heights per second, the source's (Q131)
 
     def __post_init__(self):
         for name in ("x", "y"):
