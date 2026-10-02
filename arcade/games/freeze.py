@@ -426,7 +426,8 @@ class Freeze(Game):
 
     def _draw_fall(self, canvas: Canvas, seat: Seat, color) -> None:
         """The held skeleton's segments rotated 90 degrees about its feet over TOPPLE_SECONDS, fading (draw_figure
-        cannot rotate)."""
+        cannot rotate). Lifted as far as its lowest lit row would pass row BORDER_ROWS - 1: it lies down above the
+        runner's rows 60 to 63, never on them."""
         body, rect, t_out, side = seat.fall
         level = self._fall_level(seat)
         shade = tuple(_round(c * level) for c in color)
@@ -442,11 +443,17 @@ class Freeze(Game):
             dx, dy = x - fx, y - fy
             pts.append((_round(fx + dx * c - dy * s), _round(fy + dx * s + dy * c)))
         kps = body.keypoints
-        for a, b in SKELETON:
-            if kps[a].conf >= MIN_CONF and kps[b].conf >= MIN_CONF:
-                self._thick_line(canvas, pts[a], pts[b], shade)
-        if kps[NOSE].conf >= MIN_CONF:
-            canvas.fill_circle(*pts[NOSE], max(1, _round(HEAD * rect[3])), shade)
+        segments = [(a, b) for a, b in SKELETON if kps[a].conf >= MIN_CONF and kps[b].conf >= MIN_CONF]
+        radius = max(1, _round(HEAD * rect[3]))
+        head = kps[NOSE].conf >= MIN_CONF
+        below = STROKE - 1 - (STROKE - 1) // 2                          # a thick line's rows under its points
+        lows = [pts[i][1] + below for ab in segments for i in ab] + ([pts[NOSE][1] + radius] if head else [])
+        lift = max(0, max(lows, default=0) - (BORDER_ROWS - 1))
+        pts = [(x, y - lift) for x, y in pts]
+        for a, b in segments:
+            self._thick_line(canvas, pts[a], pts[b], shade)
+        if head:
+            canvas.fill_circle(*pts[NOSE], radius, shade)
 
     @staticmethod
     def _thick_line(canvas: Canvas, a, b, color) -> None:

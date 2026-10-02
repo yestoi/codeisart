@@ -353,6 +353,22 @@ def test_an_out_figure_topples_and_fades(font5x7):
     assert state["player_xy"] is None or 0 <= state["player_xy"][0] < WALL[0]
 
 
+@pytest.mark.parametrize("name", ["canonical", "duo"])
+def test_own_drawing_keeps_rows_60_to_63_dark(font5x7, name):
+    """The runner's marker and echoes own rows 60 to 63: the game's own frames never light them, a topple included."""
+    game = make()
+    canvas = Canvas(*WALL, font5x7)
+    lit, fell = [], False
+    for _ in drive(game, Freeze.SCENARIOS[name](), until=lambda g: g.done()):
+        canvas.clear()
+        game.draw(canvas)
+        fell = fell or any(seat.fall is not None for seat in game.seats)
+        if canvas.frame[60:].any():
+            lit.append(round(game.t, 2))
+    assert fell, f"{name}: nobody toppled, so the rows were never tested with a topple"
+    assert not lit, f"{name}: rows 60 to 63 lit on {len(lit)} ticks, from t {lit[:3]}"
+
+
 def test_an_out_figure_keeps_the_flash_rule(font5x7):
     """Through the real runner: a body that moves in every red is out; its topple and fade hold 0 governor ticks."""
     cfg = make_cfg(WALL)
