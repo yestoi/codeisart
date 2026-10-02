@@ -1,20 +1,26 @@
 """Mac camera (spec 6.1): OpenCV capture at 640 by 480 and MediaPipe's Pose Landmarker in VIDEO mode, num_poses 2,
-on the unflipped frame; mirror_keypoints flips x once afterwards when cfg.mirror. Pose only until M5: latest() is
-(capture_t, bodies, (), None)."""
+on the unflipped frame; mirror_keypoints flips x once afterwards when cfg.mirror. Blobs and the motion grid come
+from the same capture through blobs.FrameFeatures (in the same space as the keypoints): latest() is (capture_t,
+bodies, blobs, motion)."""
 from __future__ import annotations
 
 import logging
 import math
 import time
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
 
 from arcade.calibration import Calibration
-from arcade.sensed import LEFT_HIP, LEFT_SHOULDER, MIN_CONF, NOSE, RIGHT_HIP, RIGHT_SHOULDER, Keypoint
+from arcade.sensed import (CAMERA_INPUTS, LEFT_HIP, LEFT_SHOULDER, MIN_CONF, NOSE, RIGHT_HIP, RIGHT_SHOULDER,
+                           Keypoint)
 from arcade.sources.camera import Box, BodyTracker, CameraResult, ThreadedCamera
 from arcade.sources.mirror import mirror_keypoints
+from arcade.sources.scenario import FRAME_SHAPE, RawRecord
+
+if TYPE_CHECKING:
+    from arcade.sources.blobs import FrameFeatures
 
 log = logging.getLogger("arcade")
 
@@ -116,23 +122,45 @@ def open_capture(index: int):
     return cap
 
 
+def raw_frame(gray: np.ndarray) -> np.ndarray:
+    """A grey frame at a raw record's FRAME_SHAPE: itself when it has it (FrameFeatures' working frame from a
+    640x480 capture does), else resized to it with cv2.INTER_AREA."""
+    if gray.shape == FRAME_SHAPE:
+        return gray
+    import cv2   # here, as in open_capture
+
+    return cv2.resize(gray, (FRAME_SHAPE[1], FRAME_SHAPE[0]), interpolation=cv2.INTER_AREA)
+
+
 class MediaPipeCamera(ThreadedCamera):
     """Reads every frame the camera gives (so its buffer never holds an old one), stamps it with clock() in
     seconds as the read returns, and runs inference on the frames due at cfg.camera_fps; the others return None
-    and the last result holds.
+    and the last result holds. A due frame also goes through features (FrameFeatures: blobs and the motion grid),
+    so it provides every camera input (C35).
 
-    size is the wall size, kept for M5's motion grid; model_path None is the doctor's arcade.main.MODEL_PATH.
-    capture (read() -> (ok, bgr), release()) and landmarker (detect(rgb, ts_ms), close()) are injectable; without
-    them the model is checked first, then MediaPipe and the camera open here, on the calling (main) thread. A
-    failure logs once and leaves the camera unavailable (latest() None); there is no 30 s retry yet."""
+    size is the wall size, the motion grid's; calibration is the body tracker's and the features'; model_path None
+    is the doctor's arcade.main.MODEL_PATH. capture (read() -> (ok, bgr), release()) and landmarker (detect(rgb,
+    ts_ms), close()) are injectable; without them the model is checked first, then MediaPipe and the camera open
+    here, on the calling (main) thread. A failure logs once and leaves the camera unavailable (latest() None);
+    there is no 30 s retry yet.
+
+    tap (record --raw's, set and cleared by the recording from its thread): when set, each due capture also calls
+    it on the camera's thread with a RawRecord of the capture time, the detections (merged and mirrored, before
+    the tracker) and the working frame in grey, unflipped, at FRAME_SHAPE; no samples (no audio, Q99)."""
+
+    provides = CAMERA_INPUTS
 
     def __init__(self, cfg, size: tuple[int, int], clock: Callable[[], float] = time.monotonic, *,
                  calibration: Calibration | None = None, model_path: Path | None = None, capture=None,
                  landmarker=None, start: bool = True):
+        from arcade.sources.blobs import FrameFeatures   # here: blobs imports cv2, and importing us must not
+
         super().__init__(clock=clock)
         self.size, self.mirror = size, cfg.mirror
         self.period = 1.0 / cfg.camera_fps
         self.tracker = BodyTracker(calibration)
+        self.features: FrameFeatures = FrameFeatures(size, calibration, mirror=cfg.mirror)
+        self.tap: Callable[[RawRecord], None] | None = None
         self._cap, self._landmarker = capture, landmarker
         self._next_due: float | None = None
         self._last_ts = -1
@@ -175,7 +203,12 @@ class MediaPipeCamera(ThreadedCamera):
             if self.mirror:
                 kps = mirror_keypoints(kps)
             detections.append((box_of(kps), kps))
-        return (capture_t, self.tracker.update(merge_duplicates(detections), capture_t), (), None)
+        merged = merge_duplicates(detections)
+        blobs, motion = self.features.update(frame, capture_t)
+        tap = self.tap                                                       # read once: the recording clears it
+        if tap is not None:
+            tap(RawRecord(capture_t, detections=tuple(merged), frame=raw_frame(self.features.gray)))
+        return (capture_t, self.tracker.update(merged, capture_t), blobs, motion)
 
     def release(self) -> None:
         if self._cap is not None:
