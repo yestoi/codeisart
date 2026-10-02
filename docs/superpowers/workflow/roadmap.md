@@ -45,6 +45,8 @@ code as a draft to test. The loop takes the first unchecked `D` line whose needs
 Task 17 (the matrix backend) is removed by the amendments.
 
 ## Owner items (none of these stops the loop)
+- M6's two vendored skills, `cv-mediapipe` (damionrashford/media-os) and `game-feel` (gamedev-skills): single SKILL.md files from outside the repository. The loop does not fetch them in the run of Q101 (Q103, defaulted): the owner reads each file before it lands under `.claude/skills/`. The loop writes `arcade-verify` and `wall-look` itself.
+- The late rows of 2026-10-01 night (evidence/it16/wall-session.md, the last table): two of five plays on the wall read 5 and 4 rows off their slot, about 1 ms late, with no late sync; the morning's plays read 0. Not looked into; the Pi was warmer and busier (the party unit had just run for 50 minutes). The owner's eye: was anything seen on the plasma or the clock?
 - imc (station 2) leaves the list: the owner's word on 2026-10-01 after the wall session ("I'm going to remove that IOCCC entry from the list. Not now though."). Nothing is removed yet: the owner says when, and whether station 2 gets another entry (the research report's next picks) or the list is four. Until then imc stays as it is, with its four-view tour; its `fallback.cast` (six views, recorded on the Mac) is not worth replacing.
 - Hardware bring-up, panels and Colorlight card in hand 2026-09-28. Tool: `tools/wall_pattern.py` (Linux, CAP_NET_RAW; run it from the Omarchy box or a Pi, after the card's one-time LEDVision setup). Write what the panel shows into `docs/superpowers/workflow/evidence/hardware.md`: pixel order (`rgb`), whether the brightness packet is honoured and scales light evenly (`steps`), whether the card applies gamma (`gamma`), that every row and column is where it should be (`index`), and the card's firmware version. These were GATE B items; the answers set `gamma` in `arcade.toml` and every colour choice after.
 - The 2 x 2 wall's wiring (Q32, 2026-09-28; not tested by anyone yet). The Colorlight driver sends rows of any width and height, so a 128x64 frame goes out as 64 rows of 128. How the 5A-75E puts them on four panels is set in the card's LEDVision setup: two chains of two panels on two outputs, or one chain of four with the second pair mapped under the first. Show the `index` pattern at 128x64 and write into `evidence/hardware.md` which wiring was used and that every row and column is where it should be. If the card can only show one chain of four as 256x32, tell the operator: the remap then goes into the display backend, which is a safety slice (Loop rule 4).
@@ -86,6 +88,13 @@ and Dodge is back on main (1866 passed, 3 skipped, 301.58 to 312.30 s, under Q81
 for the run (no new game): the loop has gated after iteration 18 and does not start iteration 19 (gate.md). On
 the arcade's return: M7a's next games (Copy Me, Flap, Swat, Freeze; the note "it18 (the suite's room)"), after
 the owner's live smokes of Pong, Quick Draw and Dodge.
+Owner decision Q101 (2026-10-01 night, the gate's answer, from an event where the wall runs and no camera is
+attached): "Lets start the operator to finish this project", and "All up to the camera". The run is iterations
+19 to 26 (config.md `iterations-per-run: 8`): M7a's open games (Copy Me, Flap, Swat, Freeze, Jump), then M5, M7b,
+M8 and M6, all headless on the Mac; the live smokes no longer come first. It gates after iteration 26 or when
+only work that needs the camera or the owner is left. The suite's limit is 540 s (Q102, defaulted); the Pi is not
+needed and nothing is fetched (Q103, defaulted: M6's two vendored skills become an owner item). Nothing goes to
+the card.
 
 Iteration 15 is done (2026-09-29, 77c11d4; evidence/it15/): C45, C46, C47 and C53 are closed, Quick Draw is on
 main. It was the last of the run that Q49 started (iterations 10 to 15, config.md `iterations-per-run: 6`): the

@@ -13,8 +13,16 @@
 - Suite time, the run of Q80 (owner decision Q81, 2026-09-30 night): the limit is 420 s on an idle machine. The baseline at 4ec98e4 is 1762 passed, 3 skipped in 319.03 s on the Mac (it15: 1313 and 1; the owner's driver work added the rest, and the two new skips are its `/proc` tests). The verify checklist's items 3 and 4 count from that baseline. No entry is reverted or left out for the suite's time under the limit; the curated entries' tests stay short (one build an entry, runs cut by the fake clock).
   Another session works on the Mac in this run (owner decision Q83, 2026-10-01): a suite time over the limit or a timing failure is measured once more before anything is decided on it; the journal gives both readings.
 - The wall, the run of Q80 (owner decision Q82, 2026-09-30 night): the 2 x 2 wall in hand, 128x64 (`show.poc.toml`, the ink view), and no other. Sheets, the governor's numbers and every judgement of an entry are made at 128x64. No code, config, test or tuning for a wall the owner does not have (512x192, 512x128): no sheets at those sizes in this run, and a finding that shows only there is one line in the journal, not a fix (a safety gap is carried under rule 5 as always). The terminal is not the wall: it stays 80 by 23 and the strip. Tests that exist at the default `Config()` are left as they are.
-- iterations-per-run: 4
-  (Owner decision Q80, 2026-09-30 evening: the run is the show's entries, D5, iterations 16 to 19; it gates after
+- The run of Q101 (iterations 19 to 26; owner decision 2026-10-01 night, "All up to the camera"):
+  - Scope: everything the loop can build headless on the Mac, in the roadmap's order: M7a's open games (Copy Me, Flap, Swat, Freeze, Jump), M5 (no audio source, Q99), M7b, M8, M6. It gates after iteration 26, or earlier when only work that needs the camera or the owner is left.
+  - Plan review: every plan gets one adversarial review round by a fresh-context reviewer (`model: opus`), as in the run of Q80; a safety slice keeps rule 4's form. Verdict in evidence/itNN/plan-review.md.
+  - Suite time (Q102, defaulted): the limit is 540 s on an idle machine. The baseline is in state.md's `last` line; the verify checklist's items 3 and 4 count from it. Nothing is reverted or left out for the suite's time under the limit; a new game's tests stay at about 30 s. Q83's second reading stands (the Mac is shared).
+  - The wall: 128x64 and no other (Q82 stands). Nothing goes to the card: the wall is in use at the owner's event.
+  - The Pi and the network (Q103, defaulted): no slice of this run needs the Pi. A Linux-only check, if one comes up, goes under the lock and first runs `pgrep -f "promptviz.wall|colorlight_sender|python -m show"`; with a wall process found the check is not run and is journaled as not run. Nothing is fetched from the network; M6's two vendored skills are an owner item.
+- iterations-per-run: 8
+  (Owner decision Q101, 2026-10-01 night: the run is the arcade up to the camera, iterations 19 to 26; it gates
+  after iteration 26 or when only work that needs the camera or the owner is left.
+  Before it, owner decision Q80, 2026-09-30 evening: the run is the show's entries, D5, iterations 16 to 19; it gates after
   iteration 19 or when D5 is done and rule 8 asks for the owner. Before it, Q49 set 6 for iterations 10 to 15.
   Owner decision Q81, 2026-09-30 night: if D5 is done before iteration 19, the iterations left are D5's slack first
   (a replaced entry, the review's fixes), then only the suite's time (roadmap.md, the note

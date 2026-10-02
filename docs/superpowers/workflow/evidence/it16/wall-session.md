@@ -110,4 +110,22 @@ count or the bottom edge).
 
 Q66's check followed at 09:56: "held, no blink" (evidence/hardware.md).
 
+The same night (22:58 to 23:04, the Pi pulled to 56e585d, at the owner's event): the five again in the same
+form, at the owner's word ("Lets run the codeisart IOCCC entries"; he chose all five and that the session stops
+`promptviz-party.service` for it). The unit closed cleanly (its sender: 20879 frames, 0 late). The Pi: up 50
+minutes, 59.8 C, never throttled, load 1.57.
+
+| Play | On the wall | Exit | The sender's line |
+|---|---|---|---|
+| `sloane` | 50 s | 0 | 3043 frames, 0 late, worst sync 8 us, 0 rows off their slot |
+| `imc` | 46 s | not captured (the session cut that log); the close ran | 2820 frames, 0 late, worst 5 us, 0 rows off |
+| `thadgavin` | 53 s | 0 | 3222 frames, 0 late, worst 6 us, 5 rows off their slot, worst row 1362 us late |
+| `endoh1` | 47 s | 0 | 2868 frames, 0 late, worst 5 us, 0 rows off |
+| `endoh3` | 50 s | 0 | 3019 frames, 0 late, worst 12 us, 4 rows off their slot, worst row 948 us late |
+
+A finding, not looked into: two of the five plays had rows off their slot (5 and 4, about 1 ms late; no late
+sync, no slip), where the morning's plays all read 0. The Pi was warmer and busier than in the morning (59.8 C
+and load 1.57 against 48 C and 0.00). The owner wrote "stop" as the fifth play ended and did not say what he
+saw. This session did not start `promptviz-party.service` again; the unit was active again at 23:19.
+
 Still open from this sheet: the Pi's own fallback recordings (imc's cast still holds six views).
