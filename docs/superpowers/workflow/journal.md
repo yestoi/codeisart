@@ -1687,3 +1687,164 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - The suite on the trimmed tree with the new rule: 1877 collected (1869 and 8 new items in
   `tests/test_gitignore.py`), 1874 passed, 3 skipped, 309.08 s (07:40 to 07:45, load 2.86 to 3.60;
   evidence/pytest-after-trim-2026-10-01.txt). This is the baseline the next verify counts from.
+
+## Iteration 19 — 2026-10-02
+- Verdict on the sheets (written before any other tool call, after reading with the Read tool: `evidence/it19/
+  feel.json` first, then the four LED sheets `copyme-`, `flap-`, `swat-` and `freeze-128x64-led.png` and the first
+  frame of Freeze's GIF, all stamped 095c58d; the tree's code is d81599e's): **the four new games read as games at
+  128x64, each from the invite to its end; one flaw is carried (Copy Me's outline on player 2's figure, C55).**
+  - The feel rows: 17 metrics a game, every budget met, `failures: []` four times, no override.
+
+    | game | win good / lazy / none | round s | fidelity | range | flash_area_raw | square_flashes | lit | score_visible |
+    |---|---|---|---|---|---|---|---|---|
+    | Copy Me | 1.0 / 0.4 / 0.0 | 24.0 | 0.9996 | 0.701 | 0.0111 | 4 | 0.108 | 0.978 |
+    | Flap | 1.0 / 0.6 / 0.0 | 49.0 | 0.9903 | 0.825 | 0.0 | 0 | 0.056 | 1.0 |
+    | Swat | 0.95 / 0.35 / 0.0 | 66.2 | 0.9543 | 0.873 | 0.0031 | 2 | 0.028 | 1.0 |
+    | Freeze | 1.0 / 0.4 / 0.0 | 52.9 | 0.9999 | 0.921 | 0.0186 | 5 | 0.099 | 1.0 |
+
+    Freeze's 5 square flashes are one under the budget of 6; Copy Me's range 0.701 is the nearest to its floor (0.6).
+  - Every sheet starts the same and right: the game's name in dim amber for 3 s, the mirror figure, the green
+    hand-up pictogram at 4.5 s, the game from 6 s.
+  - Copy Me. `show`: the amber figure with the target as a small cyan figure on its chest and the pose's name in
+    white at the bottom (`ARMS UP`, `AIRPLANE`, `DISCO`), the score top left in amber at 2x. `play`: the outline
+    grows (about half size at 9.0 s) and reaches the figure's size by the end; `STRIKE THE SHAPE` shows while the
+    scripted player waits. At zero (10.5 s) the whole wall is one light grey field for the sample: the engine's
+    flash, the one full-field change of the round (4 square flashes in the play, budget 6). `result`: `MATCH!` in
+    green at 2x across the legs, the frozen figure under its cyan outline with the matched arm green (22.5 s) and
+    `+100` on the chest (24.0 s); the score reads 100, 200, 300. `over`: three small green dots and the score, then
+    the figure alone. The outline lies exactly on a scripted body, so the green limbs show best while it is still
+    growing (22.5 s). The words cover the lower legs (Q120).
+  - Flap. `ready` from 6 s to 20 s (the script sweeps slowly for the gauge): the bird is a 5 by 4 amber block at
+    column 28, the gauge's amber marker runs between two white ticks at the left edge, `FLAP TO FLY` in amber, the
+    green floor line on row 59 and the first pipe's foot at the right edge, the score `0` in white top right.
+    `play` from 21 s: green pipes in pairs come from the right with a wide gap, the bird holds between them, the
+    score turns 1 at 27 s. The sheet ends at 28.5 s, before any crash, and its player is never idle: the crash's
+    fade and the hint (moved by the review's fix) are not on it.
+  - Swat. The amber run bar on row 0, `1` and `GO!` in white, then squares of four colours (cyan, yellow, magenta,
+    green) and round red bombs, one to three at a time; the blade is a small amber block with a thin trail. A cut
+    shows `+1` in the fruit's colour and a ring of dots (16.5 s, 25.5 s); the bomb at 24.0 s shows `-3` in red and
+    the score falls from 2 to 0; `SWIPE!` in amber is the hint at 10.5 s. Everything is small and far apart: lit
+    0.028, the lowest of the four, but nothing is hard to tell from anything else.
+  - Freeze. `ready`: `DANCE ON GREEN` in green over `FREEZE ON RED` in red, across the figure's chest. `play`: a
+    1 px green border and `DANCE` in green at 2x, then a red border and `FREEZE` in red (13.5 s): one colour
+    change, no filled field. The scripted player is caught on the first red both times: `OUT` in red, and at
+    15.0 s the figure lies on its side in dim amber, above the bottom rows (the review's fix), fading; the card
+    `FREEZE 0` / `HAND UP = AGAIN`; a second game from 21 s ends the same way. No sample shows a red that was
+    stood through, a score above 0 or `SAFE!`: those are in the bots' numbers (win_good 1.0) only. From 12 s the
+    script stands at the mat's right end and half the figure is off the wall.
+  - What the sheets do not show: two players (read on the operator's own duo sheets at e356f3a, below), Flap's
+    crash and hint, Swat's combo, a Freeze round won. Nobody has played any of the four on a camera: the first
+    live play is the owner's.
+- Checked after the verdict:
+  - Flap's hint in its new place (`python -m tools.arcade_shot flap --scenario idle_body`, at 095c58d, LED look,
+    read with the Read tool): from 2.5 s `ARMS UP THEN DOWN` stands on rows 37 to 43, one line above
+    `FLAP TO FLY`, clear of the floor line and of rows 60 to 63; `flash_area` raw 0.000, held ticks 0. Its left
+    end starts right beside the gauge's lower white tick, so it reads a little like `-ARMS UP THEN DOWN`: a
+    cosmetic note, not carried.
+  - Two players and the later play, on the operator's own sheets made at e356f3a (before the review's fixes, which
+    change only Freeze's topple and Flap's hint and wings). Copy Me `duo`: seat b's blue figure `(0, 160, 255)`
+    hides the cyan outline `(0, 200, 255)`, so player 2 cannot see the shape grow: the flaw of this iteration
+    (Q117, C55). The two 2x scores cover a head that stands under them (Q120). Flap's later play: the score
+    reaches 10, the crash turns the bird red, `FLAP AGAIN` shows. Swat `duo`: seat b's blade is cyan, both cut,
+    one score; a blade under the score's box is covered by it. Freeze `duo`: the round ends at the first out with
+    `P1 WIN` and both scores 0.
+  - `arcade doctor`: the first run, right after the evidence run, read `pose UNAVAILABLE pose landmarker did not
+    finish within 5 s` (a cold start under load); the second read camera ok, mic ok, `pose ok mediapipe 1.0.0:
+    landmarker ran in 17 ms`.
+- Plan: docs/superpowers/plans/2026-10-01-it19-four-pose-games.md (299 lines at bb9fd70), one plan writer (opus),
+  written 23:31 to 23:45 (evidence/it19/plan-writer-report.md). It adds I0, the orchestrator's change to
+  `arcade/bots.py`. The adversarial review (evidence/it19/plan-review.md): round 1 (23:47 to 00:08) BLOCKED on
+  eight findings, B1 to B8, fixed in the plan by 00:17 (d409540); round 2 (to 00:22) closed all eight and blocked
+  on one new line, N1 (Flap's bots lose their one flap to `READY_SECONDS`), with four notes; all five are in the
+  plan (no `star` in Copy Me's ladder, `ACTIVE_DEG` 30 on the held body, Flap's `over` done after
+  `OVER_SECONDS`, gaps 34 to 30 with `GAP_STEP` 6, Swat's falling fruit gone past `SPAWN_Y`). The reviewer's
+  word: "With that line added the plan is approved, and nothing else needs a third look". Q104 to Q116 defaulted.
+- Shipped: four of M7a's open games, Copy Me, Flap, Swat and Freeze; bb9fd70..d81599e: 28 files, 5417
+  insertions, 16 deletions (the docs of the run among them). Nothing was cut or reverted.
+  - I0 (the orchestrator, test-first; a5dbf29): `Move` gains `pose` as its last field and `hand="both"`; two new
+    tests, no existing test changed.
+  - G1 Copy Me (opus; 83a0e83, merged 96bf4c5): a target pose shows small on the chest, then grows as an outline
+    over the figure for 3 s; the limbs that match turn green; three rounds, two matches win. Seven new poses in
+    `arcade/poses.py`. Every constant and bot number is the plan's. 50 test items.
+  - G2 Flap (sonnet; a5758c3, merged 051bd7e): both wrists sweeping down are one flap; a wing gauge at the left
+    edge; pipes with gaps of 34 to 30 px. The lazy bot's `reaction_ticks` went from 9 to 10 (9 read 0.75, over the
+    band). 47 items.
+  - G3 Swat (sonnet; d180829, merged 4241bb0): fruit falls, the hand is the blade, bombs cost 3, combos, two
+    players share one score. With the plan's numbers both bots won every seed, so `GOAL` went from 25 to 30,
+    `SPAWN_EVERY` to (1.4, 0.8), `BOMB_SHARE` to 0.2, and the lazy bot lost its lead. 57 items.
+  - G4 Freeze (sonnet; 5f8aa0a, merged 0cbd396): red light, green light; a body that moves more than
+    `MOVE_TRAVEL` 0.25 on red is out and topples; six reds. `COUNT_LAG` 0.3 was added. 49 items.
+  - I1 (23756c7): the game guide gains `Move(hand="both")` and `Move(pose=...)`, a gesture's gauge, the figure's
+    column backlash.
+  - The review's fix round (the orchestrator, test-first): 1acbe6e (Freeze's topple is lifted above row 59) and
+    d81599e (Flap's hint from y 55 to y 37; the wings-down block no lower than row 58); six new test items,
+    `test_own_drawing_keeps_rows_60_to_63_dark`.
+- Review: APPROVED after 2 rounds (evidence/it19/code-review.md; a fresh opus reviewer, bb9fd70..HEAD).
+  - Round 1 (02:20 to 02:36): BLOCKED on one plan requirement broken in two games, "Rows 60 to 63 stay free (the
+    runner's marker)": Freeze's topple lit rows 60 to 63 on 52 ticks of every out; Flap's hint lit rows 60 and 61
+    (990 ticks of `idle_body`) and its floor-crash wings 37 ticks. Copy Me and Swat: 0 ticks in every probe.
+  - Round 2 (to 02:53): both fixed; the six new tests fail on the old code; 0 lit ticks in every run of round
+    1's probes; the flash numbers did not move; no assert removed or changed.
+  - In both rounds: no assert is removed or weakened in the range (2287 test lines added, 3 removed, none an
+    assert), no skip added, every flash probe passes at full length, B1 to B8 and N1 are closed in the code.
+  - Safety: the range touches no file of the display path, `arcade/flash.py`, `arcade/brightness.py`,
+    `arcade/runner.py`, `tools/` or `deploy/`. Not a safety slice.
+- Deploy: none (never deployed by the loop; nothing under `deploy/` touched; nothing pushed; nothing sent to the
+  card).
+- The Pi 5: not run. The plan has no Pi step (Q103). No ssh call was made in this iteration.
+- Verify: 7 of 7 of the checklist. 1 freshness: the sheets are stamped `095c58d`, HEAD when they were made; the
+  code is d81599e's (77b20b1 and 095c58d change only `docs/`), and only `docs/` changes after. 2 the suite is
+  green. 3 skips: 3, the baseline's 3. 4 collected: 2092, the baseline's 1881 plus 2 (I0), 203 (the four games)
+  and 6 (the fix round), none dropped. 5 the doctor passes on its second run (above). 6 evidence/it19/README.md,
+  the decision on its first line. 7 the sheets, read above.
+- Tests: 2092 collected, 2089 passed, 3 skipped at d81599e, under Q102's 540 s in every run: 484.03 s (the
+  orchestrator after the G4 merge, 2086 collected then, load 3 to 4.5), 484.37 s (the orchestrator after the
+  fixes), 476.51 s (the operator, 03:01 to 03:09, load 4.27 at the end; evidence/it19/pytest-idle.txt, with
+  `--durations=40`). The Mac was not idle in any of them. Before: 312.10 s for 1878 passed. The four games cost
+  about 165 to 172 s together, against the plan's 125: the oracle's pool setup is 89.63 s for seven games (it was
+  33.91 s for three), each game's own `test_good_beats_lazy_beats_nobody` 7 to 10 s, each soak 3 to 6 s a size.
+  About 56 to 63 s are left under the limit, with Jump, Paint and Tug still to come.
+- Minutes: about 224, from 23:28 to 03:12 CDT, far over the two hours of a games iteration: orient 3; plan 53
+  (written 14, review 21, fixes 9, round 2 5, its fixes 2); implement 114 (I0 9; the four games 72, bound by
+  Copy Me on opus, the others 21 to 31; the merges 35, each with its full suite of 5.7 to 8.1 min); review and
+  fix round 33; verify and report 21. Where the time went: the plan's two review rounds (39 min of the 53), Copy
+  Me's 72 min, and four serial full-suite runs at the merges. For it20: the orchestrator runs the full suite
+  once after the last merge and the changed games' files after each.
+- Loop decisions and deviations:
+  - The plan review blocked twice (eight findings, then one new line); the second round's line and notes went
+    into the plan without a third round, on the reviewer's own word.
+  - The plan reached 301 lines after round 2's fixes; two cuts (Swat's rules on one line; two constants the
+    Global Constraints already state) brought it to 299.
+  - The code review blocked once; its findings went to the orchestrator by message (it kept its context), and
+    the same reviewer confirmed the fixes.
+  - `arcade_evidence --games changed` finds nothing here (the last commit under the evidence directory is newer
+    than the games): the four names were passed. The evidence was made twice: at e356f3a beside the review, then
+    at 095c58d after the fixes; the first set is in the scratchpad, not in the repository.
+  - One load-timing failure after the G1 merge (`tests/test_show_shot.py::test_strobe_session_is_held`, a named
+    flake); it passed alone and in every later run.
+  - The implementers ran the suite in three parts in their worktrees (four suites at once would pass a
+    command's 10 minutes); the worktrees show a 4th skip (no `models/` there), the main checkout 3.
+  - Every game's own test file runs 13 to 23 s against the plan's 6 s; nothing was cut, by Q102's rule.
+  - The operator committed nothing on main while the orchestrator spawned and merged; no spawn was lost. Every
+    agent wrote its whole report to evidence/it19/.
+  - The agents' commits carry the trailers of their own sessions.
+- Carried forward: C55 (Copy Me's outline is not seen on player 2's figure; Q117's default is a magenta outline
+  for both seats).
+- Noted, not carried: `test_copyme.py:543`'s lit check never runs in `duo` (the skip region covers every head;
+  the code is right); `test_flap.py:410-411` skips `gap_xy` entirely; Swat's tests use shortened windows (the
+  reviewer's full-length probes pass); Freeze's still-body test does not assert the join (the probe shows it
+  joins); Flap banks a best in `done()` 3 s after a non-final crash, lost only if the 180 s cap lands in an
+  `over`'s first 3 s; Freeze joins a seat only if its body is seen on the green's first tick; Freeze binds a seat
+  to its tracker id (a solo id change after the grace is an out without a topple); Swat can fire a combo flash on
+  a bomb's tick (the rule held in every probe); on a floor crash Flap's wings merge into the body; a pose held
+  from one round into an overlapping target scores nothing in Copy Me (`FRESH_SHARE`); a real camera that drops
+  both shoulders could throw a frozen player out of Freeze; the pool's timeout margin halves with seven games
+  (89.63 s of setup against the 120 s deadline a share); Copy Me's round is 24 s, near the 20 s floor; a figure
+  that walks at 0.2 of the mat a second or faster makes the governor hold frames (Q118); Flap's lazy rate falls
+  off a cliff between 11 and 12 reaction ticks; the sheets' canonical Freeze stands half off the wall at the
+  mat's right end and is out on its first red; four more merged worktrees and branches are left under
+  `.claude/worktrees/` (the owner's cleanup).
+- Owner questions: Q104 to Q120, each defaulted. For the first live plays: Q117 (the outline's colour), Q118
+  (the walking figure's stutter), Q119 (Swat's `GOAL` 30 for people), Q120 (Copy Me's words over the legs).
+- Status: done. Copy Me, Flap, Swat and Freeze are on main; M7a has Jump left. Iteration 20 starts with the
+  suite's room.

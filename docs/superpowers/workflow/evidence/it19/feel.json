@@ -1,0 +1,426 @@
+{
+ "copyme": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.0,
+    "response_px": 280.0,
+    "fidelity": 0.999599482951844,
+    "range": 0.7007874015748031,
+    "lit_fraction": 0.10804169753502155,
+    "dim_fraction": 0.0,
+    "liveliness": 0.017688858328833695,
+    "flash_area_raw": 0.0111083984375,
+    "square_flashes": 4.0,
+    "score_visible": 0.978448275862069,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 0.0,
+    "win_good": 1.0,
+    "win_lazy": 0.4,
+    "win_none": 0.0,
+    "round_seconds": 24.0,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ },
+ "flap": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.5,
+    "response_px": 16.0,
+    "fidelity": 0.9903117347338053,
+    "range": 0.8253968253968254,
+    "lit_fraction": 0.056396484375,
+    "dim_fraction": 0.0,
+    "liveliness": 0.0013857485151187905,
+    "flash_area_raw": 0.0,
+    "square_flashes": 0.0,
+    "score_visible": 1.0,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 6.0,
+    "win_good": 1.0,
+    "win_lazy": 0.6,
+    "win_none": 0.0,
+    "round_seconds": 49.0,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ },
+ "swat": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.0,
+    "response_px": 17.0,
+    "fidelity": 0.9543425194623189,
+    "range": 0.873015873015873,
+    "lit_fraction": 0.02841923154633621,
+    "dim_fraction": 0.00256424498259646,
+    "liveliness": 0.004213666812904968,
+    "flash_area_raw": 0.0030517578125,
+    "square_flashes": 2.0,
+    "score_visible": 1.0,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 6.0,
+    "win_good": 0.95,
+    "win_lazy": 0.35,
+    "win_none": 0.0,
+    "round_seconds": 66.19999999999999,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ },
+ "freeze": {
+  "128x64": {
+   "metrics": {
+    "response_ticks": 1.0,
+    "response_px": 396.0,
+    "fidelity": 0.9998702414052796,
+    "range": 0.9212598425196851,
+    "lit_fraction": 0.09919190093914042,
+    "dim_fraction": 0.027368189849253696,
+    "liveliness": 0.019702469675164473,
+    "flash_area_raw": 0.0185546875,
+    "square_flashes": 5.0,
+    "score_visible": 1.0,
+    "score_legible": 1.0,
+    "presence_answer_seconds": 0.0,
+    "win_good": 1.0,
+    "win_lazy": 0.4,
+    "win_none": 0.0,
+    "round_seconds": 52.86666666666667,
+    "phases_reached": 1.0
+   },
+   "budgets": {
+    "response_ticks": {
+     "min": null,
+     "max": 2.0,
+     "reason": null
+    },
+    "response_px": {
+     "min": 12.0,
+     "max": null,
+     "reason": null
+    },
+    "fidelity": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "range": {
+     "min": 0.6,
+     "max": null,
+     "reason": null
+    },
+    "lit_fraction": {
+     "min": 0.01,
+     "max": 0.5,
+     "reason": null
+    },
+    "dim_fraction": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "liveliness": {
+     "min": 0.001,
+     "max": null,
+     "reason": null
+    },
+    "flash_area_raw": {
+     "min": null,
+     "max": 0.1,
+     "reason": null
+    },
+    "square_flashes": {
+     "min": null,
+     "max": 6.0,
+     "reason": null
+    },
+    "phases_reached": {
+     "min": 1.0,
+     "max": null,
+     "reason": null
+    },
+    "round_seconds": {
+     "min": 20.0,
+     "max": 120.0,
+     "reason": null
+    },
+    "win_good": {
+     "min": 0.7,
+     "max": null,
+     "reason": null
+    },
+    "win_lazy": {
+     "min": 0.1,
+     "max": 0.7,
+     "reason": null
+    },
+    "win_none": {
+     "min": null,
+     "max": 0.05,
+     "reason": null
+    },
+    "score_visible": {
+     "min": 0.8,
+     "max": null,
+     "reason": null
+    },
+    "score_legible": {
+     "min": 0.9,
+     "max": null,
+     "reason": null
+    }
+   },
+   "failures": []
+  }
+ }
+}

@@ -1,0 +1,10 @@
+0.03 lobby/attract
+2.03 lobby/mirror
+4.53 freeze
+4.57 freeze/ready
+13.70 freeze/over
+16.70 lobby
+19.73 lobby/invite
+20.63 freeze
+23.67 freeze/play
+28.47 freeze/over
