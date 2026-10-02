@@ -123,8 +123,12 @@ def won(state: dict) -> bool: ...        # from the last debug_state(): the huma
 
 A bot has `reaction_ticks`, `noise`, and `__call__(state, t) -> Move | None`. It sees `debug_state()` that many
 ticks late (`{}` before), so keep everything it needs in `debug_state`. `Move(x=0.5, hand="right",
-wrist_y=None, near=None)`: `x` is in **zone coordinates**, 0 to 1 across the play zone (not wall pixels); `wrist_y` is the
+wrist_y=None, near=None, pose=None)`: `x` is in **zone coordinates**, 0 to 1 across the play zone (not wall pixels); `wrist_y` is the
 wrist in the reach box, 0 top to 1 hip height, None for hand down; None instead of a Move is nobody in view.
+`hand="both"` moves both wrists to `wrist_y` with one noise draw (a two-arm gesture: Flap's bot flaps with it).
+`pose="<name>"` holds `arcade.poses.POSES[name]` on the tick (an unknown name raises `ValueError`; Copy Me's bot
+copies the target with it); a `wrist_y` then moves the hand's wrists over the pose. A pose takes no noise (only `x`,
+`wrist_y` and `near` do), so a pose bot's wins hang on the game's rng, not on the bot's.
 `arcade.bots.Nobody` is the no-input bot. `play(game_cls, bot, seed, layout)` adds the reaction delay and
 seeded noise (clamped to 0..1) and stops on `done()`, or when the session ends otherwise (a game whose
 `done()` never fires ends at the leave or inactive rule, or at `MAX_PLAY_SECONDS` = 180).
@@ -158,6 +162,12 @@ axis = 1                        # 0 = x, 1 = y
 dim_fraction = ...              # model for the exact shape, and arcade/feel.py's `budgets` docstring is its law
 ```
 
+A gesture has no axis, yet a `score` game is judged on `fidelity` and `range`. Give the gesture a gauge: a small
+marker that follows the hand's height (`Cursor`, then a `Glide`), with short ticks at the lines the gesture must
+cross, and point `[fidelity]` at it (`input = "cursor_y"`, `xy` the marker's `_xy`, `axis = 1`). It is the measured
+control and it teaches the gesture; the canonical sweeps the hand slowly over the gauge's span inside the first 20 s.
+Flap is the worked example (`wing_xy`, its ticks at `V_ABOVE` and `V_BELOW`).
+
 An override needs a non-empty `reason` or `budgets()` raises `ValueError` naming the metric. An override is for
 something the game does on purpose (Pong's dashed net is dim), never to make a failing number pass: fix the game
 first, and never loosen a win band. Report every override with its metric and reason.
@@ -179,6 +189,11 @@ frames pass `square_flashes <= 6`.
   second.
 - Your own drawing keeps it: no blinking a large area, no full-field luminance change faster than 3 a second.
   Game over is a hold and one slow fade, never a red strobe. Saturated red counts double.
+- A player's figure (`figure_rect`, `draw_figure`) placed from raw `zone_x` jitters a column under real noise, and
+  the whole outline flips with it: 0.1006 raw in the it08 note, over the rule. Give its column the lobby's backlash
+  (`COLUMN_SLACK = 1`, `arcade/attract/lobby.py:49,181`): for the same person the column moves only past the slack
+  of the one held; a new id takes its column at once. Keep the two lines in the game's own file (Copy Me and Freeze
+  do), and no `Glide` on a figure: it follows `zone_x`, so fidelity and range are measured on it.
 - No reversing stripes over a quarter of the wall: more than five light-dark band pairs of equal width that
   reverse, oscillate or move (`arcade/pattern.py`, `PATTERN_AREA = 0.25`; static stripes count 0). A dashed net is
   fine; a scrolling grating over the field is not.
