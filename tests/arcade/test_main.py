@@ -238,6 +238,31 @@ def test_leave_after_is_parsed_and_off_by_default():
     from arcade.main import build_parser
     assert build_parser().parse_args(["run"]).leave_after is None
     assert build_parser().parse_args(["run", "--game", "freeze", "--leave-after", "5"]).leave_after == 5.0
+    assert build_parser().parse_args(["run"]).once is False
+    assert build_parser().parse_args(["run", "--game", "freeze", "--once"]).once is True
+
+
+def test_run_once_ends_after_the_first_game(tmp_path, monkeypatch):
+    """--once (Night One, 2026-10-03): one playthrough, then the run ends; the conductor's FREEZE, where bystanders
+    at the square's depth keep the zone from ever reading empty."""
+    from arcade.runner import Runner
+    seen = []
+
+    def spy_loop(self, camera, audio, max_ticks=None, until=None):
+        seen.append((self, until))
+
+    monkeypatch.setattr(Runner, "loop", spy_loop)
+    config = str(_toml(tmp_path))
+    assert main(["run", "--config", config, "--script", "walkup", "--game", "freeze", "--once"]) == 0
+    runner, until = seen[-1]
+    assert callable(until) and until() is False
+    runner.ended = 1
+    assert until() is True, "the first game ended: the run ends"
+    assert main(["run", "--config", config, "--script", "walkup", "--game", "freeze", "--once", "--leave-after", "5"]) == 0
+    runner, until = seen[-1]
+    assert until() is False
+    runner.t = 100.0                                        # nobody came for 15 s: the leave rule still applies
+    assert until() is True
 
 
 def test_run_leave_after_hands_the_runner_its_leave(tmp_path, monkeypatch):
