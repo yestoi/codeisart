@@ -1,5 +1,5 @@
-"""Mac camera (spec 6.1): OpenCV capture at 640 by 480 and MediaPipe's Pose Landmarker in VIDEO mode, num_poses 2,
-on the unflipped frame; mirror_keypoints flips x once afterwards when cfg.mirror. Blobs and the motion grid come
+"""The pose camera (spec 6.1): a capture at 640 by 480 and a PoseDetector (MediaPipe's Pose Landmarker in VIDEO mode,
+num_poses 2, on the Mac; pose_imx500.IMX500Pose on the Pi) on the unflipped frame; mirror_keypoints flips x once afterwards when cfg.mirror. Blobs and the motion grid come
 from the same capture through blobs.FrameFeatures (in the same space as the keypoints): latest() is (capture_t,
 bodies, blobs, motion)."""
 from __future__ import annotations
@@ -8,7 +8,7 @@ import logging
 import math
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Protocol, Sequence
 
 import numpy as np
 
@@ -108,6 +108,35 @@ class Landmarker:
         self._landmarker.close()
 
 
+class PoseDetector(Protocol):
+    """What PoseCamera runs on a due frame: detect(bgr, ts_ms) gives each person's 17 COCO keypoints, normalised
+    to the unmirrored frame (x, y in [0, 1], conf in [0, 1]); ts_ms increases strictly from call to call. close()
+    frees the model."""
+
+    def detect(self, bgr: np.ndarray, ts_ms: int) -> list[tuple[Keypoint, ...]]: ...
+
+    def close(self) -> None: ...
+
+
+class MediaPipeDetector:
+    """The PoseDetector over MediaPipe's Landmarker (the Mac, and the Pi's CPU fallback): the BGR frame goes in as
+    RGB, each person's 33 landmarks come back as the 17 COCO keypoints. landmarker is injectable; without one
+    the model file is checked (FileNotFoundError) and a Landmarker opened."""
+
+    def __init__(self, model_path: Path | None = None, landmarker=None):
+        if landmarker is None:
+            if model_path is None or not Path(model_path).exists():
+                raise FileNotFoundError(f"pose model missing at {model_path}")
+            landmarker = Landmarker(Path(model_path))
+        self._landmarker = landmarker
+
+    def detect(self, bgr: np.ndarray, ts_ms: int) -> list[tuple[Keypoint, ...]]:
+        return [landmarks_to_keypoints(lm) for lm in self._landmarker.detect(bgr[:, :, ::-1], ts_ms)]   # BGR to RGB
+
+    def close(self) -> None:
+        self._landmarker.close()
+
+
 def open_capture(index: int, kind: str = "opencv"):
     """The capture cfg.capture names, at CAPTURE_SIZE: cv2.VideoCapture(index) ("opencv"; RuntimeError if it does
     not open) or capture_picamera2.Picamera2Capture ("picamera2", the Pi's ribbon cameras). Call it on the main
@@ -137,17 +166,18 @@ def raw_frame(gray: np.ndarray) -> np.ndarray:
     return cv2.resize(gray, (FRAME_SHAPE[1], FRAME_SHAPE[0]), interpolation=cv2.INTER_AREA)
 
 
-class MediaPipeCamera(ThreadedCamera):
+class PoseCamera(ThreadedCamera):
     """Reads every frame the camera gives (so its buffer never holds an old one), stamps it with clock() in
-    seconds as the read returns, and runs inference on the frames due at cfg.camera_fps; the others return None
-    and the last result holds. A due frame also goes through features (FrameFeatures: blobs and the motion grid),
+    seconds as the read returns, and runs the frames due at cfg.camera_fps through the detector; the others return
+    None and the last result holds. A due frame also goes through features (FrameFeatures: blobs and the motion grid),
     so it provides every camera input (C35).
 
     size is the wall size, the motion grid's; calibration is the body tracker's and the features'; model_path None
-    is the doctor's arcade.main.MODEL_PATH. capture (read() -> (ok, bgr), release()) and landmarker (detect(rgb,
-    ts_ms), close()) are injectable; without them the model is checked first, then MediaPipe and the camera (the
-    capture cfg.capture names) open here, on the calling (main) thread. A failure logs once and leaves the camera unavailable (latest() None);
-    there is no 30 s retry yet.
+    is the doctor's arcade.main.MODEL_PATH (the MediaPipe detector's). capture (read() -> (ok, bgr), release())
+    and detector (a PoseDetector) are injectable; without them a MediaPipeDetector on the model file and the
+    capture cfg.capture names open here, on the calling (main) thread. A failure logs once and leaves the camera
+    unavailable (latest() None); there is no 30 s retry yet. The imx500 source hands in both
+    (pose_imx500.open_imx500).
 
     tap (record --raw's, set and cleared by the recording from its thread): when set, each due capture also calls
     it on the camera's thread with a RawRecord of the capture time, the detections (merged and mirrored, before
@@ -157,7 +187,7 @@ class MediaPipeCamera(ThreadedCamera):
 
     def __init__(self, cfg, size: tuple[int, int], clock: Callable[[], float] = time.monotonic, *,
                  calibration: Calibration | None = None, model_path: Path | None = None, capture=None,
-                 landmarker=None, start: bool = True):
+                 detector: PoseDetector | None = None, start: bool = True):
         from arcade.sources.blobs import FrameFeatures   # here: blobs imports cv2, and importing us must not
 
         super().__init__(clock=clock)
@@ -166,20 +196,18 @@ class MediaPipeCamera(ThreadedCamera):
         self.tracker = BodyTracker(calibration)
         self.features: FrameFeatures = FrameFeatures(size, calibration, mirror=cfg.mirror)
         self.tap: Callable[[RawRecord], None] | None = None
-        self._cap, self._landmarker = capture, landmarker
+        self._cap, self._detector = capture, detector
         self._next_due: float | None = None
         self._last_ts = -1
         if model_path is None:
             from arcade.main import MODEL_PATH as model_path   # here: arcade.main will import the sources (X2)
         try:
-            if self._landmarker is None:
-                if not Path(model_path).exists():
-                    raise FileNotFoundError(f"pose model missing at {model_path}")
-                self._landmarker = Landmarker(Path(model_path))
+            if self._detector is None:
+                self._detector = MediaPipeDetector(Path(model_path))
             if self._cap is None:
                 self._cap = open_capture(cfg.camera_index, cfg.capture)
         except Exception as e:
-            log.warning("mediapipe camera unavailable: %s", e)
+            log.warning("%s camera unavailable: %s", cfg.camera, e)
             return
         if start:
             self.start()
@@ -203,8 +231,7 @@ class MediaPipeCamera(ThreadedCamera):
         ts = max(self._last_ts + 1, int(round(capture_t * 1000)))
         self._last_ts = ts
         detections = []
-        for landmarks in self._landmarker.detect(frame[:, :, ::-1], ts):     # BGR to RGB
-            kps = landmarks_to_keypoints(landmarks)
+        for kps in self._detector.detect(frame, ts):
             if self.mirror:
                 kps = mirror_keypoints(kps)
             detections.append((box_of(kps), kps))
@@ -218,5 +245,8 @@ class MediaPipeCamera(ThreadedCamera):
     def release(self) -> None:
         if self._cap is not None:
             self._cap.release()
-        if self._landmarker is not None:
-            self._landmarker.close()
+        if self._detector is not None:
+            self._detector.close()
+
+
+MediaPipeCamera = PoseCamera   # the name the tests, the doctor and the README knew

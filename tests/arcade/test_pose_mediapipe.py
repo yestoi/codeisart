@@ -17,7 +17,7 @@ from arcade.sources.actors import make_keypoints
 from arcade.sources.blobs import WORK_SIZE, FrameFeatures
 from arcade.sources.mirror import mirror_keypoints
 import arcade.sources.pose_mediapipe as pm
-from arcade.sources.pose_mediapipe import MP_TO_COCO, MediaPipeCamera, box_of, landmarks_to_keypoints
+from arcade.sources.pose_mediapipe import MP_TO_COCO, MediaPipeCamera, MediaPipeDetector, PoseCamera, box_of, landmarks_to_keypoints
 from arcade.sources.scenario import FRAME_SHAPE, RawRecord, encode_raw
 
 
@@ -89,7 +89,7 @@ def camera(people=(), clock=None, dt=0.1, mirror=True, fps=10, frames=None, make
     clock = clock or FakeClock()
     cfg = ArcadeConfig(camera_fps=fps, mirror=mirror, camera="mediapipe")
     cap, lmk = FakeCapture(clock, dt, frames, make), FakeLandmarker(people)
-    cam = MediaPipeCamera(cfg, cfg.size, clock=clock, capture=cap, landmarker=lmk, start=False, **kw)
+    cam = PoseCamera(cfg, cfg.size, clock=clock, capture=cap, detector=MediaPipeDetector(landmarker=lmk), start=False, **kw)
     return cam, cap, lmk, clock
 
 
@@ -214,7 +214,7 @@ def test_close_joins_before_release():
         def close(self):
             alive["lmk"] = cam._thread.is_alive()
 
-    cam = MediaPipeCamera(cfg, cfg.size, clock=clock, capture=Cap(clock, 0.01), landmarker=Lmk())
+    cam = MediaPipeCamera(cfg, cfg.size, clock=clock, capture=Cap(clock, 0.01), detector=MediaPipeDetector(landmarker=Lmk()))
     assert started.wait(2.0)
     cam.close()
     assert alive == {"cap": False, "lmk": False}
@@ -395,7 +395,7 @@ def test_the_camera_opens_the_capture_the_config_names(monkeypatch):
     seen = []
     monkeypatch.setattr(pm, "open_capture", lambda index, kind="opencv": seen.append((index, kind)) or FakeCapture())
     cfg = ArcadeConfig(camera_index=1, capture="picamera2")
-    cam = MediaPipeCamera(cfg, cfg.size, landmarker=FakeLandmarker(), start=False)
+    cam = MediaPipeCamera(cfg, cfg.size, detector=MediaPipeDetector(landmarker=FakeLandmarker()), start=False)
     assert seen == [(1, "picamera2")]
     cam.close()
 
@@ -413,7 +413,29 @@ def test_without_picamera2_the_camera_is_unavailable_and_says_so(monkeypatch, ca
 
     monkeypatch.setitem(sys.modules, "picamera2", None)        # import picamera2 raises ImportError
     cfg = ArcadeConfig(capture="picamera2")
-    cam = MediaPipeCamera(cfg, cfg.size, landmarker=FakeLandmarker())
+    cam = MediaPipeCamera(cfg, cfg.size, detector=MediaPipeDetector(landmarker=FakeLandmarker()))
     assert cam.available is False and cam.latest() is None
     assert "mediapipe camera unavailable" in caplog.text and "picamera2" in caplog.text
     cam.close()
+
+
+def test_mediapipe_detector_gives_17_keypoints_per_person_from_the_bgr_frame():
+    lmk = FakeLandmarker([fake_landmarks(), person_landmarks(right_hand_up=True)])
+    det = MediaPipeDetector(landmarker=lmk)
+    frame = np.zeros((48, 64, 3), np.uint8)
+    frame[..., 0] = 200                                   # BGR: blue
+    people = det.detect(frame, 1234)
+    assert len(people) == 2 and all(len(p) == 17 for p in people)
+    assert people[0] == landmarks_to_keypoints(fake_landmarks())
+    assert lmk.calls == [((48, 64, 3), 1234)] and lmk.pixel == (0, 0, 200)   # the landmarker saw RGB
+    det.close()
+    assert lmk.closed
+
+
+def test_mediapipe_detector_without_the_model_file_raises(tmp_path):
+    with pytest.raises(FileNotFoundError, match="pose model missing"):
+        MediaPipeDetector(tmp_path / "missing.task")
+
+
+def test_the_old_name_is_the_new_class():
+    assert MediaPipeCamera is PoseCamera
