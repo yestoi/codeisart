@@ -2100,3 +2100,30 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
   docs/superpowers/specs/2026-10-02-arcade-on-the-wall-design.md section 4). The line above, "Iteration 22: ...
   then M7b's Paint and Tug", no longer holds. The same session put the picamera2 capture, `capture`,
   `run --game` and `arcade.pi.toml` on main.
+
+## Iteration 23 — 2026-10-03
+- Verdict (evidence/it23/README.md, line 1): **with `--game`, a locked player standing in the zone for 2 s starts the
+  game; the default lobby is byte-identical.** No sheets this iteration: the change removes a drawing (the pictogram
+  in the new mode) and adds none; the reviewer's frame comparison at the base and at HEAD stands in.
+- Plan: docs/superpowers/plans/2026-10-03-step-in-start.md (Q183: written in the sonyIMX500 session, reviewed by three
+  adversarial reviewers before the loop; rule 1's thin plan waived).
+- Shipped: 59c175a. `Lobby(games, cfg, start_on_step_in=False)`, `STEP_IN_SECONDS = 2.0`, a `Hold` on the locked player
+  primed at a new id and at the card's end, no invite pictogram and no "invite" mode in that mode, `debug_state["step_in"]`;
+  `arcade/main.py` passes `start_on_step_in=args.game is not None` and its help and docstring say so; nine tests.
+- Review: APPROVED in 1 round (reviewer-it23; evidence/it23/README.md).
+- Deploy: none (nothing to the card; the Pi's checkout moves to main at the owner's hand before Night One,
+  promptviz's plan Task 7 step 1).
+- Walkthrough: none (no sheets: see the verdict).
+- Tests: 2395 collected (+9); the full suite in six parts on the shared Mac (single runs stalled past 10 minutes at the
+  first oracle test, bot plays computed in-process; the pool ignores `ARCADE_POOL_WORKERS`, which nothing reads); two
+  pre-existing governor timing failures (strobe, static at 128x64) also at the base; two cwd-dependent failures in
+  test_arcade_shot.py. Lobby and runner: 144 passed, no skips.
+- Loop decisions: (1) the operator is the sonyIMX500 session, without this repo's hooks, obeying the rules by hand;
+  (2) the full suite's single run was not forced under the limit: the parts' sum is the reading, and the stall at the
+  oracle tests is journaled for the owner (it predates this change: the Mac ran promptviz's loop beside this one);
+  (3) the plan's `ARCADE_POOL_WORKERS=1` does nothing: noted for the next plan.
+- Noted, not carried: the step-in card still says "HAND UP = AGAIN" / "NEXT: RAISE A HAND" (an owner item below); the
+  1.9 s line unpinned; Review Focus 1's test passes without the new-id reset.
+- Minutes: wiring 05:06 to 05:12; implement 05:12 to 06:15 (63: the implementer's steps 1 to 5 about 15, the rest the
+  suite's three stalled single runs and the six parts); review 06:17 to 06:24 (7). About 78 in all.
+- Status: done. Next: M8 (Q181), at the owner's word; the gate stands as before this run.

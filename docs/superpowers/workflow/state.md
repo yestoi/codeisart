@@ -1,13 +1,13 @@
 # Operator state
 iteration: 23
-phase: review (from 06:17 CDT): the orchestrator reported at 06:15 (59c175a on main: lobby.py, main.py, test_lobby.py; 55 lobby tests; the full suite in six parts, 2395 collected; two pre-existing governor timing failures also at the base; two cwd-dependent test_arcade_shot failures); reviewer-it23 (opus) spawned on 2e1585d..HEAD
-milestone: S4, the step-in start under `--game` (Q183, 2026-10-03), before M8. Plan: docs/superpowers/plans/2026-10-03-step-in-start.md (reviewed; 7bea447). Spec: docs/superpowers/specs/2026-10-03-step-in-start-design.md
-gate: none open. gate.md of 2026-10-02 removed by Q183 (the owner's "start" of 2026-10-03)
-plan: docs/superpowers/plans/2026-10-03-step-in-start.md, one task (Task 1), nine tests in tests/arcade/test_lobby.py
-base: 2e1585d (HEAD before the orchestrator was spawned, 05:12 CDT)
-orchestrator: orchestrator-it23 (opus), spawned from the sonyIMX500 session (the operator for this run; config.md "The run of Q183")
-in_flight: reviewer-it23 from 06:17 CDT; fallback wake-up `sleep 540`
-last: iteration 21 (journal.md); iteration 22 is a written plan only (Q180, Q181), kept for M7b
-for the run: one implementer at a time; the full suite once after the task (`ARCADE_POOL_WORKERS=1`); nothing to the card; no Pi; no push; commits by path. The promptviz loop (Night One, iteration 2) runs beside this one on the same 8 GB Mac
-rules: config.md "Loop rules" and "The run of Q183" override the workflow-loop skill. Never `cd`. The Pi is shared (pi-lock.md): not used in this run
-times: it23 from 05:06 CDT (the wiring: 05:06 to 05:10)
+phase: report, done (06:26 CDT): S4 checked (journal.md "## Iteration 23"; evidence/it23/README.md APPROVED; 59c175a). The run of Q183 is over (iterations-per-run 1): the loop gates as before it, waiting for the owner's word on M8 (Q181)
+milestone: S4 done. Next M8, at the owner's word
+gate: as before Q183: nothing in flight; the owner says when M8 starts (gate.md of 2026-10-02 was removed by Q183; no new gate file is written: the owner's "start the workflow loop" is the signal)
+plan: docs/superpowers/plans/2026-10-03-step-in-start.md, done
+base: 2e1585d; the code commit 59c175a
+orchestrator: orchestrator-it23 (opus), idle; reviewer-it23 (opus), idle
+in_flight: nothing
+last: iteration 23, done 2026-10-03 06:26 CDT (journal.md). Before it: iteration 21 (2026-10-02); iteration 22 is a written plan only (Q180, Q181), kept for M7b
+for the owner: the Pi's checkout is on wall-bringup at an older commit; before Night One: `git -C ~/codeisart fetch && git checkout main && git pull` (promptviz's plan Task 7 step 1); the step-in card's wording (roadmap, Owner items); the two governor timing tests at 128x64 fail at the base on this Mac under load (strobe always, static at the edge); single full-suite runs stall past 10 minutes at the first oracle test while another loop shares the Mac
+rules: config.md "Loop rules" override the workflow-loop skill. Never `cd`. The Pi is shared (pi-lock.md). Nothing to the card. Main is not pushed by the loop
+times: it23 05:06 to 06:26 CDT, about 78 minutes
