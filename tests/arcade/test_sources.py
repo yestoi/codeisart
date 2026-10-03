@@ -91,11 +91,40 @@ def test_make_sources_mediapipe_gets_the_config_clock_and_calibration(monkeypatc
         def __init__(self, cfg, size, clock, *, calibration=None):
             seen.update(cfg=cfg, size=size, clock=clock, calibration=calibration)
 
-    monkeypatch.setattr(pm, "MediaPipeCamera", Spy)
+    monkeypatch.setattr(pm, "PoseCamera", Spy)
     cfg, clock, cal = make_cfg((64, 64), camera="mediapipe"), FakeClock(), Calibration(zone=(0.1, 0.1, 0.9, 0.9))
     cam, aud = make_sources(cfg, (64, 64), clock, calibration=cal)
     assert isinstance(cam, Spy) and isinstance(aud, NoSource)
     assert seen == dict(cfg=cfg, size=(64, 64), clock=clock, calibration=cal)
+
+
+def test_make_sources_imx500_opens_the_pair_and_hands_it_to_the_pose_camera(monkeypatch):
+    import arcade.sources.pose_imx500 as pi
+    import arcade.sources.pose_mediapipe as pm
+
+    seen = {}
+
+    class Spy:
+        def __init__(self, cfg, size, clock, *, calibration=None, capture=None, detector=None):
+            seen.update(cfg=cfg, size=size, clock=clock, calibration=calibration, capture=capture, detector=detector)
+
+    monkeypatch.setattr(pm, "PoseCamera", Spy)
+    monkeypatch.setattr(pi, "open_imx500", lambda cfg, size: ("the capture", "the detector"))
+    cfg, clock, cal = make_cfg((64, 64), camera="imx500"), FakeClock(), Calibration(zone=(0.1, 0.1, 0.9, 0.9))
+    cam, aud = make_sources(cfg, (64, 64), clock, calibration=cal)
+    assert isinstance(cam, Spy) and isinstance(aud, NoSource)
+    assert seen == dict(cfg=cfg, size=(64, 64), clock=clock, calibration=cal, capture="the capture", detector="the detector")
+
+
+def test_make_sources_imx500_without_picamera2_is_unavailable_and_says_so(monkeypatch, caplog):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "picamera2", None)        # import picamera2 raises ImportError
+    cfg = make_cfg((64, 64), camera="imx500")
+    cam, aud = make_sources(cfg, (64, 64), FakeClock())
+    assert cam.available is False and cam.latest() is None
+    assert "imx500 camera unavailable" in caplog.text and "picamera2" in caplog.text
+    cam.close()
 
 
 def test_scripted_camera_stamps_the_runner_clock(font5x7):
