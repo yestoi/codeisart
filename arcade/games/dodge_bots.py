@@ -1,7 +1,7 @@
 """Dodge's bots (spec 9.3). A bot's x is in zone coordinates, 0 to 1 across the mat; the block is at
 (x - ZONE_LO) / (ZONE_HI - ZONE_LO) of its travel. `won` is the run survived.
 
-good watches the rocks (debug_state's rocks, its threat_xy being the one over the block) and, when one is about to fall
+good watches the rocks (debug_state's rocks, (x, y, w) of every solid part, its threat_xy being the one over the block) and, when one is about to fall
 on the place it stands, walks to the nearest place no rock is over; lazy is slower and sloppier and
 only reacts to a rock that is well on its way down."""
 from __future__ import annotations
@@ -21,10 +21,11 @@ class Good:
 
     reaction_ticks, noise = 5, 0.02
     WALL_W = 128
-    NEAR = 10.0
-    CLEAR = 12.0
+    NEAR = 10.0                 # a 6 px rock's centre this close threatens; a wider one by its extra half-width more
+    EDGE = 9.0                  # px from a rock's edge the block's centre keeps to call it safe (a 6 px rock: 12,
+    EDGE_TIGHT = 5.0            # as before the sizes); when nothing is that clear, this much (a gate's gap)
     ABOVE = 44.0
-    GRID = 0.02
+    GRID = 0.02                 # of the mat, 2.4 px: a gate's gap (16 px, EDGE_TIGHT clear over 6) still holds a point
 
     def __init__(self):
         self.x = 0.5
@@ -36,18 +37,22 @@ class Good:
 
     def _threatened(self, rocks) -> bool:
         centre = self._centre(self.x)
-        return any(abs(rx - centre) <= self.NEAR and ry < self.ABOVE for rx, ry in rocks)
+        return any(abs(rx - centre) <= self.NEAR + max(0.0, rw - 6) / 2 and ry < self.ABOVE for rx, ry, rw in rocks)
 
-    def _safe(self, x: float, rocks) -> bool:
-        centre = self._centre(x)
-        return all(abs(rx - centre) > self.CLEAR for rx, _ in rocks)
+    def _safe(self, x: float, rocks, edge: float | None = None) -> bool:
+        centre, edge = self._centre(x), self.EDGE if edge is None else edge
+        return all(abs(rx - centre) > rw / 2 + edge for rx, _, rw in rocks)
 
     def _step(self, rocks) -> float:
-        """The zone x nearest the current target where no rock is over the block, else where it is."""
+        """The zone x nearest the current target where no rock is over the block, EDGE clear, else EDGE_TIGHT
+        clear (the way through a gate), else where it is."""
         n = round(1.0 / self.GRID)
-        options = sorted((abs(k * self.GRID - self.x), k * self.GRID) for k in range(n + 1)
-                         if self._safe(k * self.GRID, rocks))
-        return options[0][1] if options else self.x
+        for edge in (self.EDGE, self.EDGE_TIGHT):
+            options = sorted((abs(k * self.GRID - self.x), k * self.GRID) for k in range(n + 1)
+                             if self._safe(k * self.GRID, rocks, edge))
+            if options:
+                return options[0][1]
+        return self.x
 
     def __call__(self, state: dict, t: float) -> Move:
         rocks = state.get("rocks", ())

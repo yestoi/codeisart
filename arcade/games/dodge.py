@@ -3,18 +3,29 @@ and a run ends on the first hit or survives RUN_SECONDS.
 
 The whole body is the control: the hips' zone_x, through a Glide (by sensed.camera_t, C44: never raw), mapped from
 ZONE_LO..ZONE_HI of the mat to the wall's width, so the middle of the mat reaches both walls. Every AIM_EVERY-th rock
-falls at the block's x at its spawn, so a still body is hit within about 4 s; a rock that passes counts as a dodge
-only when the player's x span since its spawn was DODGE_TRAVEL_PX (C41, C42), and a best is stored only for a run
-that counted one. Hitboxes forgive: each box is shrunk HIT_SLACK px in total (half a slack on every side), so a 2 px
-graze is no hit and 3 px is. Nobody in view holds the run (rocks, spawns, the clock) for the Glide's grace, then the
-run goes on with the block where it was.
+(every AIM_TIGHT_EVERY-th from AIM_TIGHT_AT) falls at the block's x at its spawn, so a still body is hit within about
+4 s; a rock that passes counts as a dodge only when the player's x span since its spawn was DODGE_TRAVEL_PX (C41, C42),
+and a best is stored only for a run that counted one. Hitboxes forgive: each box is shrunk HIT_SLACK px in total
+(half a slack on every side), so a 2 px graze is no hit and 3 px is. Nobody in view holds the run (rocks, spawns,
+the clock) for the Glide's grace, then the run goes on with the block where it was.
+
+Harder (the owner, 2026-10-03, after the review of that day): the random rocks come in SIZES on a schedule
+(SIZE_FROM: rocks from the start as before, pebbles and slabs from 10 s, beams from 20 s), each in its own tint, none of them
+red (the governor doubles saturated red); the aimed rock is always the 6x4 rock, so the canonical script's
+arithmetic holds. A 3x3 pebble hits only when it sits inside the block's columns: a decoy. From GATE_AFTER some
+random spawns are a gate, one rock across the wall with a GAP_W gap whose centre is within reach(speed) of the
+block, the distance a body covers in the rock's fall time less DEAD_SECONDS of reaction and camera lag, at
+BODY_PX_PER_S; one spawn, one score, one gate at a time, and no aimed rock while a gate is still falling (the aimed
+cadence's mirror in aimed_landings holds until the first gate, past the measured window). Any random spawn leaves a block position
+within reach that no rock in flight covers (escapable; eight tries, then a plain rock). The fall is two linear segments, ROCK_SPEED at 0 s,
+KNEE_SECONDS and RUN_SECONDS: easier than before until the knee, much harder after it.
 
 Phases: ready (READY_SECONDS, the steps hint), play, hit (the hit-stop and the fade of a red block), over (holds).
 
 debug_state: phase, score (rocks dodged), active, hint (the step hint is wanted), speed (px/s, rocks now), survived,
-player_xy (the block's centre), threat_xy (the centre of the lowest rock whose columns overlap the block's widened
-by THREAT_SLACK px on each side, else None), rocks (every rock's centre, a tuple of (x, y); for the bots, which see
-only debug_state) and t_left (seconds of the run left)."""
+player_xy (the block's centre), threat_xy (the centre of the lowest solid part whose columns overlap the block's
+widened by THREAT_SLACK px on each side, else None), rocks (every solid part's centre and width, a tuple of
+(x, y, w); a gate is two; for the bots, which see only debug_state) and t_left (seconds of the run left)."""
 from __future__ import annotations
 
 import math
@@ -53,9 +64,25 @@ MAN_H, MAN_W = MAN.shape
 MAN_DX, MAN_DY = (MAN_W - PLAYER_W) // 2, MAN_H - PLAYER_H   # the figure's offset from the hitbox's top left
 ROCK_W = 6
 ROCK_H = 4
-ROCK_SPEED = (20.0, 48.0)       # px/s, linear over the run
-SPAWN_EVERY = (1.2, 0.5)        # s between rocks, linear over the run
+ROCK_SPEED = (20.0, 38.0, 56.0) # px/s at 0 s, at KNEE_SECONDS and at RUN_SECONDS: two linear segments
+KNEE_SECONDS = 30.0
+SPAWN_EVERY = (1.2, 0.4)        # s between rocks, linear over the run
 AIM_EVERY = 3                   # every third rock falls at the block's x at its spawn
+AIM_TIGHT_AT = 25.0             # s into the run from when every AIM_TIGHT_EVERY-th rock is aimed
+AIM_TIGHT_EVERY = 2
+SIZES = {"pebble": (3, 3), "rock": (6, 4), "slab": (12, 4), "beam": (24, 3)}   # (w, h) px of the random rocks
+SIZE_FROM = {"pebble": 10.0, "rock": 0.0, "slab": 10.0, "beam": 20.0}           # s into the run a size first comes
+SIZE_WEIGHT = {"pebble": 2, "rock": 4, "slab": 2, "beam": 1}
+GATE_AFTER = 20.0               # s into the run from when a random spawn may be a gate
+GATE_SHARE = 0.25               # of the random spawns after GATE_AFTER
+GAP_W = 16                      # px: the gate's gap, the 6 px block with 5 px of slack either side
+GAP_MARGIN = 10                 # px the gap keeps from either edge: the far edge needs the body at the zone's rim
+GATE_H = 3
+DEAD_SECONDS = 0.6              # a guest's reaction plus the camera's lag before the block moves
+BODY_PX_PER_S = 87.0            # the block's pace for a body crossing half the mat in a second
+REACH_MIN = 8.0                 # px: a gate's gap is never nearer than a step
+ESCAPE_MARGIN = 4.0             # px clear on either side of the block an escape must have: a hole of 14, not of 7
+ESCAPE_TRIES = 8
 HIT_SLACK = 2                   # px each box is shrunk before the overlap test (half on every side)
 THREAT_SLACK = 4                # px each side the block's columns are widened by for threat_xy
 DODGE_TRAVEL_PX = 12            # a passed rock counts only if the player's x span since its spawn was this
@@ -70,6 +97,8 @@ CAMERA_FPS = 10                 # capture_grace(10): what the player may be miss
 SPAWN_Y = -ROCK_H / 2           # a rock enters half in view, so its centre is on the wall
 GONE_Y = 60                     # a rock is gone (passed, counted) when its bottom reaches this row: 60 to 63 stay free
 ROCK_COLOR = (0, 200, 255)
+TINTS = {"pebble": (150, 230, 255), "rock": ROCK_COLOR, "slab": (0, 140, 255), "beam": (0, 255, 140)}
+GATE_COLOR = (0, 255, 140)      # cyan, blue, green, white only: red at 0.8 of the light is doubled by the governor
 BAR_COLOR = (255, 120, 0)
 TEXT_COLOR = (255, 120, 0)
 SCORE_COLOR = (255, 255, 255)
@@ -110,8 +139,24 @@ def _lerp(pair: tuple[float, float], run_t: float) -> float:
 
 
 def speed_at(run_t: float) -> float:
-    """The rocks' fall in px/s, run_t seconds into the run."""
-    return _lerp(ROCK_SPEED, run_t)
+    """The rocks' fall in px/s, run_t seconds into the run: ROCK_SPEED[0] to [1] over the first KNEE_SECONDS, [1] to
+    [2] over the rest."""
+    a, b, c = ROCK_SPEED
+    if run_t <= KNEE_SECONDS:
+        return a + (b - a) * max(0.0, run_t / KNEE_SECONDS)
+    return b + (c - b) * min(1.0, (run_t - KNEE_SECONDS) / (RUN_SECONDS - KNEE_SECONDS))
+
+
+def aim_every(run_t: float) -> int:
+    """Every how-many-th spawn is aimed, run_t seconds into the run."""
+    return AIM_TIGHT_EVERY if run_t >= AIM_TIGHT_AT - 1e-9 else AIM_EVERY
+
+
+def reach(speed: float) -> float:
+    """How far (px) the block can get before a rock falling at speed reaches its rows: the fall time less
+    DEAD_SECONDS, at BODY_PX_PER_S, never under REACH_MIN."""
+    fall = (PLAYER_Y - ROCK_H + HIT_SLACK - SPAWN_Y) / speed
+    return max(REACH_MIN, (fall - DEAD_SECONDS) * BODY_PX_PER_S)
 
 
 def spawn_gap(run_t: float) -> float:
@@ -120,11 +165,21 @@ def spawn_gap(run_t: float) -> float:
 
 
 class Rock:
-    """A falling rock: x, y its top-left corner (px); lo, hi the block's left edge extremes since its spawn."""
+    """A falling rock: x, y its top-left corner (px), w by h; lo, hi the block's left edge extremes since its spawn.
+    gap, (left edge, width), makes it a gate: solid on both sides of the gap only (spans)."""
 
-    def __init__(self, x: float, y: float, at: float):
-        self.x, self.y = x, y
+    def __init__(self, x: float, y: float, at: float, w: int = ROCK_W, h: int = ROCK_H, color=ROCK_COLOR,
+                 gap: tuple[float, float] | None = None):
+        self.x, self.y, self.w, self.h, self.color, self.gap = x, y, w, h, color, gap
         self.lo = self.hi = at
+
+    @property
+    def spans(self) -> tuple[tuple[float, float], ...]:
+        """(left, right) of every solid part."""
+        if self.gap is None:
+            return ((self.x, self.x + self.w),)
+        gx, gw = self.gap
+        return tuple((a, b) for a, b in ((self.x, gx), (gx + gw, self.x + self.w)) if b > a)
 
     @property
     def travel(self) -> float:
@@ -204,8 +259,13 @@ class Dodge(Game):
         self.run_t += dt
         self.spawn_in -= dt
         while self.spawn_in <= 0.0:
-            aimed = self.spawned % AIM_EVERY == 0
-            self.spawn_rock(self.block_x if aimed else self.rng.uniform(0.0, self.w - ROCK_W))
+            # No aimed rock while a gate is still falling: the block is in, or heading for, its gap, and a rock
+            # at that x would leave no way out of a gap 16 px wide (the Good bot died there 17 times in 20).
+            gate_up = any(r.gap is not None and r.y < PLAYER_Y for r in self.rocks)
+            if self.spawned % aim_every(self.run_t) == 0 and not gate_up:
+                self.spawn_rock(self.block_x)
+            else:
+                self.spawn_random()
             self.spawn_in += spawn_gap(self.run_t)
         fall = speed_at(self.run_t) * dt
         for rock in self.rocks:
@@ -214,7 +274,7 @@ class Dodge(Game):
         if any(self._hits(rock) for rock in self.rocks):
             self._hit()
             return
-        for rock in [r for r in self.rocks if r.y + ROCK_H >= GONE_Y]:
+        for rock in [r for r in self.rocks if r.y + r.h >= GONE_Y]:
             self.rocks.remove(rock)
             if rock.travel >= DODGE_TRAVEL_PX - 1e-9:
                 self.score += 1
@@ -223,16 +283,74 @@ class Dodge(Game):
             self.fx.celebrate(SAFE_COLOR)
             self._to_over()
 
-    def spawn_rock(self, x: float) -> None:
-        """A rock at x (its left edge), just above the wall; it remembers where the block is now."""
-        self.rocks.append(Rock(x, SPAWN_Y, self.block_x))
+    def spawn_rock(self, x: float, w: int = ROCK_W, h: int = ROCK_H, color=ROCK_COLOR,
+                   gap: tuple[float, float] | None = None) -> None:
+        """A rock at x (its left edge), w by h, just above the wall; it remembers where the block is now."""
+        self.rocks.append(Rock(x, -h / 2, self.block_x, w, h, color, gap))
         self.spawned += 1
 
+    def spawn_gate(self, gap_x: float | None = None) -> bool:
+        """One rock across the wall with a GAP_W gap at gap_x (its left edge); None puts the gap's centre within
+        reach of the block's, GAP_MARGIN from either edge, where no rock still falling covers it (ESCAPE_TRIES
+        draws; none clear: no gate, False)."""
+        if gap_x is None:
+            centre = self.block_x + PLAYER_W / 2
+            r = reach(speed_at(self.run_t))
+            lo = max(float(GAP_MARGIN), centre - r - GAP_W / 2)
+            hi = min(float(self.w - GAP_MARGIN - GAP_W), centre + r - GAP_W / 2)
+            falling = self._falling_spans()
+            for _ in range(ESCAPE_TRIES):
+                gap_x = self.rng.uniform(lo, max(lo, hi))
+                if not any(c > gap_x and a < gap_x + GAP_W for a, c in falling):
+                    break
+            else:
+                return False
+        self.spawn_rock(0.0, w=self.w, h=GATE_H, color=GATE_COLOR, gap=(gap_x, GAP_W))
+        return True
+
+    def spawn_random(self) -> None:
+        """A random rock of a size the run has reached (SIZE_FROM, SIZE_WEIGHT), or from GATE_AFTER a gate for
+        GATE_SHARE of them; a rock lands where the block still has an escape within reach (escapable), else, after
+        ESCAPE_TRIES, a plain rock, which a step always clears."""
+        t = self.run_t
+        gate_up = any(r.gap is not None and r.y < PLAYER_Y for r in self.rocks)
+        if t >= GATE_AFTER - 1e-9 and not gate_up and self.rng.random() < GATE_SHARE and self.spawn_gate():
+            return                          # one gate at a time: two gaps 0.7 s apart is two finds, not one
+        names = [n for n in SIZES if t >= SIZE_FROM[n] - 1e-9]
+        name = self.rng.choices(names, [SIZE_WEIGHT[n] for n in names])[0]
+        w, h = SIZES[name]
+        for _ in range(ESCAPE_TRIES):
+            x = self.rng.uniform(0.0, self.w - w)
+            if self.escapable(x, w):
+                break
+        else:
+            name, (w, h) = "rock", SIZES["rock"]
+            x = self.rng.uniform(0.0, self.w - w)
+        self.spawn_rock(x, w=w, h=h, color=TINTS[name])
+
+    def _falling_spans(self) -> list[tuple[float, float]]:
+        """The solid parts of every rock still above the block's rows."""
+        return [span for rock in self.rocks if rock.y < PLAYER_Y for span in rock.spans]
+
+    def escapable(self, x: float, w: int, gap: tuple[float, float] | None = None) -> bool:
+        """Whether some block position within reach of the block's (on the wall), ESCAPE_MARGIN clear on either
+        side, is clear of a rock at x, w wide, with gap, and of every rock still above the block's rows."""
+        r, m = reach(speed_at(self.run_t)), ESCAPE_MARGIN
+        spans = list(Rock(x, 0.0, 0.0, w, ROCK_H, gap=gap).spans) + self._falling_spans()
+        lo, hi = max(0, math.ceil(self.block_x - r)), min(self.w - PLAYER_W, math.floor(self.block_x + r))
+        for b in range(lo, hi + 1):
+            if not any(c > b - m and a < b + PLAYER_W + m for a, c in spans):
+                return True
+        return False
+
     def _hits(self, rock: Rock) -> bool:
-        """Overlap of the two boxes, each shrunk by HIT_SLACK in all (half a slack on every side)."""
+        """Overlap of the block with a solid part of the rock, each box shrunk by HIT_SLACK in all (half a slack on
+        every side)."""
         s = HIT_SLACK
-        return (rock.x + ROCK_W - s / 2 > self.block_x + s / 2 and self.block_x + PLAYER_W - s / 2 > rock.x + s / 2
-                and rock.y + ROCK_H - s / 2 > PLAYER_Y + s / 2 and PLAYER_Y + PLAYER_H - s / 2 > rock.y + s / 2)
+        if not (rock.y + rock.h - s / 2 > PLAYER_Y + s / 2 and PLAYER_Y + PLAYER_H - s / 2 > rock.y + s / 2):
+            return False
+        return any(c - s / 2 > self.block_x + s / 2 and self.block_x + PLAYER_W - s / 2 > a + s / 2
+                   for a, c in rock.spans)
 
     def _hit(self) -> None:
         self._set("hit")
@@ -259,7 +377,8 @@ class Dodge(Game):
     def draw(self, canvas: Canvas) -> None:
         w = self.w
         for rock in self.rocks:
-            canvas.fill_rect(rock.x, rock.y, ROCK_W, ROCK_H, ROCK_COLOR)
+            for a, c in rock.spans:
+                canvas.fill_rect(a, rock.y, c - a, rock.h, rock.color)
         left = round((w - BAR_RESERVE) * self._t_left() / RUN_SECONDS)
         if left > 0:
             canvas.fill_rect(0, 0, left, 1, BAR_COLOR)
@@ -294,10 +413,10 @@ class Dodge(Game):
         return max(0.0, RUN_SECONDS - self.run_t)
 
     def _threat(self):
-        """The lowest rock whose columns overlap the block's widened by THREAT_SLACK, else None."""
+        """The lowest solid part (rock, left, right) whose columns overlap the block's widened by THREAT_SLACK."""
         lo, hi = self.block_x - THREAT_SLACK, self.block_x + PLAYER_W + THREAT_SLACK
-        near = [r for r in self.rocks if r.x < hi and r.x + ROCK_W > lo]
-        return max(near, key=lambda r: r.y, default=None)
+        near = [(r, a, c) for r in self.rocks for a, c in r.spans if a < hi and c > lo]
+        return max(near, key=lambda t: t[0].y, default=None)
 
     def debug_state(self) -> dict:
         threat = self._threat()
@@ -305,8 +424,9 @@ class Dodge(Game):
                 "hint": bool(self._hint), "speed": round(speed_at(self.run_t), 2), "survived": bool(self.survived),
                 "player_xy": (round(self.block_x + PLAYER_W / 2, 2), PLAYER_Y + PLAYER_H / 2),
                 "threat_xy": None if threat is None
-                else (round(threat.x + ROCK_W / 2, 2), round(threat.y + ROCK_H / 2, 2)),
-                "rocks": tuple((round(r.x + ROCK_W / 2, 1), round(r.y + ROCK_H / 2, 1)) for r in self.rocks),
+                else (round((threat[1] + threat[2]) / 2, 2), round(threat[0].y + threat[0].h / 2, 2)),
+                "rocks": tuple((round((a + c) / 2, 1), round(r.y + r.h / 2, 1), round(c - a, 1))
+                               for r in self.rocks for a, c in r.spans),
                 "t_left": round(self._t_left(), 1)}
 
 
@@ -334,7 +454,7 @@ def aimed_landings(start: float, end: float) -> list[tuple[float, float, float]]
         run_t += TICK
         spawn_in -= TICK
         while spawn_in <= 0.0:
-            if n % AIM_EVERY == 0:
+            if n % aim_every(run_t) == 0:
                 born.append(run_t)
             n += 1
             spawn_in += spawn_gap(run_t)

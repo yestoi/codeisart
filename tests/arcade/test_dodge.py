@@ -114,7 +114,8 @@ def test_registered_and_declared():
     assert Dodge.CAPTION_KEYS == ("phase", "score", "speed")
     assert set(Dodge.SCENARIOS) == {"canonical", "idle_body", "nobody", "solo"}
     assert (RUN_SECONDS, PLAYER_W, PLAYER_H, ROCK_W, ROCK_H) == (45.0, 6, 8, 6, 4)
-    assert (ROCK_SPEED, SPAWN_EVERY, AIM_EVERY, HIT_SLACK) == ((20.0, 48.0), (1.2, 0.5), 3, 2)
+    assert (ROCK_SPEED, SPAWN_EVERY, AIM_EVERY, HIT_SLACK) == ((20.0, 38.0, 56.0), (1.2, 0.4), 3, 2)
+    assert (dodge.KNEE_SECONDS, dodge.AIM_TIGHT_AT, dodge.AIM_TIGHT_EVERY) == (30.0, 25.0, 2)
 
 
 @pytest.mark.parametrize("zone_x, left", [(0.15, 0.0), (0.5, MAT_MAX / 2), (0.85, MAT_MAX),
@@ -182,10 +183,12 @@ def test_an_aimed_rock_falls_at_the_player():
 
 
 def test_speed_and_spawns_ramp():
-    assert dodge.speed_at(0.0) == pytest.approx(20.0) and dodge.speed_at(RUN_SECONDS) == pytest.approx(48.0)
-    assert dodge.speed_at(RUN_SECONDS / 2) == pytest.approx(34.0)
-    assert dodge.spawn_gap(0.0) == pytest.approx(1.2) and dodge.spawn_gap(RUN_SECONDS) == pytest.approx(0.5)
-    assert dodge.spawn_gap(RUN_SECONDS / 2) == pytest.approx(0.85)
+    """Two segments (the 2026-10-03 review): easier early, much harder late, with the knee at 30 s."""
+    assert dodge.speed_at(0.0) == pytest.approx(20.0) and dodge.speed_at(RUN_SECONDS) == pytest.approx(56.0)
+    assert dodge.speed_at(15.0) == pytest.approx(29.0) and dodge.speed_at(30.0) == pytest.approx(38.0)
+    assert dodge.speed_at(37.5) == pytest.approx(47.0)
+    assert dodge.spawn_gap(0.0) == pytest.approx(1.2) and dodge.spawn_gap(RUN_SECONDS) == pytest.approx(0.4)
+    assert dodge.spawn_gap(RUN_SECONDS / 2) == pytest.approx(0.8)
     game, frames = playing()
     game.spawn_in = 0.0
     game.run_t = 0.0
@@ -199,7 +202,7 @@ def test_speed_and_spawns_ramp():
     y0 = rock.y
     game.rocks.append(rock)
     step(game, next(frames))
-    assert rock.y - y0 == pytest.approx(48.0 * TICK, abs=0.1), rock.y - y0
+    assert rock.y - y0 == pytest.approx(dodge.speed_at(RUN_SECONDS - 1.0) * TICK, abs=0.1), rock.y - y0
     assert game.debug_state()["speed"] == pytest.approx(dodge.speed_at(game.run_t), abs=0.01)
 
 
@@ -435,7 +438,7 @@ def test_rocks_lists_every_rock_centre_for_the_bots():
     game.spawn_rock(10.0)
     game.spawn_rock(90.0)
     game.rocks[1].y = 30.0
-    assert game.debug_state()["rocks"] == ((13.0, -2.0 + ROCK_H / 2), (93.0, 30.0 + ROCK_H / 2))
+    assert game.debug_state()["rocks"] == ((13.0, -2.0 + ROCK_H / 2, 6), (93.0, 30.0 + ROCK_H / 2, 6))
 
 
 def test_the_step_hint_is_drawn_over_the_player_when_wanted(font5x7):
@@ -570,3 +573,158 @@ def test_the_player_is_the_man_centred_on_the_hitbox(font5x7):
         x, y = game.debug_state()["player_xy"]
         assert tuple(canvas.frame[int(y), int(x)]) == PLAYER_COLORS[0]
     assert not np.any(canvas.frame[44:46, 110:128].any()), "nothing above row 46 near the figure"
+
+
+# ----- harder (the owner, 2026-10-03): sizes, gates, the reach, the late cadence -----
+
+
+def test_the_aimed_cadence_tightens_late():
+    assert dodge.aim_every(0.0) == 3 and dodge.aim_every(24.9) == 3 and dodge.aim_every(25.0) == 2
+
+
+def test_rock_sizes_arrive_on_a_schedule_and_aimed_rocks_stay_small():
+    """Rocks from the start (the opening is the old game's), pebbles and slabs from 10 s, beams from 20 s; every
+    aimed rock is the 6x4 rock, so the canonical script's arithmetic holds."""
+    assert dodge.SIZES == {"pebble": (3, 3), "rock": (6, 4), "slab": (12, 4), "beam": (24, 3)}
+    assert dodge.SIZE_FROM == {"pebble": 10.0, "rock": 0.0, "slab": 10.0, "beam": 20.0}
+    game = make()
+    frames = stander(0.3, ticks=3000)
+    seen = []
+    for _ in drive(game, frames, until=lambda g: g.run_t >= 44.0):
+        for rock in game.rocks:
+            if rock not in seen:
+                seen.append((game.run_t, rock))
+        game.rocks.clear()                                # nothing hits: the player is never under a rock
+    n = 0
+    for t, rock in seen:
+        aimed = n % dodge.aim_every(t) == 0
+        n += 1
+        if aimed:
+            assert (rock.w, rock.h) == (ROCK_W, ROCK_H) and rock.gap is None, (t, rock.w, rock.h)
+        elif rock.gap is None:
+            assert (rock.w, rock.h) in dodge.SIZES.values(), (rock.w, rock.h)
+            name = next(k for k, v in dodge.SIZES.items() if v == (rock.w, rock.h))
+            assert t >= dodge.SIZE_FROM[name], (t, name)
+    sizes = {(r.w, r.h) for t, r in seen if r.gap is None}
+    assert len(sizes) == 4, sizes
+    assert any(r.gap is not None for t, r in seen), "a gate came"
+    assert all(t >= dodge.GATE_AFTER for t, r in seen if r.gap is not None)
+
+
+def test_a_wide_rock_and_a_pebble_hit_by_the_same_overlap_rule():
+    game, frames = playing()
+    game.spawn_rock(game.block_x - 10, w=24, h=3)        # a beam over the block
+    game.rocks[0].y = 52.0
+    step(game, next(frames))
+    assert game.debug_state()["phase"] == "hit"
+    game, frames = playing()
+    game.spawn_rock(game.block_x + 1, w=3, h=3)          # a pebble inside the columns: a hit
+    game.rocks[0].y = 52.0
+    step(game, next(frames))
+    assert game.debug_state()["phase"] == "hit"
+    game, frames = playing()
+    game.spawn_rock(game.block_x - 1, w=3, h=3)          # a pebble on the edge: a graze, the decoy
+    game.rocks[0].y = 52.0
+    step(game, next(frames))
+    assert game.debug_state()["phase"] == "play"
+
+
+def test_a_gate_is_one_rock_with_a_gap_that_scores_once():
+    game, frames = playing(0.4)
+    bx = game.block_x
+    game.spawn_gate(bx - 4.0)                            # the 14 px gap opens 4 px left of the block: it stands inside
+    assert len(game.rocks) == 1 and game.spawned == 1
+    gate = game.rocks[0]
+    assert gate.gap == (bx - 4.0, dodge.GAP_W) and (gate.x, gate.w) == (0.0, WALL[0])
+    rocks = game.debug_state()["rocks"]
+    right = bx - 4.0 + dodge.GAP_W
+    assert rocks == ((round((bx - 4.0) / 2, 1), -1.5 + 1.5, round(bx - 4.0, 1)),
+                     (round((right + WALL[0]) / 2, 1), -1.5 + 1.5, round(WALL[0] - right, 1))), rocks
+    gate.y = 52.0
+    step(game, next(frames))
+    assert game.debug_state()["phase"] == "play", "the block stands in the gap"
+    gate.lo, gate.hi = bx, bx + DODGE_TRAVEL_PX
+    gate.y = 60.0
+    step(game, next(frames))
+    assert game.debug_state()["score"] == 1 and not game.rocks
+    game, frames = playing(0.4)
+    game.spawn_gate(game.block_x + 20.0)
+    game.rocks[0].y = 52.0
+    step(game, next(frames))
+    assert game.debug_state()["phase"] == "hit", "under a beam of the gate"
+
+
+def test_the_reach_is_what_a_body_covers_before_the_rock_lands():
+    """(fall time - 0.6 s of reaction and camera lag) * 87 px/s, floored at 8: a step, never a teleport."""
+    fall = (PLAYER_Y - ROCK_H + HIT_SLACK - dodge.SPAWN_Y) / 56.0
+    assert dodge.reach(56.0) == pytest.approx((fall - dodge.DEAD_SECONDS) * dodge.BODY_PX_PER_S, abs=0.5)
+    assert dodge.reach(20.0) > dodge.reach(38.0) > dodge.reach(56.0) > 8.0
+    assert dodge.reach(500.0) == 8.0
+
+
+def test_a_gate_s_gap_is_within_reach_and_on_the_wall():
+    for zone_x in (0.15, 0.5, 0.85):
+        game, _ = playing(zone_x)
+        game.run_t = 40.0
+        centre = game.block_x + PLAYER_W / 2
+        for _ in range(60):
+            game.rocks.clear()
+            game.spawn_gate()
+            gx, gw = game.rocks[0].gap
+            assert gw == dodge.GAP_W and dodge.GAP_MARGIN <= gx and gx + gw <= WALL[0] - dodge.GAP_MARGIN, gx
+            assert abs(gx + gw / 2 - centre) <= dodge.reach(dodge.speed_at(40.0)) + 1e-6, (zone_x, gx)
+
+
+def test_a_random_spawn_leaves_an_escape_within_reach():
+    game, _ = playing()
+    assert game.escapable(game.block_x, ROCK_W)
+    game.spawn_rock(0.0, w=WALL[0], h=3)                 # a wall-wide bar already falling: nowhere to go
+    game.rocks[0].y = 20.0
+    assert not game.escapable(game.block_x + 40, ROCK_W)
+    game.rocks.clear()
+    game.spawn_gate(game.block_x)                        # a gate whose gap is at the block
+    assert game.escapable(game.block_x + 40, ROCK_W)
+    game, _ = playing()
+    game.run_t = 40.0
+    for _ in range(200):                                 # with rocks in flight the next one still leaves a way out
+        game.spawn_random()
+        new = game.rocks[-1]
+        for r in game.rocks[:-1]:
+            r.y = 20.0
+        if len(game.rocks) > 3:
+            game.rocks.pop(0)
+        assert new.gap is not None or game.escapable(new.x, new.w) or new.w == ROCK_W, (new.x, new.w)
+
+
+def test_rock_tints_are_never_saturated_red():
+    """The governor doubles the signal of a pixel whose red is 0.8 of its light (arcade/flash.py RED_SHARE): a
+    beam in red, orange or amber would trip the square rule. Cyan, blue, green, white only."""
+    for name, color in dodge.TINTS.items():
+        assert name in dodge.SIZES
+        r, g, b = color
+        assert r < 0.5 * (r + g + b), (name, color)
+    assert dodge.GATE_COLOR[0] < 0.5 * sum(dodge.GATE_COLOR)
+
+
+def test_good_sees_the_width_of_a_beam_and_the_gap_of_a_gate():
+    from arcade.games.dodge_bots import Good
+    bot = Good()
+    bot.x = 0.5
+    centre = bot._centre(0.5)
+    assert not bot._threatened(((centre + 18.0, 30.0, 6),))
+    assert bot._threatened(((centre + 18.0, 30.0, 24),)), "the beam's end comes as near as a rock at NEAR"
+    gap, half = centre, dodge.GAP_W / 2
+    beams = ((gap - half - 32.0, 30.0, 64), (gap + half + 32.0, 30.0, 64))
+    assert not bot._safe(0.5, beams), "the gap is not EDGE clear on both sides"
+    assert bot._safe(0.5, beams, Good.EDGE_TIGHT) and not bot._safe(0.6, beams, Good.EDGE_TIGHT)
+    assert bot._step(beams) == pytest.approx(0.5, abs=Good.GRID), "so Good takes the gap EDGE_TIGHT clear"
+
+
+def test_a_good_play_keeps_the_flash_rule_through_the_late_run(font5x7):
+    """The sizes, the gates and the 56 px/s end come after 20 s of play, past the canonical script's measured
+    window: a Good play that survives the run shows the wall's frames keep the flash rule to the end."""
+    from arcade.bots import play
+    from arcade.games.dodge_bots import Good
+    p = play(Dodge, Good(), seeds(Dodge, "128x64", 2)[1], keep_frames=True, font=font5x7)
+    assert p.won and p.seconds >= RUN_SECONDS, (p.won, p.seconds)
+    assert flash_area(p.frames) <= 0.1 and square_flashes(p.frames) <= BUDGET
