@@ -51,6 +51,7 @@ SWITCH_SECONDS = 1.0         # ... for this long takes the lock
 REACQUIRE_DISTANCE = 0.25    # zone units: a new body this near the lost player's last place keeps the slot
 BLOB_SPEED = 0.05            # frame widths a second: a slower in-zone light is a lamp, not a person (spec 7.2)
 LOG_EVERY = 60.0             # seconds between two log lines about one failing thing
+LAG_EVERY = 1.0              # seconds between two lag lines (capture age at push), at DEBUG: run -v
 LOBBY = "lobby"
 RING = (160, 160, 160)       # the exit ring
 
@@ -332,6 +333,8 @@ class Runner:
         self._push_logged = self._governor_logged = -math.inf
         self._held_before = 0
         self._camera_seq, self._camera_capture = 0, None
+        self._ages: list[float] = []            # capture ages at push since the last lag line, in ms
+        self._lag_logged = -math.inf
         self._source_failed: dict[str, bool] = {}
         self.display.set_brightness(cfg.brightness)
         self._lobby_call(lambda: self.lobby.reset(cfg.size, random.Random(zlib.crc32(f"{seed}:lobby".encode()))))
@@ -563,6 +566,14 @@ class Runner:
             if self.t - self._push_logged >= LOG_EVERY:
                 self._push_logged = self.t
                 self.log.exception("display push failed (logged once a minute)")
+        if self._camera_capture is not None and self.log.isEnabledFor(logging.DEBUG):
+            self._ages.append((self.clock() - self._camera_capture) * 1000.0)
+            if self.t - self._lag_logged >= LAG_EVERY and self._ages:
+                self._lag_logged = self.t
+                ages = sorted(self._ages)
+                self.log.debug("capture age at push: median %.0f ms, max %.0f ms (%d pushes)",
+                               ages[len(ages) // 2], ages[-1], len(ages))
+                self._ages = []
         held = self.governor.held_ticks
         if held > self._held_before and self.t - self._governor_logged >= LOG_EVERY:
             self._governor_logged = self.t

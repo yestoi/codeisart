@@ -1092,3 +1092,26 @@ def test_session_result_says_new_best_only_when_the_best_rose(font5x7):
     assert [r.best for r in got] == [3.0, 3.0, 4.0, 4.0], got
     assert lobby.results == got
     assert SessionResult("g", "64x64", "done", None, 1.0, 1, None, False).new_best is False   # defaulted
+
+
+def test_verbose_logs_the_capture_age_at_push_once_a_second(font5x7, caplog):
+    from arcade.headless import NullLobby
+    from arcade.sources import NoSource
+    from arcade.sources.scripted import ScriptedCamera
+    from show.display.fake import FakeDisplay
+    from tests.arcade.helpers import FakeClock, make_cfg
+
+    clock = FakeClock(500.0)
+    cfg = make_cfg((128, 64))
+    frames = scene(persons=[Person(0.5, id=7)], ticks=cfg.fps * 3)
+    camera = ScriptedCamera(frames, clock)
+    runner = Runner(cfg, FakeDisplay(), font5x7, NullLobby(), [], clock=clock, sleep=clock.sleep)
+    with caplog.at_level(logging.DEBUG, logger="arcade"):
+        runner.loop(camera, NoSource(), max_ticks=cfg.fps * 2 + 2)
+    lines = [r.message for r in caplog.records if r.message.startswith("capture age at push")]
+    assert 1 <= len(lines) <= 3
+    assert "median" in lines[0] and "max" in lines[0] and lines[0].endswith("pushes)")
+    with caplog.at_level(logging.INFO, logger="arcade"):
+        caplog.clear()
+        runner.loop(camera, NoSource(), max_ticks=cfg.fps)
+    assert not [r for r in caplog.records if r.message.startswith("capture age at push")]
