@@ -106,3 +106,40 @@ def test_a_keyboard_interrupt_in_the_close_s_repush_still_closes_the_display():
     with pytest.raises(KeyboardInterrupt):
         wall.close()
     assert inner.closed and inner.count == 0 and wall.failed == 1 and wall.unsent
+
+
+# -- the hand-off (2026-10-03): the close that keeps the picture --------------------------------------------------
+
+
+class ClosingRecorder:
+    """A display that records its pushes and how it was closed."""
+
+    def __init__(self):
+        self.frames, self.closes = [], []
+
+    def push(self, frame):
+        self.frames.append(frame.copy())
+
+    def set_brightness(self, level):
+        pass
+
+    def close(self, keep_picture=False):
+        self.closes.append(keep_picture)
+
+
+def test_a_close_keeping_the_picture_sends_no_black_and_passes_it_to_the_display():
+    inner = ClosingRecorder()
+    wall = GovernedDisplay(inner, H, W, fps=FPS)
+    wall.push(LIT)
+    wall.close(keep_picture=True)
+    assert len(inner.frames) == 1 and inner.frames[0].any()
+    assert inner.closes == [True]
+
+
+def test_a_plain_close_still_sends_black_and_closes_plainly():
+    inner = ClosingRecorder()
+    wall = GovernedDisplay(inner, H, W, fps=FPS)
+    wall.push(LIT)
+    wall.close()
+    assert len(inner.frames) == 3 and not inner.frames[-1].any()
+    assert inner.closes == [False]

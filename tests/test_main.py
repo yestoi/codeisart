@@ -600,3 +600,45 @@ def test_run_returns_0_after_the_reel(tmp_path):
 def test_unknown_slug_in_a_play_list_is_an_error(tmp_path):
     assert main(["--config", str(show_toml(tmp_path / "one")), "--play", "quick,nope"]) == 2
     assert main(["--config", str(show_toml(tmp_path / "two")), "--play", "quick:x"]) == 2
+
+# -- the hand-off (2026-10-03): --play keeps the picture when the entry ends ------------------------------------------
+
+
+class ShortPlayer(StrobePlayer):
+    """Two frames, then the entry is over."""
+
+    def tick(self, now):
+        out = super().tick(now)
+        self.done = self.k >= 2
+        return out
+
+
+class ClosingRecorder(Recorder):
+    def __init__(self):
+        super().__init__()
+        self.closes = []
+
+    def close(self, keep_picture=False):
+        self.closes.append(keep_picture)
+        super().close()
+
+
+def test_play_keeps_the_picture_when_the_entry_ends_not_on_an_interrupt(tmp_path):
+    """Under the conductor the show's --play ends and the party wall returns: the card keeps the entry's last frame
+    through the swap (the next process opens dark). Ctrl-C, the service's stop, still blacks the wall."""
+    inner = ClosingRecorder()
+    loop = ShowLoop(small_cfg(tmp_path), display=inner, player_factory=ShortPlayer, notify=lambda s: None)
+    clock = iter(k * 0.05 for k in range(10_000))
+    loop.clock, loop.sleep = lambda: next(clock), lambda s: None
+    assert loop.run(play="a") == 0
+    assert inner.closes == [True] and inner.pushed[-1].any()
+
+    class Interrupting(StrobePlayer):
+        def tick(self, now):
+            raise KeyboardInterrupt
+
+    inner = ClosingRecorder()
+    loop = ShowLoop(small_cfg(tmp_path / "b"), display=inner, player_factory=Interrupting, notify=lambda s: None)
+    loop.clock, loop.sleep = lambda: next(clock), lambda s: None
+    assert loop.run(play="a") == 0
+    assert inner.closes == [False] and not inner.pushed[-1].any()

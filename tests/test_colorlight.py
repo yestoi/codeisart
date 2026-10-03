@@ -13,7 +13,7 @@ from show.config import Config
 from show.display import make_display
 from show.display.colorlight import DEAD_S, RESTART_S, SAFE_BRIGHTNESS, START_S, ColorlightDisplay, stats_line
 from show.display.colorlight_packets import sync_bytes
-from show.display.colorlight_sender import CLOSE_FRAMES, ERRORS, PAUSE
+from show.display.colorlight_sender import CLOSE_FRAMES, CLOSE_HOLD_S, ERRORS, PAUSE
 from show.display.fake import FakeDisplay
 from tests.colorlight_fakes import BRIGHTNESS, ROW, SYNC, Cranked, FakeClock, FakeSocket, bursts, kinds, row_pixels
 
@@ -398,3 +398,31 @@ def test_close_with_a_hung_child_replaces_it_to_drain_black():
     out = bursts(sock.sent)
     assert c.launches == 2 and len(out) >= CLOSE_FRAMES
     assert not any(row_pixels(p, W).any() for b in out for p in b if p[12] == ROW)
+
+
+def test_close_keeping_the_picture_sends_no_black_and_still_stops_the_sender():
+    """The hand-off (the steady-sender spec's amendment, 2026-10-03): the card keeps the last picture through the
+    swap to the next process, which opens dark itself; the sender still stops after a whole burst, the socket and
+    the slot still close, and nothing waits."""
+    d, sock, clock, c = display()
+    d.push(red())
+    c.crank(3)
+    sock.sent.clear()
+    slot, t0 = d.slot, clock.seconds()
+    d.close(keep_picture=True)
+    rows = [p for p in sock.sent if p[12] == ROW]
+    assert all(row_pixels(p, W).any() for p in rows)                            # no black row went out
+    assert clock.seconds() - t0 < CLOSE_HOLD_S                                   # no hold
+    assert not c.alive and sock.closed == 1 and slot._mm is None
+    d.close(keep_picture=True)                                                   # twice: harmless
+    assert sock.closed == 1
+
+
+def test_close_keeping_the_picture_with_a_dead_child_starts_none():
+    d, sock, clock, c = display()
+    d.push(red())
+    c.crank(3)
+    c.alive = False
+    slot = d.slot
+    d.close(keep_picture=True)
+    assert c.launches == 1 and sock.closed == 1 and slot._mm is None

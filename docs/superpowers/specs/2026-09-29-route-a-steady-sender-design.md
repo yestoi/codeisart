@@ -235,3 +235,33 @@ third push) are replaced, not kept. The layers, following the audit's 2.6:
 The S2's bytes, one sync a frame, no brightness packet, the row header 00 00 (all measured unnecessary). A
 discovery-packet health check (the audit's G11). The carrier watch. Pinning a core. Any change to
 `arcade/flash.py`, `show/wall.py` or the governor's inputs. The 512x192 wall's budget.
+
+## 11. Amendment (2026-10-03): the hand-off keeps the picture
+
+Scope: only the swap between the wall's own processes under promptviz's conductor (the party wall to a guest, the
+arcade's `run --game --leave-after/--once` or the show's `--play`, and back). Everything else closes as section 3
+decided.
+
+Why: measured on the Pi's journal for the FREEZE pick at 16:20:53, the wall was dark for about 4.5 s between the
+pick and the guest's card: 1.1 s of the close's black hold, 0.5 s of process start, 2.6 s of the doctor's second
+camera open, the rest the guest's own open. A guest sees a black wall and does not know the pick took.
+
+What changes. `ColorlightDisplay.close(keep_picture=True)` writes no black and holds nothing: it sets the stop
+flag, joins the child (bounded, as before), closes the socket and unlinks the slot. The card keeps the last
+picture, as `hardware.md` says it does through a restart. The sender child is still stopped and joined, never
+left to die, because a child whose parent has gone drains black on its own (section 4) and would undo this.
+`GovernedDisplay.close(keep_picture=True)` pushes no black frames and passes the flag down. The three callers
+pass it only when the run ended by its own rule: the party wall on a pick (its exit code set), the arcade when
+`until()` ended the loop, the show when `--play`'s entry ended. A KeyboardInterrupt (the unit's SIGINT, the
+conductor's limit) and `--seconds` close to black as before, so `systemctl stop` never leaves a frozen frame lit.
+
+Why the dark start still holds (C52). The next process's sender starts on a black frame and the open waits for
+its first beat (section 3), so the first governed frame is still counted against a black wall. The one
+uncounted pair, the kept picture to black to the first card, happens once inside about half a second: one
+flash, under the 3 a second rule.
+
+Also: `arcade run --require camera` with `camera = "imx500"` no longer runs the doctor's probe (a second open of
+the same camera); the one open in `make_sources(strict=True)` is the check and a failure returns 1 with the
+doctor's line. A script or a replay opens no camera, so the doctor still probes then. The probe's wait for the
+network upload is lost on this path; under the conductor the party wall streams the same source for minutes
+before any pick, so an upload completes there.

@@ -282,3 +282,94 @@ def test_run_leave_after_hands_the_runner_its_leave(tmp_path, monkeypatch):
     assert until() is True
     assert main(["run", "--config", config, "--script", "walkup", "--game", "jump"]) == 0
     assert seen[-1][1] is None
+
+
+def test_run_require_camera_on_the_imx500_checks_the_real_open_and_never_probes(tmp_path, monkeypatch, capsys):
+    """The hand-off (2026-10-03): with camera = "imx500" the doctor's probe opened the camera a second time, 2.6 s
+    of dark wall before every guest. Now the open in make_sources is the check: it fails -> 1, a doctor's line,
+    no runner; it opens -> no probe at all. A script or a replay still gets the doctor (nothing else checks)."""
+    import arcade.sources.pose_imx500 as pi
+    import arcade.sources.pose_mediapipe as pm
+
+    probed, built = [], []
+
+    class SpyRunner:
+        def __init__(self, *args, **kw):
+            built.append(kw)
+
+        def loop(self, camera, audio, max_ticks=None, until=None):
+            pass
+
+    class SpyCamera:
+        available = True
+
+        def __init__(self, cfg, size, clock, *, calibration=None, capture=None, detector=None, start=True):
+            pass
+
+        def latest(self):
+            return None
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(arcade.main, "Runner", SpyRunner)
+    monkeypatch.setattr(arcade.main, "probe_imx500", lambda *a, **kw: probed.append(1) or (True, "probed"))
+    monkeypatch.setattr(pm, "PoseCamera", SpyCamera)
+
+    def no_open(cfg, size):
+        raise RuntimeError("no camera on the ribbon")
+
+    monkeypatch.setattr(pi, "open_imx500", no_open)
+    config = str(_toml(tmp_path, camera="imx500"))
+    assert main(["run", "--config", config, "--require", "camera"]) == 1
+    assert probed == [] and built == []
+    assert "camera  UNAVAILABLE  imx500: RuntimeError: no camera on the ribbon" in capsys.readouterr().out
+
+    monkeypatch.setattr(pi, "open_imx500", lambda cfg, size: ("the capture", "the detector"))
+    assert main(["run", "--config", config, "--require", "camera", "--seconds", "0"]) == 0
+    assert probed == [] and len(built) == 1
+
+    assert main(["run", "--config", config, "--require", "camera", "--script", "walkup", "--seconds", "0"]) == 0
+    assert probed == [1] and len(built) == 2                  # a script: the doctor as before
+
+
+def test_run_keeps_the_picture_when_its_own_rule_ended_the_run_not_on_an_interrupt(tmp_path, monkeypatch):
+    """The hand-off (2026-10-03): a run ended by --once or --leave-after closes the display keeping the picture, so
+    the card shows the last frame until the party wall opens dark; Ctrl-C (the service's stop) and --seconds
+    close to black as before."""
+    from arcade.runner import Runner
+
+    class Disp:
+        def __init__(self):
+            self.closes = []
+
+        def push(self, frame):
+            pass
+
+        def set_brightness(self, level):
+            pass
+
+        def close(self, keep_picture=False):
+            self.closes.append(keep_picture)
+
+    disp = Disp()
+    monkeypatch.setattr(arcade.main, "build_display", lambda cfg: disp)
+    config = str(_toml(tmp_path))
+
+    def ended(self, camera, audio, max_ticks=None, until=None):
+        self.ended = 1
+
+    monkeypatch.setattr(Runner, "loop", ended)
+    assert main(["run", "--config", config, "--script", "walkup", "--game", "freeze", "--once"]) == 0
+    assert disp.closes == [True]
+
+    def interrupted(self, camera, audio, max_ticks=None, until=None):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(Runner, "loop", interrupted)
+    assert main(["run", "--config", config, "--script", "walkup", "--game", "freeze", "--once"]) == 0
+    assert disp.closes == [True, False]
+
+    monkeypatch.setattr(Runner, "loop", lambda self, camera, audio, max_ticks=None, until=None: None)
+    assert main(["run", "--config", config, "--script", "walkup", "--seconds", "0"]) == 0
+    assert disp.closes == [True, False, False]

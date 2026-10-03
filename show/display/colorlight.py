@@ -10,7 +10,8 @@ push(frame) checks the frame, then the sender's news (below), copies the frame i
 nothing is sent by the caller's thread. set_brightness stores the level; every sync from the next tick carries it
 (there is no separate brightness packet: the sync's byte 36 = 05 makes the card obey the sync's level). The wall
 is black from the moment the display opens (the card keeps its last picture through a restart otherwise), and
-close() runs black for CLOSE_HOLD_S, stops the sender after a whole burst, closes the socket and unlinks the slot.
+close() runs black for CLOSE_HOLD_S, stops the sender after a whole burst, closes the socket and unlinks the slot;
+close(keep_picture=True), the hand-off between the wall's processes, skips the black and the hold and only stops it.
 
 The sender's news comes back through push: a send that raised in the child (recorded, the sender paused) is
 raised by the next push, which stores nothing, so show.wall.GovernedDisplay starts its hold as before; the
@@ -225,22 +226,27 @@ class ColorlightDisplay:
         s["restarts"] = self.restarts
         return s
 
-    def close(self) -> None:
-        """Black for CLOSE_HOLD_S, the sender stopped after a whole burst, the socket closed, the slot unlinked."""
+    def close(self, keep_picture: bool = False) -> None:
+        """Black for CLOSE_HOLD_S, the sender stopped after a whole burst, the socket closed, the slot unlinked.
+        keep_picture (the hand-off amendment, 2026-10-03): no black and no hold; the card keeps the last picture
+        for the next process, which opens dark itself; the sender is still stopped and joined (left alone it
+        would drain black on its own when its parent went)."""
         if self.slot is None:
             return
         try:
-            self.slot.write(np.zeros((self.height, self.width, 3), np.uint8))
-            if not self._alive():                                       # dead, or hung: a fresh child drains
-                self._reap()                                            # the black, best effort
-                try:
-                    self._start()
-                except OSError:
-                    log.exception("closing: no sender to drain black with; the wall keeps its last picture")
+            if not keep_picture:
+                self.slot.write(np.zeros((self.height, self.width, 3), np.uint8))
+                if not self._alive():                                   # dead, or hung: a fresh child drains
+                    self._reap()                                        # the black, best effort
+                    try:
+                        self._start()
+                    except OSError:
+                        log.exception("closing: no sender to drain black with; the wall keeps its last picture")
             child = self._child
             if child is not None and child.is_alive():
-                self.slot.h[PAUSE] = 0
-                self._sleep(CLOSE_HOLD_S)
+                if not keep_picture:
+                    self.slot.h[PAUSE] = 0
+                    self._sleep(CLOSE_HOLD_S)
                 self.slot.h[STOP] = 1
                 child.join(JOIN_S)
                 if child.is_alive():

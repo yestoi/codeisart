@@ -119,9 +119,10 @@ class GovernedDisplay:
     def set_brightness(self, level: float) -> None:
         self.display.set_brightness(level)
 
-    def close(self) -> None:
+    def close(self, keep_picture: bool = False) -> None:
         """The counted frame again if the last send did not complete, then two governed black frames, then the
-        display closed, whatever the pushes do. A failed repush still lets the black go.
+        display closed, whatever the pushes do. A failed repush still lets the black go. keep_picture (the
+        hand-off amendment, 2026-10-03): no black frames, and the display's close keeps the picture.
 
         While the wall holds, the close waits out the hold (C53): nothing until the hold's next send is due (the
         clock read once, before the first wait: the loop's clock does not move while it sleeps); if the hold has
@@ -146,10 +147,14 @@ class GovernedDisplay:
                     self.repush()               # what the governor counted, before black follows it
                 except Exception:
                     log.exception("closing: resending the last governed frame failed; black still goes")
-            for _ in range(2):
-                self._govern(black)             # not held: the governed path, never push's hold
+            if not keep_picture:
+                for _ in range(2):
+                    self._govern(black)         # not held: the governed path, never push's hold
         finally:
-            self.display.close()
+            if keep_picture:
+                self.display.close(keep_picture=True)
+            else:
+                self.display.close()
 
     def _send(self, frame: np.ndarray) -> None:
         self.unsent = True

@@ -225,7 +225,8 @@ def build_display(cfg: ArcadeConfig) -> Display:
 
 def run(args) -> int:
     """The arcade: the small lobby and every game, until --seconds pass, the window closes or ^C. --require runs the
-    doctor on those sources first and stops with its code when one fails (Q145); --replay plays a scenario file.
+    doctor on those sources first and stops with its code when one fails (Q145), except the imx500's camera, which
+    is checked by the one real open (1 when it fails); --replay plays a scenario file.
     --game offers that one game only: a player standing in the zone for 2 s starts it; with --leave-after SECONDS the
     run ends once the zone has been empty that long, three times that before the first game (Runner.left); with --once
     it ends when the first game has ended (one playthrough), either rule ending it when both are given."""
@@ -238,15 +239,27 @@ def run(args) -> int:
             print(f"run: unknown game {args.game!r}; known: {', '.join(names)}")   # CLI output, as the doctor's
             return 2
         games = [game for game in games if game.info.name == args.game]
-    if _names(args.require):
-        code = doctor(_names(args.require), make_probes(cfg.camera_index, cfg.audio_device, capture=cfg.capture,
-                                                        camera=cfg.camera), TIMEOUT)
+    require = _names(args.require)
+    # The imx500's camera check is the one real open below, not the doctor's second one (2.6 s of dark wall before
+    # every guest of the party wall, 2026-10-03); a script or a replay opens no camera, so the doctor checks then.
+    real_check = "camera" in require and cfg.camera == "imx500" and args.script is None and args.replay is None
+    probed = [n for n in require if not (real_check and n == "camera")]
+    if probed:
+        code = doctor(probed, make_probes(cfg.camera_index, cfg.audio_device, capture=cfg.capture,
+                                          camera=cfg.camera), TIMEOUT)
         if code:
             return code
     data_dir = Path(cfg.data_dir)
     calibration = load_calibration(data_dir)
-    camera, audio = make_sources(cfg, cfg.size, script=args.script, calibration=calibration,   # main thread
-                                 replay=args.replay)
+    try:
+        camera, audio = make_sources(cfg, cfg.size, script=args.script, calibration=calibration,   # main thread
+                                     replay=args.replay, strict=real_check)
+    except Exception as e:
+        if not real_check:
+            raise
+        print(f"camera  UNAVAILABLE  imx500: {type(e).__name__}: {e}")      # the doctor's line, as it would print
+        return 1
+    ended = False                 # the run ended by its own rule (--leave-after, --once): the card keeps the picture
     try:
         font = Font.load(Path(cfg.font_path))
         display = build_display(cfg)
@@ -259,13 +272,17 @@ def run(args) -> int:
             until = None if leave is None and not once else \
                 (lambda: (leave is not None and runner.left(leave)) or (once and runner.ended >= 1))
             runner.loop(camera, audio, max_ticks=max_ticks, until=until)
+            ended = until is not None and bool(until())
         except KeyboardInterrupt:
             pass
         finally:
             line = stats_line(display)
             if line:
                 log.info(line)
-            display.close()
+            if ended:
+                display.close(keep_picture=True)    # the party wall opens dark itself; until then, the last frame
+            else:
+                display.close()
         return 0
     finally:
         for source in (camera, audio):

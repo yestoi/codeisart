@@ -470,6 +470,7 @@ class ShowLoop:
             log.error("fps %r is not an int of at least 2: run steps at %d fps", pace, FALLBACK_FPS)
             pace = FALLBACK_FPS
         period = 1.0 / pace
+        ended = False                                         # --play's entry ended by itself (not ^C, not an error)
         try:
             now = self.clock()
             self.start(now)
@@ -495,13 +496,14 @@ class ShowLoop:
                 self.step(now)
                 due = now + period
                 if self.reel_done:
+                    ended = True                          # the hand-off: the card keeps the reel's last frame
                     return 0
         except KeyboardInterrupt:
             return 0
         finally:
-            self._close()
+            self._close(keep_picture=ended)
 
-    def _close(self) -> None:
+    def _close(self, keep_picture: bool = False) -> None:
         log.info("closing: the wall goes black, the lights off")
         if self.show is not None:
             try:
@@ -531,7 +533,10 @@ class ShowLoop:
                 if line:
                     log.info(line)
                 self._now = self.clock()                      # the wall's clock at the close: its wait (C53)
-                self.wall.close()
+                if keep_picture:
+                    self.wall.close(keep_picture=True)
+                else:
+                    self.wall.close()
             except Exception:
                 log.exception("closing the wall failed")
 

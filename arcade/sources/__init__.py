@@ -47,12 +47,13 @@ class NoSource:
 
 def make_sources(cfg: ArcadeConfig, size: tuple[int, int], clock: Callable[[], float] = time.monotonic,
                  script: str | None = None, *, calibration: Calibration | None = None,
-                 replay: str | Path | None = None):
+                 replay: str | Path | None = None, strict: bool = False):
     """(camera, audio) for cfg. script names a SCRIPTS entry played by a ScriptedCamera instead of cfg.camera, claiming
     its SCRIPT_INPUTS; replay is a scenario file's path, played by open_replay as both the camera and the audio, as
     is cfg.scenario when cfg.camera is "replay" and no script is given (script and replay are exclusive).
     mediapipe and imx500 open the camera here, on the calling (main) thread; an imx500 that does not open (no
-    picamera2, no camera) logs once and gives an unavailable camera. Bodies are placed against calibration
+    picamera2, no camera) logs once and gives an unavailable camera, or raises with strict (run --require camera
+    on the imx500 checks this one open instead of the doctor's second one). Bodies are placed against calibration
     (load_calibration(cfg.data_dir) when None). Audio is otherwise the none source (Q99). Captures are stamped on
     clock."""
     if script is not None and replay is not None:
@@ -77,6 +78,8 @@ def make_sources(cfg: ArcadeConfig, size: tuple[int, int], clock: Callable[[], f
         try:
             capture, detector = pose_imx500.open_imx500(cfg, size)   # main thread: it opens the camera
         except Exception as e:
+            if strict:
+                raise
             log.warning("imx500 camera unavailable: %s", e)
             capture, detector = _Unopened(), _Unopened()           # the camera is built, unavailable, and never starts
             camera = pose_mediapipe.PoseCamera(cfg, size, clock, calibration=cal, capture=capture, detector=detector,

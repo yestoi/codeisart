@@ -155,3 +155,14 @@ def test_walkup_script_shows_the_mirror_then_the_invite_within_5s(font5x7):
     assert "mirror" in modes and "invite" in modes, modes
     assert modes.index("mirror") < modes.index("invite")
     assert set(SCRIPTS) == {"walkup"}
+
+
+def test_make_sources_imx500_strict_raises_when_the_camera_does_not_open(monkeypatch):
+    """strict (the hand-off, 2026-10-03): run --require camera checks the one real open instead of the doctor's
+    probe, so a camera that does not open must come out as an error, not an unavailable source."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "picamera2", None)
+    cfg = make_cfg((64, 64), camera="imx500")
+    with pytest.raises(ImportError):
+        make_sources(cfg, (64, 64), FakeClock(), strict=True)
