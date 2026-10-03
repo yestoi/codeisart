@@ -314,6 +314,7 @@ class Runner:
         self.game: Game | None = None
         self.current: Any = lobby
         self.current_name = LOBBY
+        self.ended = 0                                # sessions ended, for left()
         self.fx: Juice | None = None
         self.raw_frames: list[np.ndarray] | None = None
         self.trace: list[dict] | None = None
@@ -389,6 +390,7 @@ class Runner:
                              reason)
         self._lobby_call(lambda: self.lobby.end_session(result))
         self._to_lobby()
+        self.ended += 1
         if reason == "exit":
             self._blocked, self._hands_seen = True, self.t
         return result
@@ -664,6 +666,13 @@ class Runner:
                 deadline += period
             else:
                 deadline = self.clock() + period
+
+    def left(self, after: float) -> bool:
+        """`run --game NAME --leave-after SECONDS` ends on this (Night One, 2026-10-03: the party wall's conductor runs
+        the arcade as a guest and the guest should not wait for a second player). True in the lobby once at least
+        one session has ended and nothing has been seen on the square for after seconds; a player who stays on after
+        a round keeps the run (the card's STAY = AGAIN)."""
+        return self.current_name == LOBBY and self.ended > 0 and self.t - self.presence.last_seen >= after - EPSILON
 
     def state(self) -> dict:
         """The game's (or lobby's) debug_state, then the fx_* keys, then the runner's keys, which win (spec 7.2)."""

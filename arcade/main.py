@@ -226,7 +226,8 @@ def build_display(cfg: ArcadeConfig) -> Display:
 def run(args) -> int:
     """The arcade: the small lobby and every game, until --seconds pass, the window closes or ^C. --require runs the
     doctor on those sources first and stops with its code when one fails (Q145); --replay plays a scenario file.
-    --game offers that one game only: a player standing in the zone for 2 s starts it."""
+    --game offers that one game only: a player standing in the zone for 2 s starts it; with --leave-after SECONDS the
+    run ends once a game has been played and the zone has been empty that long (Runner.left)."""
     cfg = load_config(args.config)
     log.info("wall %s, backend %s", cfg.layout, cfg.backend)
     games = all_games()
@@ -253,7 +254,8 @@ def run(args) -> int:
                             scores=Scores(data_dir / "scores.json"), sessions=SessionLog(data_dir / "sessions.jsonl"),
                             calibration=calibration, local_clock=datetime.now, lux=None)
             max_ticks = None if args.seconds is None else round(args.seconds * cfg.fps)
-            runner.loop(camera, audio, max_ticks=max_ticks)
+            leave = args.leave_after
+            runner.loop(camera, audio, max_ticks=max_ticks, until=None if leave is None else (lambda: runner.left(leave)))
         except KeyboardInterrupt:
             pass
         finally:
@@ -278,6 +280,8 @@ def build_parser() -> argparse.ArgumentParser:
     played.add_argument("--replay", metavar="PATH", help="play a scenario file instead of cfg.camera")
     r.add_argument("--require", default="", help="comma list of camera, mic, pose: the doctor checks them first")
     r.add_argument("--game", metavar="NAME", help="offer only this game: a player standing in the zone for 2 s starts it")
+    r.add_argument("--leave-after", type=float, metavar="SECONDS",
+                   help="with --game: stop once a game has been played and the zone has been empty this long")
     r.add_argument("-v", "--verbose", action="store_true")
     d = sub.add_parser("doctor", help="exit 1 if a required source is unavailable after the timeout")
     d.add_argument("--require", default="camera,mic,pose", help="comma list of camera, mic, pose")

@@ -1135,3 +1135,23 @@ def test_the_lag_line_stops_when_the_camera_goes_stale(font5x7, caplog):
         runner.loop(NoSource(), NoSource(), max_ticks=cfg.fps * 2)
     lines = [r.message for r in caplog.records if r.message.startswith("capture age at push")]
     assert lines == []
+
+
+def test_left_once_a_round_was_played_and_the_square_has_been_empty(font5x7):
+    """--leave-after (Night One, 2026-10-03): the conductor's guest under --game leaves once a round has been played
+    and nobody has stood on the square for the given seconds. Before any round it stays however empty the square is;
+    a player who stays on after a round keeps it (the card's STAY = AGAIN)."""
+    runner, display, lobby = make_runner(font5x7, games=(spy(finish_after=3),))
+    feed(runner, scene(persons=[], ticks=ticks(10)))
+    assert runner.left(2.0) is False, "no round yet: the arcade waits for its first player"
+    runner.launch("spy")
+    feed(runner, stand(ticks=3))                                   # the round ends on its third tick
+    assert runner.current is lobby and runner.ended == 1
+    assert runner.left(2.0) is False, "the player is still on the square"
+    feed(runner, stand(ticks=ticks(5)))
+    assert runner.left(2.0) is False
+    feed(runner, scene(persons=[], ticks=ticks(1.0)))
+    assert runner.left(2.0) is False, "empty for one second of two"
+    feed(runner, scene(persons=[], ticks=ticks(1.5)))
+    assert runner.left(2.0) is True
+    assert runner.left(60.0) is False, "a longer leave is still waiting"

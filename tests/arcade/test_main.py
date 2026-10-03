@@ -54,8 +54,8 @@ def test_main_builds_runner_with_the_small_lobby_and_games_once(tmp_path, monkey
             self.args = dict(cfg=cfg, display=display, font=font, lobby=lobby, games=games, **kw)
             built.append(self)
 
-        def loop(self, camera, audio, max_ticks=None):
-            self.looped = (camera, audio, max_ticks)
+        def loop(self, camera, audio, max_ticks=None, until=None):
+            self.looped = (camera, audio, max_ticks, until)
 
     monkeypatch.setattr(arcade.main, "all_games", counting_all_games)
     monkeypatch.setattr(arcade.main, "Runner", SpyRunner)
@@ -70,12 +70,12 @@ def test_main_builds_runner_with_the_small_lobby_and_games_once(tmp_path, monkey
     assert isinstance(a["calibration"], Calibration)
     assert a["local_clock"] == datetime.now and a["lux"] is None
     assert "director" not in a
-    camera, audio, max_ticks = built[0].looped
+    camera, audio, max_ticks, until = built[0].looped
     assert isinstance(camera, ScriptedCamera) and audio.latest() is None and max_ticks == 2 * a["cfg"].fps
 
     built.clear()
     assert main(["run", "--config", str(config), "--script", "walkup"]) == 0
-    assert built[0].looped[2] is None                    # no --seconds: run until stopped
+    assert built[0].looped[2] is None and until is None    # no --seconds: run until stopped; no --leave-after
 
 
 def test_main_passes_the_saved_calibration(tmp_path, monkeypatch):
@@ -87,7 +87,7 @@ def test_main_passes_the_saved_calibration(tmp_path, monkeypatch):
         def __init__(self, *args, **kw):
             built.append(kw)
 
-        def loop(self, camera, audio, max_ticks=None):
+        def loop(self, camera, audio, max_ticks=None, until=None):
             pass
 
     monkeypatch.setattr(arcade.main, "Runner", SpyRunner)
@@ -182,7 +182,7 @@ def test_run_require_exits_nonzero_without_camera(tmp_path, monkeypatch, capsys)
         def __init__(self, *args, **kw):
             built.append(kw)
 
-        def loop(self, camera, audio, max_ticks=None):
+        def loop(self, camera, audio, max_ticks=None, until=None):
             pass
 
     real_make_sources = arcade.main.make_sources
@@ -217,7 +217,7 @@ def test_run_game_offers_only_that_game_and_refuses_an_unknown_one(tmp_path, mon
         def __init__(self, cfg, display, font, lobby, games, **kw):
             built.append((lobby, games))
 
-        def loop(self, camera, audio, max_ticks=None):
+        def loop(self, camera, audio, max_ticks=None, until=None):
             pass
 
     real_make_sources = arcade.main.make_sources
@@ -232,3 +232,28 @@ def test_run_game_offers_only_that_game_and_refuses_an_unknown_one(tmp_path, mon
     assert len(built) == 1 and len(opened) == 1               # refused before a source or a runner
     out = capsys.readouterr().out
     assert "unknown game 'tetris'" in out and "copyme, pong" in out
+
+
+def test_leave_after_is_parsed_and_off_by_default():
+    from arcade.main import build_parser
+    assert build_parser().parse_args(["run"]).leave_after is None
+    assert build_parser().parse_args(["run", "--game", "freeze", "--leave-after", "5"]).leave_after == 5.0
+
+
+def test_run_leave_after_hands_the_runner_its_leave(tmp_path, monkeypatch):
+    """--game NAME --leave-after S: the loop's until is Runner.left(S); without the flag there is none."""
+    from arcade.runner import Runner
+    seen = []
+
+    def spy_loop(self, camera, audio, max_ticks=None, until=None):
+        seen.append((self, until))
+
+    monkeypatch.setattr(Runner, "loop", spy_loop)
+    config = str(_toml(tmp_path))
+    assert main(["run", "--config", config, "--script", "walkup", "--game", "jump", "--leave-after", "5"]) == 0
+    runner, until = seen[-1]
+    assert callable(until) and until() is False, "nothing played yet: the run stays"
+    runner.ended, runner.t = 1, 100.0                      # a round over, the zone empty since the start
+    assert until() is True
+    assert main(["run", "--config", config, "--script", "walkup", "--game", "jump"]) == 0
+    assert seen[-1][1] is None
