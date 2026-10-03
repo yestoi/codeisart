@@ -1,6 +1,7 @@
 """Dodge (spec 8, game 5; side steps only, Q70): rocks fall, the player's block follows the body's x across the mat,
 a run ends on the first hit or survives RUN_SECONDS."""
 import dataclasses
+import math
 import random
 import statistics
 import tomllib
@@ -540,3 +541,32 @@ def test_feel_file_overrides_have_reasons():
     assert "budgets" not in data                                   # the plan: no budget override
     for metric, table in data.get("budgets", {}).get("128x64", {}).items():
         assert table.get("reason", "").strip(), metric
+
+
+def test_the_player_is_the_man_centred_on_the_hitbox(font5x7):
+    """The Burning Man figure (the owner, 2026-10-03, after a three-lens review): a 10x12 sprite at rows 46 to 57,
+    centred on the unchanged 6x8 hitbox, its 6 px base exactly the hitbox's columns, its spine through row 54 (the
+    centre pixel the debug_state's player_xy names), and its x rounded by the canvas as the block's was."""
+    from arcade.games.dodge import MAN, MAN_H, MAN_W
+    assert MAN.shape == (MAN_H, MAN_W) == (12, 10) and MAN.dtype == bool
+    assert list(np.flatnonzero(MAN[-1])) == [2, 3, 4, 5, 6, 7], "the base is the hitbox's 6 columns"
+    assert list(np.flatnonzero(MAN[8])) == [4, 5], "the spine runs through row 54"
+    assert not MAN[2, 3:7].any() and MAN[0, 4:6].all(), "a head apart from the shoulders"
+    for block_x in (40.0, 40.5, 0.0, 122.0):
+        game = make()
+        game.block_x = block_x
+        canvas = Canvas(*WALL, font5x7)
+        canvas.clear()
+        game.draw(canvas)
+        left = math.floor(block_x - 2 + 0.5)                   # the canvas rounds half up, as fill_rect did
+        window = canvas.frame[46:58, max(0, left):left + MAN_W]
+        skip = max(0, -left)
+        mask = MAN[:, skip:skip + window.shape[1]]
+        assert np.array_equal(np.all(window == PLAYER_COLORS[0], axis=2), mask), block_x
+        assert np.array_equal(window.any(axis=2), mask), "nothing else lit there"
+        base_cols = np.flatnonzero(np.all(canvas.frame[57] == PLAYER_COLORS[0], axis=1))
+        hit_left = math.floor(block_x + 0.5)
+        assert list(base_cols) == list(range(hit_left, hit_left + PLAYER_W)), block_x
+        x, y = game.debug_state()["player_xy"]
+        assert tuple(canvas.frame[int(y), int(x)]) == PLAYER_COLORS[0]
+    assert not np.any(canvas.frame[44:46, 110:128].any()), "nothing above row 46 near the figure"

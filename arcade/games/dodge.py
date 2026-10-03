@@ -1,4 +1,4 @@
-"""Dodge (spec 8, game 5; side steps only, Q70): rocks fall, the player's block follows the body's x across the mat,
+"""Dodge (spec 8, game 5; side steps only, Q70): rocks fall, the player's block (drawn as the Man, MAN) follows the body's x across the mat,
 and a run ends on the first hit or survives RUN_SECONDS.
 
 The whole body is the control: the hips' zone_x, through a Glide (by sensed.camera_t, C44: never raw), mapped from
@@ -21,6 +21,8 @@ import math
 import random
 from types import MappingProxyType
 
+import numpy as np
+
 from arcade.canvas import Canvas
 from arcade.game import Game, GameInfo, icon_from_rows
 from arcade.input import Glide, capture_grace
@@ -30,9 +32,25 @@ from arcade.sources.actors import TICK, Person, scene
 from show.font import CELL_H
 
 RUN_SECONDS = 45.0
-PLAYER_W = 6
+PLAYER_W = 6            # the hitbox: unchanged by the figure drawn over it (the Man, below)
 PLAYER_H = 8            # rows 50 to 57: a 1 px step changes 16 px
 PLAYER_Y = 50
+MAN = np.array([[ch == "#" for ch in row] for row in (     # the Burning Man figure (the owner, 2026-10-03): 10x12
+    "#...##...#",                                           # at rows 46 to 57, a head apart from the shoulders, arms
+    ".#..##..#.",                                           # at 45 degrees to head height, the spine through row 54
+    "..#....#..",                                           # (player_xy's centre pixel), the 6 px base the hitbox's own
+    "...####...",                                           # columns. 1 px arms: a three-lens review (legibility,
+    "....##....",                                           # iconography, gameplay) chose them over 2 px for the Man's
+    "....##....",                                           # proportions; if they vanish on the wall at 0.1, thicken.
+    "....##....",
+    "....##....",
+    "....##....",
+    "...#..#...",
+    "..#....#..",
+    "..######..")], dtype=bool)
+MAN.flags.writeable = False
+MAN_H, MAN_W = MAN.shape
+MAN_DX, MAN_DY = (MAN_W - PLAYER_W) // 2, MAN_H - PLAYER_H   # the figure's offset from the hitbox's top left
 ROCK_W = 6
 ROCK_H = 4
 ROCK_SPEED = (20.0, 48.0)       # px/s, linear over the run
@@ -57,6 +75,10 @@ TEXT_COLOR = (255, 120, 0)
 SCORE_COLOR = (255, 255, 255)
 SAFE_COLOR = (0, 200, 0)
 HIT_COLOR = (255, 0, 0)
+EMBER = (120, 0, 0)     # the hit's second half: one step down from HIT_COLOR that crosses all three of the flash
+                        # governor's light signals in the same frame, so the burn costs one transition, not three
+                        # (a smooth red fade crossed them in three frames and the Man's 1 px arm tips, which also
+                        # step on and off with the body, went over the budget of 6 in a second)
 READY_LINES = ("STEP SIDE", "TO SIDE")
 HINT_TEXT = "STEP!"
 GLYPH_H = 7
@@ -242,7 +264,7 @@ class Dodge(Game):
         if left > 0:
             canvas.fill_rect(0, 0, left, 1, BAR_COLOR)
         if self.phase != "over" or self.survived:
-            canvas.fill_rect(self.block_x, PLAYER_Y, PLAYER_W, PLAYER_H, self._block_color())
+            canvas.blit(MAN, self.block_x - MAN_DX, PLAYER_Y - MAN_DY, self._block_color())   # the canvas rounds x
         text = str(self.score)
         x0 = w - canvas.text_width(text, SCORE_SCALE)
         canvas.fill_rect(x0 - 1, 0, w - x0 + 1, CELL_H * SCORE_SCALE + 2, (0, 0, 0))    # the score's dark gutter
@@ -261,9 +283,11 @@ class Dodge(Game):
             canvas.text((w - width) // 2, round(self.h * 0.4) - CELL_H, "SAFE!", SAFE_COLOR, SCORE_SCALE)
 
     def _block_color(self):
+        """Amber; from a hit, HIT_COLOR for the first half of HIT_SECONDS, EMBER for the second, black at over."""
         if self.phase in ("hit", "over") and not self.survived:
-            level = max(0.0, 1.0 - self.phase_t / HIT_SECONDS) if self.phase == "hit" else 0.0
-            return (round(HIT_COLOR[0] * level), 0, 0)
+            if self.phase == "over":
+                return (0, 0, 0)
+            return HIT_COLOR if self.phase_t < HIT_SECONDS / 2 - 1e-9 else EMBER
         return PLAYER_COLORS[0]
 
     def _t_left(self) -> float:
