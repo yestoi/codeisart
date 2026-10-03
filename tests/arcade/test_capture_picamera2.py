@@ -5,14 +5,32 @@ import pytest
 from arcade.sources.capture_picamera2 import FORMAT, FRAME_RATE, READ_TIMEOUT, Picamera2Capture
 
 
+class FakeRequest:
+    def __init__(self, cam, fail_array=False):
+        self.cam, self.fail_array, self.released = cam, fail_array, False
+
+    def get_metadata(self):
+        return {"SensorTimestamp": 123456789, "CnnOutputTensor": [1.0, 2.0]}
+
+    def make_array(self, name):
+        if self.fail_array:
+            raise RuntimeError("buffer gone")
+        self.cam.calls.append(("capture", name))
+        return self.cam.frame
+
+    def release(self):
+        self.released = True
+
+
 class FakeCam:
-    def __init__(self, given=None, fail_read=False, fail_stop=False):
+    def __init__(self, given=None, fail_read=False, fail_stop=False, fail_array=False):
         self.calls, self.given, self.fail_read, self.fail_stop = [], given, fail_read, fail_stop
+        self.fail_array, self.requests = fail_array, []
         self.frame = np.zeros((480, 640, 3), np.uint8)
         self.frame[..., 0] = 200
 
-    def create_video_configuration(self, main, controls):
-        self.calls.append(("create", dict(main), dict(controls)))
+    def create_video_configuration(self, main, controls, buffer_count=None):
+        self.calls.append(("create", dict(main), dict(controls)) + ((buffer_count,) if buffer_count else ()))
         return {"main": dict(main), "controls": dict(controls)}
 
     def configure(self, config):
@@ -25,12 +43,12 @@ class FakeCam:
     def start(self):
         self.calls.append("start")
 
-    def capture_array(self, name, wait=None):
+    def capture_request(self, wait=None):
         self.waits = getattr(self, "waits", []) + [wait]
         if self.fail_read:
             raise TimeoutError("no frame")
-        self.calls.append(("capture", name))
-        return self.frame
+        self.requests.append(FakeRequest(self, self.fail_array))
+        return self.requests[-1]
 
     def stop(self):
         self.calls.append("stop")
@@ -90,3 +108,25 @@ def test_importing_the_module_loads_no_picamera2():
     import sys
 
     assert "picamera2" not in sys.modules
+
+
+def test_read_keeps_the_requests_metadata_and_releases_the_request():
+    cam = FakeCam()
+    cap = Picamera2Capture((640, 480), camera=cam)
+    assert cap.metadata == {}
+    ok, frame = cap.read()
+    assert ok and cap.metadata["CnnOutputTensor"] == [1.0, 2.0] and cap.metadata["SensorTimestamp"] == 123456789
+    assert cam.requests[0].released and cam.waits == [READ_TIMEOUT]
+
+
+def test_a_failed_read_releases_the_request():
+    cam = FakeCam(fail_array=True)
+    cap = Picamera2Capture((640, 480), camera=cam)
+    ok, frame = cap.read()
+    assert (ok, frame) == (False, None) and cap.metadata == {} and cam.requests[0].released
+
+
+def test_frame_rate_and_buffer_count_reach_the_configuration():
+    cam = FakeCam()
+    Picamera2Capture((640, 480), camera=cam, frame_rate=30.0, buffer_count=12)
+    assert cam.calls[0] == ("create", {"size": (640, 480), "format": FORMAT}, {"FrameRate": 30.0}, 12)
