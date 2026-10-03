@@ -6,7 +6,7 @@ gate: none open. gate.md of 2026-10-02 removed by Q183 (the owner's "start" of 2
 plan: docs/superpowers/plans/2026-10-03-step-in-start.md, one task (Task 1), nine tests in tests/arcade/test_lobby.py
 base: 2e1585d (HEAD before the orchestrator was spawned, 05:12 CDT)
 orchestrator: orchestrator-it23 (opus), spawned from the sonyIMX500 session (the operator for this run; config.md "The run of Q183")
-in_flight: orchestrator-it23 from 05:10 CDT; fallback wake-up `sleep 540` in the operator's session
+in_flight: orchestrator-it23 from 05:10 CDT; checked 05:18: the implementer is editing lobby.py, main.py and test_lobby.py, nothing committed yet; fallback wake-up `sleep 540`
 last: iteration 21 (journal.md); iteration 22 is a written plan only (Q180, Q181), kept for M7b
 for the run: one implementer at a time; the full suite once after the task (`ARCADE_POOL_WORKERS=1`); nothing to the card; no Pi; no push; commits by path. The promptviz loop (Night One, iteration 2) runs beside this one on the same 8 GB Mac
 rules: config.md "Loop rules" and "The run of Q183" override the workflow-loop skill. Never `cd`. The Pi is shared (pi-lock.md): not used in this run
