@@ -19,14 +19,15 @@
 - The flash governor, the limiter, the driver, the tracker and its filter, the games and the lobby do not change.
 - The 17 keypoints are COCO order: 0 nose, 1 left eye, 2 right eye, 3 left ear, 4 right ear, 5 left shoulder, 6 right shoulder, 7 left elbow, 8 right elbow, 9 left wrist, 10 right wrist, 11 left hip, 12 right hip, 13 left knee, 14 right knee, 15 left ankle, 16 right ankle. Coordinates are normalised to [0, 1] in the unmirrored frame; confidence in [0, 1].
 - `camera_fps = 30` on the Pi; `camera = "imx500"`; `capture = "picamera2"` stays in `arcade.pi.toml`.
-- The full suite runs once on the Mac at the end, under 540 s (Q102). Memory rule: no parallel agents beyond two; this plan is executed inline.
+- The suite: each task runs its own test files on the Mac. The full suite runs once at the end, where the owner says (plan review I1): his rule of 2026-10-02 sends full suites to the Pi, but promptviz holds the Pi's wall tonight and he asked that nothing disturb it, so Task 8 asks him and does not assume. Under 540 s (Q102) wherever it runs. Memory rule: no parallel agents beyond two; this plan is executed inline.
 - Commit messages in the repository's form (`feat(arcade): ...`, `test(arcade): ...`, `docs(...): ...`), ending with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 
 ## Review Focus
 
 1. **A frame whose metadata has no `CnnOutputTensor`** (every frame during the network upload, and a dropped tensor): the detector returns no bodies and the camera keeps running; the last result holds. Test in Task 3 (`test_detect_without_a_tensor_gives_no_bodies`).
-2. **A different network on the sensor** (HigherHRNet still loaded from the spike): its tensors have other shapes; the decoder raises `ValueError` naming them, the camera thread logs and goes unavailable instead of drawing garbage. Test in Task 3 (`test_wrong_shapes_raise_naming_them`).
-3. **Keypoints decoded outside the frame** (the displacement chain can walk off the map; the spike saw ankles at y 1.04): every keypoint is clipped to [0, 1] before it becomes a `Keypoint`, so `box_of` and the tracker never see a coordinate past the frame. Test in Task 3 (`test_keypoints_are_clipped_to_the_frame`).
+2. **A tensor the decoder does not know** (a firmware or model-file change; `open_imx500` always loads posenet, so HigherHRNet from the spike is replaced, not met): the decoder raises `ValueError` naming the shapes, the detector logs it once and gives no bodies, and the camera thread lives. Tests in Task 3 (`test_wrong_shapes_raise_naming_them`, `test_a_bad_tensor_logs_once_and_gives_no_bodies`).
+3. **Keypoints decoded outside the frame** (the displacement chain can walk off the map; the spike saw ankles at y 1.04): the decoder does not clip them, so `Body._clean` treats them as it treats MediaPipe's (clamped, confidence zeroed) and the tracker cannot tell the detectors apart. Test in Task 3 (`test_keypoints_off_the_frame_stay_raw_and_the_body_cleans_them`).
+6. **A crowd in front of the wall** (the spike saw up to 10 people): the tracker's `assign()` has no scipy on the Pi and raises past 6 by 6, which would end the camera thread for good; the detector hands on at most four bodies, best first. Test in Task 3 (`test_at_most_max_bodies_reach_the_tracker_best_first`).
 4. **A read that fails after the request was taken** (`make_array` raises): the request is still released, or the camera's buffers run out within a second. Test in Task 2 (`test_a_failed_read_releases_the_request`).
 5. **`run --require camera` with `camera = "imx500"`**: the doctor must open the pair as the arcade does and say "uploading" rather than fail at 5 s on the first start after a power cycle. Test in Task 5 (`test_probe_imx500_says_uploading_and_waits`).
 
@@ -40,13 +41,15 @@
 **Interfaces:**
 - Produces: two compressed npz files, each with arrays `heat` `[23, 31, 17]`, `off` `[23, 31, 34]`, `mid` `[23, 31, 64]` as float16 (exact: the sensor's values are 1-byte-origin floats). sample1 is the spike's `s1` (one body, nose near x 0.39, y 0.55), sample2 its `s4` (nose near x 0.42, y 0.57).
 
-- [ ] **Step 1: Merge main into wall-bringup**
+- [ ] **Step 1: Merge main into wall-bringup, and give the worktree the model file**
 
 ```bash
 git -C /Users/trey/dev/codeisart-wall merge --no-edit main
 git -C /Users/trey/dev/codeisart-wall log --oneline -1
+ln -s /Users/trey/dev/codeisart/models /Users/trey/dev/codeisart-wall/models
+ls /Users/trey/dev/codeisart-wall/models/
 ```
-Expected: a merge commit; `git status --short` empty. (main is an ancestor of wall-bringup; the merge brings cd233b8's docs only.)
+Expected: a merge commit with no conflict (main has two docs commits wall-bringup lacks, the spec and this plan; `git merge-tree --write-tree wall-bringup main` was clean); `git status --short` empty; `pose_landmarker_lite.task` listed. `models/` is gitignored, so the worktree had none and the one test that runs the real landmarker was skipping there (plan review I2).
 
 - [ ] **Step 2: Write the fixtures from the spike's tensors**
 
@@ -64,7 +67,7 @@ for name, s in (("sample1", "s1"), ("sample2", "s4")):
 EOF
 ls -la tests/arcade/fixtures/posenet/
 ```
-Expected: two files of about 75 KB each. (If the scratchpad file is gone, the Pi still holds `~/imx500-spike/out/posenet_raw.npz`: `ssh trey@codeisart.local "flock -w 300 /tmp/pi5.lock cat ~/imx500-spike/out/posenet_raw.npz" > posenet_raw.npz` and read from that.)
+Expected: two files of about 75 KB each. (The scratchpad file exists as this plan is written; if it is gone, stop and ask the owner: the copy on the Pi is reached only with his word, since nothing in this plan touches the Pi.)
 
 - [ ] **Step 3: Check git takes them**
 
@@ -505,7 +508,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `Keypoint` (`arcade.sensed`), `Picamera2Capture(size, camera=, frame_rate=, buffer_count=)` with `.metadata` (Task 2), `CAPTURE_SIZE` (`arcade.sources.pose_mediapipe`), the fixtures (Task 0).
-- Produces: `MODEL = "/usr/share/imx500-models/imx500_network_posenet.rpk"`; `INPUT_SIZE = (481, 353)`; `SHAPES = ((23, 31, 17), (23, 31, 34), (23, 31, 64))`; `decode_multiple(outputs, score_thr=0.3, max_poses=10, nms_radius_px=20.0) -> list[tuple[float, list[tuple[float, float, float]]]]` (instance score, 17 (x, y, conf) normalised to the input and clipped to [0, 1]); `class IMX500Pose(capture, imx, min_instance=0.3)` with `detect(bgr, ts_ms) -> list[tuple[Keypoint, ...]]` and `close()`; `open_imx500(cfg, size) -> tuple[Picamera2Capture, IMX500Pose]`; `describe(imx) -> str` ("posenet 30/s").
+- Produces: `MODEL = "/usr/share/imx500-models/imx500_network_posenet.rpk"`; `INPUT_SIZE = (481, 353)`; `SHAPES = ((23, 31, 17), (23, 31, 34), (23, 31, 64))`; `MIN_INSTANCE = 0.3`; `MAX_BODIES = 4`; `decode_multiple(outputs, score_thr=0.3, max_poses=10, nms_radius_px=20.0) -> list[tuple[float, list[tuple[float, float, float]]]]` (instance score, 17 (x, y, conf) normalised to the input, not clipped, best first); `class IMX500Pose(capture, imx, min_instance=MIN_INSTANCE, max_bodies=MAX_BODIES)` with `detect(bgr, ts_ms) -> list[tuple[Keypoint, ...]]`, `close()` and the property `imx`; `open_imx500(cfg, size) -> tuple[Picamera2Capture, IMX500Pose]`; `describe(imx) -> str` ("posenet 30/s").
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -541,18 +544,30 @@ def test_decodes_one_standing_body_where_the_spike_saw_it(name, nose):
     assert abs(pts[LEFT_SHOULDER][1] - pts[RIGHT_SHOULDER][1]) < 0.02        # level shoulders
     assert pts[LEFT_SHOULDER][0] > pts[RIGHT_SHOULDER][0]                    # facing the camera, unmirrored
     assert pts[NOSE][1] < pts[LEFT_ANKLE][1] and pts[NOSE][1] < pts[RIGHT_ANKLE][1]
-    assert sum(1 for p in poses if p[0] > 0.3) <= 2                          # the duplicates score near 0
+    assert sum(1 for p in poses if p[0] > 0.3) <= 2    # the first body and, in 27 of the spike's 30 samples, a
+                                                        # second one at 0.33 to 0.72 about 0.1 away (a bystander at
+                                                        # the event, most likely); same-root duplicates score near 0
 
 
-def test_keypoints_are_clipped_to_the_frame():
+def test_keypoints_off_the_frame_stay_raw_and_the_body_cleans_them():
+    """The decoder does not clip: an ankle decoded past the frame reaches Body as MediaPipe's would, and Body's
+    _clean clamps it and zeroes its confidence, so the tracker sees the same thing from either detector."""
+    from arcade.sensed import Body
+
     heat, off, mid = sample("sample1")
     off = off + 400.0                                        # every offset pushed far past the input
     poses = decode_multiple([heat, off, mid])
-    assert poses and all(0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 for x, y, _ in poses[0][1])
+    assert poses and any(x > 1.0 or y > 1.0 for x, y, _ in poses[0][1])
+    kps = tuple(Keypoint(x, y, c) for x, y, c in poses[0][1])
+    body = Body(1, (0.0, 0.0, 1.0, 1.0), kps)
+    assert all(0.0 <= k.x <= 1.0 and 0.0 <= k.y <= 1.0 for k in body.keypoints)
+    assert all(k.conf == 0.0 for k, raw in zip(body.keypoints, kps) if raw.x > 1.0 or raw.y > 1.0)
 
 
-def test_zero_tensors_give_no_body():
-    assert decode_multiple([np.zeros(s, np.float32) for s in SHAPES]) == []
+def test_a_cold_heatmap_gives_no_body():
+    """Log-odds: a zero heatmap is sigmoid 0.5 everywhere (every cell a root); a cold one is no body."""
+    heat = np.full(SHAPES[0], -20.0, np.float32)
+    assert decode_multiple([heat, np.zeros(SHAPES[1], np.float32), np.zeros(SHAPES[2], np.float32)]) == []
 
 
 def test_wrong_shapes_raise_naming_them():
@@ -597,6 +612,25 @@ def test_detect_without_a_tensor_gives_no_bodies():
 def test_bodies_under_min_instance_are_dropped():
     det = IMX500Pose(FakeCapture({"CnnOutputTensor": [1.0]}), FakeIMX(sample("sample1")), min_instance=0.99)
     assert det.detect(np.zeros((480, 640, 3), np.uint8), 1000) == []
+
+
+def test_at_most_max_bodies_reach_the_tracker_best_first():
+    """The tracker's assign() has no scipy on the Pi and stops at 6x6: a crowd must not kill the camera thread."""
+    from arcade.sources.pose_imx500 import MAX_BODIES
+
+    assert len(decode_multiple(sample("sample1"))) > MAX_BODIES                   # the raw decode gives more
+    det = IMX500Pose(FakeCapture({"CnnOutputTensor": [1.0]}), FakeIMX(sample("sample1")), min_instance=0.0)
+    people = det.detect(np.zeros((480, 640, 3), np.uint8), 1000)
+    assert len(people) == MAX_BODIES == 4
+    assert people[0][NOSE].x == pytest.approx(0.39, abs=0.03)                     # the best body first
+
+
+def test_a_bad_tensor_logs_once_and_gives_no_bodies(caplog):
+    det = IMX500Pose(FakeCapture({"CnnOutputTensor": [1.0]}),
+                     FakeIMX([np.zeros((1, 30, 17), np.float32)] * 3))
+    frame = np.zeros((480, 640, 3), np.uint8)
+    assert det.detect(frame, 1000) == [] and det.detect(frame, 1001) == []
+    assert caplog.text.count("not posenet's tensors") == 1
 
 
 def test_open_imx500_without_picamera2_raises(monkeypatch):
@@ -660,7 +694,9 @@ EDGES = ((0, 1), (1, 3), (0, 2), (2, 4), (0, 5), (5, 7), (7, 9), (5, 11), (11, 1
 NUM_EDGES = len(EDGES)
 LOCAL_MAX_RADIUS = 1                      # heatmap cells: a root is the maximum of its 3x3 neighbourhood
 REFINE_STEPS = 2                          # offset refinements after a displacement step (tfjs: 2)
-MIN_INSTANCE = 0.3                        # a body's instance score (mean keypoint score) to count
+MIN_INSTANCE = 0.3                        # a body's instance score (mean keypoint score) to count; 0.5 clears
+                                          # most second bodies in the spike's samples (the knob if ghosts appear)
+MAX_BODIES = 4                            # bodies handed to the tracker a capture (assign() without scipy: 6 at most)
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
@@ -673,7 +709,8 @@ def _check(outputs) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         raise ValueError(f"posenet gives 3 tensors, got {len(arrs)}")
     shapes = tuple(tuple(int(d) for d in a.shape) for a in arrs)
     if shapes != SHAPES:
-        raise ValueError(f"not posenet's tensors: shapes {shapes}, wanted {SHAPES} (is another network on the sensor?)")
+        raise ValueError(f"not posenet's tensors: shapes {shapes}, wanted {SHAPES} (the sensor's firmware or model "
+                         f"file is not the posenet this decoder knows)")
     return arrs[0], arrs[1], arrs[2]
 
 
@@ -730,9 +767,10 @@ def _decode_pose(root, scores, off, fwd, bwd) -> tuple[np.ndarray, np.ndarray]:
 def decode_multiple(outputs, score_thr: float = 0.3, max_poses: int = 10,
                     nms_radius_px: float = 20.0) -> list[tuple[float, list[tuple[float, float, float]]]]:
     """Every body in the three tensors, best first: (instance score, 17 (x, y, conf) in COCO order), x and y
-    normalised by INPUT_SIZE and clipped to [0, 1], conf the keypoint's sigmoid score. The instance score is the
-    mean of the keypoint scores not already claimed by an earlier body (within nms_radius_px), so a duplicate
-    scores near 0. ValueError when the tensors are not posenet's."""
+    normalised by INPUT_SIZE and NOT clipped (a point past the frame stays past it, as MediaPipe's would; Body's
+    _clean clamps it and zeroes its confidence for both detectors alike), conf the keypoint's sigmoid score. The
+    instance score is the mean of the keypoint scores not already claimed by an earlier body (within
+    nms_radius_px), so a same-root duplicate scores near 0. ValueError when the tensors are not posenet's."""
     heat, off, mid = _check(outputs)
     scores = _sigmoid(heat)
     fwd, bwd = mid[:, :, :2 * NUM_EDGES], mid[:, :, 2 * NUM_EDGES:]
@@ -752,18 +790,21 @@ def decode_multiple(outputs, score_thr: float = 0.3, max_poses: int = 10,
         poses.append((kps, ksc, float((ksc * keep).sum() / NUM_KP)))
     poses.sort(key=lambda p: p[2], reverse=True)
     w, h = INPUT_SIZE
-    return [(inst, [(float(np.clip(k[1] / w, 0.0, 1.0)), float(np.clip(k[0] / h, 0.0, 1.0)),
-                     float(np.clip(c, 0.0, 1.0))) for k, c in zip(kps, ksc)]) for kps, ksc, inst in poses]
+    return [(inst, [(float(k[1] / w), float(k[0] / h), float(c)) for k, c in zip(kps, ksc)])
+            for kps, ksc, inst in poses]
 
 
 class IMX500Pose:
     """The PoseDetector for the sensor: detect() ignores the frame and decodes the tensor in capture.metadata (the
-    frame the capture just read); no tensor (the network still uploading, or a dropped one) is no body, and the
-    camera's last result holds. imx is picamera2's IMX500 (get_outputs(metadata)); capture a Picamera2Capture.
+    frame the capture just read); no tensor (the network still uploading, or a dropped one) is no body this
+    capture. At most MAX_BODIES bodies, best first, reach the tracker: its assign() has no scipy on the Pi and
+    stops at 6 by 6, and a crowd at the wall must not end the camera thread. A tensor the decoder does not know
+    is logged once and is no body. imx is picamera2's IMX500 (get_outputs(metadata)); capture a Picamera2Capture.
     Coordinates need no crop correction: the network sees the whole sensor, as the 4:3 main stream does."""
 
-    def __init__(self, capture, imx, min_instance: float = MIN_INSTANCE):
-        self._capture, self._imx, self.min_instance = capture, imx, min_instance
+    def __init__(self, capture, imx, min_instance: float = MIN_INSTANCE, max_bodies: int = MAX_BODIES):
+        self._capture, self._imx, self.min_instance, self.max_bodies = capture, imx, min_instance, max_bodies
+        self._complained = False
 
     def detect(self, bgr: np.ndarray, ts_ms: int) -> list[tuple[Keypoint, ...]]:
         metadata = self._capture.metadata
@@ -772,11 +813,23 @@ class IMX500Pose:
         outputs = self._imx.get_outputs(metadata, add_batch=False)
         if outputs is None:
             return []
-        return [tuple(Keypoint(x, y, c) for x, y, c in pts)
-                for inst, pts in decode_multiple(outputs) if inst >= self.min_instance]
+        try:
+            poses = decode_multiple(outputs)
+        except ValueError as e:
+            if not self._complained:
+                self._complained = True
+                log.warning("imx500: %s; no bodies until it changes", e)
+            return []
+        kept = [pts for inst, pts in poses if inst >= self.min_instance][:self.max_bodies]   # poses are best first
+        return [tuple(Keypoint(x, y, c) for x, y, c in pts) for pts in kept]
 
     def close(self) -> None:
         """The capture owns the camera; the sensor keeps its network."""
+
+    @property
+    def imx(self):
+        """picamera2's IMX500 object, for the doctor's describe()."""
+        return self._imx
 
 
 def describe(imx) -> str:
@@ -801,9 +854,10 @@ def open_imx500(cfg, size: tuple[int, int]):
     intrinsics = imx.network_intrinsics or NetworkIntrinsics()
     intrinsics.task = "pose estimation"
     intrinsics.update_with_defaults()
-    imx.show_network_fw_progress_bar()
-    capture = Picamera2Capture(CAPTURE_SIZE, camera=Picamera2(imx.camera_num),
-                               frame_rate=float(intrinsics.inference_rate or 30), buffer_count=BUFFER_COUNT)
+    cam = Picamera2(imx.camera_num)
+    imx.show_network_fw_progress_bar()          # the demos' order: after the camera object, before it starts
+    capture = Picamera2Capture(CAPTURE_SIZE, camera=cam, frame_rate=float(intrinsics.inference_rate or 30),
+                               buffer_count=BUFFER_COUNT)
     log.info("imx500: %s on camera %s", describe(imx), imx.camera_num)
     return capture, IMX500Pose(capture, imx)
 ```
@@ -813,7 +867,7 @@ def open_imx500(cfg, size: tuple[int, int]):
 ```bash
 cd /Users/trey/dev/codeisart-wall && PY=/Users/trey/dev/codeisart/.venv/bin/python; $PY -m pytest tests/arcade/test_pose_imx500.py -v 2>&1 | tail -15
 ```
-Expected: 10 passed. If `test_decodes_one_standing_body_where_the_spike_saw_it` fails on the nose position by more than 0.03, print `poses[0][1][0]` and compare with the spike report (sample1: nose (0.39, 0.55); sample2: (0.42, 0.57)); widen to 0.05 only if the shoulders and ankles assertions hold, and say so in the commit.
+Expected: 13 passed. If `test_decodes_one_standing_body_where_the_spike_saw_it` fails on the nose position by more than 0.03, print `poses[0][1][0]` and compare with the spike report (sample1: nose (0.39, 0.55); sample2: (0.42, 0.57)); widen to 0.05 only if the shoulders and ankles assertions hold, and say so in the commit.
 
 - [ ] **Step 5: Commit**
 
@@ -871,6 +925,8 @@ def test_make_sources_imx500_without_picamera2_is_unavailable_and_says_so(monkey
 
 Check the top of the file for `make_cfg`, `FakeClock`, `Calibration`, `NoSource` imports (they are used by the mediapipe test above; `make_cfg(size, **kw)` passes keywords to `ArcadeConfig`).
 
+Also change the existing test `test_make_sources_mediapipe_gets_the_config_clock_and_calibration` (line 85-98): its `monkeypatch.setattr(pm, "MediaPipeCamera", Spy)` becomes `monkeypatch.setattr(pm, "PoseCamera", Spy)`. Rebinding the alias would not rebind the name `make_sources` now calls, and the real camera would open the Mac's webcam from a unit test (plan review C1).
+
 - [ ] **Step 2: Run the tests to verify they fail**
 
 ```bash
@@ -905,7 +961,7 @@ In `arcade/sources/__init__.py`, replace the `elif cfg.camera == "mediapipe":` b
         raise ValueError(f"camera {cfg.camera!r} is not available yet; use mediapipe, imx500 or none")
 ```
 
-and add above `make_sources` (after the imports; check the module has `log = logging.getLogger("arcade")`, add `import logging` and that line if not):
+The module has no logger today: add `import logging` to its imports (line 4 region) and `log = logging.getLogger("arcade")` after the imports. Then add above `make_sources`:
 
 ```python
 class _Unopened:
@@ -953,7 +1009,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `open_imx500(cfg, size)` and `describe(imx)` (Task 3), `Picamera2Capture.metadata` (Task 2).
-- Produces: `probe_imx500(timeout: float, index: int = 0, upload_wait: float = UPLOAD_WAIT) -> tuple[bool, str]` with `UPLOAD_WAIT = 300.0` and `UPLOAD_NOTICE_AFTER = 3.0`; `make_probes(camera_index=0, audio_device="", model=MODEL_PATH, capture="opencv", camera="mediapipe")`: with `camera == "imx500"` both `"camera"` and `"pose"` are `probe_imx500`; `doctor --camera {mediapipe,imx500,...}` (choices `CAMERAS`); `run --require` passes `camera=cfg.camera`.
+- Produces: `probe_imx500(timeout: float, upload_wait: float = UPLOAD_WAIT) -> tuple[bool, str]` with `UPLOAD_WAIT = 300.0` and `UPLOAD_NOTICE_AFTER = 3.0` (no index: the IMX500 object picks its own camera number, so `--camera-index` means nothing for imx500); `make_probes(camera_index=0, audio_device="", model=MODEL_PATH, capture="opencv", camera="mediapipe")`: with `camera == "imx500"` both `"camera"` and `"pose"` share one `probe_imx500` call (the camera opens once); `doctor --camera {mediapipe,imx500,...}` (choices `CAMERAS`); `run --require` passes `camera=cfg.camera`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -990,7 +1046,7 @@ def test_probe_imx500_reports_the_model_the_rate_and_the_frame(monkeypatch):
 
     cap = TensorCapture()
     monkeypatch.setattr(pi, "open_imx500", lambda cfg, size: (cap, pi.IMX500Pose(cap, FakeIMX())))
-    assert probe_imx500(1.0, 0) == (True, "imx500 posenet 30/s: 640x480")
+    assert probe_imx500(1.0) == (True, "imx500 posenet 30/s: 640x480")
     assert cap.released
 
 
@@ -1001,7 +1057,7 @@ def test_probe_imx500_says_uploading_and_waits(monkeypatch, capsys):
     cap = TensorCapture(tensor_from=10 ** 9)                    # frames, never a tensor
     monkeypatch.setattr(pi, "open_imx500", lambda cfg, size: (cap, pi.IMX500Pose(cap, FakeIMX())))
     monkeypatch.setattr("arcade.main.UPLOAD_NOTICE_AFTER", 0.05)
-    ok, why = probe_imx500(0.1, 0, upload_wait=0.3)
+    ok, why = probe_imx500(0.1, upload_wait=0.3)
     assert not ok and "no tensor" in why and cap.released
     assert "uploading the network to the sensor" in capsys.readouterr().out
     assert cap.reads > 2                                          # it kept reading past the 0.1 s timeout
@@ -1013,22 +1069,24 @@ def test_probe_imx500_without_picamera2_is_unavailable(monkeypatch):
     from arcade.main import probe_imx500
 
     monkeypatch.setitem(sys.modules, "picamera2", None)
-    ok, why = probe_imx500(1.0, 0)
+    ok, why = probe_imx500(1.0)
     assert not ok and "picamera2" in why
 
 
-def test_make_probes_imx500_is_both_the_camera_and_the_pose(monkeypatch):
+def test_make_probes_imx500_is_both_the_camera_and_the_pose_opened_once(monkeypatch):
     import arcade.main
 
-    monkeypatch.setattr(arcade.main, "probe_imx500", lambda timeout, index=0: (True, "imx500"))
+    calls = []
+    monkeypatch.setattr(arcade.main, "probe_imx500", lambda timeout: calls.append(timeout) or (True, "imx500"))
     probes = arcade.main.make_probes(camera="imx500")
     assert probes["camera"](1.0) == (True, "imx500") and probes["pose"](1.0) == (True, "imx500")
+    assert calls == [1.0]                                          # the camera opened once for both names
 
 
 def test_doctor_takes_camera_imx500(monkeypatch, capsys):
     import arcade.main
 
-    monkeypatch.setattr(arcade.main, "probe_imx500", lambda timeout, index=0: (True, "imx500 posenet 30/s: 640x480"))
+    monkeypatch.setattr(arcade.main, "probe_imx500", lambda timeout: (True, "imx500 posenet 30/s: 640x480"))
     assert main(["doctor", "--require", "camera,pose", "--camera", "imx500"]) == 0
     out = capsys.readouterr().out
     assert out.count("imx500 posenet 30/s") == 2
@@ -1053,21 +1111,22 @@ UPLOAD_NOTICE_AFTER = 3.0     # sensor is taking the network (2 MB at about 9 kB
 After `probe_picamera2` (after line 67) add:
 
 ```python
-def probe_imx500(timeout: float, index: int = 0, upload_wait: float = UPLOAD_WAIT) -> tuple[bool, str]:
+def probe_imx500(timeout: float, upload_wait: float = UPLOAD_WAIT) -> tuple[bool, str]:
     """The AI Camera with posenet on its sensor (camera "imx500"), opened as the arcade opens it: (True, the model,
     its rate and the frame size) at the first frame that carries a tensor. Frames without one past
-    UPLOAD_NOTICE_AFTER mean the network is uploading: it says so and waits up to upload_wait instead of timeout."""
+    UPLOAD_NOTICE_AFTER mean the network is uploading: it says so, prints the wait every 30 s, and waits up to
+    upload_wait instead of timeout (^C ends it). The camera index is the IMX500 object's, not --camera-index."""
     from arcade.config import ArcadeConfig
     from arcade.sources import pose_imx500
 
-    cfg = ArcadeConfig(camera="imx500", camera_index=index)
+    cfg = ArcadeConfig(camera="imx500")           # index is unused: the IMX500 object picks its own camera number
     try:
         capture, detector = pose_imx500.open_imx500(cfg, cfg.size)
     except Exception as e:
         return False, f"imx500: {type(e).__name__}: {e} (apt: imx500-all python3-picamera2; the ribbon seated)"
-    label = f"imx500 {pose_imx500.describe(detector._imx)}"
+    label = f"imx500 {pose_imx500.describe(detector.imx)}"
     frames, start = 0, time.monotonic()
-    deadline, notified = start + timeout, False
+    deadline, notified, told = start + timeout, False, start
     try:
         while time.monotonic() < deadline:
             ok, frame = capture.read()
@@ -1077,16 +1136,22 @@ def probe_imx500(timeout: float, index: int = 0, upload_wait: float = UPLOAD_WAI
             frames += 1
             if capture.metadata.get("CnnOutputTensor"):
                 return True, f"{label}: {frame.shape[1]}x{frame.shape[0]}"
-            if not notified and time.monotonic() - start >= UPLOAD_NOTICE_AFTER:
-                notified = True
+            now = time.monotonic()
+            if not notified and now - start >= UPLOAD_NOTICE_AFTER:
+                notified, told = True, now
                 deadline = start + upload_wait
-                print("imx500: frames but no tensor yet: uploading the network to the sensor, up to 4 minutes",
-                      flush=True)   # CLI output, as the doctor's lines
+                print("imx500: frames but no tensor yet: uploading the network to the sensor, up to 4 minutes "
+                      "(^C stops the wait)", file=sys.stdout, flush=True)   # CLI output, as the doctor's lines
+            elif notified and now - told >= 30.0:
+                told = now
+                print(f"imx500: still waiting, {now - start:.0f} s", file=sys.stdout, flush=True)
         why = f"{frames} frames, no tensor in {time.monotonic() - start:.0f} s" if frames else f"no frames in {timeout:.0f} s"
         return False, f"{label}: {why} (is posenet on the sensor: another network means a new upload)"
     finally:
         capture.release()
 ```
+
+(The probe prints to `sys.stdout`, not the doctor's `out` argument: every caller today passes none, and the test reads capsys.)
 
 Replace `make_probes` (lines 150-157) with:
 
@@ -1097,7 +1162,13 @@ def make_probes(camera_index: int = 0, audio_device: str = "", model: Path = MOD
     the model); otherwise the camera's probe is the one capture names and the pose's is MediaPipe's. The probe
     functions are looked up when a probe runs."""
     if camera == "imx500":
-        imx = lambda t: probe_imx500(t, camera_index)   # noqa: E731
+        done: dict[str, tuple[bool, str]] = {}
+
+        def imx(t: float) -> tuple[bool, str]:        # one opening of the camera serves both names
+            if "result" not in done:
+                done["result"] = probe_imx500(t)
+            return done["result"]
+
         return {"camera": imx, "mic": lambda t: probe_mic(t, audio_device), "pose": imx}
     return {"camera": lambda t: (probe_picamera2 if capture == "picamera2" else probe_camera)(t, camera_index),
             "mic": lambda t: probe_mic(t, audio_device),
@@ -1313,14 +1384,16 @@ the wall's frame, the number for `live-smoke.md`. The spike's expectation is a m
 keypoints plus the tick and the sender).
 ```
 
-- [ ] **Step 6: The sources README**
+- [ ] **Step 6: The sources README, and the spec's doctor command**
+
+In `docs/superpowers/specs/2026-10-02-pose-on-the-sensor-design.md`: section 5 step 2, replace `` `doctor --require camera,pose --config arcade.pi.toml` `` with `` `doctor --require camera,pose --camera imx500 --capture picamera2` (the doctor takes no `--config`) ``. Section 5 step 3, add "one person alone in front of the wall: one figure, not two (27 of the spike's 30 samples decode a second body at instance 0.33 to 0.72 about a tenth of the frame from the first, most likely a bystander at the event; if a ghost shows, `MIN_INSTANCE` in `pose_imx500.py` is the knob: 0.5 clears all but two of those samples)". Section 3.4, the sentence "the doctor says so when `capture = "opencv"` is set beside it" gets "(not built; `capture` is ignored for imx500)". Section 3.3's "A tensor whose shapes are not ... raises `ValueError`": add "the detector logs it once and gives no bodies; the camera thread lives". Section 3.3's `IMX500Pose`: add "at most `MAX_BODIES = 4` bodies reach the tracker (its `assign()` has no scipy on the Pi and stops at 6 by 6)". Section 6's crowd risk: replace "2 with PoseNet's 0.3 instance threshold" with "a second body above 0.3 in 27 of 30 samples".
 
 At the top of `arcade/sources/README.md`, after `Measured facts and decisions (spec 12).`, add:
 
 ```markdown
 ## Pose on the sensor (Q182, 2026-10-02)
 
-- The Pi reads bodies from PoseNet on the IMX500 (`camera = "imx500"`): `PoseCamera` with `IMX500Pose`, which
+- The Pi reads bodies from PoseNet on the IMX500 (`camera = "imx500"`): `PoseCamera` (formerly `MediaPipeCamera`, the name stays as an alias) with `IMX500Pose`, which
   decodes the three tensors `Picamera2Capture` keeps from each request's metadata. The decoder in
   `pose_imx500.py` is a port of tfjs posenet's multi-pose decoding; the spike that chose it over HigherHRNet
   (10 a second, the sensor's cap) is `docs/superpowers/reviews/2026-10-02-imx500-pose-spike.md`. Measured: 30
@@ -1328,13 +1401,14 @@ At the top of `arcade/sources/README.md`, after `Measured facts and decisions (s
 - The Mac keeps MediaPipe (`MediaPipeDetector`, 33 landmarks cut to COCO 17 by `MP_TO_COCO`); both detectors give
   the same 17 keypoints, normalised and unmirrored, and the tracker does not know which ran.
 - Not done: the tracker's filter is tuned on MediaPipe's shake; `night_lux` from the sensor's metadata; the
-  30 s reopen retry.
+  30 s reopen retry; `record --raw` still accepts `camera = "mediapipe"` only (`record.py` checks the name; the
+  imx500 camera has the same tap and could be let in).
 ```
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /Users/trey/dev/codeisart-wall && git add arcade.pi.toml tests/arcade/test_config.py docs/runbooks/arcade-on-the-pi.md arcade/sources/README.md && git commit -q -m "feat(arcade): arcade.pi.toml reads pose from the sensor (imx500, 30/s); the runbook and the sources README
+cd /Users/trey/dev/codeisart-wall && git add arcade.pi.toml tests/arcade/test_config.py docs/runbooks/arcade-on-the-pi.md arcade/sources/README.md docs/superpowers/specs/2026-10-02-pose-on-the-sensor-design.md && git commit -q -m "feat(arcade): arcade.pi.toml reads pose from the sensor (imx500, 30/s); the runbook, the sources README, the spec's doctor command
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1345,12 +1419,14 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:** none new.
 
-- [ ] **Step 1: Run the full suite once**
+- [ ] **Step 1: Run the full suite once, where the owner says**
+
+Ask the owner first: the Mac (8 GB, about 455 s, against his rule of 2026-10-02 that full suites go to the Pi) or the Pi (his rule, but promptviz holds its wall tonight and a suite there may cost the party unit late frames; it would run as a bundle on stdin into a scratch clone under the lock, the memory's recipe, after promptviz stops at the wall session). On the Mac:
 
 ```bash
 cd /Users/trey/dev/codeisart-wall && PY=/Users/trey/dev/codeisart/.venv/bin/python; $PY -m pytest -q -p no:cacheprovider 2>&1 | tail -3
 ```
-Expected: everything passes, 3 skipped (the Mac's), under 540 s. Write the three numbers down. A failure is read once more before any decision (the Mac's load); a real failure is fixed in the task it belongs to with its own commit.
+Expected: everything passes, 3 skipped (the Mac's: `test_colorlight_slot`, `test_colorlight_child`, `test_sandbox`; the landmarker test runs now that `models/` is linked), under 540 s. Write the three numbers down. A failure is read once more before any decision (the Mac's load); a real failure is fixed in the task it belongs to with its own commit.
 
 - [ ] **Step 2: Compile check for the Pi's Python**
 
@@ -1360,7 +1436,13 @@ cd /Users/trey/dev/codeisart-wall && /Users/trey/dev/codeisart/.venv/bin/python 
 
 - [ ] **Step 3: Report**
 
-Tell the owner: the branch tip, the suite's numbers, and that the wall session (spec section 5) waits for his "go": promptviz stopped at his word, then on the Pi under the lock `git -C ~/codeisart pull` of `wall-bringup` (or a bundle over stdin when nothing is pushed), the doctor's line, the mirror figure, Copy Me. Nothing in this plan touches the Pi or the card.
+Tell the owner: the branch tip, the suite's numbers, and that the wall session (spec section 5) waits for his "go": promptviz stopped at his word, then the code to the Pi as a git bundle on stdin under the lock (nothing is pushed to origin: `git bundle create - main..wall-bringup` piped into `git -C ~/codeisart fetch /dev/stdin wall-bringup` is the memory's recipe, then `git -C ~/codeisart checkout wall-bringup && git merge --ff-only FETCH_HEAD`, all in one locked ssh command), then the doctor, exactly:
+
+```
+.venv/bin/python -m arcade doctor --require camera,pose --camera imx500 --capture picamera2
+```
+
+(the `doctor` subcommand has no `--config`; the spec's section 5 wrote one and is corrected in Task 7), then the mirror figure, then Copy Me. Nothing in this plan touches the Pi or the card.
 
 ---
 
@@ -1369,4 +1451,5 @@ Tell the owner: the branch tip, the suite's numbers, and that the wall session (
 - Spec 3.1 (one camera, two detectors): Task 1. 3.2 (metadata, frame_rate, buffer_count): Task 2. 3.3 (decoder, `IMX500Pose`, `open_imx500`): Task 3. 3.4 wiring: Task 4 (`make_sources`), Task 5 (doctor, `--camera`, `run --require`), Task 7 (`arcade.pi.toml`), Task 6 (the lag line). 3.5 (not changed): no task touches the governor, limiter, driver, tracker, games or lobby. Section 4 tests: Tasks 0 to 7 each carry theirs; the full suite is Task 8. Section 5 (the wall session) is the owner's and is handed off in Task 8. Section 8 (the record) landed with the spec on main (cd233b8) and is merged in Task 0.
 - Names: `PoseCamera`, `PoseDetector`, `MediaPipeDetector`, `IMX500Pose`, `open_imx500`, `describe`, `decode_multiple`, `Picamera2Capture.metadata`, `probe_imx500`, `make_probes(..., camera=)` are used with the same spelling in every task.
 - Review Focus 1 to 5 each name their test and task.
-- The decoder's instance threshold (`MIN_INSTANCE = 0.3`) and NMS radius (20 px of the 481x353 input) are the spike's; the first play may retune them (a constant each).
+- The decoder's instance threshold (`MIN_INSTANCE = 0.3`), body cap (`MAX_BODIES = 4`) and NMS radius (20 px of the 481x353 input) are the spike's and the plan review's; the first play may retune them (a constant each).
+- Plan reviews (2026-10-02 night, two fresh-context adversarial reviewers): `docs/superpowers/reviews/2026-10-02-pose-on-the-sensor-plan-review-integration.md` (1 Critical, 4 Important, 10 Minor) and `...-plan-review-decoder.md` (2 Critical, 2 Important, 5 Minor). Every Critical and Important is folded in above: the `pm.PoseCamera` monkeypatch (Task 4), the `models/` link and the measured skips (Tasks 0, 8), the suite's place as the owner's choice (Task 8), one probe for both names with the wait printed (Task 5), the spec's doctor command (Task 7), the cold heatmap test, the four-body cap, no clipping, the tolerant detector (Task 3). Minors taken: the Pi fallback cut, the logger said plainly, `imx` public, the progress-bar order, the README's old name, `record --raw` noted. Not taken: scipy in the `pi` extra (the cap suffices tonight; a dependency change on the Pi waits), the `_due` pacer on `SensorTimestamp` (the lag line will say whether it matters).
