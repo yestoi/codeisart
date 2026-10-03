@@ -456,3 +456,85 @@ def test_mirror_figure_moves_between_captures(font5x7):
     right = tick(2 * period, period, 0.7)
     assert left < mid < right, (left, mid, right)
     assert right - left > 30                                  # 0.3 to 0.7 of a 128-wide wall
+
+
+# ----- step-in start (docs/superpowers/specs/2026-10-03-step-in-start-design.md) -----
+
+from arcade.attract.lobby import STEP_IN_SECONDS
+
+
+def step_in_run(font, persons, seconds, size=(128, 64)):
+    """The lobby with --game's flag over a scene, through the real runner. The one game is a spy called pong
+    that ends 30 updates (1 s) after it starts, so its card follows and the count can start again."""
+    games = [spy("pong", finish_after=30)]
+    return lobby_run(font, games, persons, seconds, size=size,
+                     setup=lambda lobby: setattr(lobby, "start_on_step_in", True))
+
+
+def test_step_in_starts_the_game_after_two_seconds(font5x7):
+    _, runner = step_in_run(font5x7, [Person(0.5, id=1).arrive(1.0)], 4.0)
+    starts = launches(runner)
+    assert len(starts) == 1 and starts[0][1] == "pong"
+    at = starts[0][0] * TICK
+    assert 1.0 + STEP_IN_SECONDS - 0.1 <= at <= 1.0 + STEP_IN_SECONDS + 0.2, at
+
+
+def test_a_crossing_does_not_start(font5x7):
+    """Review Focus 4: in the zone for 1.5 s and out again."""
+    person = Person(0.5, id=1).arrive(1.0).leave(2.5)
+    _, runner = step_in_run(font5x7, [person], 5.0)
+    assert launches(runner) == []
+
+
+def test_step_in_count_restarts_after_leaving(font5x7):
+    """Review Focus 1: in at 1.0, out at 2.0, back at 3.0 as a new track id (the tracker never reuses one, and a
+    Person has one arrive and one leave): the game starts near 5.0, not 4.0."""
+    persons = [Person(0.5, id=1).arrive(1.0).leave(2.0), Person(0.5, id=2).arrive(3.0)]
+    _, runner = step_in_run(font5x7, persons, 7.0)
+    starts = launches(runner)
+    assert len(starts) == 1
+    at = starts[0][0] * TICK
+    assert at >= 3.0 + STEP_IN_SECONDS - 0.1, at
+
+
+def test_raised_hand_does_not_start_in_step_in_mode(font5x7):
+    """Review Focus 3: a hand up at 1.2 s for half a second, with the player gone by 1.9 s."""
+    person = Person(0.5, id=1).arrive(1.0).raise_hand(at=1.2, seconds=0.5).leave(1.9)
+    _, runner = step_in_run(font5x7, [person], 4.0)
+    assert launches(runner) == []
+
+
+def test_after_the_card_the_count_starts_again(font5x7):
+    """Review Focus 2: the player stays; the second game starts two seconds after the card ends, not at once."""
+    _, runner = step_in_run(font5x7, [Person(0.5, id=1).arrive(0.5)], 12.0)
+    starts = launches(runner)
+    assert len(starts) >= 2, starts
+    card_start, card_len = card_run(runner)
+    card_end = card_start + card_len
+    assert starts[1][0] - card_end >= round(STEP_IN_SECONDS / TICK) - 3, (starts, card_end)
+
+
+def test_second_body_does_not_shorten_the_count(font5x7):
+    """Review Focus 5: a second body arriving at 2.0 s does not start the game before the player's two seconds."""
+    _, runner = step_in_run(font5x7, [Person(0.4, id=1).arrive(1.5), Person(0.6, id=2, height=0.5).arrive(2.0)], 5.0)
+    starts = launches(runner)
+    assert len(starts) == 1 and starts[0][0] * TICK >= 1.5 + STEP_IN_SECONDS - 0.1
+
+
+def test_no_pictogram_in_step_in_mode(font5x7):
+    """Also the spec's 1.9 s: a player present 1.4 s (0.5 to 1.9) has not started the game."""
+    lobby, runner = step_in_run(font5x7, [Person(0.5, id=1).arrive(0.5)], 1.9)
+    assert all(s.get("pictogram") in (None, False) for s in runner.trace)
+    assert all(s.get("mode") != "invite" for s in runner.trace)
+    assert launches(runner) == []
+
+
+def test_without_the_flag_nothing_changes(font5x7):
+    _, runner = lobby_run(font5x7, [spy("pong", finish_after=30)], [Person(0.5, id=1).arrive(1.0)], 6.0)
+    assert launches(runner) == [], "standing still never starts a game in the default lobby"
+
+
+def test_step_in_debug_state_has_progress(font5x7):
+    lobby, runner = step_in_run(font5x7, [Person(0.5, id=1).arrive(0.5)], 1.5)
+    last = runner.trace[-1]
+    assert 0.0 < last["step_in"] < 1.0

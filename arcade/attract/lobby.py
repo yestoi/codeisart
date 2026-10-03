@@ -16,6 +16,10 @@ name among the lobby's games that is available, fits the layout and needs only i
 is primed on a newly locked player and at the end of the card, so a hand already up never starts a game by
 itself; it has to come down and go up again. Blobs and the body centre never start anything.
 
+With start_on_step_in (`arcade run --game NAME`, the 2026-10-03 step-in spec) the trigger is a locked player
+present for STEP_IN_SECONDS, counted from the lock and again from the end of each card; the pictogram is not
+drawn and a raised hand does nothing by itself.
+
 A player who drops out for up to capture_grace(cfg.camera_fps) keeps their figure and the invite, so a missed
 capture never flickers the mode; a keypoint that drops out keeps its last place as long (KeypointHold, C37), so
 a missed joint never blinks a limb. A figure's column (figure_rect's) keeps COLUMN_SLACK px of play, so zone_x
@@ -50,6 +54,7 @@ COLUMN_SLACK = 1             # px a figure's column may jitter without moving it
 BIG_ROWS = 48                # a wall at least this tall draws the lobby's big text at 2x
 BIG_SCALE = 2
 MODES = ("attract", "mirror", "invite", "card")
+STEP_IN_SECONDS = 2.0        # start_on_step_in: a locked player this long starts the featured game (2026-10-03 spec)
 
 HAND_UP = icon_from_rows([
     "............##..",
@@ -111,10 +116,11 @@ class Lobby:
 
     info = None
 
-    def __init__(self, games: Sequence[type], cfg: ArcadeConfig):
+    def __init__(self, games: Sequence[type], cfg: ArcadeConfig, start_on_step_in: bool = False):
         self.games = {g.info.name: g for g in games}
         self.cfg = cfg
         self.grace = capture_grace(cfg.camera_fps)
+        self.start_on_step_in = start_on_step_in     # --game: a player standing in the zone starts it, not a hand
         self.request: str | None = None
         self._available: set[str] = set()
         self._inputs: set[str] = set(INPUTS)         # every input until set_status: headless runs never sense()
@@ -158,6 +164,7 @@ class Lobby:
         self._glides = [FigureGlide(), FigureGlide()]                             # moves between captures
         self._hold = Hold(PICTOGRAM_SECONDS, grace=self.grace)
         self._edge = Edge(self.grace)
+        self._step_in = Hold(STEP_IN_SECONDS, grace=self.grace)
         self._player_id: int | None = None
         self._card = None
         self._card_start: float | None = None
@@ -183,16 +190,26 @@ class Lobby:
                     x = min(max(slot[2], x - COLUMN_SLACK), x + COLUMN_SLACK)
                 self._slots[i] = (held, t, x)
         self._hold.update(player is not None, t)
-        if player is not None and player.id != self._player_id:
-            self._player_id = player.id
-            fired = self._prime(raised, t)
-        elif card_ended:
-            fired = self._prime(raised, t)
+        if self.start_on_step_in:
+            if player is not None and player.id != self._player_id:
+                self._player_id = player.id
+                self._step_in.reset()                         # a new player: the count starts now
+            elif card_ended:
+                self._step_in.reset()                         # "again" needs two more seconds on the square
+            fired = self._step_in.update(player is not None, t)
+            self._edge.update(raised, t)                      # kept armed, never read in this mode
         else:
-            fired = self._edge.update(raised, t)
+            if player is not None and player.id != self._player_id:
+                self._player_id = player.id
+                fired = self._prime(raised, t)
+            elif card_ended:
+                fired = self._prime(raised, t)
+            else:
+                fired = self._edge.update(raised, t)
         if fired and self.mode in ("mirror", "invite"):
             self.request = self.featured()
-        self._place_pictogram(t)
+        if not self.start_on_step_in:
+            self._place_pictogram(t)
 
     def draw(self, canvas: Canvas) -> None:
         mode = self.mode
@@ -223,7 +240,8 @@ class Lobby:
                 "card_waiting": None if card is None else card.waiting,
                 "figure_xy": None if shown[0] is None else self._head(shown[0]),
                 "pictogram_xy": None if self._icon_at is None else (self._icon_at[0] + ICON_SIZE // 2,
-                                                                     self._icon_at[1] + ICON_SIZE // 2)}
+                                                                     self._icon_at[1] + ICON_SIZE // 2),
+                **({"step_in": round(self._step_in.progress, 3)} if self.start_on_step_in else {})}
 
     # ----- inside -----
 
@@ -233,7 +251,7 @@ class Lobby:
             return "card"
         if self._figures()[0] is None:
             return "attract"
-        return "invite" if self._hold.fired else "mirror"
+        return "invite" if self._hold.fired and not self.start_on_step_in else "mirror"
 
     def _prime(self, value: bool, t: float) -> bool:
         """A new edge that has already seen value: a hand up now fires only after it comes down and up again."""
