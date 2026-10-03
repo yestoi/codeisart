@@ -63,9 +63,11 @@ injectable, so the IMX500 path hands in `Picamera2(imx.camera_num)`.
   max_poses, nms_radius_px) -> list[(instance_score, [(x, y, conf) x 17])]`, with x and y normalised by the
   model's input size (481x353). The tensor layout, the edge list and the stride are constants with a comment
   naming their source (the rpicam-apps `imx500_posenet` stage and tfjs posenet). An output whose shapes are not
-  `[23, 31, 17]`, `[23, 31, 34]`, `[23, 31, 64]` raises `ValueError` naming them: a wrong network on the sensor
+  `[23, 31, 17]`, `[23, 31, 34]`, `[23, 31, 64]` raises `ValueError` naming them (the detector logs it once and
+  gives no bodies; the camera thread lives): a wrong network on the sensor
   is told, not decoded.
-- `IMX500Pose(capture, imx, min_instance=0.3)`: `detect(bgr, ts_ms)` ignores the frame, reads
+- `IMX500Pose(capture, imx, min_instance=0.3, max_bodies=4)`: at most `MAX_BODIES = 4` bodies reach the tracker
+  (its `assign()` has no scipy on the Pi and stops at 6 by 6). `detect(bgr, ts_ms)` ignores the frame, reads
   `capture.metadata`, returns `[]` when it carries no `CnnOutputTensor` (the frame before the first tensor, or a
   dropped one; the camera's last result then holds as it does for a frame with no body), otherwise
   `imx.get_outputs(metadata)` decoded, bodies under `min_instance` dropped, each body's keypoints as
@@ -83,7 +85,8 @@ injectable, so the IMX500 path hands in `Picamera2(imx.camera_num)`.
 
 - `make_sources`: `cfg.camera == "imx500"` opens the pair and builds `PoseCamera(cfg, size, clock,
   calibration=cal, capture=capture, detector=detector)`. `cfg.capture` is not consulted for `imx500` (the
-  capture is picamera2 by nature); the doctor says so when `capture = "opencv"` is set beside it.
+  capture is picamera2 by nature); the doctor says so when `capture = "opencv"` is set beside it (not built;
+  `capture` is ignored for imx500).
 - `cfg.camera_fps` still paces the inference: at 30 every tensor is taken; lower drops frames as today.
 - The doctor (`arcade/main.py`): a `probe_imx500` opens the pair as the arcade does and waits for the first
   frame carrying a tensor. It waits `--timeout` (default 5 s); when 3 s pass with frames but no tensor it prints
@@ -128,8 +131,12 @@ the lobby; the Mac path (MediaPipe through OpenCV).
 ## 5. The wall session (on the owner's "go", by the wall session protocol)
 
 1. promptviz stopped at the owner's word; the wall dark.
-2. `doctor --require camera,pose --config arcade.pi.toml`: the line names posenet and 30.
-3. The mirror figure alone: is left left, does the figure stand still when the owner does, does a raised hand
+2. `doctor --require camera,pose --camera imx500 --capture picamera2` (the doctor takes no `--config`): the line
+   names posenet and 30.
+3. The mirror figure alone: one person alone in front of the wall is one figure, not two (27 of the spike's 30
+   samples decode a second body at instance 0.33 to 0.72 about a tenth of the frame from the first, most likely a
+   bystander at the event; if a ghost shows, `MIN_INSTANCE` in `pose_imx500.py` is the knob: 0.5 clears all but
+   two of those samples); is left left, does the figure stand still when the owner does, does a raised hand
    read; the `-v` lag line's number.
 4. Copy Me through the lobby, then the other games by `--game` as time allows.
 5. Verdicts into `live-smoke.md`, the lag number beside them. A fault that stops play is fixed in the session;
@@ -144,7 +151,8 @@ one game's row in `live-smoke.md` has the owner's verdict against tonight's.
 - **Keypoint quality.** PoseNet is MobileNet-based and older than MediaPipe's model; wrists and ankles at 2 to
   3 m may read worse, and Copy Me's outline and Jump's nose rise depend on them. The wall judges; the fallback
   is `camera = "mediapipe"`, which stays built.
-- **The crowd.** The spike saw up to 10 people with HigherHRNet and 2 with PoseNet's 0.3 instance threshold.
+- **The crowd.** The spike saw up to 10 people with HigherHRNet, and a second body above 0.3 in 27 of 30 PoseNet
+  samples.
   The tracker and `player_sized` (wall-bringup, 97972ba) pick the player; the threshold is a constant to tune.
 - **The upload.** A power cycle may cost a 3 to 4 minute network upload at the first start; the doctor says so.
 - **Two sessions on the sources.** The loop's M8 touches `arcade/attract/` and `arcade/main.py`; this work

@@ -144,10 +144,10 @@ def test_capture_rejects_another_value(tmp_path):
         load_config(write(tmp_path, 'capture = "webcam"'))
 
 
-def test_the_pi_config_drives_the_card_through_picamera2():
+def test_the_pi_config_reads_pose_from_the_sensor():
     cfg = load_config(Path(__file__).resolve().parents[2] / "arcade.pi.toml")
-    assert (cfg.backend, cfg.iface, cfg.capture, cfg.camera, cfg.camera_fps) == \
-        ("colorlight", "eth0", "picamera2", "mediapipe", 15)   # 15: the Pi's steady pose rate, 2026-10-02
+    assert (cfg.backend, cfg.iface, cfg.capture, cfg.camera, cfg.camera_fps, cfg.gamma) == \
+        ("colorlight", "eth0", "picamera2", "imx500", 30, 1.0)   # 30: posenet's rate on the sensor (Q182)
     assert cfg.size == (128, 64) and cfg.allow_record is False
 
 

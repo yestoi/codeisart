@@ -1,8 +1,9 @@
-# The Pi 5 at the wall: the Colorlight card on eth0 and the AI Camera read as a plain camera through picamera2
-# (the pose runs in MediaPipe on the Pi). Every other key is its default.
-# Start it as docs/runbooks/arcade-on-the-pi.md says.
+# The Pi 5 at the wall: the Colorlight card on eth0 and the AI Camera with PoseNet on its sensor (Q182, the spike of
+# 2026-10-02: 30 a second, 48 ms sensor to keypoints). Every other key is its default.
+# Start it as docs/runbooks/arcade-on-the-pi.md says. To fall back to MediaPipe on the Pi's CPU:
+# camera = "mediapipe" and camera_fps = 15 (its steady rate; capture stays "picamera2").
 backend = "colorlight"
+camera = "imx500"
 capture = "picamera2"
-camera_fps = 15       # the Pi's steady pose rate: a result costs about 58 ms, so 20 asked gives 16 with jitter
-                      # and 15 asked gives 15 (measured at the wall, 2026-10-02); 10 looked choppy to the owner
+camera_fps = 30       # posenet's inference rate on the IMX500: every tensor is taken
 gamma = 1.0           # the card applies gamma: wall_pattern.py gamma's checker matched the RIGHT patch (2026-10-02)

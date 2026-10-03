@@ -2,6 +2,19 @@
 
 Measured facts and decisions (spec 12).
 
+## Pose on the sensor (Q182, 2026-10-02)
+
+- The Pi reads bodies from PoseNet on the IMX500 (`camera = "imx500"`): `PoseCamera` (formerly `MediaPipeCamera`, the name stays as an alias) with `IMX500Pose`, which
+  decodes the three tensors `Picamera2Capture` keeps from each request's metadata. The decoder in
+  `pose_imx500.py` is a port of tfjs posenet's multi-pose decoding; the spike that chose it over HigherHRNet
+  (10 a second, the sensor's cap) is `docs/superpowers/reviews/2026-10-02-imx500-pose-spike.md`. Measured: 30
+  tensors a second, 48 ms sensor to keypoints, 3 ms to decode on the Pi; a still nose 1.5 px at 640 wide.
+- The Mac keeps MediaPipe (`MediaPipeDetector`, 33 landmarks cut to COCO 17 by `MP_TO_COCO`); both detectors give
+  the same 17 keypoints, normalised and unmirrored, and the tracker does not know which ran.
+- Not done: the tracker's filter is tuned on MediaPipe's shake; `night_lux` from the sensor's metadata; the
+  30 s reopen retry; `record --raw` still accepts `camera = "mediapipe"` only (`record.py` checks the name; the
+  imx500 camera has the same tap and could be let in).
+
 ## Inputs, wiring, replay, record and calibrate (iteration 21)
 
 - `provides`: a camera claims the camera inputs it serves (`MediaPipeCamera` all three, `walkup` pose only, a replay its header's `inputs`); the runner hands the lobby and the games only those (C35).

@@ -39,16 +39,23 @@ mkdir -p models && curl -fL -o models/pose_landmarker_lite.task \
   https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task
 ```
 
+The pose runs on the AI Camera's sensor (PoseNet, `camera = "imx500"` in `arcade.pi.toml`): no model file on the
+Pi; `imx500-all` put `/usr/share/imx500-models/imx500_network_posenet.rpk` there. MediaPipe stays installed as
+the fallback (`camera = "mediapipe"`, `camera_fps = 15`).
+
 ## 3. Look before a run (no card)
 
 ```
 rpicam-hello --list-cameras
-.venv/bin/python -m arcade doctor --require camera,pose --capture picamera2
+.venv/bin/python -m arcade doctor --require camera,pose --camera imx500 --capture picamera2
 systemctl is-active promptviz-party.service show.service
 ```
 
-The camera's line names `imx500`; the doctor prints `camera  ok  picamera2 0: 640x480` and `pose    ok`. A unit
-that is active holds the card: the owner stops it (`sudo systemctl stop <unit>`) and starts it again afterwards.
+The camera's line names `imx500`; the doctor prints `camera  ok  imx500 posenet 30/s: 640x480` and the same for
+`pose`. The first start after a power cycle, or after another network was on the sensor, uploads PoseNet to it:
+the doctor prints "uploading the network to the sensor, up to 4 minutes" and waits (2 MB at about 9 kB/s). The
+sensor then keeps the network across restarts. A unit that is active holds the card: the owner stops it
+(`sudo systemctl stop <unit>`) and starts it again afterwards.
 
 ## 4. A run
 
@@ -63,6 +70,10 @@ Over ssh under the lock the whole line is one command in double quotes after `fl
 
 `--game NAME` (copyme, pong, quickdraw, dodge, flap, swat, jump, freeze) offers that one game. The run's last
 line is the sender's: `0 late (over 1 ms)` is a clean run.
+
+`-v` also logs, once a second, `capture age at push: median N ms, max M ms`: the lag from the sensor's frame to
+the wall's frame, the number for `live-smoke.md`. The spike's expectation is a median near 70 to 90 ms (48 ms to
+keypoints plus the tick and the sender).
 
 `calibrate --config arcade.pi.toml` takes the place of `run ...` for a calibration; it writes
 `data/calibration.json`, which every later run loads. If the figure is gone or out of place after one, remove
