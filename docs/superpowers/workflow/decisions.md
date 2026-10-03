@@ -1312,3 +1312,14 @@ default: none taken; the owner said it
 deadline: none
 answer: Yes. "It was bad, we need to pull it forward." What was bad: lag, and stutter or jitter. The 2026-10-02 design's stage 3 (pose on the sensor) comes before its stage 2 (M8). A spike ran first, camera only, nothing to the card (`docs/superpowers/reviews/2026-10-02-imx500-pose-spike.md`): HigherHRNet is capped at 10 a second by the sensor and is out; PoseNet runs at 30 a second with 48 ms from the sensor's timestamp to keypoints and 3 ms of Pi CPU a frame, decoded by a ported decoder. The design is `docs/superpowers/specs/2026-10-02-pose-on-the-sensor-design.md` (approved in chat): one pose camera with two detectors (MediaPipe, IMX500 PoseNet), `camera = "imx500"` on the Pi, the Mac path unchanged. Built by the owner's session on `wall-bringup` with the Pi; the loop stays gated. "Lets not change what is being displayed on the screen right now if we can help it": promptviz keeps the card until the owner's "go" for the wall session
 status: answered (owner, 2026-10-02)
+
+### Q183: Does the loop run the step-in start (iteration 23) before M8, and who starts it?
+ANSWERED by the owner, 2026-10-03 05:00 CDT, in the sonyIMX500 session ("Wire up the loops and start them"),
+after approving the spec `docs/superpowers/specs/2026-10-03-step-in-start-design.md` and the plan
+`docs/superpowers/plans/2026-10-03-step-in-start.md` (written outside the loop; three adversarial reviewers on
+2026-10-03, their fixes in 7bea447). The loop runs iteration 23 on that plan now: one task, the lobby's
+`start_on_step_in` behind `--game`, for promptviz's Night One (its spec
+`docs/superpowers/specs/2026-10-03-night-one-menu-design.md`, the night of 2026-10-04). M8 follows as Q181 set.
+The gate of 2026-10-02 (gate.md, untracked) is closed by this answer: the owner's "start" from another session
+stands for the deletion, done by the sonyIMX500 session acting as the operator. Rule 1's thin plan is waived for
+this run: the plan carries its code and tests, as a safety slice's may, and it was reviewed.
