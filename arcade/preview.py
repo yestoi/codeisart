@@ -31,5 +31,5 @@ class PreviewDisplay:
         self.level = level
         self.inner.set_brightness(level)
 
-    def close(self) -> None:
+    def close(self, keep_picture: bool = False) -> None:
         self.inner.close()

@@ -19,5 +19,5 @@ class FakeDisplay:
     def set_brightness(self, level: float) -> None:
         self.brightness = level
 
-    def close(self) -> None:
+    def close(self, keep_picture: bool = False) -> None:   # keep_picture: the Colorlight hand-off, nothing here
         self.closed = True

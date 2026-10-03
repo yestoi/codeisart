@@ -52,5 +52,5 @@ class DDPDisplay:
             self.sock.sendto(packet, self.addr)
         self._seq = self._seq % 15 + 1
 
-    def close(self) -> None:
+    def close(self, keep_picture: bool = False) -> None:   # keep_picture: the Colorlight hand-off, nothing here
         self.sock.close()
