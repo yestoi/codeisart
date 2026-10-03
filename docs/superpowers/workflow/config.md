@@ -287,3 +287,19 @@ skips is journaled once, and the owner's Omarchy box runs them at GATE C. The ar
 - 128x64 is the design layout and the only one games are judged for: four 64x32 panels mounted 2 x 2 (owner decisions Q32 and Q33, 2026-09-28; before them 128x32 and 64x64).
 - The flash governor and brightness limiter hold on every game and attract mode (at most 3 full-field flashes per second).
 - The owner's live smoke (live-smoke.md) scores each shipped game "responded: y" and "understood: y" at 128x64.
+
+## The run of Q183 (iteration 23; owner decision 2026-10-03 05:00 CDT)
+- Scope: one iteration, one task: `docs/superpowers/plans/2026-10-03-step-in-start.md` (spec
+  `docs/superpowers/specs/2026-10-03-step-in-start-design.md`). With `--game`, the lobby starts the game after a
+  locked player has stood in the zone for 2 s instead of on a raised hand. Nothing else; M8 follows (Q181).
+- The plan exists and is reviewed (three adversarial reviewers, 2026-10-03; fixes in 7bea447): no plan writer,
+  no plan review. The plan is thick (its code and tests are written out); rule 1 is waived for this run (Q183).
+- Implement: one implementer, `model: opus` (a lobby task, rule 2), in the main checkout, no worktree (the task
+  touches `arcade/main.py`, a shared file, and there is one task). superpowers:test-driven-development in the
+  plan's own step order. The full suite once, after the task (Step 6). `ARCADE_POOL_WORKERS=1`.
+- Review: one fresh reviewer, `model: opus`, BASE..HEAD, the config's Reviewer prompt with this plan and spec.
+- Operator: the sonyIMX500 session (cwd /Users/trey/dev/sonyIMX500), without this repo's hooks; it obeys the
+  rules by hand: no `cd`, no Pi, nothing to the card, no push, commits by path only.
+- iterations-per-run: 1. After it the loop gates as before (the owner says when M8 starts).
+- The Mac: the promptviz loop runs beside this one (its iteration 2, Night One); each loop one orchestrator and
+  one implementer at a time; one full suite run.
