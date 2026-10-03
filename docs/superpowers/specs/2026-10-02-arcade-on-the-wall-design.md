@@ -96,6 +96,11 @@ doors.
 Core plan Task 19 as `camera = "imx500"`, compared with MediaPipe at the wall. Taken when stage 1's session
 says 10 captures a second is not enough, or after stage 2.
 
+Brought forward 2026-10-02 night (owner decision Q182): stage 1's plays at 15 captures a second read as lag and
+stutter. The spike (`docs/superpowers/reviews/2026-10-02-imx500-pose-spike.md`) chose PoseNet on the sensor over
+HigherHRNet; the design is `docs/superpowers/specs/2026-10-02-pose-on-the-sensor-design.md`. Stage 3 now comes
+before stage 2.
+
 ## 6. Two sessions, one main
 
 Stage 1's code goes to main before the operator starts, so the loop builds on it. While the loop runs, this
