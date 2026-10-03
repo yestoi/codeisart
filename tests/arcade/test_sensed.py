@@ -8,7 +8,7 @@ from arcade.calibration import Calibration
 from arcade.sensed import (LEFT_ANKLE, LEFT_EAR, LEFT_ELBOW, LEFT_EYE, LEFT_HIP, LEFT_KNEE,
                            LEFT_SHOULDER, LEFT_WRIST, NOSE, RIGHT_ANKLE, RIGHT_EAR, RIGHT_ELBOW,
                            RIGHT_EYE, RIGHT_HIP, RIGHT_KNEE, RIGHT_SHOULDER, RIGHT_WRIST, SKELETON,
-                           Audio, Blob, Body, Keypoint, Sensed, place, place_blob)
+                           MIN_SCALE_SHARE, Audio, Blob, Body, Keypoint, Sensed, place, place_blob, player_sized)
 
 
 def kps(**over):
@@ -363,3 +363,18 @@ def test_a_bad_torso_ratio_reads_the_default():
         b = figure(NO_HIPS, torso_per_width=bad)
         assert b.torso_per_width == 0.0, bad
         assert b.torso == pytest.approx(0.25), bad
+
+
+def test_place_wants_half_the_baseline_scale_once_calibrated():
+    # The event wall (2026-10-02): a near player is taller than the frame, so the stands measure short (legs cut
+    # off) and min_height drops to what a far person in the crowd behind has; that person's torso is a third of
+    # the player's. In the zone also means scale >= MIN_SCALE_SHARE of the baseline; without a baseline (0.0,
+    # not calibrated) the height alone decides, as before.
+    assert MIN_SCALE_SHARE == 0.5
+    b = figure()
+    assert place(b, Calibration(baseline_scale=b.scale * 2 - 1e-6)).in_zone
+    assert not place(b, Calibration(baseline_scale=b.scale * 2 + 1e-3)).in_zone
+    assert place(b, Calibration(baseline_scale=0.0)).in_zone
+    assert player_sized(b, Calibration(baseline_scale=b.scale * 2 - 1e-6))
+    assert not player_sized(b, Calibration(baseline_scale=b.scale * 2 + 1e-3))
+    assert not player_sized(figure(box=(0.3, 0.2, 0.7, 0.6)), Calibration())    # 0.4 tall: under min_height

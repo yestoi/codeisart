@@ -310,16 +310,29 @@ def _in(zone: tuple[float, float, float, float], x: float, y: float) -> bool:
     return x0 <= x <= x1 and y0 <= y <= y1
 
 
+MIN_SCALE_SHARE = 0.5   # a player's scale is at least this share of the calibration's baseline_scale
+
+
+def player_sized(body: Body, calibration: Calibration) -> bool:
+    """body is a player's size: at least min_height tall and, once a baseline is measured (baseline_scale > 0),
+    its scale at least MIN_SCALE_SHARE of it. The event wall (2026-10-02): a near player is taller than the frame,
+    so the stands measure short and min_height falls to the height of a far person in the crowd behind, whose
+    torso is a third of the player's; the scale tells them apart where the height cannot."""
+    if body.height < calibration.min_height:
+        return False
+    return calibration.baseline_scale <= 0.0 or body.scale >= MIN_SCALE_SHARE * calibration.baseline_scale
+
+
 def place(body: Body, calibration: Calibration) -> Body:
     """body with in_zone, zone_x and zone_y from the calibration (spec 6.6). Actors and the tracker call it.
 
     The anchor (shoulders, then nose, then hips; the box centre without any) maps into the zone, 0..1
-    across the mat and clamped. In the zone means the anchor inside it and the body at least min_height tall.
+    across the mat and clamped. In the zone means the anchor inside it and the body player_sized.
     """
     x0, y0, x1, y1 = calibration.zone
     a = body.anchor
     ax, ay = (a.x, a.y) if a is not None else body.center
-    inside = _in(calibration.zone, ax, ay) and body.height >= calibration.min_height
+    inside = _in(calibration.zone, ax, ay) and player_sized(body, calibration)
     return dataclasses.replace(body, in_zone=inside, zone_x=_clamp01((ax - x0) / (x1 - x0)),
                                zone_y=_clamp01((ay - y0) / (y1 - y0)))
 

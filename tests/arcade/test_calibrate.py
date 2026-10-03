@@ -6,6 +6,7 @@ sheet_scene and sheet_frames are for I2's contact sheet:
 """
 from __future__ import annotations
 
+import dataclasses
 import random
 import tempfile
 from pathlib import Path
@@ -275,3 +276,18 @@ def test_a_player_sized_body_still_holds_the_clear(tmp_path, font5x7):
     run = _run(tmp_path, font5x7, scene(persons=[operator(), tall], blobs=[lamp], ticks=round(28.5 / TICK)))
     saved = next(s["t"] for s in run.runner.trace if s["phase"] == "saved")
     assert saved - VISITOR[1] == pytest.approx(CLEAR_SECONDS, abs=2 * TICK)
+
+
+def test_the_clear_lets_a_body_of_player_height_but_a_third_of_the_scale_be(tmp_path):
+    # Behind a near player (legs out of frame) a far person can be as tall as the stands measured; its torso is not.
+    cal = Calibrator(tmp_path)
+    cal.stands = [(0.3, 0.5, FAR_H), (0.7, 0.5, FAR_H), (0.5, 0.5, NEAR_H)]
+    crowd = Person(0.5, height=FAR_H).body_at(0.0, 2)                       # as tall as a far stand
+    cal.baseline_scale = crowd.scale * 3
+    cal.t = 0.0
+    cal._next("clear")
+    cal._clear(Sensed(1.0, bodies=(crowd,)), 1.0)
+    assert cal._clear_since == 0.0                                           # not restarted
+    player = dataclasses.replace(crowd, scale=cal.baseline_scale)
+    cal._clear(Sensed(2.0, bodies=(player,)), 2.0)
+    assert cal._clear_since == 2.0                                           # a player-sized body restarts it

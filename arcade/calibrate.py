@@ -37,7 +37,7 @@ from arcade.canvas import Canvas
 from arcade.config import load_config
 from arcade.input import EPSILON, Hold
 from arcade.runner import Runner
-from arcade.sensed import MIN_CONF, Blob, Body, Sensed
+from arcade.sensed import MIN_CONF, Blob, Body, Sensed, player_sized
 from arcade.sources import make_sources
 from show.font import CELL_H, Font
 
@@ -255,7 +255,8 @@ class Calibrator:
     def _clear(self, sensed: Sensed, t: float) -> None:
         if self._mic_ok:
             self._floor = sensed.audio.floor_db
-        if any(b.height >= self._min_height() for b in sensed.bodies):   # a far body in a crowd is no player
+        sized = Calibration(min_height=self._min_height(), baseline_scale=self.baseline_scale)
+        if any(player_sized(b, sized) for b in sensed.bodies):          # a far body in a crowd is no player
             self._clear_since, self._lights = t, _Lights()
             return
         if sensed.camera_fresh:
