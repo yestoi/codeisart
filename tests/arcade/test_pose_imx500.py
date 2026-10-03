@@ -133,3 +133,99 @@ def test_describe_names_the_model_and_its_rate():
 
     assert describe(IMX()) == "posenet 30/s"
     assert MODEL.endswith("imx500_network_posenet.rpk") and INPUT_SIZE == (481, 353)
+
+
+class FakePicamera2Modules:
+    """sys.modules entries for picamera2 and picamera2.devices.imx500 that record what open_imx500 does."""
+
+    def __init__(self, calls):
+        import types
+
+        class Intrinsics:
+            inference_rate = 30
+            task = None
+
+            def update_with_defaults(self):
+                calls.append("defaults")
+
+        class IMX500:
+            def __init__(self, model):
+                calls.append(("IMX500", model))
+                self.camera_num = 3
+                self.network_intrinsics = Intrinsics()
+
+            def show_network_fw_progress_bar(self):
+                calls.append("progress_bar")
+
+        class Picamera2:
+            def __init__(self, num):
+                calls.append(("Picamera2", num))
+                self.frame = np.zeros((480, 640, 3), np.uint8)
+
+            def create_video_configuration(self, main, controls, buffer_count=None):
+                calls.append(("configure", dict(main), dict(controls), buffer_count))
+                return {"main": dict(main)}
+
+            def configure(self, config):
+                self.config = config
+
+            def camera_configuration(self):
+                return {"main": self.config["main"]}
+
+            def start(self):
+                calls.append("start")
+
+        self.picamera2 = types.ModuleType("picamera2")
+        self.picamera2.Picamera2 = Picamera2
+        self.devices = types.ModuleType("picamera2.devices")
+        self.imx500 = types.ModuleType("picamera2.devices.imx500")
+        self.imx500.IMX500, self.imx500.NetworkIntrinsics = IMX500, Intrinsics
+
+
+def test_open_imx500_builds_the_sensor_then_the_capture_and_spawns_no_progress_bar(monkeypatch):
+    """The progress bar is a non-daemon child that can keep the doctor and the run from exiting when the camera
+    fails after it started (the final review, M1): the doctor prints its own upload notice instead."""
+    from arcade.config import ArcadeConfig
+
+    calls = []
+    fake = FakePicamera2Modules(calls)
+    monkeypatch.setitem(sys.modules, "picamera2", fake.picamera2)
+    monkeypatch.setitem(sys.modules, "picamera2.devices", fake.devices)
+    monkeypatch.setitem(sys.modules, "picamera2.devices.imx500", fake.imx500)
+    capture, detector = open_imx500(ArcadeConfig(camera="imx500"), (128, 64))
+    assert calls == [("IMX500", MODEL), "defaults", ("Picamera2", 3),
+                     ("configure", {"size": (640, 480), "format": "RGB888"}, {"FrameRate": 30.0}, 12), "start"]
+    assert isinstance(detector, IMX500Pose) and detector.imx.camera_num == 3 and describe(detector.imx) == "posenet 30/s"
+
+
+def test_a_raising_get_outputs_logs_once_and_gives_no_bodies(caplog):
+    class Raising:
+        def get_outputs(self, metadata, add_batch=False):
+            raise RuntimeError("tensor length disagrees with CnnOutputTensorInfo")
+
+    det = IMX500Pose(FakeCapture({"CnnOutputTensor": [1.0]}), Raising())
+    frame = np.zeros((480, 640, 3), np.uint8)
+    assert det.detect(frame, 1000) == [] and det.detect(frame, 1001) == []
+    assert caplog.text.count("tensor length disagrees") == 1
+
+
+def test_detect_keeps_the_sensors_share_of_the_lag(monkeypatch, caplog):
+    """SensorTimestamp is ns on the boot clock; the detector keeps the sensor-to-decode age and logs it at DEBUG
+    once a second, so the runner's capture-age line plus this one is the whole lag (the final review, I1)."""
+    import logging
+
+    import arcade.sources.pose_imx500 as pi
+
+    now = {"ns": 1_000_000_000_000}
+    monkeypatch.setattr(pi, "_now_ns", lambda: now["ns"])
+    cap = FakeCapture({"CnnOutputTensor": [1.0], "SensorTimestamp": now["ns"] - 40_000_000})
+    det = IMX500Pose(cap, FakeIMX(sample("sample1")))
+    frame = np.zeros((480, 640, 3), np.uint8)
+    with caplog.at_level(logging.DEBUG, logger="arcade"):
+        det.detect(frame, 1000)
+        assert det.last_sensor_ms == pytest.approx(40.0)
+        now["ns"] += 1_100_000_000
+        cap.metadata = {"CnnOutputTensor": [1.0], "SensorTimestamp": now["ns"] - 50_000_000}
+        det.detect(frame, 2100)
+    lines = [r.message for r in caplog.records if r.message.startswith("sensor to decode")]
+    assert len(lines) == 1 and "median" in lines[0] and "ms" in lines[0]

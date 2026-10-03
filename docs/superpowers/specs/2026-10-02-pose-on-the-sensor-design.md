@@ -99,8 +99,12 @@ injectable, so the IMX500 path hands in `Picamera2(imx.camera_num)`.
   by `imx500`, needed by the fallback). The `mediapipe` path on the Pi stays as the fallback: `run` has no
   `--camera` flag, so the owner sets `camera = "mediapipe"` and `camera_fps = 15` in the file to go back.
 - Lag as a number: with `-v` the runner logs, once a second, the age of the latest capture at the push
-  (`push time - capture_t`, median and max over the second) on the sender's line or beside it. The owner reads it
-  into `live-smoke.md`.
+  (`push time - capture_t`, median and max over the second; `capture_t` is the frame's arrival at the Pi, so on the
+  sensor path this leaves out the sensor's own 42 to 48 ms), and the imx500 detector logs the sensor's share
+  (`SensorTimestamp` to the decode) once a second. The sum is the lag; a MediaPipe run's capture-age line holds its
+  inference, so the two paths compare by the sum (the final review, I1). The owner reads them into `live-smoke.md`.
+- No progress bar for the network upload: picamera2's is a non-daemon child that can keep the doctor or the run
+  from exiting when the camera fails after it started (the final review, M1); the doctor's own notice stands in.
 - `pyproject.toml`: nothing new. picamera2 is apt's; the decoder is numpy; munkres and scipy are not needed
   (HigherHRNet is out).
 

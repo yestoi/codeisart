@@ -15,6 +15,7 @@ docs/superpowers/workflow/.blocks-head
 
 # arcade: pose model, runtime data, contact sheets (anchored: tests/arcade/fixtures/ may hold data/ dirs)
 /models/
+/models
 /data/
 /shots/
 

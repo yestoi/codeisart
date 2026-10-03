@@ -1115,3 +1115,23 @@ def test_verbose_logs_the_capture_age_at_push_once_a_second(font5x7, caplog):
         caplog.clear()
         runner.loop(camera, NoSource(), max_ticks=cfg.fps)
     assert not [r for r in caplog.records if r.message.startswith("capture age at push")]
+
+
+def test_the_lag_line_stops_when_the_camera_goes_stale(font5x7, caplog):
+    from arcade.headless import NullLobby
+    from arcade.sources import NoSource
+    from arcade.sources.scripted import ScriptedCamera
+    from show.display.fake import FakeDisplay
+    from tests.arcade.helpers import FakeClock, make_cfg
+
+    clock = FakeClock(500.0)
+    cfg = make_cfg((128, 64))
+    camera = ScriptedCamera(scene(persons=[Person(0.5, id=7)], ticks=cfg.fps), clock)
+    runner = Runner(cfg, FakeDisplay(), font5x7, NullLobby(), [], clock=clock, sleep=clock.sleep)
+    with caplog.at_level(logging.DEBUG, logger="arcade"):
+        runner.loop(camera, NoSource(), max_ticks=cfg.fps)
+        caplog.clear()
+        clock.sleep(10.0)                                         # the camera is gone; its last capture is 10 s old
+        runner.loop(NoSource(), NoSource(), max_ticks=cfg.fps * 2)
+    lines = [r.message for r in caplog.records if r.message.startswith("capture age at push")]
+    assert lines == []

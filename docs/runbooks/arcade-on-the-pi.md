@@ -71,9 +71,13 @@ Over ssh under the lock the whole line is one command in double quotes after `fl
 `--game NAME` (copyme, pong, quickdraw, dodge, flap, swat, jump, freeze) offers that one game. The run's last
 line is the sender's: `0 late (over 1 ms)` is a clean run.
 
-`-v` also logs, once a second, `capture age at push: median N ms, max M ms`: the lag from the sensor's frame to
-the wall's frame, the number for `live-smoke.md`. The spike's expectation is a median near 70 to 90 ms (48 ms to
-keypoints plus the tick and the sender).
+`-v` also logs two lines a second that together are the lag, the numbers for `live-smoke.md`:
+`sensor to decode: median N ms` (the sensor's share: exposure, readout and the on-sensor inference, from the
+frame's `SensorTimestamp` to the decode; the spike read 42 to 48 ms) and `capture age at push: median N ms` (from
+the frame's arrival at the Pi to the push of the wall's frame: the tick and the sender). Add them for the whole
+lag; the spike's expectation is a sum near 70 to 90 ms. A MediaPipe run (`camera = "mediapipe"`) has no sensor
+line and its capture-age line holds the 56 ms inference, so the two paths are compared by the sum, not line by
+line. A capture-age line stops when the camera is gone.
 
 `calibrate --config arcade.pi.toml` takes the place of `run ...` for a calibration; it writes
 `data/calibration.json`, which every later run loads. If the figure is gone or out of place after one, remove

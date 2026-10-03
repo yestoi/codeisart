@@ -567,13 +567,17 @@ class Runner:
                 self._push_logged = self.t
                 self.log.exception("display push failed (logged once a minute)")
         if self._camera_capture is not None and self.log.isEnabledFor(logging.DEBUG):
-            self._ages.append((self.clock() - self._camera_capture) * 1000.0)
-            if self.t - self._lag_logged >= LAG_EVERY and self._ages:
-                self._lag_logged = self.t
-                ages = sorted(self._ages)
-                self.log.debug("capture age at push: median %.0f ms, max %.0f ms (%d pushes)",
-                               ages[len(ages) // 2], ages[-1], len(ages))
+            age = self.clock() - self._camera_capture
+            if age > CAMERA_STALE:                  # a camera that is gone is not lag; sense() says it is unavailable
                 self._ages = []
+            else:
+                self._ages.append(age * 1000.0)
+                if self.t - self._lag_logged >= LAG_EVERY:
+                    self._lag_logged = self.t
+                    ages = sorted(self._ages)
+                    self.log.debug("capture age at push: median %.0f ms, max %.0f ms (%d pushes)",
+                                   ages[len(ages) // 2], ages[-1], len(ages))
+                    self._ages = []
         held = self.governor.held_ticks
         if held > self._held_before and self.t - self._governor_logged >= LOG_EVERY:
             self._governor_logged = self.t
