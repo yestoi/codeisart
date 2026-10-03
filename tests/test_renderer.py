@@ -460,7 +460,8 @@ def test_text_view_still_refuses_the_128x64_wall(font):
 # The strip's three looks (Q54)
 
 LOOKS = ("reverse", "dim-reverse", "bright-on-field")
-FIELD_LETTERS = {"reverse": (0.70, 0.0), "dim-reverse": (0.35, 0.0), "bright-on-field": (0.25, 1.0)}
+FIELD_LETTERS = {"reverse": (0.70, 0.0), "dim-reverse": (0.35, 0.0), "bright-on-field": (0.25, 1.0),
+                 "plain": (0.0, NORMAL)}
 INK_STRIP_X0 = (PW - (PW // 6) * 6) // 2               # 4: 21 characters fit 128 px
 
 
@@ -547,3 +548,13 @@ def test_renderer_for_passes_view_and_look(font, view):
     r = renderer_for(cfg, font)
     assert (r.view, r.strip_look, r.glow) == (view, "bright-on-field", True)
     assert (r.width, r.height, r.columns, r.rows) == (cfg.width, cfg.height, cfg.columns, cfg.rows)
+
+
+def test_plain_strip_look_is_letters_at_text_level_on_black(font):
+    r = renderer(font, strip_look="plain")
+    frame = r.render(make_screen(), strip="AAA")               # the fixture font draws A
+    row = frame[STRIP_Y : STRIP_Y + 8]
+    assert row.any()                                            # the letters are lit
+    lit = row[row.any(axis=2)]
+    assert (lit == DIM).all()                                   # at NORMAL, as the program's text
+    assert not frame[STRIP_Y : STRIP_Y + 8, 0:X0].any()         # the field stays black

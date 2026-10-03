@@ -93,3 +93,32 @@ def test_the_default_strip_look_is_the_loop_s_reading_everywhere():
     assert Config().strip_look == "bright-on-field"
     for name in ("show.toml", "show.poc.toml"):
         assert load_config(ROOT / name).strip_look == "bright-on-field", name
+
+
+# -- the reel (2026-10-03): cards, the hold, the quiet build, the phase strip ----------------------------------------
+
+def test_reel_keys_default_off_and_are_checked(tmp_path):
+    cfg = Config()
+    assert cfg.card_seconds == 0.0 and cfg.source_hold == 0.0 and cfg.build_quiet is False
+    assert cfg.strip_phase is False and cfg.end_card == []
+    p = tmp_path / "show.toml"
+    p.write_text('card_seconds = 2.5\nsource_hold = 2\nbuild_quiet = true\nstrip_phase = true\n'
+                 'end_card = ["CODE IS ART", "A.I. IS NOT"]\n')
+    cfg = load_config(p)
+    assert cfg.card_seconds == 2.5 and cfg.source_hold == 2 and cfg.build_quiet is True and cfg.strip_phase is True
+    assert cfg.end_card == ["CODE IS ART", "A.I. IS NOT"]
+    for bad in ("card_seconds = -1", 'card_seconds = "2"', "card_seconds = true", "source_hold = -0.5",
+                "build_quiet = 1", 'strip_phase = "yes"', 'end_card = "CODE IS ART"', "end_card = [1, 2]"):
+        p.write_text(bad + "\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+
+def test_the_demo_configs_are_the_reel_on_the_128x64_ink_view():
+    for name in ("show.demo.toml", "show.engulf.toml"):
+        cfg = load_config(ROOT / name)
+        assert (cfg.width, cfg.height, cfg.view) == (128, 64, "ink"), name
+        assert cfg.strip is True and cfg.strip_phase is True and cfg.strip_look == "plain", name
+        assert cfg.card_seconds > 0 and cfg.source_hold > 0 and cfg.build_quiet is True, name
+        assert cfg.end_card and all(len(line) <= 21 for line in cfg.end_card), name
+        assert cfg.typewriter_cps == 600 and cfg.effective_brightness <= cfg.brightness_cap, name

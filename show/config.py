@@ -9,7 +9,7 @@ PHOSPHORS: dict[str, tuple[int, int, int]] = {
     "green": (51, 255, 51),
     "amber": (255, 176, 0),
 }
-STRIP_LOOKS = ("reverse", "dim-reverse", "bright-on-field")
+STRIP_LOOKS = ("reverse", "dim-reverse", "bright-on-field", "plain")
 
 
 @dataclass
@@ -51,6 +51,13 @@ class Config:
     min_build_seconds: float = 1.5
     pump_bytes: int = 4096
     pump_ms: float = 8.0
+    # The reel (2026-10-03): a title card before the source, the typed page held still before the build, nothing fed
+    # to the terminal during the build, the phase on the strip, a card at the end of a --play list. All off by default.
+    card_seconds: float = 0.0
+    source_hold: float = 0.0
+    build_quiet: bool = False
+    strip_phase: bool = False
+    end_card: list[str] = field(default_factory=list)
 
     @property
     def phosphor_rgb(self) -> tuple[int, int, int]:
@@ -85,4 +92,13 @@ def load_config(path: Path) -> Config:
         raise ValueError(f"{path}: fps must be an int of at least 2")
     if not 0.0 <= cfg.brightness_cap <= 1.0:
         raise ValueError(f"{path}: brightness_cap must be between 0 and 1")
+    for key in ("card_seconds", "source_hold"):
+        value = getattr(cfg, key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+            raise ValueError(f"{path}: {key} must be a number of seconds, 0 or more")
+    for key in ("build_quiet", "strip_phase"):
+        if not isinstance(getattr(cfg, key), bool):
+            raise ValueError(f"{path}: {key} must be true or false")
+    if not isinstance(cfg.end_card, list) or not all(isinstance(line, str) for line in cfg.end_card):
+        raise ValueError(f"{path}: end_card must be a list of strings")
     return cfg

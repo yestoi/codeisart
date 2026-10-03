@@ -124,7 +124,7 @@ def test_sigterm_in_a_running_loop_darkens_the_wall_and_the_lights(tmp_path, mon
 
 
 def test_main_logs_the_later_sigterms_after_the_close(tmp_path, monkeypatch, caplog):
-    def run(self, play=None):
+    def run(self, play=None, loop=False):
         try:
             stop_self()
         except KeyboardInterrupt:

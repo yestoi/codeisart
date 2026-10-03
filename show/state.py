@@ -14,7 +14,7 @@ from show.attract import Attract
 from show.config import Config
 from show.entries import Entry
 from show.font import CELL_W
-from show.pipeline import EntryPlayer
+from show.pipeline import EntryPlayer, Phase
 from show.queue import EntryQueue
 from show.terminal import Terminal
 
@@ -28,6 +28,11 @@ SHORT_BELOW = 40  # Q58: fewer characters than this fit, the strip alternates
 FESTIVAL_STATIONS = 5  # Q56: stations 1 to 5 have portraits
 FULL_SCREEN_EVERY_S = 10.0  # amendment Task 3: a full-screen entry shows the strip 2 s in every 10
 FULL_SCREEN_SHOW_S = 2.0
+# The reel (2026-10-03): with cfg.strip_phase the strip says what the wall is doing, in a stranger's words, at most
+# 21 characters (the 128x64 ink strip); a card has no strip (the loop draws the card instead of the terminal).
+PHASE_WORDS: dict[Phase, str] = {
+    Phase.CARD: "", Phase.SOURCE: "THIS IS THE CODE", Phase.HOLD: "THIS IS THE CODE", Phase.BUILD: "COMPILING",
+    Phase.RUN: "RUNNING", Phase.DWELL: "RUNNING", Phase.ERROR_HOLD: "", Phase.FALLBACK: "RECORDING", Phase.DONE: ""}
 
 
 def strip_chars(cfg: Config) -> int:
@@ -72,6 +77,7 @@ class Show:
         self._started = 0.0  # the current entry's start
         self._attract_t0 = 0.0  # attract's start, for the short strip's halves
         self._notice: tuple[str, float] | None = None
+        self._playlist: list[tuple[Entry, float | None]] = []   # the reel: entries still to play, each with a run cap
         self.attract = self._make_attract()
 
     # -- state ---------------------------------------------------------------------------------------------------
@@ -103,6 +109,23 @@ class Show:
     @property
     def full_screen(self) -> bool:
         return self._current is not None and self._current.full_screen
+
+    @property
+    def playlist(self) -> list[tuple[Entry, float | None]]:
+        return list(self._playlist)
+
+    def play(self, items: list[tuple[Entry, float | None]], now: float) -> None:
+        """The reel: play these entries in order, each capped at its seconds (None: the config's), one after the
+        other with no attract between them and no notice; attract after the last. Never queues: crowd stays off."""
+        self._playlist = list(items)
+        self._play_next(now)
+
+    def card(self, now: float) -> list[str] | None:
+        """The lines the wall shows instead of the terminal while the player is in its CARD phase, else None."""
+        player = self._player
+        if player is None or getattr(player, "phase", None) != Phase.CARD:
+            return None
+        return list(getattr(player, "card_lines", [])) or None
 
     # -- the loop's calls ----------------------------------------------------------------------------------------
 
@@ -164,6 +187,7 @@ class Show:
             self._player = None
             self._current = None
             self._queue.clear()
+            self._playlist = []
             self.relight()
             self._to_attract(now)
         except Exception:
@@ -171,6 +195,10 @@ class Show:
 
     def strip(self, now: float) -> str:
         w = strip_chars(self.cfg)
+        if self.cfg.strip_phase and self._current is not None:
+            phase = getattr(self._player, "phase", None)
+            if phase in PHASE_WORDS:
+                return PHASE_WORDS[phase][:w]
         notice = self._active_notice(now) if self._current is not None else None
         if w < SHORT_BELOW:
             if self._current is None:
@@ -252,23 +280,28 @@ class Show:
 
     def _play_next(self, now: float, entry: Entry | None = None) -> bool:
         """Start `entry`, else the next queued, else attract; True when an entry plays."""
+        cap = None
         while True:
+            if entry is None and self._playlist:
+                entry, cap = self._playlist.pop(0)
             if entry is None:
                 entry = self._queue.pop()
             if entry is None:
                 self._to_attract(now)
                 return False
-            if self._begin(entry, now):
+            if self._begin(entry, now, cap):
                 return True
-            entry = None
+            entry, cap = None, None
 
-    def _begin(self, entry: Entry, now: float) -> bool:
-        log.info("playing %s (station %d)", entry.slug, entry.station)
+    def _begin(self, entry: Entry, now: float, cap: float | None = None) -> bool:
+        log.info("playing %s (station %d)%s", entry.slug, entry.station, "" if cap is None else f", capped at {cap:g} s")
         self._notice = None
         self._current = entry
         self._started = now
         try:
             self._player = self.player_factory(entry, self._term, self.cfg)
+            if cap is not None:
+                self._player.run_cap = cap
             self._player.start(now, len(self._queue) > 0)
         except Exception:
             log.exception("%s: the player failed to start", entry.slug)

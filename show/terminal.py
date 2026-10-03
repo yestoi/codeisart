@@ -43,8 +43,11 @@ class Terminal:
         self._exit_seen: float | None = None  # monotonic time finished_or_orphaned first saw the exit
         self._last_read: float | None = None  # monotonic time pump last read a byte of this run
         self._pgid: int | None = None  # the current run's process group; None before a run and once forgotten
+        self.muted = False  # the reel's quiet build: the child's output is pumped and dropped, the screen stands still
 
     def feed(self, data: bytes) -> None:
+        if self.muted:
+            return
         self.stream.feed(data)
         for fn in list(self.listeners):
             fn(data)

@@ -589,3 +589,58 @@ def test_relight_restores_the_modes(tmp_path, fast_cfg):
     lights.all_off()
     show.relight()
     assert lights.modes == {1: "on", 2: "on", 3: "on"}
+
+
+# -- the reel (2026-10-03): the playlist, the card, the phase strip ---------------------------------------------
+
+
+def test_a_playlist_plays_in_order_with_caps_and_no_attract_between(tmp_path, fast_cfg):
+    factory = players()
+    show, term, *_ = make_show(tmp_path, fast_cfg, factory=factory)
+    a, b = show.entries[1], show.entries[2]
+    show.play([(b, 18.0), (a, None)], 1.0)
+    assert show.playing and show.current.slug == "b" and show.playlist == [(a, None)]
+    assert factory.made[0].run_cap == 18.0 and factory.made[0].started_crowd is False
+    assert show.strip(1.0) != "PLAYING"                           # a playlist start is not a press: no notice
+    finish(show, 5.0)
+    assert show.current.slug == "a" and show.playlist == []
+    assert "A.I. IS NOT" not in screen(term) and "playing a" in screen(term)   # no attract page between the two
+    assert getattr(factory.made[1], "run_cap", None) is None and factory.made[1].started_crowd is False
+    finish(show, 9.0)
+    assert not show.playing and show.playlist == [] and "A.I. IS NOT" in screen(term)
+
+
+def test_card_is_the_players_lines_only_while_its_phase_is_card(tmp_path, fast_cfg):
+    from show.pipeline import Phase
+    factory = players()
+    show, *_ = make_show(tmp_path, fast_cfg, factory=factory)
+    assert show.card(0.0) is None                                 # attract
+    show.press(1, 1.0)
+    assert show.card(1.0) is None                                 # a player without a phase (the fakes)
+    p = factory.made[0]
+    p.phase, p.card_lines = Phase.CARD, ["a", "Test Author, 2026"]
+    assert show.card(1.5) == ["a", "Test Author, 2026"]
+    p.phase = Phase.SOURCE
+    assert show.card(2.0) is None
+
+
+def test_the_phase_strip_says_the_phase_in_words_before_the_notice(tmp_path, fast_cfg):
+    from show.pipeline import Phase
+    from show.state import PHASE_WORDS
+    factory = players()
+    cfg = dataclasses.replace(ink(fast_cfg), strip_phase=True)
+    show, *_ = make_show(tmp_path, cfg, factory=factory)
+    assert show.strip(0.0) == "PRESS A BUTTON"                    # attract is unchanged
+    show.press(1, 1.0)
+    assert show.strip(1.0) == "PLAYING"                           # a player without a phase: the notice as before
+    p = factory.made[0]
+    for phase, word in ((Phase.CARD, ""), (Phase.SOURCE, "THIS IS THE CODE"), (Phase.HOLD, "THIS IS THE CODE"),
+                        (Phase.BUILD, "COMPILING"), (Phase.RUN, "RUNNING"), (Phase.DWELL, "RUNNING"),
+                        (Phase.FALLBACK, "RECORDING")):
+        p.phase = phase
+        assert show.strip(1.0) == word == PHASE_WORDS[phase], phase   # the phase beats the 2 s notice
+    assert all(len(w) <= 21 for w in PHASE_WORDS.values())
+    plain = make_show(tmp_path / "plain", ink(fast_cfg), factory=players())[0]
+    plain.press(1, 1.0)
+    plain.player.phase = Phase.RUN
+    assert plain.strip(3.5) == "Test Author, 2026"                # without strip_phase the attribution as before

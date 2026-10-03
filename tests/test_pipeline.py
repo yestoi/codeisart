@@ -561,3 +561,68 @@ def test_stop_never_raises_when_the_capture_close_fails(tmp_path, cfg, make_play
     assert player._writer is None and player.term.listeners == []
     assert not (entry_dir / CAPTURE_TEMP).exists()
     assert len(logged) == 1
+
+
+# -- the reel (2026-10-03): a card before the source, the page held before the build, the quiet build, a cap ----------
+
+CARD = 0.3     # card_seconds of the card test
+HOLD = 0.3     # source_hold of the hold test
+
+
+@needs_cc
+def test_a_card_phase_holds_the_title_lines_before_the_source(tmp_path, cfg, make_player):
+    carded = dataclasses.replace(cfg, card_seconds=CARD)
+    player = make_player(write_entry(tmp_path, "quick", 1, HELLO_C, year=1984), carded)
+    play = play_through(player)
+    assert play.phases == [P.CARD, P.SOURCE, P.BUILD, P.RUN, P.DWELL, P.DONE]
+    assert player.card_lines == ["quick", "Test Author, 1984"]
+    assert play.seconds(P.CARD, P.SOURCE) >= CARD
+    assert play.screens[P.CARD].strip() == ""                       # the terminal is blank under a card
+    assert "$ cat prog.c" in play.screens[P.SOURCE]                 # the header is fed as SOURCE begins
+    assert player.failure is None
+
+
+@needs_cc
+def test_source_hold_keeps_the_typed_page_still_before_the_build(tmp_path, cfg, make_player):
+    held = dataclasses.replace(cfg, source_hold=HOLD)
+    player = make_player(write_entry(tmp_path, "quick", 1, HELLO_C), held)
+    play = play_through(player)
+    assert play.phases == [P.SOURCE, P.HOLD, P.BUILD, P.RUN, P.DWELL, P.DONE]
+    assert play.seconds(P.HOLD, P.BUILD) >= HOLD
+    assert "puts" in play.screens[P.HOLD] and "$ cc" not in play.screens[P.HOLD]   # the whole source, no build line yet
+    assert "$ cc" in play.screens[P.BUILD]
+    assert player.failure is None
+
+
+WARNS_C = '#include <stdio.h>\nint main(void){int unused; puts("hello, world");return 0;}\n'   # -Wall: one warning
+
+
+@needs_cc
+def test_build_quiet_feeds_nothing_to_the_terminal_from_the_source_to_the_run(tmp_path, cfg, make_player):
+    quiet = dataclasses.replace(cfg, build_quiet=True, min_build_seconds=MIN_BUILD)
+    player = make_player(write_entry(tmp_path, "quick", 1, WARNS_C, build="cc -Wall -o prog prog.c"), quiet)
+    play = play_through(player)
+    assert play.phases == HAPPY and player.failure is None
+    assert "$ cc" not in play.screens[P.BUILD] and "$ ./prog" not in play.screens[P.RUN]
+    assert "warning" not in play.screens[P.RUN]                                   # the compiler's output is muted
+    assert play.screens[P.RUN] == play.screens[P.BUILD] and "puts" in play.screens[P.RUN]   # the page stands still
+    assert "hello, world" in play.screens[P.DWELL]                                 # the program's own output shows
+
+
+@needs_cc
+def test_a_failed_quiet_build_still_shows_its_banner(tmp_path, cfg, make_player):
+    quiet = dataclasses.replace(cfg, build_quiet=True)
+    player = make_player(write_entry(tmp_path, "bad", 1, BROKEN_C), quiet)
+    play = play_through(player)
+    assert player.failure is not None and P.ERROR_HOLD in play.phases
+    assert "*** build failed" in play.screens[P.ERROR_HOLD] and "error" not in play.screens[P.ERROR_HOLD]
+
+
+@needs_cc
+def test_a_run_cap_on_the_player_caps_the_run_below_the_config(tmp_path, cfg, make_player):
+    player = make_player(write_entry(tmp_path, "long", 1, SLOW_FOREVER_C, run_seconds=30.0), cfg)
+    player.run_cap = CAP
+    assert player.run_timeout() == CAP
+    play = play_through(player)
+    ran = play.seconds(P.RUN, P.DWELL)
+    assert player.failure is None and CAP <= ran <= CAP + RUN_END_SLACK

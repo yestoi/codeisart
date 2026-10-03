@@ -36,7 +36,9 @@ _SHELL_SYNTAX = re.compile(r"""[|&;<>()$`\\"'*?\[\]{}~=#!\n]""")
 
 
 class Phase(str, Enum):
+    CARD = "card"            # the reel: the entry's title lines on the wall, the terminal blank (card_seconds > 0)
     SOURCE = "source"
+    HOLD = "hold"            # the reel: the typed page held still before the build (source_hold > 0)
     BUILD = "build"
     RUN = "run"
     ERROR_HOLD = "error_hold"
@@ -65,6 +67,8 @@ class EntryPlayer:
         self.phase = Phase.DONE
         self.failure: str | None = None
         self.crowd = False
+        self.run_cap: float | None = None   # the reel: a cap on the run below the config's, set by the playlist
+        self.card_lines: list[str] = []     # the reel: what the card shows (the loop draws it in the font)
         self._events: list[str] = []
         self._t0 = 0.0
         self._src = b""
@@ -95,6 +99,8 @@ class EntryPlayer:
 
     def run_timeout(self) -> float:
         cap = self.cfg.crowd_run_seconds if self.crowd else self.cfg.idle_run_seconds
+        if self.run_cap is not None:
+            cap = min(cap, self.run_cap)
         return min(self.entry.run_seconds, cap)
 
     def start(self, now: float, crowd: bool = False) -> None:
@@ -108,9 +114,13 @@ class EntryPlayer:
         self._typed = 0.0
         self._fed = 0
         self._last = now
+        self.card_lines = [e.title, f"{e.author}, {e.year}"]
+        self.term.muted = False
         self.term.reset(self.typing_rows)
-        self.term.feed(f"{e.title}\n{e.plaque}\n\n$ cat {e.source.name}\n".encode())
-        self._enter(Phase.SOURCE, now)
+        if self.cfg.card_seconds > 0:
+            self._enter(Phase.CARD, now)
+        else:
+            self._begin_source(now)
 
     def tick(self, now: float) -> list[str]:
         """Advance the phase; events "cue:compile", "cue:run", "cue:error". Never raises."""
@@ -132,6 +142,7 @@ class EntryPlayer:
             self._stop_capture(keep=False)
         except Exception:
             log.exception("%s: dropping the capture on stop failed", self.entry.slug)
+        self.term.muted = False
         self.phase = Phase.DONE
 
     # -- phases --------------------------------------------------------------
@@ -139,6 +150,16 @@ class EntryPlayer:
     def _enter(self, phase: Phase, now: float) -> None:
         self.phase = phase
         self._t0 = now
+
+    def _tick_card(self, now: float) -> None:
+        if now - self._t0 >= self.cfg.card_seconds:
+            self._begin_source(now)
+
+    def _begin_source(self, now: float) -> None:
+        e = self.entry
+        self.term.feed(f"{e.title}\n{e.plaque}\n\n$ cat {e.source.name}\n".encode())
+        self._last = now
+        self._enter(Phase.SOURCE, now)
 
     def _tick_source(self, now: float) -> None:
         rate = self.cfg.typewriter_cps * (CROWD_SPEEDUP if self.crowd else 1)
@@ -150,7 +171,23 @@ class EntryPlayer:
         if want < len(self._src):
             return
         tail = b"" if not self._src or self._src.endswith(b"\n") else b"\n"
-        self.term.feed(tail + f"$ {self.entry.build}\n".encode())
+        self.term.feed(tail)
+        if self.cfg.source_hold > 0:
+            self._enter(Phase.HOLD, now)
+        else:
+            self._start_build(now)
+
+    def _tick_hold(self, now: float) -> None:
+        if now - self._t0 >= self.cfg.source_hold:
+            self._start_build(now)
+
+    def _start_build(self, now: float) -> None:
+        """The build line and the compiler's output on the screen; with a quiet build neither, the typed page
+        stands still (the output is still pumped, and dropped). Then the compiler, BUILD."""
+        if self.cfg.build_quiet:
+            self.term.muted = True
+        else:
+            self.term.feed(f"$ {self.entry.build}\n".encode())
         self.term.run(["sh", "-c", self.entry.build], cwd=self.entry.dir, env=BUILD_ENV,
                       preexec=limits(self.entry.build_seconds + CPU_MARGIN, BUILD_MEMORY))
         self._events.append("cue:compile")
@@ -174,7 +211,9 @@ class EntryPlayer:
             self._start_run(now)
 
     def _start_run(self, now: float) -> None:
-        self.term.feed(f"$ {self.entry.run}\n".encode())
+        self.term.muted = False
+        if not self.cfg.build_quiet:
+            self.term.feed(f"$ {self.entry.run}\n".encode())
         # The run's size, before the capture's header and the pty's TIOCSWINSZ; pyte keeps content and cursor.
         self.term.rows = self.rows
         self.term.screen.resize(self.rows, self.term.columns)
@@ -255,6 +294,7 @@ class EntryPlayer:
         self.failure = reason
         self._events.append("cue:error")
         self._enter(Phase.ERROR_HOLD, now)
+        self.term.muted = False                      # a quiet build that failed still names its failure
         self.term.feed(f"\n*** {reason} ***\n".encode())
 
     def _on_exception(self, exc: Exception, now: float) -> None:

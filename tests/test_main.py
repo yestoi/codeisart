@@ -480,3 +480,123 @@ def test_run_s_finally_survives_a_raising_close(tmp_path):
     loop.start, loop.step = start, step
     assert loop.run() == 0
     assert inner.closed and closed == ["lights"] and inner.count == 2      # the two black frames, then close
+
+
+# -- the reel (2026-10-03): --play a:18,b:12,c, the card frame, the end card, --loop ---------------------------------
+
+from show.font import CELL_H, CELL_W, Font                                              # noqa: E402
+from show.main import card_frame, parse_play                                            # noqa: E402
+from show.pipeline import Phase                                                         # noqa: E402
+
+
+class ReelPlayer:
+    """A fake with the reel's extras: a CARD phase for the first two ticks, done after `ticks` ticks."""
+    ticks = 6
+
+    def __init__(self, entry, term, cfg):
+        self.entry, self.term, self.done, self.crowd, self.k = entry, term, False, False, 0
+        self.phase, self.card_lines = Phase.CARD, [entry.title, f"{entry.author}, {entry.year}"]
+
+    def start(self, now, crowd=False):
+        self.term.reset(23)
+        self.term.feed(f"playing {self.entry.slug}\n".encode())
+
+    def stop(self):
+        self.done = True
+
+    def tick(self, now):
+        self.k += 1
+        self.phase = Phase.CARD if self.k <= 2 else Phase.RUN
+        if self.k >= self.ticks:
+            self.done = True
+        return []
+
+
+def test_parse_play_is_slugs_with_optional_seconds():
+    assert parse_play("endoh1") == [("endoh1", None)]
+    assert parse_play("endoh1:18,sloane:12.5,thadgavin") == [("endoh1", 18.0), ("sloane", 12.5), ("thadgavin", None)]
+    for bad in ("", "a:", "a:x", "a:0", "a:-3", ",a", "a:1:2"):
+        with pytest.raises(ValueError):
+            parse_play(bad)
+
+
+def test_card_frame_centres_the_lines_in_the_font_with_no_border():
+    font = Font.load(ROOT / "fonts" / "5x7.bin")
+    frame = card_frame(128, 64, (51, 255, 51), font, ["CODE IS ART", "A.I. IS NOT"])
+    assert frame.shape == (64, 128, 3) and not frame.flags.writeable
+    assert not frame[0].any() and not frame[-1].any() and not frame[:, 0].any() and not frame[:, -1].any()
+    lit_cols = np.flatnonzero(frame.any(axis=(0, 2)))
+    assert abs((lit_cols[0] + lit_cols[-1]) / 2 - 64) <= CELL_W            # centred across
+    lit_rows = np.flatnonzero(frame.any(axis=(1, 2)))
+    assert abs((lit_rows[0] + lit_rows[-1]) / 2 - 32) <= CELL_H            # and down
+    assert np.array_equal(card_frame(128, 64, (51, 255, 51), font, []), np.zeros((64, 128, 3), np.uint8))
+
+
+def reel_loop(tmp_path, **kw):
+    write_entry(tmp_path / "entries", "b", 2, HELLO_C)
+    loop = ShowLoop(small_cfg(tmp_path, **kw), display=Recorder(), player_factory=ReelPlayer, notify=lambda s: None)
+    loop.start(0.0)
+    starts = []
+    real = loop.show.attract.start
+    loop.show.attract.start = lambda now, idle_from=None: (starts.append(now), real(now, idle_from))
+    return loop, starts
+
+
+def test_a_reel_plays_in_order_with_caps_draws_the_cards_then_the_end_card_and_is_done(tmp_path):
+    loop, attract_starts = reel_loop(tmp_path, card_seconds=0.2, end_card=["CODE IS ART", "A.I. IS NOT"])
+    loop.start_reel("b:12,a")
+    assert loop.show.current.slug == "b" and loop.show.player.run_cap == 12.0
+    font, green = loop.font, (51, 255, 51)
+    loop.step(0.05)                                                       # tick 1: CARD
+    assert np.array_equal(loop.rendered, card_frame(128, 64, green, font, ["b", "Test Author, 2026"]))
+    for k in range(2, 7):
+        loop.step(k * 0.05)                                               # ticks 2 to 6: CARD, then RUN, done at 6
+    assert loop.show.current.slug == "a" and attract_starts == []        # a follows b with no attract between
+    assert not np.array_equal(loop.rendered, card_frame(128, 64, green, font, ["b", "Test Author, 2026"]))
+    for k in range(7, 13):
+        loop.step(k * 0.05)
+    assert not loop.show.playing and attract_starts and not loop.reel_done
+    end = card_frame(128, 64, green, font, ["CODE IS ART", "A.I. IS NOT"])
+    assert np.array_equal(loop.rendered, end)                             # the end card, never the attract page
+    loop.step(0.65)
+    assert np.array_equal(loop.rendered, end) and not loop.reel_done
+    pushed = len(loop.wall.display.pushed)
+    loop.step(0.85)                                                       # card_seconds over
+    assert loop.reel_done and len(loop.wall.display.pushed) == pushed    # nothing more reaches the wall
+
+
+def test_a_reel_without_an_end_card_is_done_when_its_last_entry_ends(tmp_path):
+    loop, attract_starts = reel_loop(tmp_path)
+    loop.start_reel("a")
+    for k in range(1, 7):
+        loop.step(k * 0.05)
+    assert loop.reel_done and len(loop.wall.display.pushed) == 5          # the step that ended it pushed nothing
+
+
+def test_loop_starts_the_reel_again_after_the_end_card_with_no_attract_frame(tmp_path):
+    loop, attract_starts = reel_loop(tmp_path, card_seconds=0.1, end_card=["AGAIN"])
+    loop.start_reel("a,b", loop=True)
+    end = card_frame(128, 64, (51, 255, 51), loop.font, ["AGAIN"])
+    slugs, seen = [], 0
+    for k in range(1, 40):
+        loop.step(k * 0.05)
+        if len(attract_starts) > seen:                                   # the show went to attract this step...
+            seen = len(attract_starts)
+            assert np.array_equal(loop.rendered, end)                    # ...and the wall got the end card
+        if loop.show.playing:
+            slugs.append(loop.show.current.slug)
+    assert sorted(set(slugs)) == ["a", "b"] and slugs.index("b") < len(slugs) - 1
+    assert slugs[slugs.index("b") + 1 :].count("a") > 0 and not loop.reel_done   # a again after b and the card
+    assert seen >= 1
+
+
+def test_run_returns_0_after_the_reel(tmp_path):
+    loop, _ = reel_loop(tmp_path, end_card=["BYE"], card_seconds=0.1)
+    t = [0.0]
+    loop.clock, loop.sleep = (lambda: t[0]), (lambda s: t.__setitem__(0, t[0] + s))
+    assert loop.run(play="a:1,b") == 0 and loop.wall.display.closed and loop.reel_done
+
+
+def test_unknown_slug_in_a_play_list_is_an_error(tmp_path):
+    assert main(["--config", str(show_toml(tmp_path / "one")), "--play", "quick,nope"]) == 2
+    assert main(["--config", str(show_toml(tmp_path / "two")), "--play", "quick:x"]) == 2

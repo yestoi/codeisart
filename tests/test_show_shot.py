@@ -218,10 +218,10 @@ FAST = dict(typewriter_cps=5000, min_build_seconds=0.2, dwell=0.5)
 
 
 @pytest.mark.parametrize("size, per_look", [({}, 1), (dict(width=128, height=64, view="ink"), 2)])
-def test_strips_draw_three_looks(size, per_look, real_font):
+def test_strips_draw_every_look(size, per_look, real_font):
     cfg = Config(**FAST, **size)
     frames = ss.frames_from_strips(cfg, real_font)
-    assert len(frames) == 3 * per_look
+    assert len(frames) == len(STRIP_LOOKS) * per_look
     by_look = [[f for label, f in frames if label.startswith(look)] for look in STRIP_LOOKS]
     program = (cfg.rows - 1) * CELL_H if cfg.view == "text" else cfg.height - CELL_H
     for a, b in zip(by_look[:-1], by_look[1:]):

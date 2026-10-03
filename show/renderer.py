@@ -18,7 +18,8 @@ QUESTION = ord("?")     # stands in for anything outside Latin-1
 VIEWS = ("text", "ink")
 # the strip's looks (Q54): (field, letters), each a share of the phosphor
 STRIP_LOOKS: dict[str, tuple[float, float]] = {
-    "reverse": (0.70, 0.0), "dim-reverse": (0.35, 0.0), "bright-on-field": (0.25, 1.0)}
+    "reverse": (0.70, 0.0), "dim-reverse": (0.35, 0.0), "bright-on-field": (0.25, 1.0),
+    "plain": (0.0, NORMAL)}          # the reel's phase word: letters at the program's text level on black
 
 
 def _code(ch: str) -> int:

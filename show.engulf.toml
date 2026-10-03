@@ -1,0 +1,19 @@
+# The Engulf pitch on the 2 x 2 wall: show.demo.toml's reel, run by hand with --loop (no gap, no attract page
+# between rounds) and the slot-3 entry of the day: endoh1:18,sloane:12,thadgavin:15 at a table, endoh1:18,sloane:12,
+# endoh3:12 when the owner narrates the clock. Stop it with Ctrl-C. Keys not set here take Config's defaults.
+width = 128
+height = 64
+view = "ink"
+strip = true
+strip_phase = true
+strip_look = "plain"
+brightness = 0.15        # the dark-room level; a lit room is a test on the day (the cap is 0.40)
+typewriter_cps = 600
+idle_run_seconds = 20
+crowd_run_seconds = 20
+dwell = 1.0
+min_build_seconds = 1.5
+card_seconds = 2.5
+source_hold = 2.0
+build_quiet = true
+end_card = ["CODE IS ART", "A.I. IS NOT"]

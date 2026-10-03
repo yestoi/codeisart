@@ -48,6 +48,44 @@ FAILURE_LOG_EVERY = 300  # a run of push failures is logged at its first and eve
 FALLBACK_FPS = 20        # run's pace when cfg.fps is not an int of at least 2 (Config's default)
 # A broken show.toml's own values for these still name the wall (config_from's fallback).
 DISPLAY_KEYS = ("backend", "width", "height", "colorlight_iface", "ddp_host", "ddp_port")
+CARD_PITCH = CELL_H + 2  # a card's line pitch in pixels
+
+
+def parse_play(spec: str) -> list[tuple[str, float | None]]:
+    """`--play a:18,b:12,c`: slugs in order, each with its run cap in seconds or None. ValueError names the fault."""
+    items: list[tuple[str, float | None]] = []
+    for part in spec.split(","):
+        slug, sep, seconds = part.partition(":")
+        if not slug:
+            raise ValueError(f"--play {spec!r}: an empty slug")
+        if not sep:
+            items.append((slug, None))
+            continue
+        try:
+            cap = float(seconds)
+        except ValueError:
+            raise ValueError(f"--play {spec!r}: {seconds!r} is not a number of seconds") from None
+        if not cap > 0:
+            raise ValueError(f"--play {spec!r}: the seconds for {slug} must be over 0")
+        items.append((slug, cap))
+    return items
+
+
+def card_frame(width: int, height: int, phosphor: tuple[int, int, int], font: Font | None,
+               lines: list[str]) -> np.ndarray:
+    """The reel's card: the lines in the font at full phosphor, each wrapped to the wall and centred, the block
+    centred down the wall; no border. Black with no font or no lines."""
+    frame = np.zeros((height, width, 3), np.uint8)
+    if font is not None and lines:
+        fits = max(1, width // CELL_W)
+        rows = [part for text in lines for part in (textwrap.wrap(text, fits) or [""])]
+        rows = rows[: max(1, height // CARD_PITCH)]
+        y = max(0, (height - (len(rows) * CARD_PITCH - 2)) // 2)
+        for text in rows:
+            draw_text(frame, (width - len(text) * CELL_W) // 2, y, text, font, phosphor)
+            y += CARD_PITCH
+    frame.flags.writeable = False
+    return frame
 
 
 class Sigterm:
@@ -132,6 +170,13 @@ class ShowLoop:
         self._dark = False                         # lights all off until a push is good again
         self._error_key: tuple[str, ...] | None = None
         self._error: np.ndarray | None = None
+        # The reel (--play a:18,b): the list, whether it starts over, the end card's end, and the cached card frame.
+        self._reel: list[tuple[str, float | None]] | None = None
+        self._reel_loop = False
+        self._end_until: float | None = None
+        self.reel_done = False
+        self._card_key: tuple[str, ...] | None = None
+        self._card: np.ndarray | None = None
 
     # -- setup ---------------------------------------------------------------------------------------------------
 
@@ -233,19 +278,66 @@ class ShowLoop:
         except Exception:
             log.exception("audio unavailable")
 
+    # -- the reel ------------------------------------------------------------------------------------------------
+
+    def start_reel(self, spec: str, loop: bool = False) -> None:
+        """--play's list: the entries in order with their caps, the end card after the last, over again with loop.
+        ValueError for a spec that does not parse; a slug the show does not have is logged and skipped."""
+        self._reel, self._reel_loop = parse_play(spec), loop
+        self.reel_done, self._end_until = False, None
+        self._begin_reel(self._now)
+
+    def _begin_reel(self, now: float) -> None:
+        by_slug = {e.slug: e for e in self.show.entries.values()}
+        items = []
+        for slug, cap in self._reel or []:
+            if slug in by_slug:
+                items.append((by_slug[slug], cap))
+            else:
+                log.error("no entry with slug %r: skipped", slug)
+        self._end_until = None
+        self.show.play(items, now)
+
+    def _reel_tick(self, now: float) -> None:
+        """After the show's tick: the end card when the list is over, then done or the list again."""
+        show = self.show
+        if self._reel is None or self.reel_done or show is None:
+            return
+        if self._end_until is None and not show.playing and not show.playlist:
+            if self.cfg.end_card and self.cfg.card_seconds > 0:
+                self._end_until = now + self.cfg.card_seconds
+            else:
+                self._reel_over(now)
+        elif self._end_until is not None and now >= self._end_until:
+            self._reel_over(now)
+
+    def _reel_over(self, now: float) -> None:
+        if self._reel_loop:
+            self._begin_reel(now)
+        else:
+            self.reel_done = True
+
+    def _card_for(self, lines: list[str]) -> np.ndarray:
+        key = tuple(lines)
+        if self._card is None or key != self._card_key:
+            phosphor = PHOSPHORS.get(self.cfg.phosphor, PHOSPHORS["green"])
+            self._card, self._card_key = card_frame(self.cfg.width, self.cfg.height, phosphor, self.font, lines), key
+        return self._card
+
     # -- the step ------------------------------------------------------------------------------------------------
 
     def step(self, now: float) -> None:
         """Presses, tick, lights, rescan, render, push, watchdog. Never raises (but KeyboardInterrupt: the window
-        was closed)."""
+        was closed). Once a reel is done nothing more is rendered or pushed: run's close darkens the wall."""
         self._now = now
         try:
             if now >= self._next_retry and ((self.show is None and not self._static)
                                             or (self.wall is None and self._wall_retry)):
                 self._setup(now)
             self._advance(now)
-            frame = self._render(now)
-            self._push(frame, now)
+            if not self.reel_done:
+                frame = self._render(now)
+                self._push(frame, now)
         except Exception:
             log.exception("the step failed")
         self._pet(now)
@@ -264,6 +356,11 @@ class ShowLoop:
             except Exception:
                 log.exception("the show's tick failed; attract")
                 self._abort(now)
+            try:
+                self._reel_tick(now)
+            except Exception:
+                log.exception("the reel's tick failed; the reel is over")
+                self.reel_done = True
         if self.lights is not None:
             try:
                 if self._dark:
@@ -290,9 +387,13 @@ class ShowLoop:
         else:
             show = self.show
             try:
-                frame = self.renderer.render(show.term.screen, cursor_on=int(now * 2 * BLINK_HZ) % 2 == 0,
-                                             strip=show.strip(now), full_screen=show.full_screen,
-                                             strip_visible=show.strip_visible(now))
+                card = self.cfg.end_card if self._end_until is not None else show.card(now)
+                if card:
+                    frame = self._card_for(list(card))        # a card instead of the terminal (the reel)
+                else:
+                    frame = self.renderer.render(show.term.screen, cursor_on=int(now * 2 * BLINK_HZ) % 2 == 0,
+                                                 strip=show.strip(now), full_screen=show.full_screen,
+                                                 strip_visible=show.strip_visible(now))
             except Exception:
                 log.exception("the render failed; the last frame again, and attract")
                 self._abort(now)
@@ -359,9 +460,10 @@ class ShowLoop:
 
     # -- run -----------------------------------------------------------------------------------------------------
 
-    def run(self, play: str | None = None) -> int:
+    def run(self, play: str | None = None, loop: bool = False) -> int:
         """Step at most cfg.fps times a second, no catch-up after a stall. 0 on Ctrl-C, the window's close and
-        --play's end; with --play, 2 for a slug the show does not have and 1 when no show could be set up."""
+        --play's end; with --play, 2 for a list that does not parse or names no entry the show has, and 1 when no
+        show could be set up. --play a:18,b plays the list once (the end card after it), with loop over and over."""
         pace = self.cfg.fps
         if isinstance(pace, bool) or not isinstance(pace, int) or pace < 2:
             # A Config built in code skips load_config's check; the wall's refusal names this fps on its frame.
@@ -372,16 +474,18 @@ class ShowLoop:
             now = self.clock()
             self.start(now)
             log.info("the show runs at %d fps", pace)
-            pressed = False
             if play is not None:
                 if self.show is None:
                     log.error("--play %s: no show could be set up: %s", play, self.errors)
                     return 1
-                stations = [s for s, e in self.show.entries.items() if e.slug == play]
-                if not stations:
-                    log.error("no entry with slug %r", play)
+                try:
+                    self.start_reel(play, loop)
+                except ValueError as exc:
+                    log.error("%s", exc)
                     return 2
-                self.presses.put(stations[0])
+                if not self.show.playing:
+                    log.error("--play %s: no entry the show has", play)
+                    return 2
             due = now
             while True:
                 now = self.clock()
@@ -390,10 +494,8 @@ class ShowLoop:
                     now = self.clock()
                 self.step(now)
                 due = now + period
-                if play is not None:
-                    if pressed and not self.show.playing:     # the press was taken a step ago: the entry is over
-                        return 0
-                    pressed = True
+                if self.reel_done:
+                    return 0
         except KeyboardInterrupt:
             return 0
         finally:
@@ -448,7 +550,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="show", description="Code is Art LED wall show")
     p.add_argument("--config", type=Path, default=Path("show.toml"))
     p.add_argument("--backend", default=None, help="override the display backend")
-    p.add_argument("--play", default=None, metavar="SLUG", help="play one entry and exit")
+    p.add_argument("--play", default=None, metavar="SLUG[:SECONDS],...",
+                   help="play these entries in order, each capped at SECONDS, then exit (the reel)")
+    p.add_argument("--loop", action="store_true", help="with --play: the list over and over (the Engulf table)")
     p.add_argument("--capture", action="store_true", help="record fallback.cast for entries lacking one")
     return p.parse_args(argv)
 
@@ -493,16 +597,22 @@ def main(argv: list[str] | None = None) -> int:
     cfg, error = config_from(args)
     if args.play is not None:
         try:
+            wanted = [slug for slug, _ in parse_play(args.play)]
+        except ValueError as exc:
+            log.error("%s", exc)
+            return 2
+        try:
             slugs = sorted(e.slug for e in load_entries(cfg.entries_dir).values())
         except Exception as exc:
             log.error("--play: %s", exc)
             slugs = []
-        if args.play not in slugs:
-            log.error("no entry with slug %r (have %s)", args.play, slugs)
+        missing = [slug for slug in wanted if slug not in slugs]
+        if missing:
+            log.error("no entry with slug %s (have %s)", ", ".join(repr(s) for s in missing), slugs)
             return 2
     with sigterm_raises():
         try:
-            return ShowLoop(cfg, config_error=error).run(play=args.play)
+            return ShowLoop(cfg, config_error=error).run(play=args.play, loop=args.loop)
         finally:
             handler = signal.getsignal(signal.SIGTERM)
             if isinstance(handler, Sigterm) and handler.seen:

@@ -45,7 +45,7 @@ from show.display.fake import FakeDisplay                                       
 from show.entries import Entry, load_entries, load_entry                          # noqa: E402
 from show.font import CELL_H, CELL_W, Font                                              # noqa: E402
 from show.lights import FakeLights                                                # noqa: E402
-from show.main import ShowLoop                                                    # noqa: E402
+from show.main import ShowLoop, parse_play                                                    # noqa: E402
 from show.pipeline import EntryPlayer, Phase                                      # noqa: E402
 from show.renderer import STRIP_LOOKS, renderer_for                               # noqa: E402
 from show.state import ALTERNATE_S, NOTICE_S, SHORT_BELOW, Show, strip_chars      # noqa: E402
@@ -278,8 +278,8 @@ def frames_from_attract(entries_dir: Path, cfg: Config, font: Font, seconds: flo
     return frames
 
 
-SESSIONS = ("presses", "strobe", "entry")
-PRESSES = {"presses": [(1.0, 1), (3.0, 2), (3.5, 1)], "strobe": [(1.0, 1)], "entry": [(1.0, 1)]}
+SESSIONS = ("presses", "strobe", "entry", "reel")
+PRESSES = {"presses": [(1.0, 1), (3.0, 2), (3.5, 1)], "strobe": [(1.0, 1)], "entry": [(1.0, 1)], "reel": []}
 SESSION_SECONDS = 40.0
 STROBE_S = 3.0
 STROBE_PERIOD_S = 0.05
@@ -305,9 +305,19 @@ int main(void)
 """
 
 
-def _session_entries(name: str, cfg: Config, dest: Path, entry_dir: Path | None = None) -> None:
-    """The session's entries in dest (a temporary directory): hello at stations 1 and 2, the strobe at 1, or
-    entry_dir's copy alone at station 1."""
+def _session_entries(name: str, cfg: Config, dest: Path, entry_dir: Path | None = None,
+                     reel: str | None = None) -> None:
+    """The session's entries in dest (a temporary directory): hello at stations 1 and 2, the strobe at 1,
+    entry_dir's copy alone at station 1, or the reel's entries copied from the checkout at their own stations."""
+    if name == "reel":
+        if reel is None:
+            raise ValueError("the reel session needs reel")
+        for slug in dict.fromkeys(slug for slug, _ in parse_play(reel)):
+            src = ROOT / cfg.entries_dir / slug
+            if not src.is_dir():
+                raise ValueError(f"no entry {slug!r} under {cfg.entries_dir}")
+            shutil.copytree(src, dest / slug)
+        return
     if name == "entry":
         if entry_dir is None:
             raise ValueError("the entry session needs entry_dir")
@@ -338,7 +348,7 @@ def _session_entries(name: str, cfg: Config, dest: Path, entry_dir: Path | None 
 
 def frames_from_session(name: str, cfg: Config, seconds: float = SESSION_SECONDS, every_ms: int = 500,
                         presses: list[tuple[float, int]] | None = None, meter: FlashMeter | None = None,
-                        entry_dir: Path | None = None
+                        entry_dir: Path | None = None, reel: str | None = None
                         ) -> tuple[list[tuple[str, np.ndarray]], list[str], int]:
     """The show itself: a ShowLoop on a fake display, stepped at most at cfg.fps in real time (its children are
     real), button presses put on loop.presses at their times (`presses` overrides the session's). The frames are
@@ -346,7 +356,8 @@ def frames_from_session(name: str, cfg: Config, seconds: float = SESSION_SECONDS
     `<t>s held <n> area <a> sq <s>`: the governor's held ticks so far, and the flash area and square flashes the
     meter (made from the governor's fps and gamma when None) gave the frames pushed since the last cell; then
     the strip text of each frame and the governor's held_ticks at the end.
-    Session "entry" plays entry_dir's copy alone, at station 1.
+    Session "entry" plays entry_dir's copy alone, at station 1. Session "reel" plays `reel` (--play's list) through
+    the loop's reel and ends when the reel does, or at `seconds`.
     Built in a temporary copy of the entries: nothing lands in the checkout."""
     if name not in SESSIONS:
         raise ValueError(f"session must be one of {SESSIONS}, got {name!r}")
@@ -357,7 +368,7 @@ def frames_from_session(name: str, cfg: Config, seconds: float = SESSION_SECONDS
     seen = 0                                       # display.count at the last step
     with tempfile.TemporaryDirectory() as tmp:
         entries = Path(tmp) / "entries"
-        _session_entries(name, cfg, entries, entry_dir)
+        _session_entries(name, cfg, entries, entry_dir, reel)
         font_path = cfg.font_path if cfg.font_path.is_absolute() else ROOT / cfg.font_path
         display = FakeDisplay()
         loop = ShowLoop(replace(cfg, entries_dir=entries, font_path=font_path, capture=False), display=display,
@@ -368,13 +379,15 @@ def frames_from_session(name: str, cfg: Config, seconds: float = SESSION_SECONDS
         try:
             start = time.monotonic()
             loop.start(0.0)
+            if name == "reel":
+                loop.start_reel(reel or "")
             next_keep = due = 0.0
             while True:
                 t = time.monotonic() - start
                 if t < due:
                     time.sleep(due - t)
                     t = time.monotonic() - start
-                if t >= seconds:
+                if t >= seconds or loop.reel_done:
                     break
                 pressed = False
                 while todo and todo[0][0] <= t:
@@ -507,7 +520,8 @@ def main(argv: list[str] | None = None) -> int:
     what.add_argument("--command")
     what.add_argument("--entry", type=Path, metavar="DIR")
     what.add_argument("--attract", type=Path, metavar="DIR")
-    what.add_argument("--session", choices=SESSIONS)
+    what.add_argument("--session", choices=[s for s in SESSIONS if s != "reel"])
+    what.add_argument("--reel", metavar="SPEC", help="the show's --play list (a:18,b:12,c) through the governor")
     what.add_argument("--strips", action="store_true")
     ap.add_argument("--out", required=True, metavar="STEM")
     ap.add_argument("--seconds", type=float, help="default 3 (--command), 60 (--entry), 10 (--attract), 40 (--session)")
@@ -555,14 +569,16 @@ def main(argv: list[str] | None = None) -> int:
         if failure:
             print(f"failure: {failure}")
         what_text = f"entry {args.entry.name}"
-    elif args.session:
+    elif args.session or args.reel:
         seconds = SESSION_SECONDS if args.seconds is None else args.seconds
         meter = FlashMeter(cfg.fps, cfg.gamma)
-        frames, strips, held_ticks = frames_from_session(args.session, cfg, seconds, args.every_ms, meter=meter)
+        name = "reel" if args.reel else args.session
+        frames, strips, held_ticks = frames_from_session(name, cfg, seconds, args.every_ms, meter=meter,
+                                                         reel=args.reel)
         for (label, _), text in zip(frames, strips):
             print(f"{label}  {text}")
         print(f"held {held_ticks} area {meter.area_max:.4f} squares {meter.squares_max}")
-        what_text = f"session {args.session} held {held_ticks}"
+        what_text = f"{'reel ' + args.reel if args.reel else 'session ' + args.session} held {held_ticks}"
     elif args.strips:
         frames = frames_from_strips(cfg, font)
         what_text = "strips " + " ".join(STRIP_LOOKS)

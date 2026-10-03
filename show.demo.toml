@@ -1,0 +1,20 @@
+# The CODE tile's reel on the 2 x 2 wall (the review of 2026-10-03, sonyIMX500/reviews/2026-10-03-code-tile-demo/
+# 05-synthesis.md): the 128x64 ink view, a title card an entry, the source typed at 600 cps and held still, a quiet
+# build with the phase word on the strip, the run capped by the --play list (endoh1:18,sloane:12,thadgavin:15), a
+# card at the end. Keys not set here take show.config.Config's defaults.
+width = 128
+height = 64
+view = "ink"
+strip = true
+strip_phase = true
+strip_look = "plain"
+brightness = 0.15        # the level the entries were judged at on 2026-10-01 (the party wall runs 0.1)
+typewriter_cps = 600
+idle_run_seconds = 20
+crowd_run_seconds = 20
+dwell = 1.0
+min_build_seconds = 1.5
+card_seconds = 2.5
+source_hold = 2.0
+build_quiet = true
+end_card = ["CODE IS ART", "A.I. IS NOT"]
