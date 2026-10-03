@@ -2127,3 +2127,4 @@ Correction to iteration 6's minutes, 2026-09-28: the entry was committed at 16:1
 - Minutes: wiring 05:06 to 05:12; implement 05:12 to 06:15 (63: the implementer's steps 1 to 5 about 15, the rest the
   suite's three stalled single runs and the six parts); review 06:17 to 06:24 (7). About 78 in all.
 - Status: done. Next: M8 (Q181), at the owner's word; the gate stands as before this run.
+- Addendum 06:35 CDT (the owner: "Fix the HAND UP = AGAIN card text before tomorrow"): 50724f2, by the operator inline with two tests (`card_prompt`'s four strings; the step-in card's frame differs from the default's, and the default's is unchanged); lobby and runner 148 passed in 26 s. Not re-reviewed: a four-string change behind the flag, pinned by the frame comparison.
