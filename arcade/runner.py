@@ -53,6 +53,7 @@ BLOB_SPEED = 0.05            # frame widths a second: a slower in-zone light is 
 LOG_EVERY = 60.0             # seconds between two log lines about one failing thing
 LAG_EVERY = 1.0              # seconds between two lag lines (capture age at push), at DEBUG: run -v
 LOBBY = "lobby"
+FIRST_LEAVE = 3              # left(): before the first session the empty-square wait is this many times --leave-after
 RING = (160, 160, 160)       # the exit ring
 
 
@@ -669,10 +670,13 @@ class Runner:
 
     def left(self, after: float) -> bool:
         """`run --game NAME --leave-after SECONDS` ends on this (Night One, 2026-10-03: the party wall's conductor runs
-        the arcade as a guest and the guest should not wait for a second player). True in the lobby once at least
-        one session has ended and nothing has been seen on the square for after seconds; a player who stays on after
-        a round keeps the run (the card's STAY = AGAIN)."""
-        return self.current_name == LOBBY and self.ended > 0 and self.t - self.presence.last_seen >= after - EPSILON
+        the arcade as a guest and the guest should not wait for a second player). True in the lobby when nothing has
+        been seen on the square for after seconds since the last sighting or the start; before the first session
+        has ended the wait is FIRST_LEAVE times that (the hand-off was dark and the guest may take a moment to step
+        back on). A player who stays on after a round keeps the run (the card's STAY = AGAIN)."""
+        idle = self.t - max(self.presence.last_seen, 0.0)
+        wait = after if self.ended > 0 else FIRST_LEAVE * after
+        return self.current_name == LOBBY and idle >= wait - EPSILON
 
     def state(self) -> dict:
         """The game's (or lobby's) debug_state, then the fx_* keys, then the runner's keys, which win (spec 7.2)."""

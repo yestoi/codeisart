@@ -1139,11 +1139,15 @@ def test_the_lag_line_stops_when_the_camera_goes_stale(font5x7, caplog):
 
 def test_left_once_a_round_was_played_and_the_square_has_been_empty(font5x7):
     """--leave-after (Night One, 2026-10-03): the conductor's guest under --game leaves once a round has been played
-    and nobody has stood on the square for the given seconds. Before any round it stays however empty the square is;
-    a player who stays on after a round keeps it (the card's STAY = AGAIN)."""
+    and nobody has stood on the square for the given seconds, or FIRST_LEAVE times that before any round (a guest who
+    picked and walked off); a player who stays on after a round keeps it (the card's STAY = AGAIN)."""
     runner, display, lobby = make_runner(font5x7, games=(spy(finish_after=3),))
-    feed(runner, scene(persons=[], ticks=ticks(10)))
-    assert runner.left(2.0) is False, "no round yet: the arcade waits for its first player"
+    feed(runner, scene(persons=[], ticks=ticks(5.5)))
+    assert runner.left(2.0) is False, "no round yet: the arcade waits FIRST_LEAVE times as long for its first player"
+    feed(runner, scene(persons=[], ticks=ticks(1.0)))
+    assert runner.left(2.0) is True, "nobody came in 6 s: the guest who picked walked off"
+    feed(runner, stand(ticks=ticks(1.0)))
+    assert runner.left(2.0) is False, "someone stepped on"
     runner.launch("spy")
     feed(runner, stand(ticks=3))                                   # the round ends on its third tick
     assert runner.current is lobby and runner.ended == 1
