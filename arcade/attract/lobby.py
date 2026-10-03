@@ -6,7 +6,8 @@ Modes, one per tick (MODES):
 - mirror: the locked player's figure (and player 2's) in its colour, from the tick the runner locks them.
 - invite, after PICTOGRAM_SECONDS near: the HAND_UP pictogram breathes beside the player's figure.
 - card, for CARD_SECONDS after a session: the result, "BEST!" when the session raised tonight's best
-  (SessionResult.new_best) with a score above 0, then "HAND UP = AGAIN" or "NEXT: RAISE A HAND".
+  (SessionResult.new_best) with a score above 0, then "HAND UP = AGAIN" or "NEXT: RAISE A HAND" (with
+  start_on_step_in: "STAY = AGAIN" or "NEXT: STEP IN", card_prompt).
 
 On a wall at least BIG_ROWS tall the title, the card's head line and "BEST!" are drawn at BIG_SCALE where each
 fits the width on one line; everything else, and everything on a shorter wall, at 1x in lines that fit.
@@ -74,6 +75,15 @@ HAND_UP = icon_from_rows([
     "...##....##.....",
     "...##....##.....",
 ])
+
+
+def card_prompt(waiting: bool, step_in: bool) -> str:
+    """The card's last line. With start_on_step_in the game restarts by itself after 2 s on the square and a hand
+    does nothing, so the words never ask for one (the owner, 2026-10-03): "STAY = AGAIN", or "NEXT: STEP IN" when
+    someone else stands in the zone. The default lobby keeps its raised hand."""
+    if step_in:
+        return "NEXT: STEP IN" if waiting else "STAY = AGAIN"
+    return "NEXT: RAISE A HAND" if waiting else "HAND UP = AGAIN"
 
 
 def _lines(text: str, width: int, canvas: Canvas, scale: int = 1) -> list[str]:
@@ -318,6 +328,6 @@ class Lobby:
         lines = _big(head, canvas)
         if r.new_best and r.score is not None and r.score > 0:     # C43, Q41: tonight's best rose, above 0
             lines += _big("BEST!", canvas)
-        prompt = "NEXT: RAISE A HAND" if r.waiting else "HAND UP = AGAIN"
+        prompt = card_prompt(r.waiting, self.start_on_step_in)
         lines += [(line, 1) for line in _lines(prompt, canvas.width, canvas)]
         _centred(canvas, lines, TEXT_COLOR)

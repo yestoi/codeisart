@@ -538,3 +538,31 @@ def test_step_in_debug_state_has_progress(font5x7):
     lobby, runner = step_in_run(font5x7, [Person(0.5, id=1).arrive(0.5)], 1.5)
     last = runner.trace[-1]
     assert 0.0 < last["step_in"] < 1.0
+
+
+# ----- the step-in card's words (owner, 2026-10-03: no "HAND UP" where a hand does nothing) -----
+
+from arcade.attract.lobby import card_prompt
+
+
+def test_card_prompt_words():
+    assert card_prompt(waiting=False, step_in=False) == "HAND UP = AGAIN"
+    assert card_prompt(waiting=True, step_in=False) == "NEXT: RAISE A HAND"
+    assert card_prompt(waiting=False, step_in=True) == "STAY = AGAIN"
+    assert card_prompt(waiting=True, step_in=True) == "NEXT: STEP IN"
+
+
+def test_step_in_card_never_asks_for_a_hand(font5x7, size):
+    """In step-in mode the card draws the step-in words: its frame differs from the default card's, and the default
+    card is unchanged."""
+    cfg = make_cfg(size)
+    lobby = Lobby([spy("pong")], cfg, start_on_step_in=True)
+    lobby.end_session(SessionResult(game="pong", layout=cfg.layout, reason="done", score=3.0, duration=5.0,
+                                    players=1, best=None, waiting=False))
+    lobby.update(Sensed(1.0), TICK)
+    canvas = Canvas(*size, font5x7)
+    lobby.draw(canvas)
+    assert lobby.debug_state()["mode"] == "card"
+    default = card_frame(font5x7, size)
+    assert not np.array_equal(canvas.frame, default), "the step-in card reads differently"
+    assert np.array_equal(default, card_frame(font5x7, size)), "the default card is as it was"
