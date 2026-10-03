@@ -14,7 +14,7 @@ from typing import Callable, TextIO
 
 from arcade.attract.lobby import Lobby
 from arcade.calibration import load_calibration
-from arcade.config import CAPTURES, ArcadeConfig, load_config
+from arcade.config import CAMERAS, CAPTURES, ArcadeConfig, load_config
 from arcade.games import all_games
 from arcade.preview import PreviewDisplay
 from arcade.runner import Runner
@@ -27,6 +27,8 @@ from show.font import Font
 COMMANDS = ("run", "doctor", "calibrate", "record", "stats")
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "pose_landmarker_lite.task"
 TIMEOUT = 5.0
+UPLOAD_WAIT = 300.0           # s the imx500 probe waits for the first tensor once frames flow without one: the
+UPLOAD_NOTICE_AFTER = 3.0     # sensor is taking the network (2 MB at about 9 kB/s, 3 to 4 min); the notice after 3 s
 Probe = Callable[[float], tuple[bool, str]]
 log = logging.getLogger(__name__)
 
@@ -65,6 +67,46 @@ def probe_picamera2(timeout: float, index: int = 0) -> tuple[bool, str]:
 
     return _first_frame(capture_picamera2.Picamera2Capture(CAPTURE_SIZE, index), timeout, f"picamera2 {index}",
                         "is the ribbon seated: rpicam-hello --list-cameras")
+
+
+def probe_imx500(timeout: float, upload_wait: float = UPLOAD_WAIT) -> tuple[bool, str]:
+    """The AI Camera with posenet on its sensor (camera "imx500"), opened as the arcade opens it: (True, the model,
+    its rate and the frame size) at the first frame that carries a tensor. Frames without one past
+    UPLOAD_NOTICE_AFTER mean the network is uploading: it says so, prints the wait every 30 s, and waits up to
+    upload_wait instead of timeout (^C ends it). The camera index is the IMX500 object's, not --camera-index."""
+    from arcade.config import ArcadeConfig
+    from arcade.sources import pose_imx500
+
+    cfg = ArcadeConfig(camera="imx500")           # index is unused: the IMX500 object picks its own camera number
+    try:
+        capture, detector = pose_imx500.open_imx500(cfg, cfg.size)
+    except Exception as e:
+        return False, f"imx500: {type(e).__name__}: {e} (apt: imx500-all python3-picamera2; the ribbon seated)"
+    label = f"imx500 {pose_imx500.describe(detector.imx)}"
+    frames, start = 0, time.monotonic()
+    deadline, notified, told = start + timeout, False, start
+    try:
+        while time.monotonic() < deadline:
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                time.sleep(0.05)
+                continue
+            frames += 1
+            if capture.metadata.get("CnnOutputTensor"):
+                return True, f"{label}: {frame.shape[1]}x{frame.shape[0]}"
+            now = time.monotonic()
+            if not notified and now - start >= UPLOAD_NOTICE_AFTER:
+                notified, told = True, now
+                deadline = start + upload_wait
+                print("imx500: frames but no tensor yet: uploading the network to the sensor, up to 4 minutes "
+                      "(^C stops the wait)", file=sys.stdout, flush=True)   # CLI output, as the doctor's lines
+            elif notified and now - told >= 30.0:
+                told = now
+                print(f"imx500: still waiting, {now - start:.0f} s", file=sys.stdout, flush=True)
+        why = f"{frames} frames, no tensor in {time.monotonic() - start:.0f} s" if frames else f"no frames in {timeout:.0f} s"
+        return False, f"{label}: {why} (is posenet on the sensor: another network means a new upload)"
+    finally:
+        capture.release()
 
 
 def probe_mic(timeout: float, device: str = "") -> tuple[bool, str]:
@@ -149,9 +191,19 @@ def doctor(require: list[str], probes: dict[str, Probe], timeout: float = TIMEOU
 
 
 def make_probes(camera_index: int = 0, audio_device: str = "", model: Path = MODEL_PATH,
-                capture: str = "opencv") -> dict[str, Probe]:
-    """The doctor's probes by name; the camera's is the one capture names. The probe functions are looked up when
-    a probe runs."""
+                capture: str = "opencv", camera: str = "mediapipe") -> dict[str, Probe]:
+    """The doctor's probes by name. camera "imx500" is one probe for both the camera and the pose (the sensor runs
+    the model); otherwise the camera's probe is the one capture names and the pose's is MediaPipe's. The probe
+    functions are looked up when a probe runs."""
+    if camera == "imx500":
+        done: dict[str, tuple[bool, str]] = {}
+
+        def imx(t: float) -> tuple[bool, str]:        # one opening of the camera serves both names
+            if "result" not in done:
+                done["result"] = probe_imx500(t)
+            return done["result"]
+
+        return {"camera": imx, "mic": lambda t: probe_mic(t, audio_device), "pose": imx}
     return {"camera": lambda t: (probe_picamera2 if capture == "picamera2" else probe_camera)(t, camera_index),
             "mic": lambda t: probe_mic(t, audio_device),
             "pose": lambda t: probe_pose(t, Path(model))}
@@ -185,8 +237,8 @@ def run(args) -> int:
             return 2
         games = [game for game in games if game.info.name == args.game]
     if _names(args.require):
-        code = doctor(_names(args.require), make_probes(cfg.camera_index, cfg.audio_device, capture=cfg.capture),
-                      TIMEOUT)
+        code = doctor(_names(args.require), make_probes(cfg.camera_index, cfg.audio_device, capture=cfg.capture,
+                                                        camera=cfg.camera), TIMEOUT)
         if code:
             return code
     data_dir = Path(cfg.data_dir)
@@ -232,6 +284,7 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--timeout", type=float, default=TIMEOUT)
     d.add_argument("--camera-index", type=int, default=0)
     d.add_argument("--capture", choices=CAPTURES, default="opencv", help="picamera2: the Pi's ribbon cameras")
+    d.add_argument("--camera", choices=CAMERAS, default="mediapipe", help="imx500: posenet on the AI Camera's sensor")
     d.add_argument("--audio-device", default="")
     d.add_argument("--model", default=str(MODEL_PATH))
     c = sub.add_parser("calibrate", help="find the play zone with one person; writes data_dir/calibration.json")
@@ -257,7 +310,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "doctor":
         return doctor(_names(args.require),
-                      make_probes(args.camera_index, args.audio_device, Path(args.model), args.capture), args.timeout)
+                      make_probes(args.camera_index, args.audio_device, Path(args.model), args.capture, args.camera),
+                      args.timeout)
     logging.basicConfig(level=logging.DEBUG if getattr(args, "verbose", False) else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if args.command == "record":

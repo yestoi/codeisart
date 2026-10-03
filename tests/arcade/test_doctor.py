@@ -121,3 +121,79 @@ def test_make_probes_picks_the_camera_probe_by_capture(monkeypatch):
     monkeypatch.setattr(arcade.main, "probe_picamera2", lambda timeout, index=0: (True, "picamera2"))
     assert arcade.main.make_probes()["camera"](1.0) == (True, "opencv")
     assert arcade.main.make_probes(capture="picamera2")["camera"](1.0) == (True, "picamera2")
+
+
+class TensorCapture:
+    """A fake Picamera2Capture whose frames carry a tensor from the nth read on."""
+
+    def __init__(self, tensor_from=1, frame=None):
+        import numpy as np
+
+        self.reads, self.released, self.tensor_from = 0, False, tensor_from
+        self.frame = frame if frame is not None else np.full((480, 640, 3), 9, np.uint8)
+        self.metadata = {}
+
+    def read(self):
+        self.reads += 1
+        self.metadata = {"SensorTimestamp": self.reads} | ({"CnnOutputTensor": [1.0]} if self.reads >= self.tensor_from else {})
+        return True, self.frame
+
+    def release(self):
+        self.released = True
+
+
+class FakeIMX:
+    class network_intrinsics:
+        inference_rate = 30
+
+
+def test_probe_imx500_reports_the_model_the_rate_and_the_frame(monkeypatch):
+    import arcade.sources.pose_imx500 as pi
+    from arcade.main import probe_imx500
+
+    cap = TensorCapture()
+    monkeypatch.setattr(pi, "open_imx500", lambda cfg, size: (cap, pi.IMX500Pose(cap, FakeIMX())))
+    assert probe_imx500(1.0) == (True, "imx500 posenet 30/s: 640x480")
+    assert cap.released
+
+
+def test_probe_imx500_says_uploading_and_waits(monkeypatch, capsys):
+    import arcade.sources.pose_imx500 as pi
+    from arcade.main import probe_imx500
+
+    cap = TensorCapture(tensor_from=10 ** 9)                    # frames, never a tensor
+    monkeypatch.setattr(pi, "open_imx500", lambda cfg, size: (cap, pi.IMX500Pose(cap, FakeIMX())))
+    monkeypatch.setattr("arcade.main.UPLOAD_NOTICE_AFTER", 0.05)
+    ok, why = probe_imx500(0.1, upload_wait=0.3)
+    assert not ok and "no tensor" in why and cap.released
+    assert "uploading the network to the sensor" in capsys.readouterr().out
+    assert cap.reads > 2                                          # it kept reading past the 0.1 s timeout
+
+
+def test_probe_imx500_without_picamera2_is_unavailable(monkeypatch):
+    import sys
+
+    from arcade.main import probe_imx500
+
+    monkeypatch.setitem(sys.modules, "picamera2", None)
+    ok, why = probe_imx500(1.0)
+    assert not ok and "picamera2" in why
+
+
+def test_make_probes_imx500_is_both_the_camera_and_the_pose_opened_once(monkeypatch):
+    import arcade.main
+
+    calls = []
+    monkeypatch.setattr(arcade.main, "probe_imx500", lambda timeout: calls.append(timeout) or (True, "imx500"))
+    probes = arcade.main.make_probes(camera="imx500")
+    assert probes["camera"](1.0) == (True, "imx500") and probes["pose"](1.0) == (True, "imx500")
+    assert calls == [1.0]                                          # the camera opened once for both names
+
+
+def test_doctor_takes_camera_imx500(monkeypatch, capsys):
+    import arcade.main
+
+    monkeypatch.setattr(arcade.main, "probe_imx500", lambda timeout: (True, "imx500 posenet 30/s: 640x480"))
+    assert main(["doctor", "--require", "camera,pose", "--camera", "imx500"]) == 0
+    out = capsys.readouterr().out
+    assert out.count("imx500 posenet 30/s") == 2
