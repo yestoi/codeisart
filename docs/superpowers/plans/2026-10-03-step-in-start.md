@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Without `--game` nothing changes: every existing lobby test passes unchanged.
-- The loop's rules for a lobby change hold: rows 60 to 63 stay dark in every mode (the existing test covers the lobby's drawing; this change removes a drawing, the pictogram, in the new mode), and the degraded-mover test runs.
+- No new drawing: the pictogram is dropped in the new mode, the mirror figure is unchanged. The lobby has no rows 60 to 63 test and its figure lights those rows today at 128x64 (roadmap, the it20 note); nothing is added here. `test_mirror_under_real_noise_keeps_the_area_rule` (the degraded mover, default lobby) runs unchanged.
 - The suite's command: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest -q -rs tests/arcade/test_lobby.py` for the task; the full suite once before the commit is pushed (the Mac is shared; a time over the limit is read once more).
 - No Pi, no card, no change under `deploy/`.
 
@@ -72,9 +72,10 @@ def test_a_crossing_does_not_start(font5x7):
 
 
 def test_step_in_count_restarts_after_leaving(font5x7):
-    """Review Focus 1: in at 1.0, out at 2.0, back at 3.0: the game starts near 5.0, not 4.0."""
-    person = Person(0.5, id=1).arrive(1.0).leave(2.0).arrive(3.0)
-    _, runner = step_in_run(font5x7, [person], 7.0)
+    """Review Focus 1: in at 1.0, out at 2.0, back at 3.0 as a new track id (the tracker never reuses one, and a
+    Person has one arrive and one leave): the game starts near 5.0, not 4.0."""
+    persons = [Person(0.5, id=1).arrive(1.0).leave(2.0), Person(0.5, id=2).arrive(3.0)]
+    _, runner = step_in_run(font5x7, persons, 7.0)
     starts = launches(runner)
     assert len(starts) == 1
     at = starts[0][0] * TICK
@@ -106,9 +107,11 @@ def test_second_body_does_not_shorten_the_count(font5x7):
 
 
 def test_no_pictogram_in_step_in_mode(font5x7):
+    """Also the spec's 1.9 s: a player present 1.4 s (0.5 to 1.9) has not started the game."""
     lobby, runner = step_in_run(font5x7, [Person(0.5, id=1).arrive(0.5)], 1.9)
     assert all(s.get("pictogram") in (None, False) for s in runner.trace)
     assert all(s.get("mode") != "invite" for s in runner.trace)
+    assert launches(runner) == []
 
 
 def test_without_the_flag_nothing_changes(font5x7):
@@ -205,13 +208,15 @@ drawn and a raised hand does nothing by itself.
 
 - [ ] **Step 4: Change `arcade/main.py`**
 
-At line 252, pass the flag:
+At line 252, pass the flag (the call becomes three lines):
 
 ```python
             runner = Runner(cfg, display, font, Lobby(games, cfg, start_on_step_in=args.game is not None), games,
+                            scores=Scores(data_dir / "scores.json"), sessions=SessionLog(data_dir / "sessions.jsonl"),
+                            calibration=calibration, local_clock=datetime.now, lux=None)
 ```
 
-(keep the rest of that call as it is). At line 280, the help text:
+At line 229, `run()`'s docstring says "--game offers that one game only: a raised hand starts it"; change it to "--game offers that one game only: a player standing in the zone for 2 s starts it". At line 280, the help text:
 
 ```python
     r.add_argument("--game", metavar="NAME", help="offer only this game: a player standing in the zone for 2 s starts it")
@@ -220,13 +225,13 @@ At line 252, pass the flag:
 - [ ] **Step 5: Run the lobby tests**
 
 Run: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest -q -rs tests/arcade/test_lobby.py`
-Expected: every test passes, the nine new ones included. If `test_after_the_card_the_count_starts_again` finds no second start within 40 s, raise the scene to 60 s: a Pong session against nobody ends by `inactive_seconds` (30 s) before its card.
+Expected: every test passes, the nine new ones included. The spy game ends 30 updates after it starts (reason "done"), its card runs 3 s, and the second launch follows about 2 s after the card; the 12 s scene holds all of it.
 
-- [ ] **Step 6: Run the games' rows and degraded-mover subset, then the full suite once**
+- [ ] **Step 6: Run the lobby and runner tests, then the full suite once**
 
-Run: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest -q -rs tests/arcade/test_all_games.py tests/arcade/test_lobby.py`
+Run: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest -q -rs tests/arcade/test_lobby.py tests/arcade/test_runner.py`
 Expected: pass. Then the full suite: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python -m pytest -q -rs`
-Expected: the count in `state.md`'s `last` line plus 9, under the limit.
+Expected: the collected count before the change (`pytest --collect-only -q | tail -1`, taken before Step 3) plus 9, under the 540 s limit (a time over it is read once more: the Mac is shared).
 
 - [ ] **Step 7: Commit**
 
