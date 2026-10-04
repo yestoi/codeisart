@@ -5,7 +5,6 @@
 width = 128
 height = 64
 view = "ink"
-phosphor = "white"       # greyscale, tried 2026-10-03 in place of green
 strip = true
 strip_phase = true
 strip_look = "plain"
