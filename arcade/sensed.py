@@ -282,6 +282,8 @@ class Blob:
     id: int = -1                  # the tracker's id, -1 untracked (C11, C17)
     vx: float = 0.0               # frame widths per second, the source's
     vy: float = 0.0               # frame heights per second, the source's (Q131)
+    zone_x: float = field(default=0.5, compare=False)    # across the calibrated zone, 0..1 clamped (place_blob; E2)
+    zone_y: float = field(default=0.5, compare=False)    # down it; not in equality or hash: they follow from x, y
 
     def __post_init__(self):
         for name in ("x", "y"):
@@ -338,9 +340,12 @@ def place(body: Body, calibration: Calibration) -> Body:
 
 
 def place_blob(blob: Blob, calibration: Calibration) -> Blob:
-    """blob with in_zone from the calibration zone. The blob must be in the zone's space, the mirrored
-    display space of the keypoints: a blob source mirrors x as mirror_keypoints does."""
-    return dataclasses.replace(blob, in_zone=_in(calibration.zone, blob.x, blob.y))
+    """blob with in_zone, zone_x and zone_y from the calibration zone, as place() places a body's anchor. The blob
+    must be in the zone's space, the mirrored display space of the keypoints: a blob source mirrors x as
+    mirror_keypoints does."""
+    x0, y0, x1, y1 = calibration.zone
+    return dataclasses.replace(blob, in_zone=_in(calibration.zone, blob.x, blob.y),
+                               zone_x=_clamp01((blob.x - x0) / (x1 - x0)), zone_y=_clamp01((blob.y - y0) / (y1 - y0)))
 
 
 def _resample(motion: np.ndarray, width: int, height: int) -> np.ndarray:

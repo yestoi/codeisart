@@ -287,7 +287,7 @@ def test_blob_new_fields_are_keyword_only():
     with pytest.raises(TypeError):
         Blob(0.4, 0.6, 0.03, (255, 0, 0), True, 3)
     assert [f.name for f in dataclasses.fields(Blob) if not f.kw_only] == ["x", "y", "size", "color", "in_zone"]
-    assert [f.name for f in dataclasses.fields(Blob) if f.kw_only] == ["id", "vx", "vy"]
+    assert [f.name for f in dataclasses.fields(Blob) if f.kw_only] == ["id", "vx", "vy", "zone_x", "zone_y"]
 
 
 def test_place_blob_keeps_id_and_velocity():
@@ -378,3 +378,24 @@ def test_place_wants_half_the_baseline_scale_once_calibrated():
     assert player_sized(b, Calibration(baseline_scale=b.scale * 2 - 1e-6))
     assert not player_sized(b, Calibration(baseline_scale=b.scale * 2 + 1e-3))
     assert not player_sized(figure(box=(0.3, 0.2, 0.7, 0.6)), Calibration())    # 0.4 tall: under min_height
+
+
+def test_place_blob_sets_zone_x_and_zone_y():
+    # E2 (Paint): a light's place across and down the calibrated zone, 0..1 and clamped, as place() does for a body.
+    cal = Calibration()
+    assert cal.zone == (0.2, 0.2, 0.8, 0.8)
+    b = place_blob(Blob(0.5, 0.5, 0.03, (255, 255, 255)), cal)
+    assert (b.zone_x, b.zone_y) == pytest.approx((0.5, 0.5))
+    b = place_blob(Blob(0.35, 0.65, 0.03, (255, 255, 255)), cal)
+    assert (b.zone_x, b.zone_y) == pytest.approx((0.25, 0.75))
+    b = place_blob(Blob(0.05, 0.9, 0.03, (255, 255, 255)), cal)
+    assert (b.zone_x, b.zone_y) == (0.0, 1.0)
+    assert not b.in_zone
+
+
+def test_blob_zone_fields_do_not_change_equality():
+    # They follow from x, y and the calibration (Q176): two blobs differing only there are equal and hash alike.
+    a = Blob(0.5, 0.5, 0.03, (255, 255, 255), id=1)
+    b = Blob(0.5, 0.5, 0.03, (255, 255, 255), id=1, zone_x=0.1, zone_y=0.9)
+    assert a == b and hash(a) == hash(b)
+    assert Blob(0.5, 0.5, 0.03, (0, 0, 0)).zone_x == 0.5 and Blob(0.5, 0.5, 0.03, (0, 0, 0)).zone_y == 0.5
