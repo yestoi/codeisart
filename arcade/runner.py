@@ -50,6 +50,8 @@ SWITCH_RATIO = 1.3           # a rival this much larger than the player ...
 SWITCH_SECONDS = 1.0         # ... for this long takes the lock
 REACQUIRE_DISTANCE = 0.25    # zone units: a new body this near the lost player's last place keeps the slot
 REACQUIRE_SECONDS = 2.0      # in a game, the slot waits this long for its player before the lock moves on
+REACQUIRE_DISTANCE_GAME = 0.15   # zone units: in a game the player back is the body this near their last place...
+REACQUIRE_SCALE = (0.55, 1.8)    # ...at this ratio of their last scale (0.62 is the hip-less fallback), new id or not
 BLOB_SPEED = 0.05            # frame widths a second: a slower in-zone light is a lamp, not a person (spec 7.2)
 LOG_EVERY = 60.0             # seconds between two log lines about one failing thing
 LAG_EVERY = 1.0              # seconds between two lag lines (capture age at push), at DEBUG: run -v
@@ -99,10 +101,11 @@ class PlayerLock:
 
     In a game (update(..., in_game=True); Night One, 2026-10-04 02:45: passers-by took Dodge from its player)
     the rules tighten: no rival takes the lock from a player who is seen, whatever their size; when the player's
-    id dies the slot waits REACQUIRE_SECONDS for them, a new id by the old place takes it at once as before, and
-    after lost_seconds so does the nearest body already there within REACQUIRE_DISTANCE (a bystander beside the
-    player, or the sensor's duplicate pose of them); only when nobody is near for REACQUIRE_SECONDS does the
-    largest in-zone body get the game. The lobby and the menu keep the old rules (in_game False).
+    id dies the slot waits REACQUIRE_SECONDS for them, and the body nearest their last place within
+    REACQUIRE_DISTANCE_GAME at a REACQUIRE_SCALE ratio of their scale takes it at once, new id or not (04:08: the
+    body at the player's place and size was the sensor's duplicate pose of them, born a tick before the track
+    died, so a "new id" rule skipped it for a fresh id across the zone); only when nobody fits for
+    REACQUIRE_SECONDS does the largest in-zone body get the game. The lobby and the menu keep the old rules.
     """
 
     def __init__(self, lost_seconds: float):
@@ -110,6 +113,7 @@ class PlayerLock:
         self.id: int | None = None
         self._seen = -math.inf
         self._place = (0.5, 0.5)
+        self._scale = 0.0                             # the player's scale when last seen
         self._known: set[int] = set()                 # ids present when the player went missing
         self._rival: int | None = None
         self._rival_since = -math.inf
@@ -128,10 +132,12 @@ class PlayerLock:
                 self.id = None
             elif tracked is None:
                 dist = lambda b: math.hypot(b.zone_x - self._place[0], b.zone_y - self._place[1])
-                near = [b for b in inside if dist(b) <= REACQUIRE_DISTANCE]
-                pick = [b for b in near if b.id not in self._known]
-                if not pick and in_game and lost_for > self.lost_seconds + EPSILON:
-                    pick = near
+                if in_game:
+                    lo, hi = REACQUIRE_SCALE
+                    pick = [b for b in inside if dist(b) <= REACQUIRE_DISTANCE_GAME
+                            and self._scale > 0.0 and lo <= b.scale / self._scale <= hi]
+                else:
+                    pick = [b for b in inside if b.id not in self._known and dist(b) <= REACQUIRE_DISTANCE]
                 if pick:
                     self.id = min(pick, key=dist).id
         if self.id is None and inside:
@@ -158,7 +164,7 @@ class PlayerLock:
             elif t - self._rival_since >= SWITCH_SECONDS - EPSILON:
                 self.id, player, self._rival = rival.id, rival, None
         if player is not None and not held:
-            self._seen, self._place = t, (player.zone_x, player.zone_y)
+            self._seen, self._place, self._scale = t, (player.zone_x, player.zone_y), float(player.scale)
             self._known = {b.id for b in bodies}
         player2 = next((b for b in inside if b.id != self.id), None)
         return player, player2
@@ -467,7 +473,8 @@ class Runner:
         pid = None if self.player is None else self.player.id
         if pid != self._player_id:                  # Night One diagnosis (2026-10-03): who the Man follows, and why
             inside = [b for b in sensed.bodies if b.in_zone]
-            self.log.info("player %s -> %s at %.1f s; %d in zone: %s", self._player_id, pid, self.t, len(inside),
+            self.log.info("player %s -> %s at %.1f s (last at x %.2f, scale %.2f); %d in zone: %s", self._player_id,
+                          pid, self.t, self.lock._place[0], self.lock._scale, len(inside),
                           [(b.id, round(b.scale, 2), round(b.zone_x, 2)) for b in inside])
             self._player_id = pid
         self._evidence = any(b.in_zone for b in sensed.bodies) or self._moving(sensed)

@@ -464,21 +464,40 @@ def test_in_game_the_player_back_as_a_new_id_after_a_second_keeps_the_slot(font5
     assert set(seen[ticks(1.9) + 1:]) == {7}, seen[ticks(1.9):ticks(2.2)]
 
 
-def test_in_game_after_lost_seconds_the_nearest_body_takes_the_slot_not_the_largest(font5x7):
-    """A body that was already there by the player's place (a bystander beside them, or the sensor's duplicate
-    pose of the player) takes the slot after lost_seconds, before a larger body across the zone."""
+def test_in_game_the_nearest_body_of_the_players_size_takes_the_slot_at_once_known_or_not(font5x7):
+    """Night One 04:08: the player's id died with three bodies in the zone; the body at their place and size was
+    already there a tick before (the sensor's duplicate pose of them, which is how a track dies), so the "new id"
+    rule skipped it and a fresh id across the zone took Dodge. In a game the body nearest the player's last place,
+    within REACQUIRE_DISTANCE_GAME and of a similar scale, takes the slot at once whether its id is new or not."""
+    from arcade.runner import REACQUIRE_DISTANCE_GAME
+    assert REACQUIRE_DISTANCE_GAME < 0.2
     runner, _, _ = make_runner(font5x7)
     runner.launch("spy")
-    player = Person(x=0.35, height=0.85, id=1).leave(1.0)
-    beside = Person(x=0.45, height=0.5, id=3)
-    far_big = Person(x=0.75, height=0.8, id=9)                         # larger than beside, two thirds of the zone away
+    player = Person(x=0.5, height=0.8, id=1).leave(1.0)
+    double = Person(x=0.52, height=0.7, id=3).arrive(0.95)             # the same body, a tick early, a size down
+    newcomer = Person(x=0.3, height=0.75, id=9).arrive(1.0)           # a fresh id a third of the zone away
     seen = []
-    for s in scene(persons=[player, beside, far_big], ticks=ticks(2.5)):
+    for s in scene(persons=[player, double, newcomer], ticks=ticks(2.0)):
         runner.tick(s, TICK)
         seen.append(None if runner.player is None else runner.player.id)
     assert seen[ticks(1.0) - 1] == 1
-    assert set(seen[ticks(1.0) + 1:ticks(1.5) - 1]) == {None}
-    assert set(seen[ticks(1.5) + 2:]) == {3}, seen[ticks(1.5):ticks(1.7)]
+    assert set(seen[ticks(1.0) + 2:]) == {3}, seen[ticks(1.0):ticks(1.3)]
+
+
+def test_in_game_a_small_body_beside_the_player_does_not_take_the_slot(font5x7):
+    """A child or a far guest beside the player is not the player back: the scale has to match within
+    REACQUIRE_SCALE. The slot waits, then the lock moves on to the largest body."""
+    from arcade.runner import REACQUIRE_SECONDS
+    runner, _, _ = make_runner(font5x7)
+    runner.launch("spy")
+    player = Person(x=0.5, height=0.95, id=1).leave(1.0)
+    small = Person(x=0.55, height=0.5, id=3)                          # half the scale, right beside, in the zone
+    seen = []
+    for s in scene(persons=[player, small], ticks=ticks(1.0 + REACQUIRE_SECONDS + 0.5)):
+        runner.tick(s, TICK)
+        seen.append(None if runner.player is None else runner.player.id)
+    assert set(seen[ticks(1.0) + 1:ticks(1.0 + REACQUIRE_SECONDS) - 1]) == {None}
+    assert set(seen[ticks(1.0 + REACQUIRE_SECONDS) + 2:]) == {3}
 
 
 def test_presence_hysteresis_ignores_out_of_zone(font5x7):
