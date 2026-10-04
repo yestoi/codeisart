@@ -90,6 +90,8 @@ class PlayerLock:
     player is the in-zone body with the largest scale. Once locked it stays until its body has been absent for
     more than lost_seconds, or another in-zone body has been SWITCH_RATIO times larger for SWITCH_SECONDS while the
     player is seen (the rival's time restarts when the player returns).
+    A locked body that is tracked but not in the zone this tick is still the player for up to lost_seconds past
+    its last in-zone tick (the zone test flickers on the wall; Night One, 2026-10-03).
     While the locked body is absent, player is None and the slot is kept; a body with an id that was not there
     when it went missing, in the zone within REACQUIRE_DISTANCE of its last place, takes the slot (the tracker
     never reuses an id, so a re-detected player is a new id). player2 is the next in-zone body by scale.
@@ -110,10 +112,11 @@ class PlayerLock:
     def update(self, bodies: tuple[Body, ...], t: float) -> tuple[Body | None, Body | None]:
         inside = sorted((b for b in bodies if b.in_zone), key=lambda b: -b.scale)
         by_id = {b.id: b for b in inside}
+        tracked = next((b for b in bodies if b.id == self.id), None) if self.id is not None else None
         if self.id is not None and self.id not in by_id:
             if t - self._seen > self.lost_seconds + EPSILON:
                 self.id = None
-            else:
+            elif tracked is None:
                 new = [b for b in inside if b.id not in self._known and
                        math.hypot(b.zone_x - self._place[0], b.zone_y - self._place[1]) <= REACQUIRE_DISTANCE]
                 if new:
@@ -122,6 +125,16 @@ class PlayerLock:
         if self.id is None and inside:
             self.id, self._rival = inside[0].id, None
         player = by_id.get(self.id)
+        # Held (Night One, 2026-10-03): the locked body is tracked but not in the zone this tick. The zone test
+        # flickered at 10 Hz on the wall (a near player's measured height crossing min_height as ankle keypoints
+        # came and went), and every gap reset the games' Glides: the Man snapped instead of gliding. The body stays
+        # the player for up to lost_seconds past its last in-zone tick; _seen is not refreshed by a held tick, so
+        # a player who stands off the mat in view is dropped as before, and one whose anchor has left the
+        # zone's rectangle (zone_x or zone_y clamped to 0 or 1: a walk off the side) is not held at all.
+        held = (player is None and self.id is not None and tracked is not None
+                and 0.0 < tracked.zone_x < 1.0 and 0.0 < tracked.zone_y < 1.0)   # anchor still over the mat
+        if held:
+            player = tracked
         if player is None:                            # the rival's time counts only while the player is seen (C31)
             self._rival = None
         else:
@@ -132,8 +145,9 @@ class PlayerLock:
                 self._rival, self._rival_since = rival.id, t
             elif t - self._rival_since >= SWITCH_SECONDS - EPSILON:
                 self.id, player, self._rival = rival.id, rival, None
-            self._seen, self._place = t, (player.zone_x, player.zone_y)
-            self._known = {b.id for b in bodies}
+            if not held:
+                self._seen, self._place = t, (player.zone_x, player.zone_y)
+                self._known = {b.id for b in bodies}
         player2 = next((b for b in inside if b.id != self.id), None)
         return player, player2
 

@@ -388,6 +388,34 @@ def test_player_reacquired_by_position_keeps_slot(font5x7):
     assert set(ids[ticks(1.55):]) == {3}                              # nobody came back: the lock moves on
 
 
+def test_lock_holds_its_player_through_a_zone_flicker():
+    """Night One (2026-10-03): the player's measured height crossed the calibration's min_height every few ticks
+    as ankle keypoints came and went, so in_zone flickered and the lock gave the game a player one tick and None
+    the next; the Glide reset on every gap and Dodge went jerky. A locked body that is still tracked stays the
+    player through dropouts of in_zone shorter than lost_seconds while its anchor is still over the mat, whoever
+    else is in the zone; a longer one, or a walk off the side, loses it as before."""
+    from arcade.runner import PlayerLock
+    from arcade.sensed import Body, Keypoint
+
+    def body(id: int, in_zone: bool, x: float = 0.5) -> Body:
+        return Body(id, (0.3, 0.1, 0.7, 0.9), tuple(Keypoint(0.5, 0.5, 1.0) for _ in range(17)), scale=0.4,
+                    in_zone=in_zone, zone_x=x)
+
+    lock = PlayerLock(0.5)
+    assert lock.update((body(1, True),), 0.0)[0].id == 1
+    assert lock.update((body(1, False),), 0.1)[0].id == 1                   # out of the zone this tick: held
+    held, second = lock.update((body(1, False), body(2, True, 0.8)), 0.2)
+    assert held.id == 1 and second.id == 2                                 # a body in the zone does not take it
+    assert lock.update((body(1, True),), 0.3)[0].id == 1
+    assert lock.update((body(1, False),), 0.7)[0].id == 1                   # 0.4 s out: still held
+    assert lock.update((body(1, False),), 0.9)[0] is None                   # 0.6 s out: lost, as before
+    assert lock.update((body(1, False), body(2, True)), 1.0)[0].id == 2     # and the lock moves on
+    lock = PlayerLock(0.5)
+    assert lock.update((body(1, True),), 0.0)[0].id == 1
+    assert lock.update((body(1, False, 0.0),), 0.1)[0] is None               # walked off the side: not held
+    assert lock.update((body(1, True, 0.3),), 0.2)[0].id == 1                # back on the mat within lost_seconds
+
+
 def test_presence_hysteresis_ignores_out_of_zone(font5x7):
     runner, _, _ = make_runner(font5x7)
     feed(runner, scene(persons=crowd(6), ticks=ticks(3.0)))
