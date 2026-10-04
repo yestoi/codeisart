@@ -49,16 +49,16 @@ PLAYER_Y = 50
 MAN = np.array([[ch == "#" for ch in row] for row in (     # the Burning Man figure (the owner, 2026-10-03): 10x12
     "#...##...#",                                           # at rows 46 to 57, a head apart from the shoulders, arms
     ".#..##..#.",                                           # at 45 degrees to head height, the spine through row 54
-    "..#....#..",                                           # (player_xy's centre pixel), the 6 px base the hitbox's own
-    "...####...",                                           # columns. 1 px arms: a three-lens review (legibility,
-    "....##....",                                           # iconography, gameplay) chose them over 2 px for the Man's
-    "....##....",                                           # proportions; if they vanish on the wall at 0.1, thicken.
-    "....##....",
-    "....##....",
+    "..#....#..",                                           # (player_xy's centre pixel), the feet on the hitbox's outer
+    "...####...",                                           # columns (the bar between them confused people at the
+    "....##....",                                           # party, the owner, 2026-10-03). 1 px arms: a three-lens
+    "....##....",                                           # review (legibility, iconography, gameplay) chose them over
+    "....##....",                                           # 2 px for the Man's proportions; if they vanish on the wall
+    "....##....",                                           # at 0.1, thicken.
     "....##....",
     "...#..#...",
     "..#....#..",
-    "..######..")], dtype=bool)
+    "..#....#..")], dtype=bool)
 MAN.flags.writeable = False
 MAN_H, MAN_W = MAN.shape
 MAN_DX, MAN_DY = (MAN_W - PLAYER_W) // 2, MAN_H - PLAYER_H   # the figure's offset from the hitbox's top left

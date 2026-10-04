@@ -548,11 +548,12 @@ def test_feel_file_overrides_have_reasons():
 
 def test_the_player_is_the_man_centred_on_the_hitbox(font5x7):
     """The Burning Man figure (the owner, 2026-10-03, after a three-lens review): a 10x12 sprite at rows 46 to 57,
-    centred on the unchanged 6x8 hitbox, its 6 px base exactly the hitbox's columns, its spine through row 54 (the
+    centred on the unchanged 6x8 hitbox, its feet on the hitbox's outer columns (no bar between them: it confused
+    people at the party), its spine through row 54 (the
     centre pixel the debug_state's player_xy names), and its x rounded by the canvas as the block's was."""
     from arcade.games.dodge import MAN, MAN_H, MAN_W
     assert MAN.shape == (MAN_H, MAN_W) == (12, 10) and MAN.dtype == bool
-    assert list(np.flatnonzero(MAN[-1])) == [2, 3, 4, 5, 6, 7], "the base is the hitbox's 6 columns"
+    assert list(np.flatnonzero(MAN[-1])) == [2, 7], "the feet are the hitbox's outer columns, nothing between"
     assert list(np.flatnonzero(MAN[8])) == [4, 5], "the spine runs through row 54"
     assert not MAN[2, 3:7].any() and MAN[0, 4:6].all(), "a head apart from the shoulders"
     for block_x in (40.0, 40.5, 0.0, 122.0):
@@ -569,7 +570,7 @@ def test_the_player_is_the_man_centred_on_the_hitbox(font5x7):
         assert np.array_equal(window.any(axis=2), mask), "nothing else lit there"
         base_cols = np.flatnonzero(np.all(canvas.frame[57] == PLAYER_COLORS[0], axis=1))
         hit_left = math.floor(block_x + 0.5)
-        assert list(base_cols) == list(range(hit_left, hit_left + PLAYER_W)), block_x
+        assert list(base_cols) == [hit_left, hit_left + PLAYER_W - 1], block_x
         x, y = game.debug_state()["player_xy"]
         assert tuple(canvas.frame[int(y), int(x)]) == PLAYER_COLORS[0]
     assert not np.any(canvas.frame[44:46, 110:128].any()), "nothing above row 46 near the figure"
