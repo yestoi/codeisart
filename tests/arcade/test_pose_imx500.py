@@ -3,11 +3,14 @@ detector against fakes, and the opener without picamera2. No camera and no picam
 import sys
 from pathlib import Path
 
+import time
+
 import numpy as np
 import pytest
 
 from arcade.sensed import LEFT_ANKLE, LEFT_SHOULDER, NOSE, RIGHT_ANKLE, RIGHT_SHOULDER, Keypoint
-from arcade.sources.pose_imx500 import INPUT_SIZE, MODEL, SHAPES, IMX500Pose, decode_multiple, describe, open_imx500
+from arcade.sources.pose_imx500 import (INPUT_SIZE, MAX_POSES, MODEL, SHAPES, IMX500Pose, decode_multiple, describe,
+                                        open_imx500)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "posenet"
 
@@ -45,6 +48,29 @@ def test_keypoints_off_the_frame_stay_raw_and_the_body_cleans_them():
     body = Body(1, (0.0, 0.0, 1.0, 1.0), kps)
     assert all(0.0 <= k.x <= 1.0 and 0.0 <= k.y <= 1.0 for k in body.keypoints)
     assert all(k.conf == 0.0 for k, raw in zip(body.keypoints, kps) if raw.x > 1.0 or raw.y > 1.0)
+
+
+def crowd(heat: np.ndarray, bodies: int) -> np.ndarray:
+    """The heatmap with bodies - 1 shifted copies of its body laid over it: a crowd's worth of roots."""
+    out = heat.copy()
+    for i in range(1, bodies):
+        out = np.maximum(out, np.roll(np.roll(heat, (i * 7) % 31 - 15, axis=1), (i * 5) % 23 - 11, axis=0))
+    return out
+
+
+def test_a_crowd_decodes_in_a_few_ms():
+    """Night One (2026-10-03): with a crowd at the wall the decoder followed MAX_POSES roots a tensor, 30 tensors a
+    second, in 40 to 50 ms each on the Pi (numpy micro-ops on 2-element arrays): a whole core and the GIL with it,
+    and Dodge went jerky. On scalars the same decode is 2 to 3 ms on the Mac; the bound is loose for any dev
+    machine, and the old decoder (47 ms on the Mac) fails it."""
+    heat, off, mid = sample("sample1")
+    tensors = [crowd(heat, 8), off, mid]
+    assert len(decode_multiple(tensors)) == MAX_POSES                    # the budget is hit: the costly case
+    t0 = time.perf_counter()
+    for _ in range(5):
+        decode_multiple(tensors)
+    ms = (time.perf_counter() - t0) / 5 * 1000.0
+    assert ms < 15.0, f"a {MAX_POSES}-pose decode took {ms:.1f} ms"
 
 
 def test_a_cold_heatmap_gives_no_body():

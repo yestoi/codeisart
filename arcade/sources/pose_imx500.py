@@ -5,7 +5,7 @@ The decoder is a port of tfjs posenet's multi-pose decoding (decodeMultiplePoses
 rpicam-apps imx500_posenet stage documents: heatmaps [23, 31, 17] as log-odds, short offsets [23, 31, 34] (17 y
 then 17 x, in input pixels), mid offsets [23, 31, 64] (forward y, forward x, backward y, backward x; 16 edges
 each), on a 481x353 input with stride 16. Measured on the spike of 2026-10-02 (the review of that date): 30
-tensors a second, 3 ms to decode on the Pi. picamera2 is imported inside open_imx500 only."""
+tensors a second; a 20-pose decode is a few ms on the Pi (see the note above _coords). picamera2 is imported inside open_imx500 only."""
 from __future__ import annotations
 
 import logging
@@ -55,41 +55,48 @@ def _check(outputs) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 def _local_maxima(scores: np.ndarray, thr: float) -> list[tuple[float, int, int, int]]:
     """(score, keypoint, row, col) of every cell at or above thr that is the maximum of its neighbourhood, best first."""
     h, w, _ = scores.shape
-    out = []
-    for kp in range(NUM_KP):
-        s = scores[:, :, kp]
-        for y, x in zip(*np.where(s >= thr)):
-            y0, y1 = max(0, y - LOCAL_MAX_RADIUS), min(h, y + LOCAL_MAX_RADIUS + 1)
-            x0, x1 = max(0, x - LOCAL_MAX_RADIUS), min(w, x + LOCAL_MAX_RADIUS + 1)
-            if s[y, x] >= s[y0:y1, x0:x1].max():
-                out.append((float(s[y, x]), kp, int(y), int(x)))
+    r = LOCAL_MAX_RADIUS
+    padded = np.pad(scores, ((r, r), (r, r), (0, 0)), constant_values=-np.inf)
+    around = scores.copy()                                   # each cell's neighbourhood maximum, itself included
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            np.maximum(around, padded[r + dy:r + dy + h, r + dx:r + dx + w, :], out=around)
+    ys, xs, kps = np.nonzero((scores >= thr) & (scores >= around))
+    out = [(float(scores[y, x, k]), k, y, x) for y, x, k in zip(ys.tolist(), xs.tolist(), kps.tolist())]
     out.sort(reverse=True)
     return out
 
 
-def _coords(kp: int, y: int, x: int, off: np.ndarray) -> np.ndarray:
+# The walk below is plain Python on scalars, indexing the tensors one element at a time. Night One (2026-10-03): the
+# first port did the same arithmetic on 2-element numpy arrays (np.clip, sums), and with a crowd at the wall the
+# decoder followed MAX_POSES roots at 30 tensors a second in 40 to 50 ms each on the Pi: a whole core, and the GIL
+# with it, so the arcade's 30 fps loop starved and Dodge went jerky. Scalars decode the same 20 poses in a few ms.
+
+def _coords(kp: int, y: int, x: int, off: np.ndarray) -> tuple[float, float]:
     """A keypoint's (y, x) in input pixels from its heatmap cell and the short offsets."""
-    return np.array([y * STRIDE + off[y, x, kp], x * STRIDE + off[y, x, kp + NUM_KP]], dtype=np.float32)
+    return (y * STRIDE + float(off[y, x, kp]), x * STRIDE + float(off[y, x, kp + NUM_KP]))
 
 
-def _cell(pos: np.ndarray, h: int, w: int) -> tuple[int, int]:
-    return (int(np.clip(round(pos[0] / STRIDE), 0, h - 1)), int(np.clip(round(pos[1] / STRIDE), 0, w - 1)))
+def _cell(pos: tuple[float, float], h: int, w: int) -> tuple[int, int]:
+    cy, cx = pos[0] / STRIDE, pos[1] / STRIDE
+    return (0 if cy < 0 else h - 1 if cy > h - 1 else int(round(cy)),
+            0 if cx < 0 else w - 1 if cx > w - 1 else int(round(cx)))
 
 
-def _traverse(edge: int, src: np.ndarray, target: int, scores, off, disp) -> tuple[float, np.ndarray]:
+def _traverse(edge: int, src: tuple[float, float], target: int, scores, off, disp) -> tuple[float, tuple[float, float]]:
     h, w, _ = scores.shape
     y, x = _cell(src, h, w)
-    pos = src + np.array([disp[y, x, edge], disp[y, x, edge + NUM_EDGES]], dtype=np.float32)
+    pos = (src[0] + float(disp[y, x, edge]), src[1] + float(disp[y, x, edge + NUM_EDGES]))
     for _ in range(REFINE_STEPS):
         pos = _coords(target, *_cell(pos, h, w), off)
     ty, tx = _cell(pos, h, w)
     return float(scores[ty, tx, target]), pos
 
 
-def _decode_pose(root, scores, off, fwd, bwd) -> tuple[np.ndarray, np.ndarray]:
+def _decode_pose(root, scores, off, fwd, bwd) -> tuple[list[tuple[float, float]], list[float]]:
     score, kp, y, x = root
-    kps = np.zeros((NUM_KP, 2), dtype=np.float32)
-    ksc = np.zeros(NUM_KP, dtype=np.float32)
+    kps: list[tuple[float, float]] = [(0.0, 0.0)] * NUM_KP
+    ksc = [0.0] * NUM_KP
     kps[kp], ksc[kp] = _coords(kp, y, x, off), score
     for e in reversed(range(NUM_EDGES)):
         parent, child = EDGES[e]
@@ -113,19 +120,25 @@ def decode_multiple(outputs, score_thr: float = 0.3, max_poses: int = MAX_POSES,
     scores = _sigmoid(heat)
     fwd, bwd = mid[:, :, :2 * NUM_EDGES], mid[:, :, 2 * NUM_EDGES:]
     sq = nms_radius_px ** 2
-    poses: list[tuple[np.ndarray, np.ndarray, float]] = []
+    poses: list[tuple[list[tuple[float, float]], list[float], float]] = []
+    taken = np.empty((max_poses, NUM_KP, 2), dtype=np.float32)       # the poses' keypoints so far, for the nms
     for root in _local_maxima(scores, score_thr):
-        if len(poses) >= max_poses:
+        n = len(poses)
+        if n >= max_poses:
             break
         _, kp, y, x = root
-        root_pos = _coords(kp, y, x, off)
-        if any(((p[0][kp] - root_pos) ** 2).sum() <= sq for p in poses):
+        ry, rx = _coords(kp, y, x, off)
+        if any((p[0][kp][0] - ry) ** 2 + (p[0][kp][1] - rx) ** 2 <= sq for p in poses):
             continue
         kps, ksc = _decode_pose(root, scores, off, fwd, bwd)
-        keep = np.ones(NUM_KP, dtype=bool)
-        for pk, _, _ in poses:
-            keep &= ((pk - kps) ** 2).sum(axis=1) > sq
-        poses.append((kps, ksc, float((ksc * keep).sum() / NUM_KP)))
+        arr = np.array(kps, dtype=np.float32)
+        if n:
+            keep = (((taken[:n] - arr) ** 2).sum(axis=2) > sq).all(axis=0)
+            inst = float((np.array(ksc, dtype=np.float32) * keep).sum() / NUM_KP)
+        else:
+            inst = float(np.float32(sum(ksc)) / NUM_KP)
+        taken[n] = arr
+        poses.append((kps, ksc, inst))
     poses.sort(key=lambda p: p[2], reverse=True)
     w, h = INPUT_SIZE
     return [(inst, [(float(k[1] / w), float(k[0] / h), float(c)) for k, c in zip(kps, ksc)])
