@@ -39,7 +39,8 @@ report, not in code.
 `debug_state()`; `REQUIRED_SCENARIOS`, `INPUTS`, `KINDS`, `LAYOUTS` (a data value, `{"128x64"}` since Q33), `RUNNER_KEYS`, `reserved()`,
 `icon_from_rows`. A canary test (`test_protocol_members_are_the_frozen_set` in `tests/arcade/test_game.py`) holds
 the list; a game never needs it changed. Known later changes, each with a journaled reason: M5's `Blob.id`, `vx`,
-`vy` and per-input availability (C35) in `Sensed`.
+`vy` and per-input availability (C35) in `Sensed`; M7b's `Blob.zone_x` and `zone_y` (E2: a light's place across
+and down the calibrated zone, 0..1, set by `place_blob` as `place` sets a body's; not in equality or hash).
 
 `GameInfo(name, title, verb, icon, needs, layouts, players, exit_gesture, kind, abandon_seconds)`:
 
@@ -133,6 +134,12 @@ copies the target with it); a `wrist_y` then moves the hand's wrists over the po
 `Person.jump` does; it takes no noise either, and a play without it draws as before. A jump is an arc over a few
 ticks, `lift = peak * 4u(1 - u)` for u from 0 to 1 over 0.6 s (Jump's bots). At the default body (height 0.6) a lift
 over about 0.16 takes the shoulders past the zone's top, and the runner drops the player.
+`light=(r, g, b)` makes the body hold a light: one tracked blob (`Blob` of `LIGHT_SIZE`, id 1) at the hand's wrist
+(the right one for `"both"`), placed by `place_blob`, so a game that reads `blobs` (Paint) can be played by a bot; it
+takes no noise draw either, and the light is dropped by the runner wherever the wrist leaves the zone (a wrist at
+`wrist_y` 0.1 sits just inside the zone's top at the default body; past zone x 0.72 the right wrist is past its
+right edge). A light at the wrist moves less on the wall than the wrist's reach-box v does (it maps through the
+frame), so a light bot that must cover the paper sweeps `wrist_y` to 1.0 (Paint's Good).
 `arcade.bots.Nobody` is the no-input bot. `play(game_cls, bot, seed, layout)` adds the reaction delay and
 seeded noise (clamped to 0..1) and stops on `done()`, or when the session ends otherwise (a game whose
 `done()` never fires ends at the leave or inactive rule, or at `MAX_PLAY_SECONDS` = 180).
