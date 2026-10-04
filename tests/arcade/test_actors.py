@@ -219,3 +219,12 @@ def test_degrade_puts_real_jitter_on_the_scale():
     shaken = list(shake(0.0, 30.0)(iter(source)))
     assert {b.scale for s in shaken for b in s.bodies} == clean, f"body id {body_id}"
     assert any(a.bodies[0].keypoints != b.bodies[0].keypoints for a, b in zip(shaken, source))
+
+
+def test_moving_blob_can_carry_a_tracker_id():
+    # Paint's canonical: a light the tracker follows (id 1) draws segments; the default stays untracked (-1).
+    assert moving_blob(0.0, 0.5, 1.0, 0.5, seconds=2.0)(1.0).id == -1
+    tracked = moving_blob(0.0, 0.5, 1.0, 0.5, seconds=2.0, id=1)
+    assert tracked(1.0).id == 1 and tracked(0.0).id == 1
+    (frame,) = list(scene(blobs=[tracked], ticks=1))
+    assert frame.blobs[0].id == 1 and frame.blobs[0].in_zone is False       # x 0.0 is outside the zone

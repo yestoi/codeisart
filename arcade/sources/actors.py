@@ -198,12 +198,14 @@ AudioScript = Callable[[float], Audio]
 
 def moving_blob(x0: float, y0: float, x1: float, y1: float, seconds: float,
                 color: tuple[int, int, int] = (255, 255, 255), size: float = 0.03,
-                start: float = 0.0) -> BlobScript:
+                start: float = 0.0, id: int = -1) -> BlobScript:
+    """A light crossing from (x0, y0) to (x1, y1) over seconds from start, untracked (id -1) unless id names the
+    tracker's id it keeps for the whole crossing (a light Paint draws segments for)."""
     def script(t: float) -> Blob | None:
         if t < start or t > start + seconds:
             return None
         u = (t - start) / seconds if seconds > 0 else 1.0
-        return Blob(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, size, color)
+        return Blob(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, size, color, id=id)
     return script
 
 
