@@ -8,6 +8,7 @@ from pathlib import Path
 PHOSPHORS: dict[str, tuple[int, int, int]] = {
     "green": (51, 255, 51),
     "amber": (255, 176, 0),
+    "white": (255, 255, 255),   # the greyscale look: normal text grey, bold white
 }
 STRIP_LOOKS = ("reverse", "dim-reverse", "bright-on-field", "plain")
 

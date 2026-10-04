@@ -1,10 +1,11 @@
 # The CODE tile's reel on the 2 x 2 wall (the review of 2026-10-03, sonyIMX500/reviews/2026-10-03-code-tile-demo/
 # 05-synthesis.md): the 128x64 ink view, a title card an entry, the source typed at 600 cps and held still, a quiet
-# build with the phase word on the strip, the run capped by the --play list (endoh1:18,sloane:12,thadgavin:15), a
+# build with the phase word on the strip, the run capped by the --play list (sloane:12,endoh1:18,thadgavin:15), a
 # card at the end. Keys not set here take show.config.Config's defaults.
 width = 128
 height = 64
 view = "ink"
+phosphor = "white"       # greyscale, tried 2026-10-03 in place of green
 strip = true
 strip_phase = true
 strip_look = "plain"

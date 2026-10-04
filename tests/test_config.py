@@ -30,6 +30,12 @@ def test_values_from_file(tmp_path):
     assert cfg.entries_dir == Path("e")
 
 
+def test_white_phosphor_is_the_greyscale_look(tmp_path):
+    p = tmp_path / "show.toml"
+    p.write_text('phosphor = "white"\n')
+    assert load_config(p).phosphor_rgb == (255, 255, 255)
+
+
 def test_unknown_phosphor_rejected(tmp_path):
     p = tmp_path / "show.toml"
     p.write_text('phosphor = "blue"\n')
