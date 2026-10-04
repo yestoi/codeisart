@@ -49,6 +49,7 @@ PROMPT = "STILL PLAYING? HAND UP"
 SWITCH_RATIO = 1.3           # a rival this much larger than the player ...
 SWITCH_SECONDS = 1.0         # ... for this long takes the lock
 REACQUIRE_DISTANCE = 0.25    # zone units: a new body this near the lost player's last place keeps the slot
+REACQUIRE_SECONDS = 2.0      # in a game, the slot waits this long for its player before the lock moves on
 BLOB_SPEED = 0.05            # frame widths a second: a slower in-zone light is a lamp, not a person (spec 7.2)
 LOG_EVERY = 60.0             # seconds between two log lines about one failing thing
 LAG_EVERY = 1.0              # seconds between two lag lines (capture age at push), at DEBUG: run -v
@@ -95,6 +96,13 @@ class PlayerLock:
     While the locked body is absent, player is None and the slot is kept; a body with an id that was not there
     when it went missing, in the zone within REACQUIRE_DISTANCE of its last place, takes the slot (the tracker
     never reuses an id, so a re-detected player is a new id). player2 is the next in-zone body by scale.
+
+    In a game (update(..., in_game=True); Night One, 2026-10-04 02:45: passers-by took Dodge from its player)
+    the rules tighten: no rival takes the lock from a player who is seen, whatever their size; when the player's
+    id dies the slot waits REACQUIRE_SECONDS for them, a new id by the old place takes it at once as before, and
+    after lost_seconds so does the nearest body already there within REACQUIRE_DISTANCE (a bystander beside the
+    player, or the sensor's duplicate pose of them); only when nobody is near for REACQUIRE_SECONDS does the
+    largest in-zone body get the game. The lobby and the menu keep the old rules (in_game False).
     """
 
     def __init__(self, lost_seconds: float):
@@ -109,19 +117,23 @@ class PlayerLock:
     def reset(self) -> None:
         self.__init__(self.lost_seconds)
 
-    def update(self, bodies: tuple[Body, ...], t: float) -> tuple[Body | None, Body | None]:
+    def update(self, bodies: tuple[Body, ...], t: float, in_game: bool = False) -> tuple[Body | None, Body | None]:
         inside = sorted((b for b in bodies if b.in_zone), key=lambda b: -b.scale)
         by_id = {b.id: b for b in inside}
         tracked = next((b for b in bodies if b.id == self.id), None) if self.id is not None else None
         if self.id is not None and self.id not in by_id:
-            if t - self._seen > self.lost_seconds + EPSILON:
+            lost_for = t - self._seen
+            hold = REACQUIRE_SECONDS if in_game else self.lost_seconds
+            if lost_for > hold + EPSILON:
                 self.id = None
             elif tracked is None:
-                new = [b for b in inside if b.id not in self._known and
-                       math.hypot(b.zone_x - self._place[0], b.zone_y - self._place[1]) <= REACQUIRE_DISTANCE]
-                if new:
-                    self.id = min(new, key=lambda b: math.hypot(b.zone_x - self._place[0],
-                                                                b.zone_y - self._place[1])).id
+                dist = lambda b: math.hypot(b.zone_x - self._place[0], b.zone_y - self._place[1])
+                near = [b for b in inside if dist(b) <= REACQUIRE_DISTANCE]
+                pick = [b for b in near if b.id not in self._known]
+                if not pick and in_game and lost_for > self.lost_seconds + EPSILON:
+                    pick = near
+                if pick:
+                    self.id = min(pick, key=dist).id
         if self.id is None and inside:
             self.id, self._rival = inside[0].id, None
         player = by_id.get(self.id)
@@ -135,8 +147,8 @@ class PlayerLock:
                 and 0.0 < tracked.zone_x < 1.0 and 0.0 < tracked.zone_y < 1.0)   # anchor still over the mat
         if held:
             player = tracked
-        if player is None:                            # the rival's time counts only while the player is seen (C31)
-            self._rival = None
+        if player is None or in_game:                 # the rival's time counts only while the player is seen (C31);
+            self._rival = None                        # in a game nobody takes the lock from a player who is seen
         else:
             rival = next((b for b in inside if b.id != player.id and b.scale > SWITCH_RATIO * player.scale), None)
             if rival is None:
@@ -145,9 +157,9 @@ class PlayerLock:
                 self._rival, self._rival_since = rival.id, t
             elif t - self._rival_since >= SWITCH_SECONDS - EPSILON:
                 self.id, player, self._rival = rival.id, rival, None
-            if not held:
-                self._seen, self._place = t, (player.zone_x, player.zone_y)
-                self._known = {b.id for b in bodies}
+        if player is not None and not held:
+            self._seen, self._place = t, (player.zone_x, player.zone_y)
+            self._known = {b.id for b in bodies}
         player2 = next((b for b in inside if b.id != self.id), None)
         return player, player2
 
@@ -451,7 +463,7 @@ class Runner:
         self.t += dt
         sensed = sensed.with_motion(self.cfg.size)
         self._bodies = sensed.bodies
-        self.player, self.player2 = self.lock.update(sensed.bodies, self.t)
+        self.player, self.player2 = self.lock.update(sensed.bodies, self.t, in_game=self.current_name != LOBBY)
         pid = None if self.player is None else self.player.id
         if pid != self._player_id:                  # Night One diagnosis (2026-10-03): who the Man follows, and why
             inside = [b for b in sensed.bodies if b.in_zone]

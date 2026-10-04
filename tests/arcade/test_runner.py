@@ -416,6 +416,71 @@ def test_lock_holds_its_player_through_a_zone_flicker():
     assert lock.update((body(1, True, 0.3),), 0.2)[0].id == 1                # back on the mat within lost_seconds
 
 
+def test_in_game_a_bigger_bystander_never_takes_the_lock(font5x7):
+    """Night One (2026-10-04 02:45): a passer-by in front of the Dodge player is the larger body, and after
+    SWITCH_SECONDS the lock gave them the game. Once a game is on, nobody takes the lock from a player who is
+    still seen; the rival rule is the lobby's."""
+    runner, _, _ = make_runner(font5x7)
+    runner.launch("spy")
+    small = Person(x=0.35, height=0.5, id=1)
+    big = Person(x=0.65, height=0.7, id=2).arrive(1.0)                # 1.4 times the scale, for three seconds
+    ids = set()
+    for s in scene(persons=[small, big], ticks=ticks(4.0)):
+        runner.tick(s, TICK)
+        ids.add(None if runner.player is None else runner.player.id)
+    assert ids == {1}, ids
+    assert runner.player2.id == 2
+
+
+def test_in_game_a_lost_player_is_not_replaced_by_the_largest_body(font5x7):
+    """The player's tracker id dies (the sensor misses them for half a second, which it does every few seconds in a
+    crowd); another body is in the zone. In a game the slot is held empty for REACQUIRE_SECONDS, not given to the
+    largest body after lost_seconds; only then does the lock move on."""
+    from arcade.runner import REACQUIRE_SECONDS
+    runner, _, _ = make_runner(font5x7)
+    runner.launch("spy")
+    player = Person(x=0.4, height=0.7, id=1).leave(1.0)
+    other = Person(x=0.75, height=0.6, id=3)                          # in the zone all along, smaller
+    seen = []
+    for s in scene(persons=[player, other], ticks=ticks(1.0 + REACQUIRE_SECONDS + 0.5)):
+        runner.tick(s, TICK)
+        seen.append(None if runner.player is None else runner.player.id)
+    assert seen[ticks(1.0) - 1] == 1
+    assert set(seen[ticks(1.0) + 1:ticks(1.0 + REACQUIRE_SECONDS) - 1]) == {None}, "the slot is kept empty"
+    assert set(seen[ticks(1.0 + REACQUIRE_SECONDS) + 2:]) == {3}, "then the lock moves on"
+
+
+def test_in_game_the_player_back_as_a_new_id_after_a_second_keeps_the_slot(font5x7):
+    runner, _, _ = make_runner(font5x7)
+    runner.launch("spy")
+    player = Person(x=0.4, height=0.7, id=1).leave(1.0)
+    other = Person(x=0.75, height=0.6, id=3)
+    back = Person(x=0.43, height=0.7, id=7).arrive(1.9)               # re-detected by the old place, a new id
+    seen = []
+    for s in scene(persons=[player, other, back], ticks=ticks(3.0)):
+        runner.tick(s, TICK)
+        seen.append(None if runner.player is None else runner.player.id)
+    assert set(seen[ticks(1.0) + 1:ticks(1.9)]) == {None}
+    assert set(seen[ticks(1.9) + 1:]) == {7}, seen[ticks(1.9):ticks(2.2)]
+
+
+def test_in_game_after_lost_seconds_the_nearest_body_takes_the_slot_not_the_largest(font5x7):
+    """A body that was already there by the player's place (a bystander beside them, or the sensor's duplicate
+    pose of the player) takes the slot after lost_seconds, before a larger body across the zone."""
+    runner, _, _ = make_runner(font5x7)
+    runner.launch("spy")
+    player = Person(x=0.35, height=0.85, id=1).leave(1.0)
+    beside = Person(x=0.45, height=0.5, id=3)
+    far_big = Person(x=0.75, height=0.8, id=9)                         # larger than beside, two thirds of the zone away
+    seen = []
+    for s in scene(persons=[player, beside, far_big], ticks=ticks(2.5)):
+        runner.tick(s, TICK)
+        seen.append(None if runner.player is None else runner.player.id)
+    assert seen[ticks(1.0) - 1] == 1
+    assert set(seen[ticks(1.0) + 1:ticks(1.5) - 1]) == {None}
+    assert set(seen[ticks(1.5) + 2:]) == {3}, seen[ticks(1.5):ticks(1.7)]
+
+
 def test_presence_hysteresis_ignores_out_of_zone(font5x7):
     runner, _, _ = make_runner(font5x7)
     feed(runner, scene(persons=crowd(6), ticks=ticks(3.0)))
