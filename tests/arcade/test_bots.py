@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from arcade.bots import (BODY_HEIGHT, BODY_RANGE_SECONDS, MAX_PLAY_SECONDS, Move, Nobody, Play, _sensed, for_game, play,
+from arcade.bots import (BODY_HEIGHT, BODY_RANGE_SECONDS, LIGHT_SIZE, MAX_PLAY_SECONDS, Move, Nobody, Play, _sensed, for_game, play,
                          seeds, win_rate)
 from arcade.calibration import Calibration
 from arcade.config import ArcadeConfig
@@ -366,3 +366,30 @@ def test_move_without_lift_is_todays_body(font5x7):
     noisy = [s["anchor_x"] for s in probe(0.05, Move(), seed, font5x7)]
     assert [s["anchor_x"] for s in probe(0.05, Move(lift=0.0), seed, font5x7)] == noisy
     assert [s["anchor_x"] for s in probe(0.05, Move(lift=0.1), seed, font5x7)] == noisy   # lift draws no noise
+
+
+def test_move_light_is_a_placed_blob_at_the_wrist():
+    # I0 (Paint): a bot holding a light is one tracked blob, id 1, at the Move hand's wrist, placed by place_blob.
+    cal = Calibration()
+    for i, before in ((0, None), (40, 0.45)):
+        sensed, _ = _sensed(i, Move(x=0.3, wrist_y=0.2, light=(0, 255, 0)), before, cal)
+        (body,), (blob,) = sensed.bodies, sensed.blobs
+        wrist = body.keypoints[RIGHT_WRIST]
+        assert (blob.x, blob.y) == (pytest.approx(wrist.x, abs=1e-6), pytest.approx(wrist.y, abs=1e-6)), f"tick {i}"
+        assert (blob.id, blob.color, blob.size) == (1, (0, 255, 0), LIGHT_SIZE)
+        assert blob.in_zone
+        x0, y0, x1, y1 = cal.zone
+        assert blob.zone_x == pytest.approx((wrist.x - x0) / (x1 - x0)) and blob.zone_y == pytest.approx((wrist.y - y0) / (y1 - y0))
+    (both,) = _sensed(0, Move(hand="both", wrist_y=0.2, light=(255, 0, 0)), None, cal)[0].blobs
+    assert (both.x, both.y) == (pytest.approx(wrist.x, abs=0.2), pytest.approx(wrist.y, abs=0.2))   # one light, the right wrist
+
+
+def test_move_without_light_is_todays_record(font5x7):
+    cal = Calibration()
+    for i, before in ((0, None), (40, 0.45)):
+        today, zero = (_sensed(i, move, before, cal)[0] for move in (Move(), Move(light=None)))
+        assert today.bodies == zero.bodies and today.blobs == zero.blobs == ()
+        assert not today.motion.any()
+    seed = seeds(Probe, "128x32", 1)[0]
+    noisy = [s["anchor_x"] for s in probe(0.05, Move(), seed, font5x7)]
+    assert [s["anchor_x"] for s in probe(0.05, Move(light=(0, 255, 0)), seed, font5x7)] == noisy   # a light draws no noise

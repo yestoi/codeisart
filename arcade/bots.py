@@ -23,7 +23,7 @@ from arcade.calibration import Calibration
 from arcade.config import ArcadeConfig
 from arcade.headless import RecordingDisplay, run_headless
 from arcade.input import Depth
-from arcade.sensed import MOTION_GRID, Audio, Sensed, place
+from arcade.sensed import MOTION_GRID, RIGHT_WRIST, LEFT_WRIST, Audio, Blob, Sensed, place, place_blob
 from arcade.sources.actors import TICK, Person
 from show.font import Font
 
@@ -34,6 +34,7 @@ MAX_PLAY_SECONDS = 180.0
 BODY_HEIGHT = 0.7               # a bot's body at near 0.5; near 0 is 0.52 tall (in the zone), near 1 is 0.95
 BODY_RANGE_SECONDS = 0.8        # a bot's near moves at most 1 / this a second: a brisk step, not a teleport
 HIP_Y = Person().y0             # a bot's hip height in the camera frame (Person's); a Move's lift raises it
+LIGHT_SIZE = 0.03               # a Move's light: one tracked blob (id 1) of this size at the hand's wrist (I0, Paint)
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -45,7 +46,9 @@ class Move:
     0 far, 1 near, 0.5 its start. None: the start size (Person's). pose, a name in arcade.poses.POSES the body
     holds on the tick (wrist_y, when set, then moves the hand's wrists), or None for stand. lift, the share of the
     frame height the whole body (its hips and every keypoint) is raised by on the tick, as Person.jump raises it;
-    it carries no noise draw, so a play without it draws as before."""
+    it carries no noise draw, so a play without it draws as before. light, an RGB colour the body holds as one tracked
+    light (a Blob of LIGHT_SIZE, id 1) at the hand's wrist (the right one for "both"), placed by place_blob; None
+    holds nothing, and a light draws no noise either."""
 
     x: float = 0.5
     hand: str = "right"
@@ -53,6 +56,7 @@ class Move:
     near: float | None = None
     pose: str | None = None
     lift: float = 0.0
+    light: tuple[int, int, int] | None = None
 
 
 class Bot(Protocol):
@@ -136,7 +140,7 @@ def _sensed(i: int, move: Move | None, before: float | None, cal: Calibration) -
     wrist_y, placed with cal. An unknown pose raises ValueError. With near (already paced by play) the body is
     BODY_HEIGHT * Depth.ratio(near) tall, else Person's own height."""
     t = i * TICK
-    bodies, cx = (), None
+    bodies, blobs, cx = (), (), None
     if move is not None:
         x0, _, x1, _ = cal.zone
         cx = min(x1, max(x0, x0 + move.x * (x1 - x0)))
@@ -149,8 +153,11 @@ def _sensed(i: int, move: Move | None, before: float | None, cal: Calibration) -
             for hand in ("left", "right") if move.hand == "both" else (move.hand,):
                 person.wrist(hand, move.wrist_y, move.wrist_y, 2 * TICK, at=t - TICK)
         bodies = (place(person.body_at(t, 1), cal),)
+        if move.light is not None:
+            wrist = bodies[0].keypoints[LEFT_WRIST if move.hand == "left" else RIGHT_WRIST]
+            blobs = (place_blob(Blob(wrist.x, wrist.y, LIGHT_SIZE, tuple(move.light), id=1), cal),)
     w, h = MOTION_GRID
-    return Sensed(t, camera_t=t, camera_fresh=True, camera_seq=i + 1, bodies=bodies, blobs=(),
+    return Sensed(t, camera_t=t, camera_fresh=True, camera_seq=i + 1, bodies=bodies, blobs=blobs,
                   motion=np.zeros((h, w), bool), audio=Audio()), cx
 
 
