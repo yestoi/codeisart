@@ -336,6 +336,7 @@ class Runner:
         self._held_before = 0
         self._camera_seq, self._camera_capture = 0, None
         self._ages: list[float] = []            # capture ages at push since the last lag line, in ms
+        self._player_id: int | None = None      # the last logged player id (the switch line below)
         self._lag_logged = -math.inf
         self._source_failed: dict[str, bool] = {}
         self.display.set_brightness(cfg.brightness)
@@ -437,6 +438,12 @@ class Runner:
         sensed = sensed.with_motion(self.cfg.size)
         self._bodies = sensed.bodies
         self.player, self.player2 = self.lock.update(sensed.bodies, self.t)
+        pid = None if self.player is None else self.player.id
+        if pid != self._player_id:                  # Night One diagnosis (2026-10-03): who the Man follows, and why
+            inside = [b for b in sensed.bodies if b.in_zone]
+            self.log.info("player %s -> %s at %.1f s; %d in zone: %s", self._player_id, pid, self.t, len(inside),
+                          [(b.id, round(b.scale, 2), round(b.zone_x, 2)) for b in inside])
+            self._player_id = pid
         self._evidence = any(b.in_zone for b in sensed.bodies) or self._moving(sensed)
         present = self.presence.update(self._evidence, self.t)
         sensed = dataclasses.replace(sensed, t=self.t, camera_t=sensed.camera_t + (self.t - sensed.t),
