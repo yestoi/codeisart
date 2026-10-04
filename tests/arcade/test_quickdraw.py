@@ -713,3 +713,19 @@ def test_a_wrist_the_camera_never_sees_logs_a_zero_conf(caplog):
     lines = round_lines(caplog)
     assert len(lines) == 1, lines
     assert "wrist conf max 0.00" in lines[0] and "seen 0%" in lines[0], lines[0]
+
+
+def test_a_human_draw_under_a_second_beats_the_cpu_whatever_the_rng_gives():
+    """2026-10-03, the owner's rounds on the IMX500: the wrist read at 0.9 or better, and a human draw through reaction,
+    the arm's rise and the camera's lag lands past 0.8 s, which the old CPU window (0.25 to 0.8 s) always beat. The CPU
+    now draws no sooner than 0.9 s, so a 0.85 s draw wins every round, and a round waits 2.5 s before it voids."""
+    assert CPU_DRAW == (0.9, 1.6) and DRAW_TIMEOUT == 2.5
+    for i in range(3):
+        game = make(i=i)
+        frames = scene(persons=[hand(Person(0.3, id=1), at=3.68)], ticks=300)     # DRAW at 3.0 s; the bar lags ~0.17 s
+        advance(game, frames, "play")
+        game._wait = 2.0                                                          # the CPU's time stays the rng's
+        advance(game, frames, "result")
+        state = game.debug_state()
+        assert (state["left"], state["right"]) == (1, 0), (i, state)
+        assert 0.8 <= state["react"] < 0.95, (i, state)

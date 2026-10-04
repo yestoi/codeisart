@@ -30,11 +30,12 @@ class Good:
 
 
 class Lazy(Good):
-    """Slow (15 ticks) and sloppy, and on every fourth round (2, 6, ...) it draws early: once the wait_left it saw
-    is under EARLY_LEFT, which by the time its hand is up is before DRAW (TOO SOON)."""
+    """Slow (40 ticks, 1.33 s: with the bar's lag it crosses near 1.45 s, late in the CPU's 0.9 to 1.6 s window, so it
+    wins a round now and then and loses most) and sloppy, and on every fourth round (2, 6, ...) it draws early: once
+    the wait_left it saw is under EARLY_LEFT, which, seen 1.33 s late, puts its hand up before DRAW (TOO SOON)."""
 
-    reaction_ticks, noise = 15, 0.05
-    EARLY_LEFT = 1.0
+    reaction_ticks, noise = 40, 0.05
+    EARLY_LEFT = 1.6
 
     def _early(self, state: dict) -> bool:
         left = state.get("wait_left")

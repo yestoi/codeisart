@@ -37,8 +37,9 @@ log = logging.getLogger("arcade")
 WIN_ROUNDS = 3
 WAIT_SECONDS = (2.0, 5.0)   # Q71: the spec says 2 to 6
 READY_SECONDS = 1.0         # least
-DRAW_TIMEOUT = 1.5          # s after DRAW with nobody drawn: the CPU's round, a void round with no CPU
-CPU_DRAW = (0.25, 0.80)    # s after DRAW the CPU draws (rng.uniform per round and seat)
+DRAW_TIMEOUT = 2.5          # s after DRAW with nobody drawn: the CPU's round, a void round with no CPU
+CPU_DRAW = (0.9, 1.6)      # s after DRAW the CPU draws (rng.uniform per round and seat). Was 0.25 to 0.8: on the
+                            # IMX500 a human draw lands past 0.8 s (reaction, the arm, ~0.2 s of lag) and never won (2026-10-03)
 RESULT_SECONDS = 1.5
 OVER_SECONDS = 2.5
 ARM_PX = 6                  # a bar draws only after it sat this far below the line in this round's play
