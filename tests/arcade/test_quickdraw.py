@@ -651,3 +651,65 @@ def test_feel_file_declares_the_control_and_needs_no_override():
     data = tomllib.loads((Path(__file__).resolve().parents[2] / "arcade/games/quickdraw_feel.toml").read_text())
     assert data["fidelity"] == {"input": "cursor_y", "xy": "hand_xy", "axis": 1}
     assert "budgets" not in data                                # No budget override (the plan)
+
+
+# --- the round log (2026-10-03): one INFO line per round, so the journal says what the camera saw of the human's hand ---
+
+def blind_wrists(frames):
+    """The frames with both wrists at confidence 0: what PoseNet gives when it cannot see the hands."""
+    from arcade.sensed import LEFT_WRIST, RIGHT_WRIST, Keypoint
+    for f in frames:
+        bodies = tuple(dataclasses.replace(b, keypoints=tuple(Keypoint(k.x, k.y, 0.0) if i in (LEFT_WRIST, RIGHT_WRIST) else k
+                                                              for i, k in enumerate(b.keypoints))) for b in f.bodies)
+        yield dataclasses.replace(f, bodies=bodies)
+
+
+def round_lines(caplog):
+    return [r.getMessage() for r in caplog.records if r.name == "arcade" and r.getMessage().startswith("quickdraw round ")]
+
+
+def test_a_round_the_human_draws_logs_one_line_with_the_wrist_and_the_draw(caplog):
+    import logging
+    import re
+    caplog.set_level(logging.INFO, logger="arcade")
+    game = make()
+    frames = scene(persons=[hand(Person(0.3, id=1), at=3.13)], ticks=300)
+    advance(game, frames, "play")
+    pinned(game, wait=2.0, cpu=0.4)
+    advance(game, frames, "result")
+    lines = round_lines(caplog)
+    assert len(lines) == 1, lines
+    line = lines[0]
+    assert line.startswith("quickdraw round 1: ")
+    assert "wrist conf max 1.00" in line and "seen 100%" in line, line
+    assert re.search(r"bar peak (2[4-9]|3[0-9]|40) of 40 px", line), line      # the round ends as the bar crosses the line (24 px up)
+    assert re.search(r"human drew at 0\.[23]\d s", line), line
+    assert "cpu at 0.40 s" in line and line.endswith("won by human (draw)"), line
+
+
+def test_a_round_the_human_never_raises_logs_no_draw_and_the_cpu(caplog):
+    import logging
+    caplog.set_level(logging.INFO, logger="arcade")
+    game = make()
+    frames = scene(persons=[Person(0.3, id=1)], ticks=300)      # hands at the hips the whole time
+    advance(game, frames, "play")
+    pinned(game, wait=2.0, cpu=0.2)
+    advance(game, frames, "result")
+    lines = round_lines(caplog)
+    assert len(lines) == 1, lines
+    line = lines[0]
+    assert "bar peak 0 of 40 px" in line and "armed yes" in line and "human no draw" in line, line
+    assert "cpu at 0.20 s" in line and line.endswith("won by cpu (draw)"), line
+
+
+def test_a_wrist_the_camera_never_sees_logs_a_zero_conf(caplog):
+    import logging
+    caplog.set_level(logging.INFO, logger="arcade")
+    game = make()
+    frames = blind_wrists(scene(persons=[hand(Person(0.3, id=1), at=3.13)], ticks=300))
+    advance(game, frames, "play")
+    pinned(game, wait=2.0, cpu=0.2)
+    advance(game, frames, "result")
+    lines = round_lines(caplog)
+    assert len(lines) == 1, lines
+    assert "wrist conf max 0.00" in lines[0] and "seen 0%" in lines[0], lines[0]

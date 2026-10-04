@@ -19,6 +19,7 @@ hand_xy (player 1's bar centre), left_xy, right_xy (the bars), wait_left (s unti
 None) and react (the last winning draw's time, s, or None)."""
 from __future__ import annotations
 
+import logging
 import math
 import random
 from types import MappingProxyType
@@ -27,9 +28,11 @@ from arcade.canvas import Canvas
 from arcade.game import Game, GameInfo, icon_from_rows
 from arcade.input import Cursor, Glide, capture_grace
 from arcade.juice import PLAYER_COLORS
-from arcade.sensed import Sensed
+from arcade.sensed import LEFT_WRIST, MIN_CONF, RIGHT_WRIST, Sensed
 from arcade.sources.actors import TICK, Person, scene
 from show.font import CELL_H
+
+log = logging.getLogger("arcade")
 
 WIN_ROUNDS = 3
 WAIT_SECONDS = (2.0, 5.0)   # Q71: the spec says 2 to 6
@@ -136,6 +139,7 @@ class Quickdraw(Game):
         self._react: float | None = None
         self._active = False
         self._hint_level = 0.0
+        self._round_log: dict | None = None     # what the camera saw of the human's hand this round (the journal line)
 
     # ----- seats -----
 
@@ -224,9 +228,12 @@ class Quickdraw(Game):
                 seat.y += max(-step, min(step, target - seat.y))
                 seat.anchor, seat.idle = seat.y, 0.0
                 continue
-            cursor = seat.cursor.update(found.get(seat.ctrl), sensed.t)
+            body = found.get(seat.ctrl)
+            cursor = seat.cursor.update(body, sensed.t)
             v = seat.glide.update(None if cursor is None else cursor[1], sensed.t, sensed.camera_t)
             seat.y = self.bar_bottom if v is None else self._bar_y(v)      # a hand not seen is a hand down
+            if seat.index == 0 and self.phase == "play" and self._round_log is not None:
+                self._watch_hand(body, seat.y)
             if abs(seat.y - seat.anchor) >= ACTIVE_PX - 1e-9:
                 self._active, seat.anchor, seat.idle = True, seat.y, 0.0
             else:
@@ -250,6 +257,7 @@ class Quickdraw(Game):
         self._flashed = False
         for seat in self.seats:
             seat.armed = False
+        self._round_log = {"conf": 0.0, "ticks": 0, "seen": 0, "peak": self.bar_bottom, "drew": None}
         self._set("play")
 
     def _play(self) -> None:
@@ -268,6 +276,8 @@ class Quickdraw(Game):
                 self._flashed = self.fx.flash(DRAW_COLOR, 0.15)
             return
         since = self.phase_t - self._wait
+        if crossed and self._round_log is not None and self._round_log["drew"] is None and self.seats[0] in crossed:
+            self._round_log["drew"] = since
         if crossed:
             winner = min(crossed, key=lambda s: (s.y, s.index))       # a tie on the tick goes to the higher hand
             self._won(winner.index, since, "draw")
@@ -285,9 +295,12 @@ class Quickdraw(Game):
             self._void()                        # nobody in the other seat to give the round to: an empty seat a
             return
         self._soon = soon[0].index
+        if self._round_log is not None and soon[0].index == 0:
+            self._round_log["drew"] = "soon"
         self._won(other.index, None, "soon")
 
     def _void(self) -> None:
+        self._log_round("won by nobody (void)")
         self._to_ready_void()
 
     def _to_ready_void(self) -> None:
@@ -305,12 +318,44 @@ class Quickdraw(Game):
             self._drew = True
         if seat.ctrl is None and how == "draw":
             seat.cpu_up = True
+        who = "human" if index == 0 else ("cpu" if self._is_cpu(seat) else "player 2")
+        self._log_round(f"won by {who} ({'draw' if how == 'draw' else 'the other drew too soon'})")
         cx = self._bar_x(index)
         color = self._color(seat)
         self.fx.burst(cx, seat.y, color)
         if seat.ctrl is not None:
             self.fx.echo(index + 1, "ok")
         self._set("result")
+
+    def _watch_hand(self, body, y: float) -> None:
+        """One play tick of the human seat: the best wrist confidence the camera gave, whether a wrist was usable,
+        and how high the bar got."""
+        r = self._round_log
+        conf = 0.0 if body is None else max(body.keypoints[LEFT_WRIST].conf, body.keypoints[RIGHT_WRIST].conf)
+        r["conf"] = max(r["conf"], conf)
+        r["ticks"] += 1
+        r["seen"] += conf >= MIN_CONF
+        r["peak"] = min(r["peak"], y)
+
+    def _log_round(self, outcome: str) -> None:
+        """One INFO line a round (2026-10-03, the owner's first Quick Draw on the IMX500 lost 3-0 and the journal could
+        not say whether the hand was read): the human seat's wrist confidence, bar travel and draw time, the CPU's."""
+        r, self._round_log = self._round_log, None
+        if r is None:
+            return
+        a, b = self.seats
+        if a.ctrl is None:
+            human = "no human in seat a"
+        else:
+            pct = round(100 * r["seen"] / r["ticks"]) if r["ticks"] else 0
+            span = self.bar_bottom - self.bar_top
+            drew = r["drew"]
+            when = "too soon" if drew == "soon" else ("no draw" if drew is None else f"drew at {drew:.2f} s")
+            human = (f"human wrist conf max {r['conf']:.2f}, seen {pct}% of {r['ticks']} ticks, "
+                     f"bar peak {round(self.bar_bottom - r['peak'])} of {round(span)} px, armed {'yes' if a.armed else 'no'}, "
+                     f"human {when}")
+        cpu = f"cpu at {self._cpu[1]:.2f} s" if self._is_cpu(b) else "no cpu"
+        log.info("quickdraw round %d: %s; %s; %s", self.round, human, cpu, outcome)
 
     def _finish(self) -> None:
         a, b = self.seats
