@@ -7,3 +7,4 @@ camera = "imx500"
 capture = "picamera2"
 camera_fps = 30       # posenet's inference rate on the IMX500: every tensor is taken
 gamma = 1.0           # the card applies gamma: wall_pattern.py gamma's checker matched the RIGHT patch (2026-10-02)
+brightness = 0.1      # Night One: the party wall runs at 0.1 (2026-10-03)
