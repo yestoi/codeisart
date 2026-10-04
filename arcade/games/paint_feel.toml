@@ -1,0 +1,6 @@
+# Paint's feel: the wrist brush follows the hand's height (cursor_y) down the paper, so the brush's y is the measured
+# control (a toy has no fidelity budget; the probes land where the brush moved). No budget override.
+[fidelity]
+input = "cursor_y"
+xy = "brush_xy"
+axis = 1
