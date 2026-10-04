@@ -35,10 +35,30 @@ from arcade import bots
 from arcade.games import get_game
 from tests.arcade.helpers import PLAYS, play_key
 
-PLAY_WORKERS = 4                  # worker processes at most: the Pi 5 has 4 cores, the shared Mac 4 fast ones (Q97)
-WORKER_TIMEOUT_S = 180.0          # from the first worker's start to the last's end; past it the rest are killed
-                                  # (eight games' 480 plays take about 105 s alone, 120 to 140 s beside the soaks;
-                                  # a hang must not push the suite past 10 minutes)
+
+
+def pool_workers(environ) -> int:
+    """ARCADE_POOL_WORKERS as an int, 4 when absent (Q97: the Pi 5 has 4 cores, the shared Mac 4 fast ones); a value
+    that is not an integer of 1 or more raises ValueError naming the variable. With 1, start() launches no worker and
+    warns nothing: an implementer's subset run beside another pool (it22 R)."""
+    raw = environ.get("ARCADE_POOL_WORKERS")
+    if raw is None:
+        return 4
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        n = 0
+    if n < 1 or str(raw).strip() != str(n):
+        raise ValueError(f"ARCADE_POOL_WORKERS must be an integer of 1 or more, got {raw!r}")
+    return n
+
+
+PLAY_WORKERS = pool_workers(os.environ)   # worker processes at most
+WORKER_TIMEOUT_S = 270.0          # from the first worker's start to the last's end; past it the rest are killed
+                                  # (eight games' 480 plays took about 105 s alone, 120 to 140 s beside the soaks;
+                                  # Paint's 60 plays of 65 s each take nine games' 540 past 180 s on the shared Mac:
+                                  # 270 is Q162's, a third over the 205 to 225 s expected with Paint and Tug. A hang
+                                  # now costs about 11 minutes)
 BESIDE_THE_POOL = ("tests/arcade/test_actors.py", "tests/arcade/test_all_games.py")   # files that run beside it
 ROLES = ("good", "lazy", "none")  # feel._bot_plays' three bots, in its order; "none" is bots.Nobody
 ROOT = Path(__file__).resolve().parents[2]   # the checkout this file is in (a worktree's own): the workers' cwd

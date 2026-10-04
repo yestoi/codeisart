@@ -268,3 +268,15 @@ def test_the_rows_follow_the_selected_tests():
     assert pooled.rows_for([pool_test], REPORT_PLAYS) == REPORT_PLAYS
     assert pooled.rows_for([_Item(), _Item("font5x7")], REPORT_PLAYS) == []
     assert pooled.rows_for([game_test, pong_test, game_test], REPORT_PLAYS) == [pong, flap]   # REPORT_PLAYS' order
+
+
+def test_the_worker_count_reads_its_variable():
+    """ARCADE_POOL_WORKERS (it22 R): an implementer's subset run starts no pool with 1; absent, the four of Q97."""
+    assert pooled.pool_workers({}) == 4
+    assert pooled.pool_workers({"ARCADE_POOL_WORKERS": "1"}) == 1
+    assert pooled.pool_workers({"ARCADE_POOL_WORKERS": "3"}) == 3
+    for bad in ("0", "x", "-2", "", "2.5"):
+        with pytest.raises(ValueError, match="ARCADE_POOL_WORKERS"):
+            pooled.pool_workers({"ARCADE_POOL_WORKERS": bad})
+    assert pooled.PLAY_WORKERS >= 1
+    assert pooled.WORKER_TIMEOUT_S == 270.0        # Q162: nine games' 540 plays take a share past 180 s on the shared Mac
