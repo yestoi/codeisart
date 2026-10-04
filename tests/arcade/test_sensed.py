@@ -370,9 +370,9 @@ def test_place_wants_two_thirds_of_the_baseline_scale_once_calibrated():
     # off) and min_height drops to what a far person in the crowd behind has; the scale tells them apart. Night
     # One (2026-10-04 04:35, camera at shoulder height): the bar crowd behind the square read 0.10 to 0.22 against a
     # baseline of 0.34 at the square's middle and 0.255 at its back edge, so half the baseline (0.17) let the bar
-    # in and the gate is MIN_SCALE_SHARE = 0.65 (0.22; 0.68 for twenty minutes cut a back-edge guest whose hips were lost). Without a baseline (0.0, not calibrated) the height alone
+    # in and the gate is MIN_SCALE_SHARE = 0.76 (0.26: at 0.22 the bar's noise band crossed the gate for a capture at a time and the lock took them). Without a baseline (0.0, not calibrated) the height alone
     # decides, as before.
-    assert MIN_SCALE_SHARE == 0.65
+    assert MIN_SCALE_SHARE == 0.76
     b = figure()
     assert place(b, Calibration(baseline_scale=b.scale / MIN_SCALE_SHARE - 1e-6)).in_zone
     assert not place(b, Calibration(baseline_scale=b.scale / MIN_SCALE_SHARE + 1e-3)).in_zone
@@ -380,8 +380,8 @@ def test_place_wants_two_thirds_of_the_baseline_scale_once_calibrated():
     assert player_sized(b, Calibration(baseline_scale=b.scale / MIN_SCALE_SHARE - 1e-6))
     assert not player_sized(b, Calibration(baseline_scale=b.scale / MIN_SCALE_SHARE + 1e-3))
     assert not player_sized(figure(box=(0.3, 0.2, 0.7, 0.6)), Calibration())    # 0.4 tall: under min_height
-    bar, back_edge = Body(1, (0.4, 0.1, 0.6, 0.6), figure().keypoints, scale=0.22), Body(2, (0.4, 0.1, 0.6, 0.6), figure().keypoints, scale=0.25)
-    assert not player_sized(bar, Calibration(baseline_scale=0.34)) and player_sized(back_edge, Calibration(baseline_scale=0.34))
+    bar, back_row = Body(1, (0.4, 0.1, 0.6, 0.6), figure().keypoints, scale=0.25), Body(2, (0.4, 0.1, 0.6, 0.6), figure().keypoints, scale=0.27)
+    assert not player_sized(bar, Calibration(baseline_scale=0.34)) and player_sized(back_row, Calibration(baseline_scale=0.34))
 
 
 def test_place_blob_sets_zone_x_and_zone_y():

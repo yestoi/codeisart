@@ -312,9 +312,9 @@ def _in(zone: tuple[float, float, float, float], x: float, y: float) -> bool:
     return x0 <= x <= x1 and y0 <= y <= y1
 
 
-MIN_SCALE_SHARE = 0.65  # a player's scale is at least this share of the calibration's baseline_scale (0.5 until Night One
+MIN_SCALE_SHARE = 0.76  # a player's scale is at least this share of the calibration's baseline_scale (0.5 until Night One
                         # 2026-10-04 04:35: with the camera at shoulder height the bar crowd behind the square read up to 0.22
-                        # against a baseline of 0.34, the square's back edge 0.255; the gate is 0.22, 0.65 since 04:55 after 0.68 cut a back-edge guest)
+                        # against a baseline of 0.34, the square's back edge 0.255; the gate is 0.26 since 05:12: at 0.22 the bar's noise band crossed it a capture at a time and the lock took them; the menu's back row flips at 0.31, so the square loses only its last hand-span)
 
 
 def player_sized(body: Body, calibration: Calibration) -> bool:
